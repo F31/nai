@@ -285,33 +285,35 @@ impl SharedFramePool {
         budget: &IoBudget,
     ) -> Result<OwnedSlotFrame> {
         let commit = self.owner.acquire(consumer, ticket, Instant::now())?;
+        // The closure exists to turn the two `?` handlers below into one
+        // `result`, which is also why the non-Linux branch is written as a plain
+        // block: there no `?` runs from this body, so an immediately-invoked
+        // closure would be a pure wrapper.
+        #[cfg(target_os = "linux")]
         let result = (|| {
-            #[cfg(target_os = "linux")]
-            {
-                let rgba = read_committed_frame(
-                    &self.file,
-                    self.owner.spec(),
-                    consumer,
-                    ticket,
-                    &commit,
-                    budget,
-                )?;
-                self.owner.validate_read(consumer, ticket, Instant::now())?;
-                Ok(OwnedSlotFrame {
-                    ticket: ticket.clone(),
-                    metadata: ticket.frame.as_ref().unwrap().clone(),
-                    rgba,
-                })
-            }
-            #[cfg(not(target_os = "linux"))]
-            {
-                let _ = (consumer, ticket, budget, &commit);
-                Err(error(
-                    ErrorCode::CapabilityNotReady,
-                    "shared RAM backend unavailable",
-                ))
-            }
+            let rgba = read_committed_frame(
+                &self.file,
+                self.owner.spec(),
+                consumer,
+                ticket,
+                &commit,
+                budget,
+            )?;
+            self.owner.validate_read(consumer, ticket, Instant::now())?;
+            Ok(OwnedSlotFrame {
+                ticket: ticket.clone(),
+                metadata: ticket.frame.as_ref().unwrap().clone(),
+                rgba,
+            })
         })();
+        #[cfg(not(target_os = "linux"))]
+        let result: Result<OwnedSlotFrame> = {
+            let _ = (consumer, ticket, budget, &commit);
+            Err(error(
+                ErrorCode::CapabilityNotReady,
+                "shared RAM backend unavailable",
+            ))
+        };
         if result.is_err() {
             self.owner.retire();
         }

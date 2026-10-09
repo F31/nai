@@ -1,5 +1,10 @@
-use nai_render_worker::{Config, run};
-use std::{io::Write, process};
+use nai_render_worker::Config;
+// `run` and the stdout writer are named only by the Linux drill body below.
+#[cfg(target_os = "linux")]
+use nai_render_worker::run;
+#[cfg(target_os = "linux")]
+use std::io::Write;
+use std::process;
 
 /// In `--render-drill` mode stderr carries the inherited pool FD, so failures
 /// must never print there. Events go to stdout; the exit code is non-zero.

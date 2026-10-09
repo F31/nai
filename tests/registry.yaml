@@ -8,7 +8,7 @@ release_lines:
 
 acceptance:
   # S 系列：安全与守门
-  - {id: "S01", title: "越权外发拒绝", release_line: slice_0, contract: "guard.check@1", automation: integration, status: implemented, evidence: "reports/2026-10-08-d10-agent-and-guard.md", notes: "守门与值守门控已实测；控制撤权清值守及耗尽fail closed回归见reports/2026-10-08-w02-w03-admission-hardening.md；可信root已落地为nai-runtime装配根（control先静音再撤权再critical日志、值守授予/到期/撤权写critical），见reports/2026-10-09-w05-w06-composition-root.md；真实设备仍缺"}
+  - {id: "S01", title: "越权外发拒绝", release_line: slice_0, contract: "guard.check@1", automation: integration, status: implemented, evidence: "reports/2026-10-08-d10-agent-and-guard.md", notes: "守门与值守门控已实测；控制撤权清值守及耗尽fail closed回归见reports/2026-10-08-w02-w03-admission-hardening.md；可信root已落地为nai-runtime装配根（control先静音再撤权再critical日志、值守授予/到期/撤权写critical），见reports/2026-10-09-w05-w06-composition-root.md；真实engine进程链路复检守门缺失/陈旧epoch/注入失败均不外发，见reports/2026-10-09-engine-manual-event-pipeline.md；真实设备仍缺"}
   - {id: "S02", title: "审批绑定", release_line: slice_0, contract: "control.manage@1", automation: unit, status: implemented, evidence: "reports/2026-10-09-w09-approval-surface.md", notes: "loopback list/approve/reject、哈希/epoch/CAS/seq/TTL与原子决策日志已实测；真实候选来源/生产root/播放接线未建，不标完整tested"}
   - {id: "S03", title: "旧 epoch 迟到丢弃", release_line: slice_0, contract: "output.deliver@1", automation: integration, status: tested, evidence: "reports/2026-10-08-d11-media-basics.md", notes: "timeline/ack 测试通过"}
   - {id: "S04", title: "守门不可绕过", release_line: slice_0, contract: "guard.check@1", automation: integration, status: tested, evidence: "reports/2026-10-08-d10-agent-and-guard.md", notes: "evaluate 集成测试通过"}
@@ -27,7 +27,7 @@ acceptance:
   - {id: "R04", title: "关键提交持久化", release_line: r1, automation: integration, status: tested, evidence: "reports/2026-10-07-d03-storage-and-credentials.md", notes: "WAL/事务/恢复测试通过"}
   - {id: "R05", title: "升级原子与回滚", release_line: r1, automation: fault, status: pending, notes: "upgrade-core 未实现（W15）"}
   - {id: "R06", title: "长播无资源增长", release_line: r2, automation: manual, status: pending, notes: "设备里程碑"}
-  - {id: "R07", title: "决策日志哈希链与回放", release_line: slice_0, automation: integration, status: implemented, evidence: "reports/2026-10-08-w02-w03-decision-log-duty-lease.md", notes: "哈希链前置已实测；原子冲刷/遥测FIFO/critical优先修复见reports/2026-10-08-w02-w03-admission-hardening.md；桩回放与播放ACK生产端待W17，不冒充完整R07"}
+  - {id: "R07", title: "决策日志哈希链与回放", release_line: slice_0, automation: integration, status: implemented, evidence: "reports/2026-10-08-w02-w03-decision-log-duty-lease.md", notes: "哈希链前置已实测；原子冲刷/遥测FIFO/critical优先修复见reports/2026-10-08-w02-w03-admission-hardening.md；桩Provider回放已在真实engine进程链路实测（哈希链校验通过+同事件同桩重放逐项一致），见reports/2026-10-09-engine-manual-event-pipeline.md；播放ACK生产端仍缺，故不标tested"}
   - {id: "R08", title: "存储维护有界", release_line: r1, automation: integration, status: implemented, evidence: "reports/2026-10-07-d03-storage-and-credentials.md", notes: "WAL/配额逻辑部分覆盖"}
   - {id: "R09", title: "升级预检与下载失败", release_line: r1, automation: fault, status: pending, notes: "upgrade-core 未实现（W15）"}
   - {id: "R10", title: "开播与回滚不丢写入", release_line: r1, automation: fault, status: pending, notes: "upgrade-core 未实现（W15）"}

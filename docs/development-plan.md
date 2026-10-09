@@ -113,6 +113,23 @@ W05/W06 装配根与 render-worker 演练已实现/实测：`nai-runtime`（laye
 已归档为 `openspec/changes/archive/2026-10-09-engine-assembly/`，13/13任务完成；24个主规格与24项归档校验通过。
 下一主线：protected IPC/信号停机替换 halt 文件、broker 在装配中接线（含 render-worker 侧客户端）与 keeper 帧投递；S09/R01/A01/O02 保持 implemented，不标 tested。
 
+本轮 W10 引擎 broker 帧投递已归档为 `openspec/changes/archive/2026-10-09-engine-broker-frame-delivery/`，
+见 [ADR 0021](adr/0021-engine-broker-frame-delivery.md) 与 [报告](reports/2026-10-09-engine-broker-frame-delivery.md)；
+S09/R01/R03/A01 保持 implemented、O02 pending，均不标 tested（对端认证/SCM_RIGHTS/Windows 命名管道仍 Blocked）。
+
+本轮 W10 A1 手工事件链路已实现/实测（ADR 0022）：`apps/engine` 新增 pipeline 模块
+（归一化/去重 → 知识检索 → 智能体决策 → 守门四阶段 → 文本生成 → 决策日志哈希链），
+`nai-provider-core` 新增 `TextGenerator` 接缝与 **rehearsal-only 确定性桩**（离线/可复现/无网络）；
+以真实 engine 进程实测「同一手工事件 + 同一桩重放逐项一致、哈希链校验通过」，
+守门缺失/陈旧 epoch/注入失败均不外发且先 P0 静音再撤权再 critical 日志。
+workspace 测试、check-deps(17包)、portable(fmt/clippy)、registry 通过；contracts/schema 生成检查在本机
+因 node 无法 spawn 子进程（EBUSY）未执行（本轮未改任何 protobuf/JSON schema/OpenAPI，catalog 通过），如实记录。
+见 [引擎指南](engine.md)、[Provider 指南](provider.md)、[ADR 0022](adr/0022-engine-manual-event-pipeline-boundary.md)
+与 [报告](reports/2026-10-10-engine-manual-event-pipeline.md)。
+已归档为 `openspec/changes/archive/2026-10-10-engine-manual-event-pipeline/`，12/12 任务完成；24 个主规格与 26 项归档校验通过。
+R07 取得桩回放判据、S01 补真实进程链路证据，均保持 implemented 不自动升级；真实 Provider、播放 ACK、设备与 Windows 认证未做。
+下一主线：`engine-text-to-playback-ack`（TTS → 2D → 播放 ACK 段）。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |
@@ -149,14 +166,14 @@ D 表是 V3.5 追溯；自 ADR 0015 起开发按 V3.6 切片发布线（Slice-0/
 | W00 | 工程基线、xtask、契约管线、ADR 模板 | A04 | 已实现/实测（D01–D02 范围） |
 | W01 | 契约 v1 冻结与三语言生成 | 生成无 diff | 已实现/实测（D02；provisional 状态待补） |
 | W02 | 内核骨架与会话租约 | S03；值守租约 | 值守与控制撤权门控已实测；定时驱动/独立媒体接线待runtime |
-| W03 | 存储与决策日志 | R04、R07 | 哈希链及原子有序冲刷/critical优先已实测；R07仍待桩回放与播放ACK |
+| W03 | 存储与决策日志 | R04、R07 | 哈希链及原子有序冲刷/critical优先已实测；R07 桩 Provider 回放已在真实引擎链路实测（见 W10 行）；播放 ACK 生产端仍待 |
 | W04 | 宿主与 IPC | S11、A06 | 已实现/实测（D05）；wasm/remote 只留契约 |
 | W05 | output-keeper | R01、R03、S12 | 看门狗演练进程已实现/实测：强杀源约10ms撤权、停止续租578ms到期、partial卡读250ms期限、keeper重启需更高epoch floor；帧槽位所有权与tmpfs-file传输见W06行；引擎broker授权keeper只读FD单帧消费与待机见W10行；正式窗口/音轨/媒体协调和P0设备独立通道未开始 | [报告](reports/2026-10-09-engine-broker-frame-delivery.md) |
 | W06 | 2D render-worker | A01 | 2D软件像素生产核心与帧槽位所有权/tmpfs-file传输已实现/实测；引擎经broker声明spawn pid并继承写FD完成真实单帧见W10行；独立worker/keeper装配、protected handle broker与Windows帧率未完成 | [报告](reports/2026-10-09-w05-w06-frame-slots.md) |
-| W07 | Provider 核心与适配器 | A02 前置 | 已实现/实测（D08）；真实付费生成 Blocked |
+| W07 | Provider 核心与适配器 | A02 前置 | 已实现/实测（D08）；新增 `TextGenerator` 接缝与 rehearsal-only 确定性桩（W10 A1）；真实付费生成 Blocked |
 | W08 | 默认智能体、守门与手工平台 | S01–S04 | 已实现/实测（D10/D13） |
 | W09 | 最小桌面控制台 | S02、R01、O02 | loopback 控制与审批 API 子切片已实现/实测；审批 GUI/真实候选来源/完整预检与生产 root 接线未开始 |
-| W10 | 集成与故障注入 | R01–R03、R07、A01 | 引擎真实装配：控制面+监督+broker/keeper单帧投递、强杀撤权、预热期halt不提交已实测；全链路播放ACK与正式IPC未做 | [报告](reports/2026-10-09-engine-broker-frame-delivery.md) |
+| W10 | 集成与故障注入 | R01–R03、R07、A01 | 引擎真实装配：控制面+监督+broker/keeper单帧投递、强杀撤权、预热期halt不提交已实测；手工事件链路（归一化/检索→决策→守门→生成→决策日志哈希链，同事件同桩重放一致，守门缺失/陈旧epoch/注入失败不外发）以真实 engine 进程实测，见 [报告](reports/2026-10-10-engine-manual-event-pipeline.md)；全链路播放ACK与正式IPC未做 | [报告](reports/2026-10-09-engine-broker-frame-delivery.md) |
 
 W11 及之后（R1 工作项）在对应切片启动时建任务卡；本表不预建未到切片的目录或空占位。
 

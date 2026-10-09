@@ -2,6 +2,7 @@
 
 ```bash
 cargo xtask test --suite provider
+cargo test -p nai-provider-core --offline    # 含 text 接缝与 rehearsal 桩单测
 cargo xtask check --profile portable
 # 真实冒烟（有凭据时）：OPENAI_API_KEY=... cargo run -p nai-provider-core --example openai_smoke
 ```
@@ -44,6 +45,23 @@ Provider I/O；已派发/已结算的请求返回 acquired=false，绝不重复�
 
 usage JSON 只接受白名单整数单位：requests/tokens/prompt_tokens/completion_tokens/total_tokens/
 characters/audio_seconds/images；未知/浮点/零单位拒绝。requests 是尝试计数，不被 token-only 抹掉。
+
+## 文本生成接缝（TextGenerator）与 rehearsal 桩
+
+`nai-provider-core::text` 暴露一次文本生成的接缝：`TextRequest`（request/provider/session/utterance 标识、
+`generation_epoch`、prompt、输出上界、剩余预算、取消标志）与 `TextResponse`（文本、模型标识、usage）。
+`validate()` 拒绝不完整标识、空/超长 prompt（上界 `MAX_PROMPT_CHARS = 8192`）、非法输出上界
+（`MAX_OUTPUT_CHARS = 4096`）与已取消请求；`remaining_budget_ms == 0` 返回 DEADLINE_EXCEEDED。
+生成器自身**不得**做记账，调用方一律经 `generate_with_budget`。
+
+`generate_with_budget(generator, gateway, entry, request, price_revision)` 走既有预算路径：
+`CallBudget::start` 先 reserve 再 dispatch，仅 `dispatched()` 为真才调用生成器；已派发请求返回
+`Already`（Conflict）而**不重发**；usage 经 `usage_charge` 按精确 `price_revision` 记账后 `finish` 结算。
+接缝不绕过预算、取消或 usage 记账。
+
+**rehearsal-only 确定性桩**：`RehearsalTextGenerator`（`model_ref = "rehearsal-deterministic-v1"`）
+是纯计算、无网络、无凭据、可复现的桩，只在演练与测试路径显式构造。它 MUST NOT 用于真实集成、付费调用
+或任何认证结论，也 MUST NOT 取代 API 故障处理；真实生成仍走 `OpenAiAdapter` 的 llm_stream。
 
 ## 适配器与 Provider 隔离
 

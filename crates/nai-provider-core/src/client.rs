@@ -30,8 +30,13 @@ impl ProviderError {
             "request deadline exceeded",
         )
     }
-    pub(crate) fn unavailable(message: impl Into<String>) -> Self {
+    /// A provider that could not be reached or answered in time. Retryable.
+    pub fn unavailable(message: impl Into<String>) -> Self {
         Self::new(ErrorCode::ProviderUnavailable, true, message)
+    }
+    /// A caller-supplied argument the provider layer refuses. Not retryable.
+    pub fn invalid_argument(message: impl Into<String>) -> Self {
+        Self::new(ErrorCode::InvalidArgument, false, message)
     }
     fn exhausted(message: impl Into<String>) -> Self {
         Self::new(ErrorCode::ResourceExhausted, false, message)

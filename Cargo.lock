@@ -1179,13 +1179,17 @@ dependencies = [
 name = "nai-engine"
 version = "0.1.0"
 dependencies = [
+ "nai-budget-core",
  "nai-contracts",
  "nai-control-api",
  "nai-kernel",
+ "nai-knowledge-core",
  "nai-media-core",
+ "nai-provider-core",
  "nai-runtime",
  "nai-storage",
  "prost",
+ "serde",
  "serde_json",
  "tempfile",
  "tokio",

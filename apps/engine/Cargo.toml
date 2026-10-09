@@ -20,11 +20,15 @@ path = "src/main.rs"
 [dependencies]
 nai-contracts.workspace = true
 nai-kernel.workspace = true
+nai-knowledge-core.workspace = true
 nai-media-core.workspace = true
+nai-provider-core.workspace = true
+nai-budget-core.workspace = true
 nai-storage.workspace = true
 nai-runtime.workspace = true
 nai-control-api.workspace = true
 prost.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 tokio = { version = "=1.53.2", features = ["macros", "rt-multi-thread", "net", "time", "sync"] }
 tempfile.workspace = true

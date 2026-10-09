@@ -5,15 +5,24 @@
 //! It is not the production form. There is no protected IPC, no device or window
 //! binding and no PlaybackAck producer; the media drill is explicit, runs on the
 //! Linux tmpfs backend and never reports hardware output.
-use nai_contracts::v1::{FrameMetadata, FrameSlotEvent, FrameSlotTicket, frame_slot_event::Event};
+// The media drill is Linux-only. On other targets its helpers, constants and
+// asset fields have no caller, which is a platform fact rather than dead code.
+#![cfg_attr(not(target_os = "linux"), allow(dead_code))]
+// Slot-commit types are only named by the Linux drill bodies; importing them
+// unconditionally would leave the Windows build with unused imports.
+use nai_contracts::v1::{FrameMetadata, FrameSlotTicket};
+#[cfg(target_os = "linux")]
+use nai_contracts::v1::{FrameSlotEvent, frame_slot_event::Event};
 use nai_control_api::{Access, ControlApi, serve};
+#[cfg(target_os = "linux")]
+use nai_media_core::frame_slots::broker::PeerIdentity;
 use nai_media_core::frame_slots::{
     PoolSpec,
-    broker::{FrameBroker, PeerIdentity, PeerRole},
+    broker::{FrameBroker, PeerRole},
 };
-use nai_runtime::{
-    Binaries, Composition, ControlAction, FramePoolArgs, RenderWorkerSpec, Supervisor,
-};
+#[cfg(target_os = "linux")]
+use nai_runtime::RenderWorkerSpec;
+use nai_runtime::{Binaries, Composition, ControlAction, FramePoolArgs, Supervisor};
 use nai_storage::{DataPaths, DecisionKind};
 use prost::Message;
 use serde_json::{Value, json};
@@ -30,12 +39,16 @@ use std::{
 };
 use tokio::{net::TcpListener, sync::watch};
 
+pub mod pipeline;
+
 pub const USAGE: &str = "Usage: nai-engine --data-root <dir> --workspace <id> --actor <id> --profile <name> \
 --token-file <path> [--control-port <port>] [--halt-file <path>] \
 [--keeper <path> --render-worker <path>] \
 [--provision <runtime-profile.json>] \
 [--media-drill --pcm <path> --avatar <manifest> --avatar-config <config> --asset <id=path> --license <id> \
-[--slot-bytes <bytes>] [--time-base-den <n>]]; real devices and production IPC unavailable";
+[--slot-bytes <bytes>] [--time-base-den <n>]] \
+[--event-file <script.json> --rehearsal-provider [--inject <none|knowledge|guard|generate|storage>]]; \
+real devices, production IPC and real provider transport unavailable";
 
 /// Control-surface permissions of the local operator credential.
 const CONTROL_PERMISSIONS: &[&str] = &[
@@ -84,6 +97,13 @@ pub struct Config {
     pub keeper: Option<PathBuf>,
     pub render_worker: Option<PathBuf>,
     pub media_drill: Option<MediaDrill>,
+    /// Explicit manual-event rehearsal script. Its presence selects the pipeline
+    /// path; the engine never runs it implicitly.
+    pub event_file: Option<PathBuf>,
+    /// Rehearsal-only deterministic generator. The real provider transport is
+    /// not wired for the manual-event pipeline, so this must be explicit.
+    pub rehearsal_provider: bool,
+    pub injection: pipeline::Injection,
 }
 
 #[derive(Default)]
@@ -113,9 +133,13 @@ pub fn parse(args: &[String]) -> Result<Config, String> {
         keeper: None,
         render_worker: None,
         media_drill: None,
+        event_file: None,
+        rehearsal_provider: false,
+        injection: pipeline::Injection::None,
     };
     let mut drill = DrillParts::default();
     let mut port_text: Option<String> = None;
+    let mut injection_text: Option<String> = None;
     let mut index = 0;
     while index < args.len() {
         let flag = args[index].clone();
@@ -157,6 +181,9 @@ pub fn parse(args: &[String]) -> Result<Config, String> {
             "--time-base-den" => {
                 drill.time_base_den = parse_u32("--time-base-den", &take("--time-base-den")?)?
             }
+            "--event-file" => config.event_file = Some(PathBuf::from(take("--event-file")?)),
+            "--rehearsal-provider" => config.rehearsal_provider = true,
+            "--inject" => injection_text = Some(take("--inject")?),
             other => return Err(format!("unknown argument {other}")),
         }
         index += 1;
@@ -209,6 +236,18 @@ pub fn parse(args: &[String]) -> Result<Config, String> {
                 drill.time_base_den
             },
         });
+    }
+    if let Some(text) = injection_text {
+        config.injection = pipeline::Injection::parse(&text)?;
+    }
+    if config.event_file.is_some() && !config.rehearsal_provider {
+        // The real provider transport is not wired for the manual-event
+        // pipeline: without an explicit rehearsal generator the engine refuses
+        // rather than silently standing in a stub for a model.
+        return Err("--event-file requires --rehearsal-provider".into());
+    }
+    if config.injection != pipeline::Injection::None && config.event_file.is_none() {
+        return Err("--inject is only available with --event-file".into());
     }
     Ok(config)
 }
@@ -311,6 +350,20 @@ pub async fn run(config: Config) -> Result<(), String> {
         }
         _ => None,
     };
+
+    // The explicit manual-event rehearsal runs once, in-process, against the
+    // live composition. A stage failure applies the ordered halt inside the
+    // pipeline and propagates, so the engine exits without a success line.
+    if let Some(script) = config.event_file.clone() {
+        let pipeline_config = pipeline::PipelineConfig {
+            script,
+            provider_ref: "rehearsal".into(),
+            price_revision: "price-rehearsal-1".into(),
+            max_output_chars: 512,
+            injection: config.injection,
+        };
+        pipeline::run(&shared, &pipeline_config)?;
+    }
 
     wait_for_halt(config.halt_file.as_deref()).await;
     access.revoke();
@@ -699,7 +752,7 @@ fn run_media_drill(
     #[cfg(not(target_os = "linux"))]
     {
         let _ = (supervisor, session, epoch, drill, media, guard);
-        return Err("the media drill requires the Linux tmpfs backend".into());
+        Err("the media drill requires the Linux tmpfs backend".into())
     }
     #[cfg(target_os = "linux")]
     {
