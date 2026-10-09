@@ -1,0 +1,21 @@
+[package]
+name = "nai-plugin-sdk"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.nai]
+layer = "sdk"
+
+[dependencies]
+nai-contracts.workspace = true
+prost.workspace = true
+serde_json.workspace = true
+jsonschema.workspace = true
+semver.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true

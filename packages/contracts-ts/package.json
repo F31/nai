@@ -1,0 +1,7 @@
+{
+  "name":"@nai/contracts", "version":"0.1.0", "private":true, "type":"module",
+  "exports": {".":{"types":"./src/index.ts","default":"./dist/index.js"}, "./*":"./dist/generated/*.js"},
+  "scripts":{"typecheck":"tsc --noEmit","build":"tsc"},
+  "dependencies":{"@bufbuild/protobuf":"2.16.0"},
+  "devDependencies":{"typescript":"5.9.3"}
+}

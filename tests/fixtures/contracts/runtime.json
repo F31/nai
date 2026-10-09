@@ -1,0 +1,12 @@
+{
+  "schema_version":1,"edition":"lite","deployment":"local","workspace_id":"test-workspace",
+  "runtime":{"max_active_sessions":1,"plugin_catalog":"plugin-catalog/catalog.json","control_listener":"named_pipe","http_enabled":false},
+  "bindings":{"platform.events@1":"platform.manual","guard.check@1":"guard.default"},
+  "session_defaults":{"mode":"assisted","allow_auto_without_platform_grant":false,"viewer_memory_enabled":false},
+  "scheduler":{"max_pending_utterances":2,"max_pending_speech_ms":20000,"qa_ttl_ms":15000,"welcome_ttl_ms":5000,"thanks_ttl_ms":20000},
+  "media":{"lease_renew_ms":200,"lease_expire_ms":600,"output_sample_rate":48000,"model_audio_format":"from_model_manifest","startup_buffer_ms":300,"max_buffer_ms":1000},
+  "knowledge":{"mode":"local","fts_enabled":true,"semantic_enabled":false,"remote_source_refs":[],"index_during_live":"throttled"},
+  "budgets":{"soft_threshold_ratio":0.8,"hard_stop_new_paid_requests":true,"currency":"CNY","per_session_limit_minor":"2000"},
+  "cache":{"tts_max_bytes":1073741824,"invalidate_on_fact_change":true},
+  "cloud":{"control_enabled":false,"relay_enabled":false,"render_enabled":false}
+}

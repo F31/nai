@@ -1,0 +1,22 @@
+[package]
+name = "nai-output-keeper"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.nai]
+layer = "media"
+
+[dependencies]
+nai-contracts.workspace = true
+nai-plugin-sdk.workspace = true
+nai-media-core = { path = "../../crates/nai-media-core" }
+prost.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,37 @@
+syntax = "proto3";
+package nai.v1;
+import "core/base.proto";
+import "core/capability.proto";
+import "domain/platform.proto";
+import "domain/knowledge.proto";
+
+enum DecisionAction { ACTION_UNSPECIFIED = 0; SPEAK = 1; STAY_SILENT = 2; ASK_HUMAN = 3; REQUEST_SKILL = 4; REQUEST_SCENE_CHANGE = 5; DEFER = 6; }
+enum GuardStage { GUARD_STAGE_UNSPECIFIED = 0; INPUT = 1; EVIDENCE = 2; OUTPUT = 3; PREPLAY = 4; }
+enum GuardVerdict { VERDICT_UNSPECIFIED = 0; PASS = 1; REWRITE = 2; BLOCK = 3; ESCALATE = 4; }
+message VoiceRef { string provider_ref = 1; string voice_ref = 2; string revision = 3; }
+message Performance { string emotion = 1; string gesture = 2; string gaze = 3; float intensity = 4; }
+message PerformanceCue {
+  string cue_id = 1; string session_id = 2; string utterance_id = 3;
+  uint64 generation_epoch = 4; string display_text = 5; string speech_text = 6;
+  Risk risk = 7; repeated string evidence_refs = 8; map<string, string> fact_versions = 9;
+  VoiceRef voice = 10; Performance performance = 11; string policy_version = 12;
+  uint64 expires_at_utc_ms = 13; string approval_ref = 14;
+  string knowledge_snapshot_ref = 15; string candidate_hash = 16; string hash_algorithm = 17;
+}
+message Observation { RequestContext context = 1; SessionMode mode = 2; CapabilityView capabilities = 3; PlatformEvent trigger = 4; string product_id = 5; string segment_id = 6; repeated string actual_played_utterance_ids = 7; MediaState media_state = 8; uint32 queued_speech_ms = 9; repeated Usage budget_remaining = 10; repeated MemoryRecord approved_context = 11; }
+message Decision { DecisionAction action = 1; string route = 2; string reason_code = 3; Risk risk = 4; PerformanceCue candidate = 5; repeated string evidence_refs = 6; repeated SkillRequest tool_plan = 7; }
+message GuardRequest { RequestContext context = 1; GuardStage stage = 2; PerformanceCue candidate = 3; repeated Evidence evidence = 4; PermissionSnapshot permissions = 5; }
+message GuardResult { GuardVerdict verdict = 1; repeated string reason_codes = 2; string rule_version = 3; Risk risk = 4; PerformanceCue rewritten_candidate = 5; }
+message Approval {
+  string approval_id = 1; string session_id = 2; uint64 generation_epoch = 3;
+  string candidate_hash = 4; string hash_algorithm = 5; string actor_id = 6;
+  string actor_role = 7; string action_scope = 8; uint64 expires_at_utc_ms = 9;
+  optional uint64 revoked_at_utc_ms = 10; repeated RevisionRef fact_versions = 11;
+}
+message SkillDescriptor { string name = 1; string parameters_schema_ref = 2; string result_schema_ref = 3; repeated string permissions = 4; string source_ref = 5; string side_effect = 6; Risk risk = 7; uint32 timeout_ms = 8; uint32 max_concurrency = 9; bool supports_idempotency = 10; }
+message SkillListRequest { RequestContext context = 1; }
+message SkillList { repeated SkillDescriptor skills = 1; }
+message SkillRequest { RequestContext context = 1; string skill_name = 2; bytes parameters_json = 3; string authorization_ref = 4; string idempotency_key = 5; }
+message SkillResult { string skill_name = 1; bytes result_json = 2; string source_ref = 3; Risk risk = 4; }
+message ShowRequest { RequestContext context = 1; string scene_id = 2; string version = 3; string checkpoint_ref = 4; }
+message ShowPlan { string scene_id = 1; string version = 2; string segment_id = 3; uint32 target_duration_ms = 4; repeated string topic_refs = 5; repeated string script_refs = 6; string interrupt_policy = 7; string checkpoint = 8; repeated RevisionRef evidence_binding = 9; repeated string completed_utterance_ids = 10; }

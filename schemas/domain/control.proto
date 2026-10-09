@@ -1,0 +1,15 @@
+syntax = "proto3";
+package nai.v1;
+import "core/base.proto";
+import "core/error.proto";
+import "core/capability.proto";
+import "domain/agent.proto";
+
+enum CommandAction { COMMAND_UNSPECIFIED = 0; PREPARE = 1; START = 2; STOP = 3; MUTE = 4; TAKEOVER = 5; CHANGE_MODE = 6; APPROVE = 7; REJECT = 8; }
+message ControlCommand { RequestContext context = 1; string command_id = 2; string device_id = 3; uint64 seq = 4; uint64 expected_state_revision = 5; uint32 ttl_ms = 6; CommandAction action = 7; SessionMode requested_mode = 8; string approval_id = 9; string candidate_hash = 10; }
+message CommandAck { string command_id = 1; bool executed = 2; uint64 state_revision = 3; uint64 generation_epoch = 4; ContractError error = 5; }
+message SessionSnapshot { string session_id = 1; string workspace_id = 2; SessionLifecycle lifecycle = 3; SessionMode mode = 4; MediaState media_state = 5; uint64 generation_epoch = 6; uint64 state_revision = 7; BindingSnapshot bindings = 8; string knowledge_snapshot_ref = 9; string show_checkpoint = 10; repeated Approval pending_approvals = 11; }
+message StorageRequest { RequestContext context = 1; string operation = 2; string resource_id = 3; string expected_revision = 4; bytes value = 5; }
+message StorageResult { string resource_id = 1; string revision = 2; bytes value = 3; string snapshot_ref = 4; }
+message ObserveRequest { RequestContext context = 1; repeated string topics = 2; }
+message RuntimeObservation { string revision = 1; repeated Usage usage = 2; map<string, string> bounded_metrics = 3; repeated string diagnostic_refs = 4; }

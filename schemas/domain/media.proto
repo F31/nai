@@ -1,0 +1,85 @@
+syntax = "proto3";
+package nai.v1;
+import "core/base.proto";
+import "core/error.proto";
+import "domain/agent.proto";
+import "domain/provider.proto";
+
+message AudioBlockMetadata { string session_id = 1; string utterance_id = 2; uint64 generation_epoch = 3; uint64 seq = 4; AudioFormat format = 5; uint64 sample_start = 6; uint64 sample_count = 7; bool end_of_stream = 8; string buffer_ref = 9; }
+message FrameMetadata { string session_id = 1; string utterance_id = 2; uint64 generation_epoch = 3; uint64 frame_seq = 4; int64 pts = 5; uint32 time_base_num = 6; uint32 time_base_den = 7; uint32 duration = 8; uint32 width = 9; uint32 height = 10; string pixel_format = 11; string buffer_ref = 12; uint64 base_clip_index = 13; }
+message PlaybackLease { string lease_id = 1; string session_id = 2; uint64 generation_epoch = 3; repeated string allowed_utterance_ids = 4; SessionMode mode = 5; repeated string approval_refs = 6; uint64 expires_at_utc_ms = 7; repeated RevisionRef fact_versions = 8; map<string, string> candidate_hashes = 9; string policy_revision = 10; }
+message AvatarProfileRequest { RequestContext context = 1; string avatar_id = 2; }
+message AvatarProfile { string avatar_id = 1; string revision = 2; AudioFormat input_audio = 3; string model_profile_ref = 4; string resource_profile_ref = 5; repeated string supported_actions = 6; repeated string emotions = 7; repeated string gazes = 8; float max_intensity = 9; bool requires_phoneme_timing = 10; uint32 native_width = 11; uint32 native_height = 12; uint32 output_width = 13; uint32 output_height = 14; uint32 fps_num = 15; uint32 fps_den = 16; uint32 lookahead_samples = 17; repeated uint64 switch_points = 18; repeated string certified_fallback_refs = 19; }
+message AvatarRenderRequest { RequestContext context = 1; PerformanceCue cue = 2; AudioBlockMetadata audio = 3; string avatar_profile_revision = 4; }
+message AvatarRenderResult { repeated FrameMetadata frames = 1; StreamEnd end = 2; }
+message OutputRequest { RequestContext context = 1; string output_id = 2; string utterance_id = 3; PlaybackLease lease = 4; AudioBlockMetadata audio = 5; FrameMetadata frame = 6; }
+message OutputAck { string output_id = 1; string utterance_id = 2; bool committed = 3; bool actual_local_playback_completed = 4; uint64 played_sample_count = 5; MediaState media_state = 6; string platform_delivery_state = 7; }
+message ChannelRequest { RequestContext context = 1; string direction = 2; string transport = 3; uint32 max_slots = 4; uint32 max_slot_bytes = 5; }
+message ChannelDescriptor { string channel_id = 1; string transport = 2; string protected_handle_ref = 3; uint32 max_slots = 4; uint32 max_slot_bytes = 5; string producer_ref = 6; string consumer_ref = 7; }
+message ClockRequest { RequestContext context = 1; string output_id = 2; }
+message MediaClock { string clock_id = 1; uint64 sample_position = 2; uint32 sample_rate = 3; int64 pts = 4; uint32 time_base_num = 5; uint32 time_base_den = 6; }
+message TimelineRequest { RequestContext context = 1; string utterance_id = 2; }
+message AudioTimeline { string utterance_id = 1; string clock_id = 2; uint64 output_sample_start = 3; uint32 output_sample_rate = 4; uint64 model_sample_start = 5; uint32 model_sample_rate = 6; uint64 speech_samples = 7; uint32 lookahead_samples = 8; }
+message PreviewRequest { RequestContext context = 1; string output_id = 2; bool enabled = 3; uint32 max_bitrate = 4; }
+message PreviewDescriptor { string preview_id = 1; string encoded_stream_ref = 2; string codec = 3; bool active = 4; }
+
+// Provisional engineering drill only (ADR 0016); NOT output.deliver readiness.
+// Private inherited stdio. No PCM/frames and no hardware playback ACK.
+message OutputWatchdogCommand {
+  uint32 schema_version = 1;
+  string session_id = 2;
+  uint64 seq = 3;
+  uint32 remaining_budget_ms = 4;
+  oneof action {
+    PlaybackLease arm = 5;
+    PlaybackLease renew = 6;
+    bool inspect = 7;
+    FrameSlotEvent submit_frame = 8;
+  }
+}
+message OutputWatchdogStatus {
+  uint32 schema_version = 1;
+  string session_id = 2;
+  uint64 last_command_seq = 3;
+  uint64 observed_at_utc_ms = 4;
+  uint64 epoch_floor = 5;
+  bool lease_valid = 6; // Diagnostic observation only, never a durable grant.
+  bool input_closed = 7;
+  bool output_available = 8; // Always false in watchdog-drill.
+  ContractError backend_error = 9;
+  ContractError last_control_error = 10;
+  uint64 dropped_commands = 11;
+  uint64 skipped_statuses = 12;
+  bool presenting = 13; // Frame consumed under a live lease; still no device or ACK.
+  string standby_reason = 14; // Observability only; never an output grant.
+  string consumed_buffer_ref = 15; // Diagnostic copied-frame identity only.
+  string consumed_sha256 = 16; // Cleared on standby; not a PlaybackAck.
+}
+
+// Provisional slot-ownership / tmpfs-file drill (ADR 0017). No data bytes,
+// output grant, production IPC authentication or hardware playback ACK.
+message FrameSlotTicket {
+  uint32 schema_version = 1;
+  string pool_id = 2;
+  string session_id = 3;
+  uint64 generation_epoch = 4;
+  uint32 slot_index = 5;
+  uint64 slot_generation = 6;
+  string producer_ref = 7;
+  string consumer_ref = 8;
+  FrameMetadata frame = 9;
+  uint32 max_slot_bytes = 10;
+  uint32 remaining_budget_ms = 11; // Advisory peer budget; owner monotonic deadline wins.
+}
+message FrameSlotCommit {
+  FrameSlotTicket ticket = 1;
+  uint32 byte_length = 2;
+  string sha256 = 3; // Transport integrity only, never output authorization.
+}
+message FrameSlotEvent {
+  oneof event {
+    bool write_started = 1;
+    FrameSlotCommit committed = 2;
+    ContractError error = 3;
+  }
+}

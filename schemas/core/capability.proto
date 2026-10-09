@@ -1,0 +1,30 @@
+syntax = "proto3";
+package nai.v1;
+import "core/base.proto";
+import "core/envelope.proto";
+import "core/error.proto";
+
+message CapabilityDescriptor { string capability_id = 1; string plugin_id = 2; string plugin_version = 3; HostKind host = 4; PluginState state = 5; PermissionState permission = 6; repeated string required_capabilities = 7; string reason_code = 8; string artifact_hash = 9; string manifest_hash = 10; string policy_scope_ref = 11; }
+message CapabilityViewRequest { RequestContext context = 1; }
+message CapabilityView { string session_id = 1; string revision = 2; repeated CapabilityDescriptor capabilities = 3; }
+message Binding { string capability_id = 1; string primary_plugin_id = 2; repeated string fallback_plugin_ids = 3; BoundProvider selected = 4; repeated BoundProvider approved_fallbacks = 5; }
+message BindingSnapshot { string snapshot_id = 1; string session_id = 2; string revision = 3; repeated Binding bindings = 4; }
+
+// Conversion of a validated manifest is not admission or a health/permission grant.
+message PluginRegistration {
+  string plugin_id = 1; string plugin_version = 2; string artifact_hash = 3;
+  string manifest_hash = 4; string validated_kernel_version = 5;
+  repeated ProtocolRange protocol_ranges = 6; repeated string contracts = 7;
+  repeated HostKind supported_hosts = 8; repeated string requires = 9;
+  string activation = 10; string idle_policy = 11; string resource_profile_ref = 12;
+  string certification_ref = 13; string license_ref = 14;
+  bool declares_network = 15; bool declares_media_output = 16; repeated string credential_refs = 17;
+}
+message BoundProvider { string plugin_id = 1; string plugin_version = 2; string artifact_hash = 3; string manifest_hash = 4; HostKind host = 5; string policy_scope_ref = 6; }
+message BindingRequirement { string capability_id = 1; bool required = 2; }
+message BindingSelection { string capability_id = 1; string primary_plugin_id = 2; repeated string fallback_plugin_ids = 3; string policy_scope_ref = 4; }
+message BindingPlan { string session_id = 1; SessionMode mode = 2; repeated BindingRequirement requirements = 3; repeated BindingSelection selections = 4; bool emits_output = 5; }
+message AutomaticReadiness { PermissionSnapshot platform_permissions = 1; string supervision_lease_ref = 2; uint64 supervision_expires_at_utc_ms = 3; string budget_admission_ref = 4; }
+enum BindingReadiness { BINDING_READINESS_UNSPECIFIED = 0; NOT_READY = 1; BINDING_READY = 2; BINDING_READY_DEGRADED = 3; }
+message BindingIssue { string capability_id = 1; string plugin_id = 2; ErrorCode code = 3; string reason_code = 4; bool required = 5; }
+message PrepareReport { BindingReadiness readiness = 1; CapabilityView capability_view = 2; BindingSnapshot snapshot = 3; repeated BindingIssue issues = 4; }

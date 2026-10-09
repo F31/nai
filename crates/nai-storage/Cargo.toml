@@ -1,0 +1,28 @@
+[package]
+name = "nai-storage"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.nai]
+layer = "shared"
+
+[dependencies]
+nai-budget-core.workspace = true
+nai-knowledge-core.workspace = true
+nai-contracts.workspace = true
+nai-security.workspace = true
+rusqlite.workspace = true
+prost.workspace = true
+sha2.workspace = true
+serde_json.workspace = true
+jsonschema.workspace = true
+directories.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

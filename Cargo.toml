@@ -1,0 +1,45 @@
+[workspace]
+resolver = "3"
+members = ["plugins/avatar-2d", "apps/engine", "apps/output-keeper", "apps/render-worker", "crates/nai-control-api", "crates/nai-knowledge-core", "crates/nai-contracts", "crates/nai-kernel", "crates/nai-runtime", "crates/nai-plugin-sdk", "crates/nai-plugin-hosts", "crates/nai-storage", "crates/nai-security", "crates/nai-media-core", "crates/nai-budget-core", "crates/nai-provider-core", "xtask"]
+default-members = ["plugins/avatar-2d", "apps/engine", "apps/output-keeper", "apps/render-worker", "crates/nai-control-api", "crates/nai-knowledge-core", "crates/nai-contracts", "crates/nai-kernel", "crates/nai-runtime", "crates/nai-plugin-sdk", "crates/nai-plugin-hosts", "crates/nai-storage", "crates/nai-security", "crates/nai-media-core", "crates/nai-budget-core", "crates/nai-provider-core", "xtask"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+license = "MIT"
+repository = "https://github.com/F31/nai"
+
+[workspace.dependencies]
+cargo_metadata = "=0.23.1"
+prost = "=0.14.4"
+prost-build = "=0.14.4"
+prost-types = "=0.14.4"
+serde_json = "=1.0.151"
+serde = { version = "=1.0.229", features = ["derive"] }
+rusqlite = { version = "=0.40.2", default-features = false, features = ["bundled", "backup", "hooks"] }
+sha2 = "=0.11.0"
+directories = "=6.0.0"
+jsonschema = { version = "=0.58.6", default-features = false }
+zeroize = "=1.9.1"
+tempfile = "=3.27.0"
+keyring = { version = "=3.6.3", default-features = false, features = ["windows-native"] }
+semver = "=1.0.28"
+nai-contracts = { path = "crates/nai-contracts" }
+nai-security = { path = "crates/nai-security" }
+nai-plugin-sdk = { path = "crates/nai-plugin-sdk" }
+nai-plugin-hosts = { path = "crates/nai-plugin-hosts" }
+nai-budget-core = { path = "crates/nai-budget-core" }
+nai-provider-core = { path = "crates/nai-provider-core" }
+nai-knowledge-core = { path = "crates/nai-knowledge-core" }
+nai-runtime = { path = "crates/nai-runtime" }
+nai-control-api = { path = "crates/nai-control-api" }
+nai-storage = { path = "crates/nai-storage" }
+nai-media-core = { path = "crates/nai-media-core" }
+nai-kernel = { path = "crates/nai-kernel" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"

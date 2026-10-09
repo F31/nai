@@ -1,0 +1,40 @@
+syntax = "proto3";
+package nai.v1;
+
+// Zero values never mean permission granted, guard pass or a live session.
+enum PermissionState { PERMISSION_STATE_UNKNOWN = 0; PERMISSION_STATE_GRANTED = 1; PERMISSION_STATE_DENIED = 2; }
+enum Risk { RISK_UNSPECIFIED = 0; RISK_0 = 1; RISK_1 = 2; RISK_2 = 3; RISK_3 = 4; }
+enum SessionMode { MODE_UNSPECIFIED = 0; REHEARSAL = 1; ASSISTED = 2; AUTO_SUPERVISED = 3; }
+enum SessionLifecycle { SESSION_UNSPECIFIED = 0; CREATED = 1; PREPARING = 2; READY = 3; READY_DEGRADED = 4; RUNNING = 5; DRAINING = 6; STOPPED = 7; FAULTED = 8; }
+enum MediaState { MEDIA_UNSPECIFIED = 0; STANDBY = 1; BUFFERING = 2; PLAYING = 3; MUTED = 4; DEVICE_LOST = 5; MEDIA_FAILED = 6; }
+enum PluginState { PLUGIN_UNSPECIFIED = 0; ABSENT = 1; INSTALLED = 2; VALIDATED = 3; PLUGIN_READY = 4; ACTIVE = 5; IDLE = 6; SUSPENDED = 7; PLUGIN_FAILED = 8; PLUGIN_DRAINING = 9; }
+enum UtteranceState { UTTERANCE_UNSPECIFIED = 0; SELECTED = 1; RETRIEVING = 2; GENERATING = 3; GUARDED = 4; AWAITING_APPROVAL = 5; APPROVED = 6; SYNTHESIZING = 7; UTTERANCE_BUFFERING = 8; COMMITTED = 9; UTTERANCE_PLAYING = 10; COMPLETED = 11; UTTERANCE_CANCELLED = 12; EXPIRED = 13; BLOCKED = 14; UTTERANCE_FAILED = 15; }
+enum HostKind { HOST_UNSPECIFIED = 0; INPROC = 1; SUBPROCESS = 2; REMOTE = 3; WASM = 4; }
+enum StreamEnd { STREAM_UNSPECIFIED = 0; STREAM_DATA = 1; STREAM_COMPLETE = 2; STREAM_ERROR = 3; }
+
+message RequestContext {
+  string request_id = 1;
+  string trace_id = 2;
+  string workspace_id = 3;
+  string session_id = 4;
+  optional uint64 generation_epoch = 5;
+  uint32 remaining_budget_ms = 6;
+  string cancellation_id = 7;
+}
+message RevisionRef { string object_id = 1; string revision = 2; }
+message PermissionSnapshot { string revision = 1; map<string, PermissionState> capabilities = 2; string authority_ref = 3; optional uint64 valid_until_utc_ms = 4; }
+message HealthRequest { RequestContext context = 1; }
+message HealthResponse { bool ready = 1; string reason_code = 2; string safe_message = 3; string revision = 4; }
+message Usage { string provider_ref = 1; string unit = 2; string quantity_decimal = 3; bool estimated = 4; string currency = 5; string price_revision = 6; }
+
+// Monetary cost is integer minor units. Units are normalized by a trusted
+// provider adapter; concurrency is separate from cumulative billable usage.
+message BudgetCharge { string currency = 1; uint64 cost_minor = 2; map<string, uint64> units = 3; string price_revision = 4; }
+enum BillingState { BILLING_UNSPECIFIED = 0; RESERVED = 1; DISPATCHED = 2; RELEASED = 3; NEEDS_RECONCILIATION = 4; SETTLED = 5; RECONCILED = 6; }
+message UsageLedgerEntry {
+  string workspace_id = 1; string session_id = 2; string provider_ref = 3;
+  string request_id = 4; uint64 generation_epoch = 5;
+  BudgetCharge estimate = 6; BudgetCharge actual = 7;
+  map<string, uint64> concurrent = 8; BillingState state = 9;
+  bool cancelled = 10; string reconciliation_id = 11; uint64 revision = 12;
+}

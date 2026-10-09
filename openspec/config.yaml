@@ -1,0 +1,24 @@
+schema: spec-driven
+context: |
+  项目名称 nai，仓库 https://github.com/F31/nai。
+  唯一产品/技术基线 docs/直播数字人 + 智能体系统技术方案 V3.6.md（ADR 0015 升基线并勘误；V3.5 降为历史参考）；遵守 AGENTS.md。
+  验收唯一来源 tests/registry.yaml（V3.6 S/A/R/O/X + release_line；D→新编号映射自建并回填）；按切片发布线（Slice-0/R1/R2/R3/实验）实施，每轮完成一个可验证变更。
+  Rust 统一内核，Tauri 2 + React/TypeScript 桌面；Windows 正式运行，portable 逻辑在 Linux 可测。
+  Lite/Standard/Pro 是能力预设；Local/Hybrid/Distributed 是部署配置。
+  LLM/TTS 使用 API；写实 Rust + ONNX，Python 仅离线导出。
+  跨语言消息 Protobuf，配置/清单 JSON Schema，HTTP OpenAPI；先改源并生成，再改消费者。
+  kernel 不依赖插件/Tauri/平台 SDK，插件实现不得直接依赖另一插件。
+  有界队列、deadline/cancellation、epoch、审批哈希、事实版本与媒体租约是输出不变量。
+  未实现保持未开始；缺真实环境的认证记 Blocked，演练不能代替真实接入。
+  规范与设计说明使用中文；OpenSpec 的 Requirement/Scenario/WHEN/THEN 标记保持标准格式。
+rules:
+  proposal:
+    - 标明 Dxx 对应任务、设计章节、影响范围与新增依赖成本。
+  specs:
+    - 使用 SHALL 或 MUST 编写可验证需求，每条需求包含具体 WHEN/THEN 场景。
+    - 区分实现检查与 Windows/SDK/GPU/真实 API 认证。
+  design:
+    - 记录技术选择、依赖方向、验证命令和环境边界；规范偏离须新增 ADR。
+  tasks:
+    - 按规范到实现到验证排序，完成检查后才勾选对应任务。
+    - 包含 docs/development-plan.md 与 docs/reports 的真实状态更新。

@@ -1,0 +1,330 @@
+openapi: 3.0.3
+info:
+  title: nai control API
+  version: 1.0.0
+  description: Partial explicit loopback engineering server supports authenticated status/session reads and mute/takeover. Other operations remain unimplemented. Local production defaults to protected IPC; control ACK is not a hardware ACK.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+x-implementation-status: partial-loopback-engineering
+paths:
+  /health:
+    get:
+      x-implementation-status: implemented-loopback
+      x-required-permission: runtime.read
+      responses: &readResponses
+        '200': {description: Authenticated resource status, content: {application/json: {schema: {$ref: '#/components/schemas/ResourceView'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /runtime/status:
+    get: {x-required-permission: runtime.read, responses: *readResponses, x-implementation-status: implemented-loopback}
+  /capabilities:
+    get: {x-required-permission: runtime.read, responses: *readResponses}
+  /plugins:
+    get: {x-required-permission: runtime.read, responses: *readResponses}
+  /sessions:
+    post:
+      x-required-permission: session.manage
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateSession'}}}}
+      responses:
+        '201': {description: Session created, content: {application/json: {schema: {$ref: '#/components/schemas/SessionView'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /sessions/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, minLength: 1}}
+    get: {x-required-permission: session.read, responses: *readResponses, x-implementation-status: implemented-loopback}
+  /sessions/{id}/prepare:
+    parameters: &idParameters
+      - {name: id, in: path, required: true, schema: {type: string, minLength: 1}}
+    post: &sessionOperation
+      x-required-permission: session.manage
+      requestBody: &sessionBody {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/SessionCommand'}}}}
+      responses: &ackResponses
+        '200': {description: Actual execution ACK; replay returns the original result, content: {application/json: {schema: {$ref: '#/components/schemas/CommandAck'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}
+  /sessions/{id}/start:
+    parameters: *idParameters
+    post: *sessionOperation
+  /sessions/{id}/stop:
+    parameters: *idParameters
+    post: *sessionOperation
+  /sessions/{id}/mute:
+    parameters: *idParameters
+    post: {requestBody: *sessionBody, responses: *ackResponses, x-required-permission: media.mute, x-implementation-status: implemented-loopback}
+  /sessions/{id}/takeover:
+    parameters: *idParameters
+    post: {requestBody: *sessionBody, responses: *ackResponses, x-required-permission: session.takeover, x-implementation-status: implemented-loopback}
+  /sessions/{id}/mode:
+    parameters: *idParameters
+    post:
+      responses: *ackResponses
+      x-required-permission: session.mode.change
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ModeCommand'}}}}
+  /sessions/{id}/events:
+    parameters: *idParameters
+    get: {x-required-permission: session.read, responses: *readResponses}
+  /sessions/{id}/queue:
+    parameters: *idParameters
+    get: {x-required-permission: session.read, responses: *readResponses}
+  /sessions/{id}/manual-events:
+    parameters: *idParameters
+    post:
+      responses: *ackResponses
+      x-required-permission: event.manual.write
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ManualEventCommand'}}}}
+  /approvals:
+    get: {x-required-permission: approval.read, responses: *readResponses, x-implementation-status: implemented-loopback}
+  /approvals/{id}/approve:
+    parameters: *idParameters
+    post:
+      responses: *ackResponses
+      x-required-permission: approval.write
+      x-implementation-status: implemented-loopback
+      requestBody: &approvalBody
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/ApprovalCommand'}}}
+  /approvals/{id}/reject:
+    parameters: *idParameters
+    post: {responses: *ackResponses, x-required-permission: approval.write, x-implementation-status: implemented-loopback, requestBody: *approvalBody}
+  /knowledge/import:
+    post: &jobOperation
+      x-required-permission: knowledge.edit
+      requestBody: &resourceBody {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ResourceCommand'}}}}
+      responses: &jobResponses
+        '202': {description: 'Job accepted, not yet executed', content: {application/json: {schema: {$ref: '#/components/schemas/JobAccepted'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /jobs/{id}:
+    parameters: *idParameters
+    get: {x-required-permission: job.read, responses: *readResponses}
+  /knowledge/snapshots/{id}/publish:
+    parameters: *idParameters
+    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: knowledge.publish}
+  /knowledge/search:
+    post:
+      x-required-permission: knowledge.read
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/KnowledgeQuery'}}}}
+      responses: *readResponses
+  /knowledge/evaluate:
+    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: knowledge.evaluate}
+  /knowledge/documents/{id}:
+    parameters: *idParameters
+    delete:
+      requestBody: *resourceBody
+      responses: *jobResponses
+      x-required-permission: knowledge.delete
+      description: Revocation blocks retrieval/playback first; physical deletion is a separate job state.
+  /providers/{id}:
+    parameters: *idParameters
+    get: {x-required-permission: provider.configure, responses: *readResponses}
+    put: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: provider.configure, description: Uses credential references only; never returns secret values.}
+  /providers/{id}/test:
+    parameters: *idParameters
+    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: provider.configure}
+  /avatars:
+    get: {x-required-permission: avatar.read, responses: *readResponses}
+  /avatars/{id}/validate:
+    parameters: *idParameters
+    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: avatar.validate}
+  /scenes/{id}:
+    parameters: *idParameters
+    get: {x-required-permission: scene.configure, responses: *readResponses}
+    put: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: scene.configure}
+  /scenes/{id}/validate:
+    parameters: *idParameters
+    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: scene.configure}
+  /devices/pair:
+    post:
+      responses: *jobResponses
+      x-required-permission: device.manage
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PairDeviceCommand'}}}}
+  /devices/{id}/revoke:
+    parameters: *idParameters
+    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: device.manage}
+  /usage:
+    get: {x-required-permission: runtime.observe, responses: *readResponses}
+  /diagnostics:
+    get: {x-required-permission: runtime.observe, responses: *readResponses}
+  /upgrades/plan:
+    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: runtime.upgrade}
+  /upgrades/execute:
+    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: runtime.upgrade}
+  /upgrades/{id}/rollback:
+    parameters: *idParameters
+    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: runtime.upgrade}
+  /backups:
+    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: storage.backup}
+  /restore/preflight:
+    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: storage.restore}
+  /ws:
+    get:
+      x-required-permission: topics.subscribe
+      description: Authenticated topic subscription; control/status and actual ACK only, no raw media. Token is supplied in headers, never URL query.
+      responses:
+        '101': {description: Authenticated WebSocket established}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer}
+  responses:
+    BadRequest: {description: 'Invalid JSON/schema, query or numeric representation', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    PayloadTooLarge: {description: Request body exceeds the operation limit, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Unauthorized: {description: Identity missing or invalid, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Forbidden: {description: Permission denied, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    Conflict: {description: 'Stale revision/epoch, expired approval or dependency not ready', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+  schemas:
+    U64: {type: string, pattern: '^(0|[1-9][0-9]*)$', maxLength: 20, description: Decimal uint64; semantic validator enforces the uint64 range.}
+    Command:
+      type: object
+      required: [command_id, expected_state_revision, ttl_ms]
+      properties:
+        command_id: {type: string, minLength: 1}
+        expected_state_revision: {$ref: '#/components/schemas/U64'}
+        ttl_ms: {type: integer, minimum: 1, maximum: 600000}
+    SessionCommand:
+      allOf:
+        - {$ref: '#/components/schemas/Command'}
+        - type: object
+          required: [session_id, generation_epoch, device_id, seq]
+          properties:
+            session_id: {type: string, minLength: 1}
+            generation_epoch: {$ref: '#/components/schemas/U64'}
+            device_id: {type: string, minLength: 1, maxLength: 128}
+            seq: {$ref: '#/components/schemas/U64'}
+    ModeCommand:
+      allOf:
+        - {$ref: '#/components/schemas/SessionCommand'}
+        - type: object
+          required: [mode]
+          properties:
+            mode: {type: string, enum: [rehearsal, assisted, auto_supervised]}
+    ApprovalCommand:
+      allOf:
+        - {$ref: '#/components/schemas/SessionCommand'}
+        - type: object
+          required: [candidate_hash, hash_algorithm]
+          properties:
+            candidate_hash: {type: string, pattern: '^[a-f0-9]{64}$'}
+            hash_algorithm: {type: string, enum: [sha256-canonical-v1]}
+    ManualEventCommand:
+      allOf:
+        - {$ref: '#/components/schemas/SessionCommand'}
+        - type: object
+          required: [source, text]
+          properties:
+            source: {type: string, enum: [manual]}
+            text: {type: string, minLength: 1, maxLength: 4096}
+    ResourceCommand:
+      allOf:
+        - {$ref: '#/components/schemas/Command'}
+        - type: object
+          required: [resource_ref]
+          properties:
+            resource_ref: {type: string, minLength: 1, description: 'Server-controlled resource/config/upload reference; no arbitrary URL, SQL, file path or secret.'}
+    PairDeviceCommand:
+      allOf:
+        - {$ref: '#/components/schemas/Command'}
+        - type: object
+          required: [pairing_code, public_key]
+          properties:
+            pairing_code: {type: string, minLength: 1}
+            public_key: {type: string, minLength: 1}
+    CreateSession:
+      allOf:
+        - {$ref: '#/components/schemas/Command'}
+        - type: object
+          required: [workspace_id, scene_ref]
+          properties:
+            workspace_id: {type: string, minLength: 1}
+            scene_ref: {type: string, minLength: 1}
+    SessionView:
+      type: object
+      additionalProperties: false
+      required: [session_id, generation_epoch, state_revision, lifecycle, mode, media_state]
+      properties:
+        session_id: {type: string}
+        generation_epoch: {$ref: '#/components/schemas/U64'}
+        state_revision: {$ref: '#/components/schemas/U64'}
+        lifecycle: {type: string, enum: [created, preparing, ready, ready_degraded, running, draining, stopped, faulted]}
+        mode: {type: string, enum: [rehearsal, assisted, auto_supervised]}
+        media_state: {type: string, enum: [standby, buffering, playing, muted, device_lost, failed]}
+    CommandAck:
+      type: object
+      additionalProperties: false
+      required: [command_id, executed, state_revision, generation_epoch]
+      properties:
+        command_id: {type: string}
+        executed: {type: boolean, description: 'True only after control-state execution, not merely accepted; never a hardware mute/playback completion ACK.'}
+        state_revision: {$ref: '#/components/schemas/U64'}
+        generation_epoch: {$ref: '#/components/schemas/U64'}
+    JobAccepted:
+      type: object
+      additionalProperties: false
+      required: [job_id, command_id, status]
+      properties:
+        job_id: {type: string}
+        command_id: {type: string}
+        status: {type: string, enum: [accepted]}
+    ResourceView:
+      type: object
+      additionalProperties: false
+      required: [resource_id, revision, status, safe_message]
+      properties:
+        resource_id: {type: string}
+        revision: {type: string}
+        status: {type: string}
+        safe_message: {type: string}
+        session: {$ref: '#/components/schemas/SessionView'}
+        device_id: {type: string, description: 'Authenticated device binding, not a credential.'}
+        last_command_seq: {$ref: '#/components/schemas/U64'}
+        items: {type: array, maxItems: 1024, items: {$ref: '#/components/schemas/ResourceItem'}}
+        continuation_ref: {type: string}
+    ResourceItem:
+      type: object
+      additionalProperties: false
+      required: [id, revision, status]
+      properties:
+        id: {type: string}
+        revision: {type: string}
+        status: {type: string}
+        encoded_contract_ref: {type: string, description: Reference to authorized typed resource; never a secret or raw media.}
+        expires_at_utc_ms: {$ref: '#/components/schemas/U64'}
+        evidence_count: {$ref: '#/components/schemas/U64'}
+    KnowledgeQuery:
+      type: object
+      additionalProperties: false
+      required: [request_id, session_id, query, kb_ids, top_k, remaining_budget_ms]
+      properties:
+        request_id: {type: string, minLength: 1}
+        session_id: {type: string, minLength: 1}
+        query: {type: string, minLength: 1, maxLength: 4096}
+        kb_ids: {type: array, minItems: 1, items: {type: string}}
+        top_k: {type: integer, minimum: 1, maximum: 100}
+        remaining_budget_ms: {type: integer, minimum: 1, maximum: 600000}
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [request_id, error]
+      properties:
+        request_id: {type: string}
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, category, retryable, message]
+          properties:
+            code: {type: string, enum: [INVALID_ARGUMENT, UNAUTHENTICATED, PERMISSION_DENIED, CAPABILITY_ABSENT, CAPABILITY_NOT_READY, VERSION_INCOMPATIBLE, RESOURCE_EXHAUSTED, DEADLINE_EXCEEDED, STALE_EPOCH, EVIDENCE_EXPIRED, APPROVAL_EXPIRED, BUDGET_EXCEEDED, PROVIDER_UNAVAILABLE, CANCELLED, CONFLICT, INTERNAL]}
+            category: {type: string}
+            retryable: {type: boolean}
+            message: {type: string}
+            details: {type: object, additionalProperties: {type: string}}

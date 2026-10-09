@@ -1,0 +1,18 @@
+[package]
+name = "nai-kernel"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.nai]
+layer = "kernel"
+
+[dependencies]
+nai-contracts.workspace = true
+prost.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

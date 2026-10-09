@@ -1,0 +1,23 @@
+// Generated contract exports. Do not edit.
+export type * as avatar2dConfig from './config/avatar-2d.js';
+export type * as avatarConfig from './config/avatar.js';
+export type * as backupConfig from './config/backup.js';
+export type * as bindingPlanConfig from './config/binding-plan.js';
+export type * as catalogConfig from './config/catalog.js';
+export type * as manifestConfig from './config/manifest.js';
+export type * as modelConfig from './config/model.js';
+export type * as providerConfig from './config/provider.js';
+export type * as remoteKnowledge from './remote-knowledge.js';
+export type * as runtimeConfig from './config/runtime.js';
+export type * as uiConfig from './config/ui.js';
+export type { paths, components, operations } from './http.js';
+export { Approval, Decision, DecisionAction, GuardRequest, GuardResult, GuardStage, GuardVerdict, Observation, Performance, PerformanceCue, ShowPlan, ShowRequest, SkillDescriptor, SkillList, SkillListRequest, SkillRequest, SkillResult, VoiceRef } from './domain/agent.js';
+export { AudioBlockMetadata, AudioTimeline, AvatarProfile, AvatarProfileRequest, AvatarRenderRequest, AvatarRenderResult, ChannelDescriptor, ChannelRequest, ClockRequest, FrameMetadata, FrameSlotCommit, FrameSlotEvent, FrameSlotTicket, MediaClock, OutputAck, OutputRequest, OutputWatchdogCommand, OutputWatchdogStatus, PlaybackLease, PreviewDescriptor, PreviewRequest, TimelineRequest } from './domain/media.js';
+export { AudioFormat, ClassificationRequest, ClassificationResult, EmbeddingRequest, EmbeddingResult, EmbeddingVector, GatewayRequest, GatewayResult, LlmChunk, LlmRequest, ModerationRequest, ModerationResult, RerankRequest, RerankResult, TtsChunk, TtsRequest } from './domain/provider.js';
+export { AuthoritativeFact, Evidence, KnowledgeCapability, MemoryRecord, MemoryRequest, MemoryResult, Money, RetrievalStatus, RetrieveRequest, RetrieveResult } from './domain/knowledge.js';
+export { AutomaticReadiness, Binding, BindingIssue, BindingPlan, BindingReadiness, BindingRequirement, BindingSelection, BindingSnapshot, BoundProvider, CapabilityDescriptor, CapabilityView, CapabilityViewRequest, PluginRegistration, PrepareReport } from './core/capability.js';
+export { BillingState, BudgetCharge, HealthRequest, HealthResponse, HostKind, MediaState, PermissionSnapshot, PermissionState, PluginState, RequestContext, RevisionRef, Risk, SessionLifecycle, SessionMode, StreamEnd, Usage, UsageLedgerEntry, UtteranceState } from './core/base.js';
+export { CancelAck, CancelRequest, CapabilityInvocation, CapabilityResult, Envelope, Handshake, HandshakeAck, ProtocolRange } from './core/envelope.js';
+export { CommandAck, CommandAction, ControlCommand, ObserveRequest, RuntimeObservation, SessionSnapshot, StorageRequest, StorageResult } from './domain/control.js';
+export { ContractError, ErrorCode } from './core/error.js';
+export { EventKind, EventSource, EventSubscription, PlatformCapabilities, PlatformCapabilitiesRequest, PlatformEvent, PlatformLifecycleRequest, PlatformLifecycleResult, QuantitySemantics } from './domain/platform.js';

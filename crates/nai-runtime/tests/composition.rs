@@ -1,0 +1,353 @@
+//! Composition-root tests: storage ownership, bootstrap/permission paths,
+//! decision-log grading, control ordering and duty-lease logging.
+mod common;
+use common::*;
+use nai_contracts::v1::{ErrorCode, MediaState, SessionMode};
+use nai_kernel::duty::{DUTY_REVOKE_DELAY, DutyEnforcement};
+use nai_runtime::{Composition, ControlAction};
+use nai_storage::{ConfigKind, DataPaths, DecisionKind};
+use serde_json::json;
+use std::time::{Duration, Instant};
+use tempfile::tempdir;
+
+#[test]
+fn second_storage_owner_is_rejected() {
+    let dir = tempdir().unwrap();
+    provision(
+        dir.path(),
+        WORKSPACE,
+        ACTOR,
+        PROFILE,
+        &runtime_profile(WORKSPACE),
+    );
+    let first = Composition::prepare(
+        DataPaths::at(dir.path()).unwrap(),
+        WORKSPACE,
+        ACTOR,
+        PROFILE,
+        false,
+    )
+    .unwrap();
+    let Err(error) = Composition::prepare(
+        DataPaths::at(dir.path()).unwrap(),
+        WORKSPACE,
+        ACTOR,
+        PROFILE,
+        false,
+    ) else {
+        panic!("a second storage owner must be rejected");
+    };
+    assert_eq!(error.code, ErrorCode::Conflict);
+    drop(first);
+}
+
+#[test]
+fn prepare_without_profile_is_rejected() {
+    let dir = tempdir().unwrap();
+    let operation = store_operation();
+    let mut store = open_store(dir.path());
+    store
+        .create_workspace(&operation, WORKSPACE, WORKSPACE)
+        .unwrap();
+    grant(&mut store, &operation, WORKSPACE, ACTOR, PROFILE);
+    drop(store);
+    assert!(
+        Composition::prepare(
+            DataPaths::at(dir.path()).unwrap(),
+            WORKSPACE,
+            ACTOR,
+            PROFILE,
+            false
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn prepare_without_config_permission_is_denied() {
+    let dir = tempdir().unwrap();
+    provision(
+        dir.path(),
+        WORKSPACE,
+        ACTOR,
+        PROFILE,
+        &runtime_profile(WORKSPACE),
+    );
+    let Err(error) = Composition::prepare(
+        DataPaths::at(dir.path()).unwrap(),
+        WORKSPACE,
+        "intruder",
+        PROFILE,
+        false,
+    ) else {
+        panic!("an actor without config.read must be denied");
+    };
+    assert_eq!(error.code, ErrorCode::PermissionDenied);
+}
+
+#[test]
+fn invalid_runtime_config_is_rejected_at_provision() {
+    let dir = tempdir().unwrap();
+    let operation = store_operation();
+    let mut store = open_store(dir.path());
+    store
+        .create_workspace(&operation, WORKSPACE, WORKSPACE)
+        .unwrap();
+    grant(&mut store, &operation, WORKSPACE, ACTOR, PROFILE);
+    let mut config = runtime_profile(WORKSPACE);
+    config["media"]["lease_expire_ms"] = json!(50); // <= lease_renew_ms
+    let saved = store.save_config(
+        &operation,
+        (WORKSPACE, ACTOR),
+        ConfigKind::Runtime,
+        PROFILE,
+        &config,
+        0,
+    );
+    assert_eq!(saved.unwrap_err().code, ErrorCode::InvalidArgument);
+}
+
+#[test]
+fn bootstrap_creates_workspace_and_permissions_before_config_load() {
+    let dir = tempdir().unwrap();
+    // Bootstrap with no provisioned profile creates the workspace and grants the
+    // permissions, then fails because the runtime profile does not exist yet.
+    assert!(
+        Composition::prepare(
+            DataPaths::at(dir.path()).unwrap(),
+            WORKSPACE,
+            ACTOR,
+            PROFILE,
+            true
+        )
+        .is_err()
+    );
+    // The bootstrap-granted config.write permission lets the owner store it.
+    let operation = store_operation();
+    let mut store = open_store(dir.path());
+    store
+        .save_config(
+            &operation,
+            (WORKSPACE, ACTOR),
+            ConfigKind::Runtime,
+            PROFILE,
+            &runtime_profile(WORKSPACE),
+            0,
+        )
+        .unwrap();
+    drop(store);
+
+    let composition = Composition::prepare(
+        DataPaths::at(dir.path()).unwrap(),
+        WORKSPACE,
+        ACTOR,
+        PROFILE,
+        false,
+    )
+    .unwrap();
+    assert_eq!(composition.session_id(), WORKSPACE);
+    assert_eq!(composition.lease_renew_ms(), 100);
+    assert_eq!(composition.lease_expire_ms(), 600);
+    assert_eq!(
+        composition
+            .session_lock()
+            .unwrap()
+            .snapshot()
+            .generation_epoch,
+        0
+    );
+    assert_eq!(composition.gate().epoch_floor(), 0);
+    assert!(!composition.boot_id().is_empty());
+    let lease = composition
+        .rehearsal_lease("drill", &["u".to_string()], 1, utc_ms())
+        .unwrap();
+    assert_eq!(lease.session_id, WORKSPACE);
+    assert_eq!(lease.mode, SessionMode::Rehearsal as i32);
+    assert_eq!(lease.generation_epoch, 1);
+    // A lease may not reference authority the live session already revoked.
+    assert!(matches!(
+        composition
+            .rehearsal_lease("drill", &["u".to_string()], 0, utc_ms())
+            .unwrap_err()
+            .code,
+        ErrorCode::InvalidArgument
+    ));
+}
+
+#[test]
+fn control_mutes_revokes_and_logs_before_returning() {
+    let dir = tempdir().unwrap();
+    provision(
+        dir.path(),
+        WORKSPACE,
+        ACTOR,
+        PROFILE,
+        &runtime_profile(WORKSPACE),
+    );
+    let mut composition = Composition::prepare(
+        DataPaths::at(dir.path()).unwrap(),
+        WORKSPACE,
+        ACTOR,
+        PROFILE,
+        false,
+    )
+    .unwrap();
+    assert_eq!(
+        composition
+            .session_lock()
+            .unwrap()
+            .snapshot()
+            .generation_epoch,
+        0
+    );
+    assert_eq!(composition.control(ControlAction::Mute).unwrap(), 1);
+    let snapshot = composition.session_lock().unwrap().snapshot().clone();
+    assert_eq!(snapshot.generation_epoch, 1);
+    assert_eq!(snapshot.media_state, MediaState::Muted as i32);
+    assert_eq!(composition.control(ControlAction::Takeover).unwrap(), 2);
+    // The cancellation entries are critical: nothing is left in the telemetry buffer.
+    assert_eq!(composition.decision_buffer_stats().unwrap(), (0, 0));
+    verify_chain(&composition);
+}
+
+#[test]
+fn duty_grant_expiry_and_revocation_are_logged() {
+    let dir = tempdir().unwrap();
+    provision(
+        dir.path(),
+        WORKSPACE,
+        ACTOR,
+        PROFILE,
+        &runtime_profile(WORKSPACE),
+    );
+    let mut composition = Composition::prepare(
+        DataPaths::at(dir.path()).unwrap(),
+        WORKSPACE,
+        ACTOR,
+        PROFILE,
+        false,
+    )
+    .unwrap();
+    let now = Instant::now();
+    composition
+        .confirm_duty("operator", Duration::from_millis(100), now)
+        .unwrap();
+    assert_eq!(
+        composition.enforce_duty(now).unwrap(),
+        DutyEnforcement::Valid
+    );
+
+    let halted = now + Duration::from_millis(150);
+    assert_eq!(
+        composition.enforce_duty(halted).unwrap(),
+        DutyEnforcement::HaltedPendingRevoke
+    );
+    // Repeated ticks inside the revoke delay must not duplicate the expiry entry.
+    assert_eq!(
+        composition.enforce_duty(halted).unwrap(),
+        DutyEnforcement::HaltedPendingRevoke
+    );
+
+    let revoked = now + Duration::from_millis(100) + DUTY_REVOKE_DELAY + Duration::from_millis(1);
+    assert_eq!(
+        composition.enforce_duty(revoked).unwrap(),
+        DutyEnforcement::Revoked
+    );
+    assert_eq!(
+        composition
+            .session_lock()
+            .unwrap()
+            .snapshot()
+            .generation_epoch,
+        1
+    );
+    // No buffered telemetry: the duty transitions were recorded as critical.
+    assert_eq!(composition.decision_buffer_stats().unwrap(), (0, 0));
+    verify_chain(&composition);
+}
+
+#[test]
+fn decision_grading_reports_critical_failures_and_persists_telemetry() {
+    let dir = tempdir().unwrap();
+    provision(
+        dir.path(),
+        WORKSPACE,
+        ACTOR,
+        PROFILE,
+        &runtime_profile(WORKSPACE),
+    );
+    let mut composition = Composition::prepare(
+        DataPaths::at(dir.path()).unwrap(),
+        WORKSPACE,
+        ACTOR,
+        PROFILE,
+        false,
+    )
+    .unwrap();
+    let session = composition.session_id().to_string();
+
+    // A critical entry over the payload budget is reported, never silently dropped.
+    let oversized = json!({"blob": "x".repeat(70_000)});
+    let Err(error) = composition.record(
+        DecisionKind::Cancellation,
+        Some(&session),
+        &oversized,
+        "grading-1",
+    ) else {
+        panic!("an over-budget critical entry must fail");
+    };
+    assert_eq!(error.code, ErrorCode::ResourceExhausted);
+
+    let ack = composition
+        .record(
+            DecisionKind::Cancellation,
+            Some(&session),
+            &json!({"event": "probe"}),
+            "grading-2",
+        )
+        .unwrap();
+    assert!(ack.persisted && ack.entry_hash.is_some());
+
+    // Telemetry persists normally here; its loss-buffering path is verified below.
+    let ack = composition
+        .record(
+            DecisionKind::Usage,
+            Some(&session),
+            &json!({"count": 1}),
+            "grading-3",
+        )
+        .unwrap();
+    assert!(ack.persisted);
+    verify_chain(&composition);
+}
+
+#[test]
+fn telemetry_is_buffered_when_persistence_fails_while_critical_is_reported() {
+    let dir = tempdir().unwrap();
+    let operation = store_operation();
+    let mut store = open_store(dir.path());
+    // The workspace row is absent, so the decision_log foreign key fails.
+    let telemetry = store
+        .append_decision(
+            &operation,
+            "absent-workspace",
+            None,
+            DecisionKind::Usage,
+            &json!({"count": 1}),
+            "buffer-1",
+        )
+        .unwrap();
+    assert!(!telemetry.persisted && telemetry.entry_hash.is_none());
+    assert_eq!(store.decision_buffer_stats().0, 1);
+    let critical = store.append_decision(
+        &operation,
+        "absent-workspace",
+        None,
+        DecisionKind::Cancellation,
+        &json!({"count": 1}),
+        "buffer-2",
+    );
+    assert_eq!(critical.unwrap_err().code, ErrorCode::Internal);
+    // The failed critical write did not consume the buffered telemetry entry.
+    assert_eq!(store.decision_buffer_stats().0, 1);
+}

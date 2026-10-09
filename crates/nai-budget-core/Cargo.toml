@@ -1,0 +1,19 @@
+[package]
+name = "nai-budget-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.nai]
+layer = "shared"
+
+[dependencies]
+nai-contracts.workspace = true
+
+[dev-dependencies]
+nai-kernel = { path = "../nai-kernel" }
+
+[lints]
+workspace = true

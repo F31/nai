@@ -1,0 +1,33 @@
+[package]
+name = "nai-engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.nai]
+layer = "app"
+
+[lib]
+name = "nai_engine"
+path = "src/lib.rs"
+
+[[bin]]
+name = "nai-engine"
+path = "src/main.rs"
+
+[dependencies]
+nai-contracts.workspace = true
+nai-kernel.workspace = true
+nai-media-core.workspace = true
+nai-storage.workspace = true
+nai-runtime.workspace = true
+nai-control-api.workspace = true
+prost.workspace = true
+serde_json.workspace = true
+tokio = { version = "=1.53.2", features = ["macros", "rt-multi-thread", "net", "time", "sync"] }
+tempfile.workspace = true
+
+[lints]
+workspace = true

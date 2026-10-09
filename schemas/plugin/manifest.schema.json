@@ -1,0 +1,12 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://nai.invalid/schemas/plugin", "title":"PluginManifest", "type":"object","additionalProperties":false,
+  "required":["manifest_schema","plugin_id","plugin_version","kernel_range","protocol_major","contracts","supported_hosts","activation","idle_policy","requires","os","architectures","artifact_hash","license_ref","install_bytes","config_schema_ref","data_schema_ref","health_operation","migration_ref","rollback_range","price_policy_ref","resources","permissions"],
+  "properties":{
+    "manifest_schema":{"const":1},"plugin_id":{"type":"string","pattern":"^[a-z0-9]+(?:[.-][a-z0-9]+)*$"},"plugin_version":{"type":"string","pattern":"^[0-9]+[.][0-9]+[.][0-9]+$"},"kernel_range":{"type":"string","minLength":1},"protocol_major":{"const":1},
+    "contracts":{"type":"array","minItems":1,"uniqueItems":true,"items":{"type":"string","pattern":"^[a-z]+(?:[.][a-z]+)+@1$"}},"supported_hosts":{"type":"array","minItems":1,"uniqueItems":true,"items":{"enum":["inproc","subprocess","remote","wasm"]}},"activation":{"enum":["on_session_start","on_demand","manual"]},"idle_policy":{"enum":["keep_warm_during_session","suspend_after_ttl","stop_after_job"]},"requires":{"type":"array","uniqueItems":true,"items":{"type":"string","minLength":1}},
+    "os":{"type":"array","minItems":1,"uniqueItems":true,"items":{"enum":["windows","linux","macos","android","ios"]}},"architectures":{"type":"array","minItems":1,"uniqueItems":true,"items":{"enum":["x86_64","aarch64"]}},"artifact_hash":{"type":"string","pattern":"^[a-f0-9]{64}$"},"license_ref":{"type":"string","minLength":1},"install_bytes":{"type":"string","pattern":"^[0-9]+$"},"config_schema_ref":{"type":"string","minLength":1},"data_schema_ref":{"type":"string","minLength":1},"health_operation":{"type":"string","minLength":1},"migration_ref":{"type":"string","minLength":1},"rollback_range":{"type":"string","minLength":1},"price_policy_ref":{"type":"string","minLength":1},
+    "resources":{"type":"object","additionalProperties":false,"required":["profile_id","certification_ref"],"properties":{"profile_id":{"type":"string","minLength":1},"certification_ref":{"type":"string","minLength":1}}},
+    "permissions":{"type":"object","additionalProperties":false,"required":["network","media_output","secrets"],"properties":{"network":{"type":"boolean"},"media_output":{"type":"boolean"},"secrets":{"type":"array","uniqueItems":true,"items":{"type":"string","pattern":"^credential:[A-Za-z0-9_.-]+$"}}}}
+  }
+}

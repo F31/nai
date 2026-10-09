@@ -1,0 +1,70 @@
+name: Engineering foundation
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      OPENSPEC_TELEMETRY: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.0
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.96.0 --profile minimal --component clippy,rustfmt
+      - name: Install frontend and OpenSpec dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install protoc (upstream v21.12 is libprotoc 3.21.12)
+        uses: arduino/setup-protoc@v3
+        with:
+          version: '21.12'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Linux C++ protobuf runtime
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libprotobuf-dev
+      - name: Check generated contracts without modifying consumers
+        run: cargo xtask schema --check
+      - name: Portable foundation
+        if: runner.os == 'Linux'
+        run: cargo xtask check --profile portable
+      - name: Windows foundation (no device or SDK certification)
+        if: runner.os == 'Windows'
+        run: cargo xtask check --profile windows-local
+      - run: pnpm typecheck
+      - run: pnpm build
+      - name: Storage and credential boundary (Windows native vault only on Windows)
+        run: cargo xtask test --suite storage
+      - name: Kernel registration and binding
+        run: cargo xtask test --suite kernel
+      - name: Plugin hosts and IPC
+        run: cargo xtask test --suite hosts
+      - name: Session leases and independent cancellation
+        run: cargo xtask test --suite session
+      - name: Scheduling and shared budget ledger
+        run: cargo xtask test --suite scheduler
+      - name: API Provider transport and retry (mock server; no paid calls)
+        run: cargo xtask test --suite provider
+      - name: Knowledge algorithms, remote mock transport and local persistence
+        run: cargo xtask test --suite knowledge
+      - name: Validate schemas and API contract
+        run: node --test tests/contracts/schema.test.mjs
+      - name: Full three-language contract suite (Linux C++ toolchain)
+        if: runner.os == 'Linux'
+        run: cargo xtask test --suite contracts
+      - run: pnpm spec:validate
+      - run: pnpm exec openspec validate --archived --no-interactive

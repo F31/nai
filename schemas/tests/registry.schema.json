@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nai.dev/schemas/tests/registry.schema.json",
+  "title": "Admission registry",
+  "description": "Machine-readable acceptance registry (V3.6 §16 + ADR 0015 errata). release_line is a separate field from acceptance IDs so R01..R11 and R1/R2/R3 never collide.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "release_lines", "acceptance", "mapping"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "release_lines": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slice_0", "r1", "r2", "r3", "experimental"],
+      "properties": {
+        "slice_0": {"type": "object", "additionalProperties": false, "required": ["label"], "properties": {"label": {"type": "string"}}},
+        "r1": {"type": "object", "additionalProperties": false, "required": ["label"], "properties": {"label": {"type": "string"}}},
+        "r2": {"type": "object", "additionalProperties": false, "required": ["label"], "properties": {"label": {"type": "string"}}},
+        "r3": {"type": "object", "additionalProperties": false, "required": ["label"], "properties": {"label": {"type": "string"}}},
+        "experimental": {"type": "object", "additionalProperties": false, "required": ["label"], "properties": {"label": {"type": "string"}}}
+      }
+    },
+    "acceptance": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "release_line", "automation", "status"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^(S|R|A|B|O|P|X)[0-9]{2}$"},
+          "title": {"type": "string", "minLength": 1},
+          "release_line": {"type": "string", "enum": ["slice_0", "r1", "r2", "r3", "experimental"]},
+          "contract": {"type": "string"},
+          "automation": {"type": "string", "enum": ["unit", "contract", "integration", "fault", "ui", "manual"]},
+          "status": {"type": "string", "enum": ["implemented", "tested", "blocked", "not_applicable", "pending"]},
+          "evidence": {"type": "string"},
+          "notes": {"type": "string"}
+        }
+      }
+    },
+    "mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["notes", "legacy_note", "d01_to_d14"],
+      "properties": {
+        "notes": {"type": "string"},
+        "legacy_note": {"type": "string"},
+        "d01_to_d14": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["D01", "D02", "D03", "D04", "D05", "D06", "D07", "D08", "D09", "D10", "D11", "D12", "D13", "D14"],
+          "patternProperties": {
+            "^D[0-9]{2}$": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["status"],
+              "properties": {
+                "status": {"type": "string", "enum": ["implemented", "tested", "blocked", "not_applicable", "pending"]},
+                "targets": {"type": "array", "items": {"type": "string", "pattern": "^(S|R|A|B|O|P|X)[0-9]{2}$"}},
+                "evidence": {"type": "string"},
+                "notes": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

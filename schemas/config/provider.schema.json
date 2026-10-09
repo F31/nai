@@ -1,0 +1,11 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://nai.invalid/schemas/provider", "title":"ProviderConfig", "type":"object","additionalProperties":false,
+  "required":["schema_version","id","protocol","endpoint","model","credential_ref","region","data_policy_ref","timeout_ms","max_retries","max_concurrency","price_revision"],
+  "properties":{
+    "schema_version":{"const":1},"id":{"type":"string","minLength":1},"protocol":{"enum":["openai_compatible","http_stream","http_json","websocket"]},"endpoint":{"type":"string","pattern":"^(https|wss)://[^\\s]+$"},"model":{"type":"string","minLength":1},"credential_ref":{"type":"string","pattern":"^credential:[A-Za-z0-9_.-]+$"},"region":{"type":"string","minLength":1},"data_policy_ref":{"type":"string","minLength":1},"timeout_ms":{"type":"integer","minimum":1,"maximum":600000},"max_retries":{"type":"integer","minimum":0,"maximum":10},"max_concurrency":{"type":"integer","minimum":1,"maximum":1024},"price_revision":{"type":"string","minLength":1},
+    "quota":{"type":"object","additionalProperties":false,"required":["currency","limit_minor","usage_limits","concurrent_limits"],"properties":{"currency":{"type":"string","pattern":"^[A-Z]{3}$"},"limit_minor":{"type":"string","pattern":"^[1-9][0-9]*$"},"usage_limits":{"$ref":"#/$defs/counters"},"concurrent_limits":{"$ref":"#/$defs/counters"}}}
+  },
+  "allOf":[{"if":{"properties":{"protocol":{"const":"websocket"}},"required":["protocol"]},"then":{"properties":{"endpoint":{"type":"string","pattern":"^wss://"}}},"else":{"properties":{"endpoint":{"type":"string","pattern":"^https://"}}}}],
+  "$defs":{"counters":{"type":"object","maxProperties":32,"propertyNames":{"pattern":"^[a-z][a-z0-9_]{0,63}$"},"additionalProperties":{"type":"string","pattern":"^(0|[1-9][0-9]*)$"}}}
+}

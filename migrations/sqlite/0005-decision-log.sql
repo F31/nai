@@ -1,0 +1,4 @@
+CREATE TABLE decision_log(seq INTEGER PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces, session_id TEXT, kind TEXT NOT NULL CHECK(kind IN('event','observation','decision','guard','cue','approval','synthesis','playback_ack','cancellation','expiry','usage','duty_lease')), criticality TEXT NOT NULL CHECK(criticality IN('critical','telemetry')), payload_json TEXT NOT NULL CHECK(json_valid(payload_json)), payload_hash TEXT NOT NULL, prev_hash TEXT NOT NULL, entry_hash TEXT NOT NULL, created_at_ms INTEGER NOT NULL, trace_id TEXT NOT NULL) STRICT;
+CREATE INDEX decision_log_workspace_seq ON decision_log(workspace_id,seq);
+CREATE TRIGGER decision_log_append_only_update BEFORE UPDATE ON decision_log BEGIN SELECT RAISE(ABORT,'decision_log is append-only'); END;
+CREATE TRIGGER decision_log_append_only_delete BEFORE DELETE ON decision_log BEGIN SELECT RAISE(ABORT,'decision_log is append-only'); END;

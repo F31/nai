@@ -1,0 +1,243 @@
+openapi: 3.0.3
+info:
+  title: nai remote knowledge adapter profile
+  version: 1.0.0
+  description: Adapter-facing contract; native vendor APIs require explicit adapters. Capabilities do not grant local permission.
+x-implementation-status: client-only
+paths:
+  /capabilities:
+    post:
+      operationId: capabilities
+      x-required-permission: knowledge.remote.inspect
+      requestBody: &emptyBody
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmptyRequest'}
+      responses:
+        '200':
+          description: Explicit capabilities and retention policy
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RemoteCapabilities'}
+  /health:
+    post:
+      operationId: health
+      x-required-permission: knowledge.remote.inspect
+      requestBody: *emptyBody
+      responses:
+        '200':
+          description: Health does not authorize access
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RemoteHealth'}
+  /search:
+    post:
+      operationId: search
+      x-required-permission: knowledge.read
+      requestBody: &queryBody
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RemoteQuery'}
+      responses: &retrievalResponses
+        '200':
+          description: Retrieval status is independent of HTTP success
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RemoteReply'}
+        '401': {description: 'Unauthorized, never retry', content: {application/json: {schema: {$ref: '#/components/schemas/RemoteError'}}}}
+        '403': {description: 'Forbidden, never retry', content: {application/json: {schema: {$ref: '#/components/schemas/RemoteError'}}}}
+        '429': {description: 'Rate limited, bounded Retry-After', content: {application/json: {schema: {$ref: '#/components/schemas/RemoteError'}}}}
+        '503': {description: 'Unavailable, bounded retry for read operations', content: {application/json: {schema: {$ref: '#/components/schemas/RemoteError'}}}}
+  /answer:
+    post:
+      operationId: answer
+      x-required-permission: knowledge.answer
+      requestBody: *queryBody
+      responses: *retrievalResponses
+  /sync:
+    post:
+      operationId: sync
+      x-required-permission: knowledge.upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RemoteSync'}
+      responses:
+        '200':
+          description: Receipt, not proof of publication
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RemoteReceipt'}
+  /delete:
+    post:
+      operationId: delete
+      x-required-permission: knowledge.delete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/RemoteDelete'}
+      responses:
+        '200':
+          description: Remote acknowledgment; local revocation must precede this call
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RemoteReceipt'}
+components:
+  schemas:
+    EmptyRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+    RemoteOperation:
+      type: string
+      enum: [search, answer, sync, delete]
+    RemoteCapability:
+      type: string
+      enum: [retrieval_with_evidence, answer_with_evidence, answer_only]
+    RemoteStatus:
+      type: string
+      enum: [complete, partial, empty, timeout, unavailable, unauthorized]
+    RemoteReceiptStatus:
+      type: string
+      enum: [accepted, pending, deleted, retained]
+    RemoteError:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message: {type: string, maxLength: 2048}
+    RemoteRetention:
+      type: object
+      additionalProperties: false
+      required: [policy_ref, retention_seconds, supports_delete]
+      properties:
+        policy_ref: {type: string, minLength: 1, maxLength: 256}
+        retention_seconds: {type: integer, minimum: 0, maximum: 31536000}
+        supports_delete: {type: boolean}
+    RemoteCapabilities:
+      type: object
+      additionalProperties: false
+      required: [capabilities, operations, retention]
+      properties:
+        capabilities: {type: array, minItems: 1, maxItems: 3, uniqueItems: true, items: {$ref: '#/components/schemas/RemoteCapability'}}
+        operations: {type: array, minItems: 1, maxItems: 4, uniqueItems: true, items: {$ref: '#/components/schemas/RemoteOperation'}}
+        retention: {$ref: '#/components/schemas/RemoteRetention'}
+    RemoteHealth:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status: {type: string, enum: [ok, unavailable]}
+    RemoteQuery:
+      type: object
+      additionalProperties: false
+      required: [request_id, session_id, kb_ids, query, filters, top_k, remaining_budget_ms]
+      properties:
+        request_id: {type: string, minLength: 1, maxLength: 256}
+        session_id: {type: string, minLength: 1, maxLength: 256}
+        kb_ids: {type: array, minItems: 1, maxItems: 64, uniqueItems: true, items: {type: string, minLength: 1, maxLength: 256}}
+        query: {type: string, minLength: 1, maxLength: 16384}
+        filters: {type: object, maxProperties: 64, additionalProperties: {type: string, maxLength: 2048}}
+        top_k: {type: integer, minimum: 1, maximum: 64}
+        remaining_budget_ms: {type: integer, minimum: 1, maximum: 30000}
+    RemoteRevision:
+      type: object
+      additionalProperties: false
+      required: [object_id, revision]
+      properties:
+        object_id: {type: string, minLength: 1, maxLength: 256}
+        revision: {type: string, minLength: 1, maxLength: 256}
+    RemoteEvidence:
+      type: object
+      additionalProperties: false
+      required: [evidence_id, text]
+      properties:
+        evidence_id: {type: string, minLength: 1, maxLength: 256}
+        text: {type: string, minLength: 1, maxLength: 65536}
+        document_id: {type: string, maxLength: 256}
+        revision: {type: string, maxLength: 256}
+        chunk_id: {type: string, maxLength: 256}
+        source_ref: {type: string, maxLength: 2048}
+        source_span: {type: string, maxLength: 256}
+        product_id: {type: string, maxLength: 256}
+        rank: {type: integer, minimum: 0, maximum: 4294967295}
+        valid_from_utc_ms: {type: integer, minimum: 0, maximum: 9007199254740991, nullable: true}
+        valid_until_utc_ms: {type: integer, minimum: 0, maximum: 9007199254740991, nullable: true}
+        permission_revision: {type: string, maxLength: 256}
+        authority: {type: string, maxLength: 256}
+        fact_versions: {type: array, maxItems: 32, items: {$ref: '#/components/schemas/RemoteRevision'}}
+        original_verifiable: {type: boolean}
+    RemoteUsage:
+      type: object
+      additionalProperties: false
+      required: [unit, quantity]
+      properties:
+        unit: {type: string, minLength: 1, maxLength: 64}
+        quantity: {type: integer, minimum: 0, maximum: 9007199254740991}
+    RemoteReply:
+      type: object
+      additionalProperties: false
+      required: [status, evidence]
+      properties:
+        status: {$ref: '#/components/schemas/RemoteStatus'}
+        capability: {$ref: '#/components/schemas/RemoteCapability'}
+        provider_id: {type: string, maxLength: 256}
+        evidence: {type: array, maxItems: 64, items: {$ref: '#/components/schemas/RemoteEvidence'}}
+        answer_draft: {type: string, maxLength: 65536, nullable: true}
+        usage: {$ref: '#/components/schemas/RemoteUsage'}
+    RemoteDocument:
+      type: object
+      additionalProperties: false
+      required: [document_id, revision, content]
+      properties:
+        document_id: {type: string, minLength: 1, maxLength: 256}
+        revision: {type: string, minLength: 1, maxLength: 256}
+        content: {type: string, minLength: 1, maxLength: 65536}
+    RemoteSync:
+      type: object
+      additionalProperties: false
+      required: [request_id, idempotency_key, kb_id, documents]
+      properties:
+        request_id: {type: string, minLength: 1, maxLength: 256}
+        idempotency_key: {type: string, minLength: 1, maxLength: 256}
+        kb_id: {type: string, minLength: 1, maxLength: 256}
+        documents: {type: array, minItems: 1, maxItems: 16, items: {$ref: '#/components/schemas/RemoteDocument'}}
+    RemoteDelete:
+      type: object
+      additionalProperties: false
+      required: [request_id, idempotency_key, kb_id, document_ids]
+      properties:
+        request_id: {type: string, minLength: 1, maxLength: 256}
+        idempotency_key: {type: string, minLength: 1, maxLength: 256}
+        kb_id: {type: string, minLength: 1, maxLength: 256}
+        document_ids: {type: array, minItems: 1, maxItems: 16, uniqueItems: true, items: {type: string, minLength: 1, maxLength: 256}}
+    RemoteReceipt:
+      type: object
+      additionalProperties: false
+      required: [request_id, status, policy_ref]
+      properties:
+        request_id: {type: string, minLength: 1, maxLength: 256}
+        status: {$ref: '#/components/schemas/RemoteReceiptStatus'}
+        policy_ref: {type: string, minLength: 1, maxLength: 256}
+    RemotePolicy:
+      type: object
+      additionalProperties: false
+      description: Injected by trusted composition root, never inferred from server capabilities or model claims.
+      required: [source_id, policy_ref, allowed_kb_ids, allowed_operations, allow_query_upload, allow_document_upload, allow_third_party_retention, max_retention_seconds, require_remote_delete, expires_at_utc_ms, permission_revision, unknown_revision_ttl_ms]
+      properties:
+        source_id: {type: string, minLength: 1, maxLength: 64, pattern: '^[A-Za-z0-9_.-]+$'}
+        policy_ref: {type: string, minLength: 1, maxLength: 256}
+        allowed_kb_ids: {type: array, minItems: 1, maxItems: 64, uniqueItems: true, items: {type: string, minLength: 1, maxLength: 256}}
+        allowed_operations: {type: array, maxItems: 4, uniqueItems: true, items: {$ref: '#/components/schemas/RemoteOperation'}}
+        allow_query_upload: {type: boolean}
+        allow_document_upload: {type: boolean}
+        allow_third_party_retention: {type: boolean}
+        max_retention_seconds: {type: integer, minimum: 0, maximum: 31536000}
+        require_remote_delete: {type: boolean}
+        expires_at_utc_ms: {type: string, pattern: '^[0-9]{1,19}$'}
+        permission_revision: {type: string, minLength: 1, maxLength: 256}
+        unknown_revision_ttl_ms: {type: integer, minimum: 1, maximum: 5000}

@@ -1,0 +1,83 @@
+schema_version: 1
+release_lines:
+  slice_0: {label: "Slice-0 演练闭环（V3.6 §1.4/§31.2）"}
+  r1: {label: "R1 = Lite（V3.6 §1.4；退出条件以 §16 为准）"}
+  r2: {label: "R2 = Standard（V3.6 §1.4）"}
+  r3: {label: "R3 = Pro（V3.6 §1.4）"}
+  experimental: {label: "实验（V3.6 §10.3；门槛 M0b 前写定）"}
+
+acceptance:
+  # S 系列：安全与守门
+  - {id: "S01", title: "越权外发拒绝", release_line: slice_0, contract: "guard.check@1", automation: integration, status: implemented, evidence: "reports/2026-10-08-d10-agent-and-guard.md", notes: "守门与值守门控已实测；控制撤权清值守及耗尽fail closed回归见reports/2026-10-08-w02-w03-admission-hardening.md；可信root已落地为nai-runtime装配根（control先静音再撤权再critical日志、值守授予/到期/撤权写critical），见reports/2026-10-09-w05-w06-composition-root.md；真实设备仍缺"}
+  - {id: "S02", title: "审批绑定", release_line: slice_0, contract: "control.manage@1", automation: unit, status: implemented, evidence: "reports/2026-10-09-w09-approval-surface.md", notes: "loopback list/approve/reject、哈希/epoch/CAS/seq/TTL与原子决策日志已实测；真实候选来源/生产root/播放接线未建，不标完整tested"}
+  - {id: "S03", title: "旧 epoch 迟到丢弃", release_line: slice_0, contract: "output.deliver@1", automation: integration, status: tested, evidence: "reports/2026-10-08-d11-media-basics.md", notes: "timeline/ack 测试通过"}
+  - {id: "S04", title: "守门不可绕过", release_line: slice_0, contract: "guard.check@1", automation: integration, status: tested, evidence: "reports/2026-10-08-d10-agent-and-guard.md", notes: "evaluate 集成测试通过"}
+  - {id: "S05", title: "事实失效撤销", release_line: r1, contract: "knowledge.retrieve@1", automation: integration, status: tested, evidence: "reports/2026-10-08-d09-knowledge.md", notes: "storage knowledge suite 覆盖"}
+  - {id: "S06", title: "注入与越权红队集", release_line: r1, contract: "guard.check@1", automation: integration, status: implemented, evidence: "reports/2026-10-08-d10-agent-and-guard.md", notes: "注入集已覆盖；真实红队集待补"}
+  - {id: "S07", title: "无明文密钥", release_line: r1, automation: unit, status: implemented, evidence: "reports/2026-10-07-d03-storage-and-credentials.md", notes: "credential_ref 已实现；CI 密钥扫描待建"}
+  - {id: "S08", title: "插件与供应链", release_line: r1, contract: "storage.persist@1", automation: unit, status: implemented, evidence: "reports/2026-10-07-d05-plugin-hosts-and-ipc.md", notes: "签名/信任库/宿主隔离已实现；撤销列表与 SBOM 待建"}
+  - {id: "S09", title: "远程命令防重放与 ACK", release_line: r1, contract: "control.manage@1", automation: integration, status: tested, evidence: "reports/2026-10-08-d14-local-control.md", notes: "loopback HTTP已实测；控制撤权后不续自动及重试幂等见reports/2026-10-08-w02-w03-admission-hardening.md；nai-engine装配可执行已用真实进程+桌面ControlClient实测（无token 401/mute后epoch递增/takeover/优雅停机），见reports/2026-10-09-engine-assembly.md；手机/远程与protected IPC未接，不代表完整远程认证；引擎broker/keeper媒体装配与有界停机复核见reports/2026-10-09-engine-broker-frame-delivery.md"}
+  - {id: "S10", title: "数据外发与画像", release_line: r1, automation: unit, status: implemented, evidence: "reports/2026-10-08-d09-knowledge.md", notes: "local_only/凭证边界已实现；长期画像未建"}
+  - {id: "S11", title: "IPC 模糊与路径穿越", release_line: r1, contract: "plugin-hosts-and-ipc", automation: unit, status: tested, evidence: "reports/2026-10-07-d05-plugin-hosts-and-ipc.md", notes: "帧/握手/路径测试通过；模糊测试待建"}
+  - {id: "S12", title: "虚拟人标识与合规门禁", release_line: r1, automation: manual, status: not_applicable, notes: "依赖真实平台规则核对（V3.6 §13.1）"}
+  # R 系列：可靠性与负载
+  - {id: "R01", title: "本地静音 P95 ≤250ms 与租约静音", release_line: slice_0, contract: "output.deliver@1", automation: integration, status: implemented, evidence: "reports/2026-10-08-d14-local-control.md", notes: "媒体侧租约/P0 静音逻辑已实现；装配根control/observe固定先静音再撤权再日志见reports/2026-10-09-w05-w06-composition-root.md；设备 P95 未测；引擎装配以真实keeper子进程监督（强杀→撤权/standby、撤权后停止续租）见reports/2026-10-09-engine-assembly.md；预热期halt不提交见reports/2026-10-09-engine-broker-frame-delivery.md"}
+  - {id: "R02", title: "过载不放大付费调用", release_line: slice_0, automation: integration, status: tested, evidence: "reports/2026-10-07-d07-scheduling-and-budgets.md", notes: "scheduler 过载测试通过"}
+  - {id: "R03", title: "故障隔离", release_line: slice_0, automation: fault, status: implemented, evidence: "reports/2026-10-08-w05-w10-output-watchdog.md", notes: "真实子进程强杀/停续租/阻塞读取仅使软件租约失效并撤权（~10ms/578ms）；帧槽位producer部分写入强杀→整池退休→新identity见reports/2026-10-09-w05-w06-frame-slots.md；keeper帧消费在租约丢失/peer报错时切待机见reports/2026-10-09-w05-w06-frame-handle-broker.md；装配根强杀keeper→静音/撤权/critical日志/standby且哈希链校验通过、render-worker陈旧epoch与篡改哈希被拒退休整池见reports/2026-10-09-w05-w06-composition-root.md；正式engine/bridge/worker与设备故障矩阵仍缺，连接对端未认证（SO_PEERCRED Blocked），不标tested；引擎broker/keeper单帧与预热期halt有界停机见reports/2026-10-09-engine-broker-frame-delivery.md"}
+  - {id: "R04", title: "关键提交持久化", release_line: r1, automation: integration, status: tested, evidence: "reports/2026-10-07-d03-storage-and-credentials.md", notes: "WAL/事务/恢复测试通过"}
+  - {id: "R05", title: "升级原子与回滚", release_line: r1, automation: fault, status: pending, notes: "upgrade-core 未实现（W15）"}
+  - {id: "R06", title: "长播无资源增长", release_line: r2, automation: manual, status: pending, notes: "设备里程碑"}
+  - {id: "R07", title: "决策日志哈希链与回放", release_line: slice_0, automation: integration, status: implemented, evidence: "reports/2026-10-08-w02-w03-decision-log-duty-lease.md", notes: "哈希链前置已实测；原子冲刷/遥测FIFO/critical优先修复见reports/2026-10-08-w02-w03-admission-hardening.md；桩回放与播放ACK生产端待W17，不冒充完整R07"}
+  - {id: "R08", title: "存储维护有界", release_line: r1, automation: integration, status: implemented, evidence: "reports/2026-10-07-d03-storage-and-credentials.md", notes: "WAL/配额逻辑部分覆盖"}
+  - {id: "R09", title: "升级预检与下载失败", release_line: r1, automation: fault, status: pending, notes: "upgrade-core 未实现（W15）"}
+  - {id: "R10", title: "开播与回滚不丢写入", release_line: r1, automation: fault, status: pending, notes: "upgrade-core 未实现（W15）"}
+  - {id: "R11", title: "离线升级与部署迁移", release_line: r2, automation: fault, status: pending, notes: "远程/轻云里程碑"}
+  # A 系列：架构与能力
+  - {id: "A01", title: "无独显演练闭环与降级视图", release_line: slice_0, automation: manual, status: implemented, evidence: "reports/2026-10-09-w06-avatar-2d-core.md", notes: "控制闭环与2D软件像素核心/RMS样本时轴已实测；帧槽位所有权与Linux tmpfs-file跨进程传输见reports/2026-10-09-w05-w06-frame-slots.md；帧句柄授权broker（内核FD证据）与keeper帧消费/待机切换见reports/2026-10-09-w05-w06-frame-handle-broker.md；nai-runtime装配根+监督+render-worker演练闭环（真实像素跨进程、强杀撤权standby）见reports/2026-10-09-w05-w06-composition-root.md；apps/engine可执行已实现（真实进程控制面+监督+媒体演练），见reports/2026-10-09-engine-assembly.md；protected IPC/信号停机、broker接线、设备接线、连接对端认证与Windows设备帧率未完成，不标完整tested；引擎broker授权keeper单帧投递（真实子进程）见reports/2026-10-09-engine-broker-frame-delivery.md"}
+  - {id: "A02", title: "仅改配置换 Provider", release_line: r1, automation: integration, status: implemented, evidence: "reports/2026-10-07-d08-api-provider.md", notes: "单 Provider 已实现；第二家替换测试待建"}
+  - {id: "A03", title: "新增连接器不改内核", release_line: r1, automation: integration, status: implemented, evidence: "reports/2026-10-08-d13-platform-ingress.md", notes: "platform 准入已实现"}
+  - {id: "A04", title: "依赖方向强制", release_line: slice_0, automation: unit, status: tested, evidence: "reports/2026-10-07-d01-engineering-foundation.md", notes: "xtask check-deps 通过"}
+  - {id: "A05", title: "Frozen 契约一致性套件", release_line: r1, automation: contract, status: tested, evidence: "reports/2026-10-07-d02-versioned-contracts.md", notes: "contracts suite 十三类消息三语言互通通过；其中帧槽位 ticket/commit/event 为 provisional（未 Frozen），冻结状态尚未机器可读，故不据此宣称该契约已 Frozen"}
+  - {id: "A06", title: "多宿主与信任边界", release_line: r1, automation: integration, status: implemented, evidence: "reports/2026-10-07-d05-plugin-hosts-and-ipc.md", notes: "inproc/subprocess 已实现；wasm/remote 待用"}
+  - {id: "A07", title: "契约 N-1 兼容", release_line: r1, automation: contract, status: tested, evidence: "reports/2026-10-07-d02-versioned-contracts.md", notes: "版本协商测试通过"}
+  - {id: "A08", title: "档位升级不重装内核", release_line: r2, automation: manual, status: pending, notes: "upgrade-core 未实现（W15/W25）"}
+  - {id: "A09", title: "空闲回收", release_line: r2, automation: manual, status: pending, notes: "媒体宿主里程碑"}
+  - {id: "A10", title: "云断连不伤本地链路", release_line: r2, automation: fault, status: pending, notes: "轻云里程碑"}
+  - {id: "A11", title: "Pro 多会话隔离", release_line: r3, automation: integration, status: pending, notes: "多会话资源治理未建"}
+  # B 系列：业务质量
+  - {id: "B01", title: "知识质量门槛", release_line: r1, automation: integration, status: pending, notes: "100 题黄金集未建（阶段 2）"}
+  - {id: "B02", title: "写实 Gate G0–G3", release_line: r2, automation: manual, status: blocked, notes: "缺完整合法模型/Windows GPU 证据（D12）"}
+  - {id: "B03", title: "成本对账", release_line: r1, automation: integration, status: implemented, evidence: "reports/2026-10-07-d07-scheduling-and-budgets.md", notes: "usage ledger 已实现；账单异步对账待接"}
+  - {id: "B04", title: "整链路延迟分位", release_line: r2, automation: manual, status: pending, notes: "设备里程碑"}
+  - {id: "B05", title: "真人接管音轨与回声", release_line: r1, automation: manual, status: pending, notes: "混音/回声未实现（W11）"}
+  - {id: "B06", title: "场次复盘报告", release_line: r1, automation: manual, status: pending, notes: "依赖决策日志（R07）"}
+  # O 系列：易用性与运营
+  - {id: "O01", title: "10 分钟首句演练", release_line: r1, automation: manual, status: pending, notes: "演示包未建"}
+  - {id: "O02", title: "高危命令确认与审批上限", release_line: r1, automation: ui, status: pending, evidence: "reports/2026-10-09-w09-approval-surface.md", notes: "API与存储200待审批候选/256命令上限已实测；审批GUI、高危二次确认与手机审批未建；引擎已托管真实审批后端（approval.read/write经共享装配），见reports/2026-10-09-engine-assembly.md，UI验收保持pending"}
+  - {id: "O03", title: "手机监控包", release_line: r1, automation: manual, status: blocked, notes: "路线 A/B PoC 未定案；Blocked 原因待 registry 标注"}
+  - {id: "O04", title: "安装与设备", release_line: r1, automation: manual, status: blocked, notes: "Windows 安装未执行"}
+  - {id: "O05", title: "升级成本显示", release_line: r1, automation: ui, status: pending, notes: "upgrade-core 未实现"}
+  # P 系列：平台生命周期
+  - {id: "P01", title: "平台生命周期", release_line: r2, automation: integration, status: blocked, notes: "官方 SDK/生产宿主未实现（D13）"}
+  # X 系列：实验
+  - {id: "X01", title: "中端 Android 前台 30 分钟", release_line: experimental, automation: manual, status: not_applicable, notes: "Lite-Mobile 未立项；门槛 M0b 前写定"}
+  - {id: "X02", title: "Android 后台降级", release_line: experimental, automation: manual, status: not_applicable, notes: "实验项"}
+
+mapping:
+  notes: "自建 D01–D14 → V3.6 验收映射（V3.6 §30.4 不提供 D→新编号）。回填规则：已完成并有归档测试证据的项目标 tested 并引用报告；仅实现未完整认证的标 implemented 并注明缺口；外部条件缺失标 blocked；本 profile 未启用或尚未开始的目标标 pending/not_applicable。映射是追溯声明，不重新认证。"
+  legacy_note: "V3.5 的 T/E/U 与附录 B A1–A17 旧编号仅追溯，不再新增；对应关系见 V3.6 §30.4。"
+  d01_to_d14:
+    D01: {status: tested, targets: ["A04"], evidence: "reports/2026-10-07-d01-engineering-foundation.md", notes: "工程/依赖检查实测通过"}
+    D02: {status: tested, targets: ["A05", "A07"], evidence: "reports/2026-10-07-d02-versioned-contracts.md", notes: "十类消息三语言互通通过"}
+    D03: {status: tested, targets: ["R04", "R08"], evidence: "reports/2026-10-07-d03-storage-and-credentials.md", notes: "WAL/事务/备份测试通过；Windows 原生凭据 blocked"}
+    D04: {status: tested, targets: ["A04"], evidence: "reports/2026-10-07-d04-kernel-registration-and-binding.md", notes: "闭包/冻结/降级测试通过"}
+    D05: {status: tested, targets: ["S11", "A06"], evidence: "reports/2026-10-07-d05-plugin-hosts-and-ipc.md", notes: "帧/握手/ACL 通过；wasm/remote 未建"}
+    D06: {status: tested, targets: ["R01", "S03"], evidence: "reports/2026-10-07-d06-session-leases-and-cancellation.md", notes: "租约/CAS/幂等通过；设备 P95 未测；引擎装配以真实keeper子进程监督（强杀→撤权/standby、撤权后停止续租）见reports/2026-10-09-engine-assembly.md"}
+    D07: {status: tested, targets: ["R02", "B03"], evidence: "reports/2026-10-07-d07-scheduling-and-budgets.md", notes: "过载/预算账本通过"}
+    D08: {status: tested, targets: ["A02"], evidence: "reports/2026-10-07-d08-api-provider.md", notes: "传输/usage 通过；真实付费生成 blocked（账户无余额）"}
+    D09: {status: tested, targets: ["S05", "S10"], evidence: "reports/2026-10-08-d09-knowledge.md", notes: "发布/冻结/远端门控通过；真实远端 blocked"}
+    D10: {status: tested, targets: ["S01", "S04", "S06"], evidence: "reports/2026-10-08-d10-agent-and-guard.md", notes: "守门/决策测试通过；真实插件未接"}
+    D11: {status: tested, targets: ["S03", "R01"], evidence: "reports/2026-10-08-d11-media-basics.md", notes: "样本时轴/ACK 通过；Windows 设备 blocked"}
+    D12: {status: blocked, targets: ["B02", "S08"], evidence: "reports/2026-10-08-d12-model-admission.md", notes: "仅前置完整性检查；缺完整合法模型/G0–G3"}
+    D13: {status: implemented, targets: ["S09", "A03", "P01"], evidence: "reports/2026-10-08-d13-platform-ingress.md", notes: "准入逻辑通过；官方 SDK/网关 blocked"}
+    D14: {status: tested, targets: ["S09", "R01", "A01"], evidence: "reports/2026-10-08-d14-local-control.md", notes: "loopback 控制闭环通过；审批/预检/配置未建"}

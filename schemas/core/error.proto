@@ -1,0 +1,30 @@
+syntax = "proto3";
+package nai.v1;
+
+enum ErrorCode {
+  ERROR_UNSPECIFIED = 0;
+  INVALID_ARGUMENT = 1;
+  UNAUTHENTICATED = 2;
+  PERMISSION_DENIED = 3;
+  CAPABILITY_ABSENT = 4;
+  CAPABILITY_NOT_READY = 5;
+  VERSION_INCOMPATIBLE = 6;
+  RESOURCE_EXHAUSTED = 7;
+  DEADLINE_EXCEEDED = 8;
+  STALE_EPOCH = 9;
+  EVIDENCE_EXPIRED = 10;
+  APPROVAL_EXPIRED = 11;
+  BUDGET_EXCEEDED = 12;
+  PROVIDER_UNAVAILABLE = 13;
+  CANCELLED = 14;
+  CONFLICT = 15;
+  INTERNAL = 16;
+}
+message ContractError {
+  string request_id = 1;
+  ErrorCode code = 2;
+  string category = 3;
+  bool retryable = 4;
+  string message = 5;
+  map<string, string> details = 6;
+}

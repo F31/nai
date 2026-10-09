@@ -1,0 +1,28 @@
+{
+  "name": "nai",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@8.15.0",
+  "engines": {
+    "node": "22.23.1",
+    "pnpm": "8.15.0"
+  },
+  "scripts": {
+    "typecheck": "pnpm --recursive typecheck",
+    "build": "pnpm --recursive build",
+    "spec:validate": "openspec validate --all --strict --no-interactive",
+    "test:control-smoke": "cargo build -p nai-control-api --example local_control --locked --offline && node --experimental-strip-types scripts/control-smoke.mjs",
+    "test:engine-smoke": "cargo build -p nai-engine --locked --offline && node --experimental-strip-types scripts/engine-smoke.mjs"
+  },
+  "devDependencies": {
+    "@fission-ai/openspec": "1.14.1",
+    "@apidevtools/swagger-parser": "13.1.0",
+    "ajv": "8.20.0",
+    "json-schema-to-typescript": "16.0.0",
+    "openapi-typescript": "7.13.0",
+    "ts-proto": "2.13.0",
+    "ts-proto-descriptors": "2.1.0",
+    "yaml": "2.9.1"
+  }
+}

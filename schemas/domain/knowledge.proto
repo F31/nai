@@ -1,0 +1,28 @@
+syntax = "proto3";
+package nai.v1;
+import "core/base.proto";
+
+enum RetrievalStatus { RETRIEVAL_UNSPECIFIED = 0; RETRIEVAL_COMPLETE = 1; RETRIEVAL_PARTIAL = 2; RETRIEVAL_EMPTY = 3; RETRIEVAL_TIMEOUT = 4; RETRIEVAL_UNAVAILABLE = 5; RETRIEVAL_UNAUTHORIZED = 6; }
+enum KnowledgeCapability { KNOWLEDGE_UNSPECIFIED = 0; RETRIEVAL_WITH_EVIDENCE = 1; ANSWER_WITH_EVIDENCE = 2; ANSWER_ONLY = 3; }
+message Evidence {
+  string evidence_id = 1; string document_id = 2; string revision = 3;
+  string chunk_id = 4; string text = 5; string source_ref = 6;
+  string source_span = 7; string product_id = 8; uint32 rank = 9;
+  optional uint64 valid_from_utc_ms = 10; optional uint64 valid_until_utc_ms = 11;
+  string authority = 12; string permission_revision = 13;
+  repeated RevisionRef fact_versions = 14; bool original_verifiable = 15;
+}
+message RetrieveRequest { RequestContext context = 1; repeated string kb_ids = 2; string query = 3; map<string, string> filters = 4; uint32 top_k = 5; string operation = 6; }
+// Financial values are exact minor units or decimal text, never floating point.
+message Money { int64 minor_units = 1; string currency = 2; uint32 scale = 3; }
+message AuthoritativeFact {
+  string workspace_id = 1; string product_id = 2; string field_key = 3;
+  string revision = 4; string unit = 5; string authority_ref = 6;
+  oneof value { string text = 7; int64 integer = 8; string decimal = 9; bool flag = 10; Money money = 11; }
+  optional uint64 valid_from_utc_ms = 12; optional uint64 valid_until_utc_ms = 13;
+  string publisher_ref = 14; string permission_revision = 15;
+}
+message RetrieveResult { RetrievalStatus status = 1; string provider_id = 2; KnowledgeCapability capability = 3; repeated Evidence evidence = 4; optional string answer_draft = 5; repeated Usage usage = 6; repeated AuthoritativeFact facts = 7; }
+message MemoryRequest { RequestContext context = 1; string operation = 2; string kind = 3; string purpose = 4; string viewer_scoped_id = 5; repeated string record_refs = 6; }
+message MemoryRecord { string record_id = 1; string workspace_id = 2; string session_id = 3; string viewer_scoped_id = 4; string kind = 5; string purpose = 6; string content = 7; uint64 expires_at_utc_ms = 8; string authorization_ref = 9; }
+message MemoryResult { repeated MemoryRecord records = 1; string revision = 2; }

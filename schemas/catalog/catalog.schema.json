@@ -1,0 +1,17 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://nai.invalid/schemas/catalog",
+  "title":"CapabilityCatalog", "type":"object", "additionalProperties":false,
+  "required":["schema_version","protocol_major","protocol_minor","capabilities","adapters_required"],
+  "properties":{
+    "schema_version":{"const":1}, "protocol_major":{"const":1}, "protocol_minor":{"type":"integer","minimum":0},
+    "capabilities":{"type":"array","minItems":27,"items":{"type":"object","additionalProperties":false,"required":["id","request","response","stream"],"properties":{
+      "id":{"type":"string","pattern":"^[a-z]+(?:[.][a-z]+)+@1$"},
+      "request":{"type":"string","pattern":"^nai[.]v1[.][A-Za-z]+$"},
+      "response":{"type":"string","pattern":"^nai[.]v1[.][A-Za-z]+$"},"stream":{"type":"boolean"},"session_scoped":{"type":"boolean"}
+    }}},
+    "adapters_required":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["legacy","target","operation"],"properties":{
+      "legacy":{"type":"string","minLength":1},"target":{"type":"string","minLength":1},"operation":{"type":"string","minLength":1}
+    }}}
+  }
+}

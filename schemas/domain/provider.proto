@@ -1,0 +1,24 @@
+syntax = "proto3";
+package nai.v1;
+import "core/base.proto";
+import "core/error.proto";
+import "domain/knowledge.proto";
+import "domain/agent.proto";
+
+message LlmRequest { RequestContext context = 1; string provider_profile = 2; string prompt_version = 3; string permitted_context = 4; repeated Evidence evidence = 5; string output_schema_ref = 6; uint32 max_output_tokens = 7; }
+message LlmChunk { uint32 seq = 1; StreamEnd end = 2; string text_delta = 3; Decision decision = 4; repeated Usage usage = 5; ContractError error = 6; }
+message AudioFormat { uint32 sample_rate = 1; uint32 channels = 2; string sample_format = 3; string codec = 4; }
+message TtsRequest { RequestContext context = 1; string utterance_id = 2; string speech_text = 3; string display_text_ref = 4; VoiceRef voice = 5; string language = 6; float speed = 7; string emotion = 8; string dictionary_version = 9; AudioFormat format = 10; uint64 expires_at_utc_ms = 11; string approved_segment_hash = 12; }
+// Binary media transport must be separately negotiated; no audio bytes here.
+message TtsChunk { uint32 seq = 1; StreamEnd end = 2; string audio_buffer_ref = 3; AudioFormat format = 4; uint64 sample_start = 5; uint64 sample_count = 6; string timing_ref = 7; repeated Usage usage = 8; ContractError error = 9; }
+message EmbeddingRequest { RequestContext context = 1; string provider_profile = 2; repeated string permitted_texts = 3; }
+message EmbeddingVector { repeated float values = 1; }
+message EmbeddingResult { string provider_model_revision = 1; uint32 dimension = 2; string normalization = 3; repeated EmbeddingVector vectors = 4; repeated Usage usage = 5; }
+message RerankRequest { RequestContext context = 1; string query = 2; repeated Evidence candidates = 3; }
+message RerankResult { repeated string ranked_evidence_ids = 1; repeated Usage usage = 2; }
+message ClassificationRequest { RequestContext context = 1; string permitted_text = 2; repeated string allowed_labels = 3; }
+message ClassificationResult { string label = 1; repeated Usage usage = 2; }
+message ModerationRequest { RequestContext context = 1; string permitted_text = 2; string policy_version = 3; }
+message ModerationResult { GuardVerdict verdict = 1; repeated string reason_codes = 2; repeated Usage usage = 3; }
+message GatewayRequest { RequestContext context = 1; string provider_route = 2; string capability_id = 3; bytes encoded_request = 4; }
+message GatewayResult { StreamEnd end = 1; bytes encoded_response = 2; repeated Usage usage = 3; ContractError error = 4; }

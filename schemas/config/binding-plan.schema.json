@@ -1,0 +1,9 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://nai.invalid/schemas/binding-plan","title":"BindingPlanConfig","type":"object","additionalProperties":false,
+  "required":["schema_version","session_id","mode","requirements","selections","emits_output"],
+  "properties":{
+    "schema_version":{"const":1},"session_id":{"type":"string","minLength":1,"maxLength":128},"mode":{"enum":["rehearsal","assisted","auto_supervised"]},"emits_output":{"type":"boolean"},
+    "requirements":{"type":"array","minItems":1,"maxItems":64,"items":{"type":"object","additionalProperties":false,"required":["capability_id","required"],"properties":{"capability_id":{"type":"string","pattern":"^[a-z]+(?:[.][a-z]+)+@1$"},"required":{"type":"boolean"}}}},
+    "selections":{"type":"array","maxItems":64,"items":{"type":"object","additionalProperties":false,"required":["capability_id","primary_plugin_id","fallback_plugin_ids","policy_scope_ref"],"properties":{"capability_id":{"type":"string","pattern":"^[a-z]+(?:[.][a-z]+)+@1$"},"primary_plugin_id":{"type":"string","minLength":1,"maxLength":128},"fallback_plugin_ids":{"type":"array","maxItems":16,"uniqueItems":true,"items":{"type":"string","minLength":1,"maxLength":128}},"policy_scope_ref":{"type":"string","minLength":1,"maxLength":128}}}}
+  }
+}
