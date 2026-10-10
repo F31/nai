@@ -29,11 +29,23 @@ impl AckTracker {
         block: &AudioBlock,
         expected_output_samples: u64,
     ) -> Result<Self, MediaError> {
-        if output.is_empty() || block.utterance_id.is_empty() || expected_output_samples == 0 {
+        Self::for_utterance(output, &block.utterance_id, expected_output_samples)
+    }
+
+    /// Binds an output to an utterance without a representative block. A caller
+    /// that knows the utterance and the expected total before any audio exists
+    /// (for example a lane that declares its total up front) must not have to
+    /// fabricate a block to construct the tracker.
+    pub fn for_utterance(
+        output: &str,
+        utterance: &str,
+        expected_output_samples: u64,
+    ) -> Result<Self, MediaError> {
+        if output.is_empty() || utterance.is_empty() || expected_output_samples == 0 {
             return Err(MediaError::Stale);
         }
         Ok(Self {
-            utterance_id: block.utterance_id.clone(),
+            utterance_id: utterance.into(),
             output_id: output.into(),
             expected_samples: expected_output_samples,
             acked_samples: 0,

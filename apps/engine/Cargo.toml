@@ -27,6 +27,8 @@ nai-budget-core.workspace = true
 nai-storage.workspace = true
 nai-runtime.workspace = true
 nai-control-api.workspace = true
+nai-plugin-sdk.workspace = true
+nai-avatar-2d = { path = "../../plugins/avatar-2d" }
 prost.workspace = true
 serde.workspace = true
 serde_json.workspace = true

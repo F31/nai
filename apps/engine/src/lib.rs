@@ -3,8 +3,9 @@
 //! process.
 //!
 //! It is not the production form. There is no protected IPC, no device or window
-//! binding and no PlaybackAck producer; the media drill is explicit, runs on the
-//! Linux tmpfs backend and never reports hardware output.
+//! binding; the media drill is explicit and runs on the Linux tmpfs backend, and
+//! the manual-event rehearsal lane renders real frames into memory only. Neither
+//! reports hardware output or a device PlaybackAck.
 // The media drill is Linux-only. On other targets its helpers, constants and
 // asset fields have no caller, which is a platform fact rather than dead code.
 #![cfg_attr(not(target_os = "linux"), allow(dead_code))]
@@ -47,7 +48,7 @@ pub const USAGE: &str = "Usage: nai-engine --data-root <dir> --workspace <id> --
 [--provision <runtime-profile.json>] \
 [--media-drill --pcm <path> --avatar <manifest> --avatar-config <config> --asset <id=path> --license <id> \
 [--slot-bytes <bytes>] [--time-base-den <n>]] \
-[--event-file <script.json> --rehearsal-provider [--inject <none|knowledge|guard|generate|storage>]]; \
+[--event-file <script.json> --rehearsal-provider [--inject <none|knowledge|guard|generate|speech|storage>]]; \
 real devices, production IPC and real provider transport unavailable";
 
 /// Control-surface permissions of the local operator credential.

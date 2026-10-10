@@ -4,13 +4,24 @@
 //! retrieval -> agent decision -> four-stage guard -> text generation ->
 //! decision log (hash-chained)`. Every step rechecks the session, the
 //! generation epoch, the duty lease and the approval object before the next
-//! fail-closed check. The chain ends at text and the decision log: there is no
-//! TTS, no rendering, no device and no PlaybackAck here.
+//! fail-closed check.
 //!
-//! Honest boundary: the generator is a rehearsal-only deterministic stub, the
-//! retrieval corpus and the operator approvals come from a trusted-owner
-//! rehearsal script, and the store's `record_candidate`/`approve` workflow is
-//! NOT wired. Nothing here certifies a real provider, a device or Windows.
+//! When the rehearsal script declares a `render` closure, the chain continues
+//! past text: the approval-bound cue text is synthesized into bounded PCM, the
+//! PCM is cut into bounded `AudioBlock`s, real RGBA frames are produced by the
+//! software 2D renderer, the lane commits on its audio and video water levels,
+//! and a rehearsal playback sink emits the acknowledgements. Only an
+//! acknowledgement that reports an actual, sample-exact local completion is
+//! logged as `PlaybackAck`.
+//!
+//! Honest boundary: the generator, the synthesizer and the playback sink are all
+//! rehearsal-only deterministic stand-ins; the retrieval corpus and the operator
+//! approvals come from a trusted-owner rehearsal script; the store's
+//! `record_candidate`/`approve` workflow is NOT wired. Frames are produced in
+//! memory: no frame slot is written, no keeper consumes them and no device,
+//! window or hardware playback exists. Nothing here certifies a real provider,
+//! real TTS, a device or Windows.
+use nai_avatar_2d::{AssetBytes, Avatar, LicenseGrants};
 use nai_contracts::candidate_hash;
 use nai_contracts::v1::{
     BillingState, BudgetCharge, Decision, DecisionAction, EventKind, Evidence, GuardRequest,
@@ -23,18 +34,26 @@ use nai_kernel::evaluate::{
 };
 use nai_kernel::session::Session;
 use nai_knowledge_core::{VectorIdentity, VectorSpace, tokenize};
+use nai_media_core::playback::{
+    LaneSpec, MAX_FRAMES, PlaybackLane, RehearsalSink, frame_boundary, frame_count, rehearse,
+};
+use nai_media_core::timeline::ack::PlaybackState;
+use nai_media_core::timeline::audio::{AudioBlock, SampleFormat};
+use nai_plugin_sdk::plugin::PluginContext;
 use nai_provider_core::{
-    InMemoryGateway, ProviderError, RehearsalTextGenerator, TextGenerator, TextRequest,
-    TextResponse, UsageGateway, generate_with_budget,
+    InMemoryGateway, ProviderError, RehearsalSpeechSynthesizer, RehearsalTextGenerator,
+    SpeechRequest, SpeechResponse, SpeechSynthesizer, TextGenerator, TextRequest, TextResponse,
+    UsageGateway, generate_with_budget, synthesize_with_budget,
 };
 use nai_runtime::{Composition, ControlAction};
 use nai_storage::{DecisionKind, Operation};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{
-    collections::BTreeMap,
-    path::Path,
-    sync::{Arc, Mutex},
+    collections::{BTreeMap, BTreeSet},
+    fs,
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex, atomic::AtomicBool},
     time::{Duration, Instant},
 };
 
@@ -61,6 +80,18 @@ pub const MIN_DUTY_TTL_MS: u64 = 1;
 pub const MAX_DUTY_TTL_MS: u64 = 3_600_000;
 /// Task budget advertised to the generation seam, in milliseconds.
 const TASK_BUDGET_MS: u32 = 30_000;
+/// The only accepted candidate hash algorithm; the renderer and the media gate
+/// both require it verbatim.
+const CANDIDATE_HASH_ALGORITHM: &str = "sha256-canonical-v1";
+/// The renderer binding the 2D core declares. It is reported verbatim so the
+/// summary names the software renderer rather than implying a device renderer.
+const RENDER_BINDING: &str = "software-rgba8-v1";
+/// One-time avatar admission budget. The schema and closure checks are paid
+/// before the first event, never inside a slot or frame deadline.
+const ADMIT_BUDGET: Duration = Duration::from_secs(10);
+/// First-audio water level of the rehearsal lane, in milliseconds. It is well
+/// below one frame span, so the audio side is never the blocking side.
+const AUDIO_WATER_MS: u32 = 40;
 /// Upper bound on the rehearsal retrieval vocabulary. A corpus beyond it needs
 /// the real embedding profile, not this drill index.
 const MAX_VOCAB: usize = 4096;
@@ -92,6 +123,14 @@ pub struct Script {
     pub events: Vec<ManualEvent>,
     #[serde(default)]
     pub approvals: Vec<ApprovalRecord>,
+    /// Optional render closure. Absent means the chain honestly stops at text:
+    /// `delivery=none`, no audio, no frames and no playback acknowledgement.
+    #[serde(default)]
+    pub render: Option<RenderSetup>,
+    /// Directory the render closure's relative paths resolve against. Filled by
+    /// the loader from the script's own location; never taken from the file.
+    #[serde(skip)]
+    pub base_dir: PathBuf,
 }
 
 /// The operator's bring-up of the rehearsal session. A manual event can only be
@@ -147,14 +186,46 @@ pub struct ApprovalRecord {
     pub expires_at_utc_ms: u64,
 }
 
+/// The operator's render closure for the rehearsal lane: the exact 2D asset
+/// closure, the voice binding, the output identity the acknowledgements are
+/// bound to, and the declared playback outcome. Paths are relative to the
+/// script's own directory; the loader resolves them, so the engine opens only
+/// paths the trusted owner wrote down.
+#[derive(Debug, Clone, Deserialize)]
+pub struct RenderSetup {
+    pub manifest: String,
+    pub config: String,
+    pub assets: Vec<AssetRef>,
+    pub licenses: Vec<String>,
+    /// Voice binding handed to the synthesis seam. Never inferred from a cue:
+    /// the trusted owner declares it.
+    pub voice_ref: String,
+    /// Output identity every acknowledgement is bound to.
+    pub output_id: String,
+    /// `complete`, `partial`, `invalid` or `cancelled`.
+    #[serde(default = "default_playback")]
+    pub playback: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AssetRef {
+    pub id: String,
+    pub path: String,
+}
+
+fn default_playback() -> String {
+    "complete".into()
+}
+
 /// Which stage the rehearsal fault injection breaks. Only a stage failure
-/// triggers the ordered halt; a normal block does not.
+/// triggers the ordered halt; a normal block or an incomplete playback does not.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Injection {
     None,
     Knowledge,
     Guard,
     Generate,
+    Speech,
     Storage,
 }
 
@@ -165,6 +236,7 @@ impl Injection {
             "knowledge" => Ok(Self::Knowledge),
             "guard" => Ok(Self::Guard),
             "generate" => Ok(Self::Generate),
+            "speech" => Ok(Self::Speech),
             "storage" => Ok(Self::Storage),
             other => Err(format!("unknown injection stage {other}")),
         }
@@ -175,6 +247,7 @@ impl Injection {
             Self::Knowledge => "knowledge",
             Self::Guard => "guard",
             Self::Generate => "generate",
+            Self::Speech => "speech",
             Self::Storage => "storage",
         }
     }
@@ -207,11 +280,24 @@ struct EventOutcome {
     reason: String,
     /// Number of retrieved evidence items.
     evidence: usize,
+    /// Samples the speech seam produced; zero when the chain stopped at text.
+    audio_samples: u64,
+    /// Frames the 2D renderer produced; zero when the chain stopped at text.
+    frames: u32,
+    speech_model_ref: String,
+    /// The playback state after the declared scenario.
+    playback: &'static str,
+    /// `none` when the chain stopped at text, `memory` when frames were produced
+    /// without a slot, keeper or device.
+    delivery: &'static str,
+    /// Acknowledgements the lane refused.
+    playback_rejected: usize,
 }
 
 impl EventOutcome {
     /// The volatile-free summary used for the replay comparison: it excludes
-    /// timestamps, hashes, sequence numbers and any other run-dependent field.
+    /// timestamps, hashes, sequence numbers, pixel bytes, PCM and any other
+    /// run-dependent field.
     fn canonical(&self) -> Value {
         json!({
             "event_id": self.event_id,
@@ -225,6 +311,12 @@ impl EventOutcome {
             "usage": self.usage,
             "reason": self.reason,
             "evidence": self.evidence,
+            "audio_samples": self.audio_samples,
+            "frames": self.frames,
+            "speech_model_ref": self.speech_model_ref,
+            "playback": self.playback,
+            "delivery": self.delivery,
+            "playback_rejected": self.playback_rejected,
         })
     }
     fn canonical_text(&self) -> String {
@@ -235,10 +327,15 @@ impl EventOutcome {
 /// Reads and validates the script. An unknown source, an unknown event kind or a
 /// duplicated event is refused rather than coerced.
 pub fn load_script(path: &Path) -> Result<Script, String> {
-    let raw = std::fs::read_to_string(path)
+    let raw = fs::read_to_string(path)
         .map_err(|error| format!("rehearsal script unreadable: {error}"))?;
-    let script: Script = serde_json::from_str(&raw)
+    let mut script: Script = serde_json::from_str(&raw)
         .map_err(|error| format!("rehearsal script is not valid JSON: {error}"))?;
+    script.base_dir = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from("."));
     if script.schema_version != 1 {
         return Err("rehearsal script schema_version must be 1".into());
     }
@@ -297,7 +394,59 @@ pub fn load_script(path: &Path) -> Result<Script, String> {
             return Err(format!("duplicate event id {}", event.event_id));
         }
     }
+    resolve_render(&mut script)?;
     Ok(script)
+}
+
+/// Validates the optional render closure and resolves its paths against the
+/// script's own directory. Nothing is defaulted: an incomplete closure is
+/// refused before any session state is driven.
+fn resolve_render(script: &mut Script) -> Result<(), String> {
+    let Some(render) = script.render.as_mut() else {
+        return Ok(());
+    };
+    if render.manifest.is_empty() || render.config.is_empty() {
+        return Err("render closure needs a manifest and a config path".into());
+    }
+    if render.assets.len() != 3 {
+        return Err("render closure needs exactly three asset entries".into());
+    }
+    let mut ids = BTreeSet::new();
+    for asset in &render.assets {
+        if asset.id.is_empty() || asset.path.is_empty() {
+            return Err("render asset entries need an id and a path".into());
+        }
+        if !ids.insert(asset.id.clone()) {
+            return Err(format!("duplicate render asset id {}", asset.id));
+        }
+    }
+    if render.licenses.is_empty() || render.licenses.iter().any(String::is_empty) {
+        return Err("render closure needs at least one non-empty license reference".into());
+    }
+    if render.voice_ref.is_empty() {
+        return Err("render closure needs a voice binding".into());
+    }
+    if render.output_id.is_empty() {
+        return Err("render closure needs an output identity".into());
+    }
+    RehearsalSink::parse(&render.playback)?;
+    let base = script.base_dir.clone();
+    let resolve = |value: &str| -> String {
+        let path = Path::new(value);
+        if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            base.join(path)
+        }
+        .to_string_lossy()
+        .into_owned()
+    };
+    render.manifest = resolve(&render.manifest);
+    render.config = resolve(&render.config);
+    for asset in &mut render.assets {
+        asset.path = resolve(&asset.path);
+    }
+    Ok(())
 }
 
 /// Builds the candidate for one manual event. The construction is fully
@@ -800,6 +949,95 @@ fn composition_scope(shared: &Arc<Mutex<Composition>>) -> Result<(String, String
     ))
 }
 
+/// The admitted rehearsal render lane: the software 2D renderer plus everything
+/// the per-event loop needs. It is admitted once per run so the one-time schema
+/// and closure cost is never paid inside an event, exactly as the render-worker
+/// pays it before its slot window opens.
+struct RenderLane {
+    avatar: Arc<Avatar>,
+    grants: LicenseGrants,
+    voice_ref: String,
+    output_id: String,
+    playback: RehearsalSink,
+    sample_rate: u32,
+    fps_num: u32,
+    fps_den: u32,
+}
+
+fn read_render_json(path: &str, what: &str) -> Result<Value, String> {
+    let raw = fs::read_to_string(path).map_err(|error| format!("{what} unreadable: {error}"))?;
+    serde_json::from_str(&raw).map_err(|error| format!("{what} is not JSON: {error}"))
+}
+
+/// Admits the render closure the script declared. A missing, unreadable or
+/// unlicensed input is a hard failure: the engine never substitutes a default
+/// asset, voice or output identity.
+fn render_lane(script: &Script) -> Result<Option<RenderLane>, String> {
+    let Some(render) = script.render.as_ref() else {
+        return Ok(None);
+    };
+    let manifest = read_render_json(&render.manifest, "avatar manifest")?;
+    let config = read_render_json(&render.config, "avatar config")?;
+    let mut asset_bytes = Vec::new();
+    for asset in &render.assets {
+        asset_bytes.push(
+            fs::read(&asset.path)
+                .map_err(|error| format!("render asset {} unreadable: {error}", asset.id))?,
+        );
+    }
+    let assets = render
+        .assets
+        .iter()
+        .zip(&asset_bytes)
+        .map(|(asset, bytes)| AssetBytes {
+            id: &asset.id,
+            bytes,
+        })
+        .collect::<Vec<_>>();
+    let grants = LicenseGrants::from(
+        render
+            .licenses
+            .iter()
+            .cloned()
+            .collect::<BTreeSet<String>>(),
+    );
+    let ctx = PluginContext::new(
+        "nai-avatar-2d",
+        "",
+        1,
+        ADMIT_BUDGET.as_millis() as u32,
+        json!({}),
+        Vec::new(),
+        Instant::now() + ADMIT_BUDGET,
+        Arc::new(AtomicBool::new(false)),
+        utc_ms(),
+    );
+    let avatar = Avatar::admit(&ctx, &manifest, &config, &assets, &grants).map_err(|error| {
+        format!(
+            "avatar admission rejected: code {}: {}",
+            error.code, error.message
+        )
+    })?;
+    let frame_geometry = |value: &Value, key: &str| -> Result<u32, String> {
+        value[key]
+            .as_u64()
+            .filter(|number| (1..=u32::MAX as u64).contains(number))
+            .map(|number| number as u32)
+            .ok_or_else(|| format!("render input has no valid {key}"))
+    };
+    let lane = RenderLane {
+        avatar: Arc::new(avatar),
+        grants,
+        voice_ref: render.voice_ref.clone(),
+        output_id: render.output_id.clone(),
+        playback: RehearsalSink::parse(&render.playback)?,
+        sample_rate: frame_geometry(&config, "sample_rate")?,
+        fps_num: frame_geometry(&manifest, "fps_num")?,
+        fps_den: frame_geometry(&manifest, "fps_den")?,
+    };
+    Ok(Some(lane))
+}
+
 /// Everything the per-event evaluation needs. Pure inputs only, so two passes
 /// over the same script produce identical outcomes.
 struct Rehearsal<'a> {
@@ -807,6 +1045,8 @@ struct Rehearsal<'a> {
     index: &'a Index,
     docs: &'a [KnowledgeDoc],
     approvals: &'a [ApprovalRecord],
+    /// The admitted render lane, when the script declared one.
+    render: Option<&'a RenderLane>,
     provider_ref: &'a str,
     price_revision: &'a str,
     max_output_chars: usize,
@@ -839,6 +1079,12 @@ fn evaluate_event(
         usage: BTreeMap::new(),
         reason: String::new(),
         evidence: 0,
+        audio_samples: 0,
+        frames: 0,
+        speech_model_ref: String::new(),
+        playback: "none",
+        delivery: "none",
+        playback_rejected: 0,
     };
     let text = normalize(&event.text);
     if text.is_empty() {
@@ -984,11 +1230,253 @@ fn evaluate_event(
         gateway,
     )
     .map_err(|error| format!("generation failed: {}", error.message))?;
-    outcome.stage = "generated";
     outcome.generated = generated;
     outcome.model_ref = model_ref;
     outcome.usage = usage;
+
+    // Without a declared render closure the chain honestly stops at text:
+    // nothing was synthesized, rendered, delivered or played.
+    let Some(render) = rehearsal.render else {
+        outcome.stage = "generated";
+        return Ok(outcome);
+    };
+
+    // The guard clears the hash of every candidate it rewrote, and the approved
+    // hash is the object the operator signed. An object no approval covers must
+    // never be voiced, so a superseded cue stops here instead of being rendered.
+    let spoken_hash = candidate_hash(&cue);
+    if spoken_hash != outcome.candidate_hash {
+        outcome.stage = "guard_superseded";
+        outcome.reason = "guard_replaced_the_approved_candidate".into();
+        return Ok(outcome);
+    }
+    // Recheck the gate immediately before the next outbound step: a lapsed duty
+    // lease or a moved epoch must not reach speech.
+    let gate_now = gate.preplay(event, approval, &outcome.candidate_hash, rehearsal.now_ms);
+    if !gate_now.epoch_match || !gate_now.permission_current {
+        outcome.stage = "permission_stale";
+        outcome.reason = "duty_or_permission_stale_before_speech".into();
+        return Ok(outcome);
+    }
+    // The cue that reaches the renderer must carry the approved hash verbatim:
+    // the media layer's lease check and the renderer's own cue check both compare
+    // it against the approved value.
+    cue.candidate_hash = spoken_hash;
+    cue.hash_algorithm = CANDIDATE_HASH_ALGORITHM.into();
+
+    // Speech synthesis through the metered seam. The voiced text is the
+    // approval-bound cue text, never the raw model rendering: the approval hash
+    // has to cover exactly what is said.
+    let speech = synthesize(
+        rehearsal,
+        event,
+        &cue,
+        u64::from(budget_ms),
+        render,
+        injection,
+        gateway,
+    )
+    .map_err(|error| format!("synthesis failed: {}", error.message))?;
+    outcome.audio_samples = speech.pcm.len() as u64;
+    outcome.speech_model_ref = speech.model_ref.clone();
+    outcome.delivery = "memory";
+
+    let played = render_and_play(rehearsal, event, &cue, render, &speech)?;
+    outcome.frames = played.frames;
+    outcome.playback = played.state;
+    outcome.playback_rejected = played.rejected;
+    outcome.stage = played.stage;
     Ok(outcome)
+}
+
+/// What one event's render and playback pass produced.
+struct PlaybackOutcome {
+    frames: u32,
+    /// The lane's playback state after the declared scenario.
+    state: &'static str,
+    rejected: usize,
+    /// The stage the decision log records.
+    stage: &'static str,
+}
+
+fn playback_state_name(state: PlaybackState) -> &'static str {
+    match state {
+        PlaybackState::Pending => "pending",
+        PlaybackState::Committed => "committed",
+        PlaybackState::Playing => "playing",
+        PlaybackState::Completed => "completed",
+        PlaybackState::Cancelled => "cancelled",
+    }
+}
+
+/// Produces real pixels for the approved cue, commits the lane on its water
+/// levels, and applies the declared playback outcome. Frames live in memory
+/// only: no slot is written, no keeper consumes them and no device is involved.
+fn render_and_play(
+    rehearsal: &Rehearsal<'_>,
+    event: &ManualEvent,
+    cue: &PerformanceCue,
+    render: &RenderLane,
+    speech: &SpeechResponse,
+) -> Result<PlaybackOutcome, String> {
+    let total = speech.pcm.len() as u64;
+    let expected_frames = frame_count(total, render.sample_rate, render.fps_num, render.fps_den);
+    if expected_frames == 0 || expected_frames > MAX_FRAMES {
+        return Err("synthesized audio has no bounded frame span".into());
+    }
+    let ctx = PluginContext::new(
+        "nai-avatar-2d",
+        &rehearsal.gate.session,
+        event.generation_epoch,
+        TASK_BUDGET_MS,
+        json!({}),
+        Vec::new(),
+        Instant::now() + Duration::from_millis(u64::from(TASK_BUDGET_MS)),
+        Arc::new(AtomicBool::new(false)),
+        rehearsal.now_ms,
+    );
+    let mut lane = PlaybackLane::new(&LaneSpec {
+        output_id: &render.output_id,
+        utterance_id: &event.utterance_id,
+        sample_rate: render.sample_rate,
+        audio_water_ms: AUDIO_WATER_MS,
+        expected_samples: total,
+        expected_frames,
+    })
+    .map_err(|error| format!("playback lane rejected the utterance: {error:?}"))?;
+    let mut stream = render.avatar.stream(&ctx, cue).map_err(contract_detail)?;
+    let frame_ref = format!("engine-rehearsal:{}", event.event_id);
+    let mut consumed = 0u64;
+    let mut seq = 0u32;
+    let mut frames = 0u32;
+    while consumed < total {
+        let end = frame_boundary(seq + 1, render.sample_rate, render.fps_num, render.fps_den);
+        if end <= consumed {
+            return Err("frame boundary did not advance".into());
+        }
+        let take = (end - consumed).min(total - consumed);
+        let eos = consumed + take >= total;
+        let block = AudioBlock {
+            session_id: rehearsal.gate.session.clone(),
+            utterance_id: event.utterance_id.clone(),
+            generation_epoch: event.generation_epoch,
+            seq,
+            sample_rate: render.sample_rate,
+            channels: 1,
+            format: SampleFormat::F32,
+            sample_start: consumed,
+            sample_count: take as u32,
+            end_of_stream: eos,
+        };
+        let slice = &speech.pcm[consumed as usize..(consumed + take) as usize];
+        stream
+            .push(&ctx, &render.grants, block.clone(), slice)
+            .map_err(contract_detail)?;
+        lane.push_audio(&block)
+            .map_err(|error| format!("playback lane rejected the audio block: {error:?}"))?;
+        if let Some(frame) = stream
+            .next_frame(&ctx, &render.grants, &frame_ref)
+            .map_err(contract_detail)?
+        {
+            // The renderer numbers frames from zero; the lane numbers them from
+            // one. The conversion is checked rather than assumed: a stream that
+            // skipped, repeated or reordered a frame must fail the run instead
+            // of silently advancing the video water level.
+            if frame.metadata.frame_seq != u64::from(frames) {
+                return Err(format!(
+                    "renderer frame sequence {} is not contiguous at {frames}",
+                    frame.metadata.frame_seq
+                ));
+            }
+            frames += 1;
+            lane.push_frame(frames)
+                .map_err(|error| format!("playback lane rejected frame {frames}: {error:?}"))?;
+        }
+        consumed += take;
+        seq += 1;
+    }
+    if frames != expected_frames {
+        return Err(format!(
+            "declared {expected_frames} frames but the renderer produced {frames}"
+        ));
+    }
+    lane.commit(rehearsal.now_ms, rehearsal.now_ms)
+        .map_err(|error| format!("playback lane commit rejected: {error:?}"))?;
+    if !lane.committed() {
+        return Ok(PlaybackOutcome {
+            frames,
+            state: playback_state_name(lane.state()),
+            rejected: 0,
+            stage: "timeline_not_committed",
+        });
+    }
+    let report = rehearse(render.playback, &mut lane);
+    let stage = if report.completed {
+        "played"
+    } else {
+        match render.playback {
+            RehearsalSink::Partial | RehearsalSink::Complete => "playback_incomplete",
+            RehearsalSink::Invalid => "playback_invalid",
+            RehearsalSink::Cancelled => "playback_cancelled",
+        }
+    };
+    Ok(PlaybackOutcome {
+        frames,
+        state: playback_state_name(lane.state()),
+        rejected: report.rejected,
+        stage,
+    })
+}
+
+/// Runs the metered synthesis seam over the approval-bound cue text. The stub's
+/// declared sample count is the total a complete acknowledgement must match, so
+/// a synthesizer that disagrees with it is a defect rather than a variation.
+fn synthesize(
+    rehearsal: &Rehearsal<'_>,
+    event: &ManualEvent,
+    cue: &PerformanceCue,
+    budget_ms: u64,
+    render: &RenderLane,
+    injection: Injection,
+    gateway: &mut dyn UsageGateway,
+) -> Result<SpeechResponse, ProviderError> {
+    let request = SpeechRequest {
+        request_id: format!("{}-tts", event.event_id),
+        provider_ref: rehearsal.provider_ref.into(),
+        session_id: rehearsal.gate.session.clone(),
+        utterance_id: event.utterance_id.clone(),
+        generation_epoch: event.generation_epoch,
+        text: cue.speech_text.clone(),
+        sample_rate: render.sample_rate,
+        voice_ref: render.voice_ref.clone(),
+        remaining_budget_ms: budget_ms,
+        cancelled: false,
+    };
+    let expected = RehearsalSpeechSynthesizer::sample_count(&request.text, request.sample_rate);
+    let mut stub = RehearsalSpeechSynthesizer::new();
+    let mut failing = FailingSpeechSynthesizer;
+    let synthesizer: &mut dyn SpeechSynthesizer = if injection == Injection::Speech {
+        &mut failing
+    } else {
+        &mut stub
+    };
+    let response = synthesize_with_budget(
+        synthesizer,
+        gateway,
+        usage_entry_tts(rehearsal, event),
+        &request,
+        rehearsal.price_revision,
+    )?;
+    if response.pcm.len() != expected {
+        return Err(ProviderError::invalid_argument(
+            "rehearsal synthesis disagreed with its declared sample count",
+        ));
+    }
+    Ok(response)
+}
+
+fn contract_detail(error: nai_contracts::v1::ContractError) -> String {
+    format!("code {}: {}", error.code, error.message)
 }
 
 /// Runs the metered generation seam. The generator is pure; reservation,
@@ -1051,11 +1539,14 @@ fn budget_gateway(
     let ceiling = Ceiling {
         cost_minor: 0,
         units: [
-            ("requests".to_string(), QUEUE_CAPACITY as u64),
+            // One text call plus one synthesis call per event.
+            ("requests".to_string(), QUEUE_CAPACITY as u64 * 4),
             ("tokens".to_string(), 1_000_000u64),
             ("prompt_tokens".to_string(), 1_000_000u64),
             ("completion_tokens".to_string(), 1_000_000u64),
             ("total_tokens".to_string(), 1_000_000u64),
+            ("characters".to_string(), 1_000_000u64),
+            ("audio_seconds".to_string(), 1_000_000u64),
         ]
         .into(),
         concurrent: [("provider_slots".to_string(), 1u64)].into(),
@@ -1103,6 +1594,39 @@ impl TextGenerator for FailingTextGenerator {
     }
 }
 
+/// The synthesis usage entry, reserved before the seam is called. The unit
+/// vocabulary is the provider layer's own, so the charge is comparable with a
+/// real TTS adapter's.
+fn usage_entry_tts(rehearsal: &Rehearsal<'_>, event: &ManualEvent) -> UsageLedgerEntry {
+    UsageLedgerEntry {
+        workspace_id: rehearsal.gate.workspace.clone(),
+        session_id: rehearsal.gate.session.clone(),
+        provider_ref: rehearsal.provider_ref.into(),
+        request_id: format!("{}-tts", event.event_id),
+        generation_epoch: event.generation_epoch,
+        estimate: Some(BudgetCharge {
+            currency: "CNY".into(),
+            cost_minor: 0,
+            units: BTreeMap::from([
+                ("requests".to_string(), 1u64),
+                ("audio_seconds".to_string(), 8u64),
+            ]),
+            price_revision: rehearsal.price_revision.into(),
+        }),
+        state: BillingState::Reserved as i32,
+        ..Default::default()
+    }
+}
+
+/// A synthesizer that always fails. Used only by the `--inject speech` drill to
+/// prove the ordered halt runs when the speech stage fails.
+struct FailingSpeechSynthesizer;
+impl SpeechSynthesizer for FailingSpeechSynthesizer {
+    fn synthesize(&mut self, _request: &SpeechRequest) -> Result<SpeechResponse, ProviderError> {
+        Err(ProviderError::unavailable("injected synthesis failure"))
+    }
+}
+
 /// Runs the full rehearsal pipeline against the live composition. On a stage
 /// failure it applies the ordered halt (P0 mute -> revoke with epoch increment
 /// -> critical log) and returns an error, so the engine exits without a success
@@ -1110,6 +1634,14 @@ impl TextGenerator for FailingTextGenerator {
 pub fn run(shared: &Arc<Mutex<Composition>>, config: &PipelineConfig) -> Result<Value, String> {
     let script = load_script(&config.script)?;
     let index = index_build(&script.knowledge)?;
+    // The render lane is admitted once, before any session state is driven: an
+    // unlicensed or corrupt avatar closure must fail the run, not an event.
+    let render = render_lane(&script)?;
+    // An injection that could never fire is refused rather than silently
+    // ignored: the drill must always be able to prove what it claims.
+    if config.injection == Injection::Speech && script.render.is_none() {
+        return Err("--inject speech requires a script with a render closure".into());
+    }
 
     // The script is scoped to one session/workspace pair, checked before any
     // state is driven: a candidate hash is only meaningful inside its scope.
@@ -1145,6 +1677,7 @@ pub fn run(shared: &Arc<Mutex<Composition>>, config: &PipelineConfig) -> Result<
         index: &index,
         docs: &script.knowledge,
         approvals: &script.approvals,
+        render: render.as_ref(),
         provider_ref: &config.provider_ref,
         price_revision: &config.price_revision,
         max_output_chars: config.max_output_chars,
@@ -1195,7 +1728,11 @@ pub fn run(shared: &Arc<Mutex<Composition>>, config: &PipelineConfig) -> Result<
     let chain_verified = verify_chain(shared)?;
     let generated = outcomes
         .iter()
-        .filter(|outcome| outcome.stage == "generated")
+        .filter(|outcome| !outcome.generated.is_empty())
+        .count();
+    let played = outcomes
+        .iter()
+        .filter(|outcome| outcome.stage == "played")
         .count();
     let blocked = outcomes
         .iter()
@@ -1206,11 +1743,21 @@ pub fn run(shared: &Arc<Mutex<Composition>>, config: &PipelineConfig) -> Result<
     let summary = json!({
         "pipeline": "engine-manual-event-pipeline",
         "generator": RehearsalTextGenerator::MODEL_REF,
+        "speech": render.as_ref().map(|_| RehearsalSpeechSynthesizer::MODEL_REF),
+        "renderer": render.as_ref().map(|_| RENDER_BINDING),
+        "playback_sink": render.as_ref().map(|_| RehearsalSink::OUTPUT_KIND),
+        "playback_scenario": render.as_ref().map(|lane| lane.playback.as_str()),
         "injection": config.injection.as_str(),
         "rehearsal": true,
         "real_provider": false,
+        "real_tts": false,
         "devices": false,
-        "playback_ack": false,
+        "frame_slot": false,
+        "keeper_consume": false,
+        // True only when every event that produced text also reached a verified
+        // actual-playback completion.
+        "playback_ack": generated > 0 && played == generated,
+        "delivery": if render.is_some() { "memory" } else { "none" },
         // The live gate every event was evaluated under.
         "session_lifecycle": gate.lifecycle(),
         "session_mode": gate.mode(),
@@ -1218,26 +1765,18 @@ pub fn run(shared: &Arc<Mutex<Composition>>, config: &PipelineConfig) -> Result<
         "session_state_revision": gate.state_revision,
         "duty_operator": script.session.operator,
         "retrieval_top_k": script.top_k,
-        // The chain stops at text: nothing was rendered, delivered or played.
+        // Frames exist in memory only: no slot, keeper, window or device output.
         "output_available": false,
         "events": outcomes.len(),
         "generated": generated,
+        "played": played,
         "blocked": blocked,
         "silent_or_unrouted": silent,
         "chain_verified": chain_verified,
         "replay_matched": replay_matched,
         "logged_entries": logged.len(),
         "digest": log_digest(&logged),
-        "outcomes": outcomes.iter().map(|outcome| json!({
-            "event_id": outcome.event_id,
-            "utterance_id": outcome.utterance_id,
-            "stage": outcome.stage,
-            "route": outcome.route,
-            "guard": outcome.guard,
-            "candidate_hash": outcome.candidate_hash,
-            "approval_id": outcome.approval_id,
-            "reason": outcome.reason,
-        })).collect::<Vec<_>>(),
+        "outcomes": outcomes.iter().map(outcome_summary).collect::<Vec<_>>(),
     });
     if !chain_verified || !replay_matched {
         return Err(format!(
@@ -1246,6 +1785,26 @@ pub fn run(shared: &Arc<Mutex<Composition>>, config: &PipelineConfig) -> Result<
     }
     println!("nai-engine pipeline: {summary}");
     Ok(summary)
+}
+
+/// One event's line in the printed summary.
+fn outcome_summary(outcome: &EventOutcome) -> Value {
+    json!({
+        "event_id": outcome.event_id,
+        "utterance_id": outcome.utterance_id,
+        "stage": outcome.stage,
+        "route": outcome.route,
+        "guard": outcome.guard,
+        "candidate_hash": outcome.candidate_hash,
+        "approval_id": outcome.approval_id,
+        "reason": outcome.reason,
+        "audio_samples": outcome.audio_samples,
+        "frames": outcome.frames,
+        "speech_model_ref": outcome.speech_model_ref,
+        "playback": outcome.playback,
+        "delivery": outcome.delivery,
+        "playback_rejected": outcome.playback_rejected,
+    })
 }
 
 /// A stable digest over the canonical log summaries, used for the cross-process
@@ -1315,16 +1874,26 @@ fn persist(
         "evidence": outcome.evidence,
         "canonical": outcome.canonical(),
         "rehearsal": true,
-        "delivery": "none",
+        "delivery": outcome.delivery,
+        "audio_samples": outcome.audio_samples,
+        "frames": outcome.frames,
+        "speech_model_ref": outcome.speech_model_ref,
+        "playback": outcome.playback,
+        "playback_rejected": outcome.playback_rejected,
     });
     if inject_storage_failure {
         // A payload larger than the store bound: the store rejects the write.
         payload["injected_padding"] = Value::String("x".repeat(OVERSIZED_PAYLOAD));
     }
-    let kind = if outcome.stage == "generated" {
-        DecisionKind::Synthesis
+    // Only a verified actual-playback completion is a `PlaybackAck`. An
+    // incomplete, invalid or cancelled playback produced text but did not play,
+    // so it stays a synthesis record rather than claiming the audience heard it.
+    let kind = if outcome.stage == "played" {
+        DecisionKind::PlaybackAck
     } else if outcome.stage.starts_with("guard_") {
         DecisionKind::Guard
+    } else if !outcome.generated.is_empty() {
+        DecisionKind::Synthesis
     } else {
         DecisionKind::Observation
     };
@@ -1620,5 +2189,100 @@ mod tests {
         value["session"]["duty_ttl_ms"] = json!(0);
         let error = load_script(&write_script("duty", &value)).unwrap_err();
         assert!(error.contains("duty_ttl_ms"), "got {error}");
+    }
+
+    fn render_block() -> Value {
+        json!({
+            "manifest": "manifest.json",
+            "config": "config.json",
+            "assets": [
+                {"id": "base", "path": "base.rgba"},
+                {"id": "closed", "path": "closed.rgba"},
+                {"id": "open", "path": "open.rgba"},
+            ],
+            "licenses": ["test-license"],
+            "voice_ref": "voice-rehearsal",
+            "output_id": "engine-rehearsal-out",
+            "playback": "complete",
+        })
+    }
+
+    #[test]
+    fn the_render_closure_is_optional_but_never_defaulted() {
+        // Absent: the chain honestly stops at text with no audio and no frames.
+        let value = script_json("manual", "assisted", &["running"]);
+        assert!(
+            load_script(&write_script("no-render", &value))
+                .unwrap()
+                .render
+                .is_none()
+        );
+
+        // Present and complete: relative paths resolve against the script.
+        let mut value = script_json("manual", "assisted", &["running"]);
+        value["render"] = render_block();
+        let script = load_script(&write_script("render", &value)).unwrap();
+        let render = script.render.as_ref().unwrap();
+        assert!(
+            std::path::Path::new(&render.manifest).is_absolute(),
+            "the loader must resolve the closure against the script directory"
+        );
+        assert_eq!(render.playback, "complete");
+        assert_eq!(render.assets.len(), 3);
+
+        let mut two_assets = value.clone();
+        two_assets["render"]["assets"] = json!([
+            {"id": "base", "path": "base.rgba"},
+            {"id": "open", "path": "open.rgba"}
+        ]);
+        assert!(
+            load_script(&write_script("render-assets", &two_assets))
+                .unwrap_err()
+                .contains("exactly three")
+        );
+
+        let mut duplicate = value.clone();
+        duplicate["render"]["assets"] = json!([
+            {"id": "base", "path": "base.rgba"},
+            {"id": "base", "path": "closed.rgba"},
+            {"id": "open", "path": "open.rgba"}
+        ]);
+        assert!(
+            load_script(&write_script("render-duplicate", &duplicate))
+                .unwrap_err()
+                .contains("duplicate render asset id")
+        );
+
+        let mut no_voice = value.clone();
+        no_voice["render"]["voice_ref"] = json!("");
+        assert!(
+            load_script(&write_script("render-voice", &no_voice))
+                .unwrap_err()
+                .contains("voice binding")
+        );
+
+        let mut no_output = value.clone();
+        no_output["render"]["output_id"] = json!("");
+        assert!(
+            load_script(&write_script("render-output", &no_output))
+                .unwrap_err()
+                .contains("output identity")
+        );
+
+        let mut no_license = value.clone();
+        no_license["render"]["licenses"] = json!([]);
+        assert!(
+            load_script(&write_script("render-license", &no_license))
+                .unwrap_err()
+                .contains("license reference")
+        );
+
+        let mut bad_scenario = value.clone();
+        bad_scenario["render"]["playback"] = json!("maybe");
+        assert!(
+            load_script(&write_script("render-scenario", &bad_scenario))
+                .unwrap_err()
+                .contains("unknown playback scenario")
+        );
     }
 }

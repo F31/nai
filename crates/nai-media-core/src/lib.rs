@@ -1,9 +1,14 @@
 //! Portable media authorization and media-basics timeline. No PCM/device
 //! implementation or hardware ACK synthesis.
 pub mod frame_slots;
+pub mod playback;
 pub mod timeline;
 use nai_contracts::v1::{
     Approval, OutputAck, PerformanceCue, PlaybackLease, RevisionRef, SessionMode,
+};
+pub use playback::{
+    LaneSpec, MAX_FRAMES, PlaybackLane, RehearsalSink, SinkReport, frame_boundary, frame_count,
+    rehearse,
 };
 use std::{
     collections::VecDeque,
@@ -13,6 +18,7 @@ use std::{
     },
     time::{Duration, Instant},
 };
+pub use timeline::ack::{AckTracker, PlaybackState};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MediaError {

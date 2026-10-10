@@ -2,7 +2,7 @@
 
 ```bash
 cargo xtask test --suite provider
-cargo test -p nai-provider-core --offline    # 含 text 接缝与 rehearsal 桩单测
+cargo test -p nai-provider-core --offline    # 含 text/speech 接缝与 rehearsal 桩单测
 cargo xtask check --profile portable
 # 真实冒烟（有凭据时）：OPENAI_API_KEY=... cargo run -p nai-provider-core --example openai_smoke
 ```
@@ -62,6 +62,30 @@ characters/audio_seconds/images；未知/浮点/零单位拒绝。requests 是�
 **rehearsal-only 确定性桩**：`RehearsalTextGenerator`（`model_ref = "rehearsal-deterministic-v1"`）
 是纯计算、无网络、无凭据、可复现的桩，只在演练与测试路径显式构造。它 MUST NOT 用于真实集成、付费调用
 或任何认证结论，也 MUST NOT 取代 API 故障处理；真实生成仍走 `OpenAiAdapter` 的 llm_stream。
+
+## 语音合成接缝（SpeechSynthesizer）与 rehearsal 桩
+
+`nai-provider-core::speech` 暴露与文本接缝**同纪律**的一次合成接缝：`SpeechRequest`
+（request/provider/session/utterance 标识、`generation_epoch`、文本、目标采样率、voice 绑定、剩余预算、
+取消标志）与 `SpeechResponse`（PCM、采样率、模型标识、usage）。`validate()` 拒绝空文本/空 voice、
+不支持的采样率（`8000..=48000`）、超长文本（`MAX_SPEECH_CHARS = 4096`）与已取消请求；
+`remaining_budget_ms == 0` 返回 DEADLINE_EXCEEDED。响应校验采样率一致、长度有界
+（`MAX_SPEECH_SAMPLES = 240_000`）、样本有限且 `|s| <= 1.0`。
+
+`synthesize_with_budget(synthesizer, gateway, entry, request, price_revision)` 与文本路径同形：
+reserve → dispatch → 合成 → 校验响应 → `usage_charge` → `finish`；已派发请求返回 `Already`（Conflict）
+而**不重发**。既有 HTTP 适配器与 `UsageGateway` 行为不变。
+
+**rehearsal-only 确定性语音桩**：`RehearsalSpeechSynthesizer`
+（`model_ref = "rehearsal-speech-deterministic-v1"`）是纯计算、无网络、无凭据、可复现的桩。它的样本
+总数**只由文本与采样率决定**——`clamp(字符数 × 60ms, 400ms, 5000ms) × sample_rate / 1000`——因此
+「预期样本总数」可以在合成之前独立算出，播放完成 ACK 才能被核验，而不是回读运行结果自证。
+波形由文本的 FNV-1a 种子经 xorshift 生成（幅度 0.8）。该桩 MUST NOT 用于真实集成、付费调用或任何
+认证结论，也 MUST NOT 取代 TTS 故障处理；真实 TTS 仍走 `OpenAiAdapter` 的 tts_stream。
+
+```bash
+cargo test -p nai-provider-core --offline    # text 6 项 + speech 5 项 + usage 等，共 11 项单测
+```
 
 ## 适配器与 Provider 隔离
 

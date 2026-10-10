@@ -33,6 +33,25 @@ cargo xtask check --profile portable
 集成测试 `tests/timeline.rs` 覆盖 16k TTS → 48k 输出 → 双水位 commit → 实际 ACK → 连续录制全程。
 真实 Windows 窗口/音轨、虚拟摄像头/音频设备与录制文件装配仍为设备里程碑，见 [D11 报告](reports/2026-10-08-d11-media-basics.md)。
 
+## 演练播放通道（ADR 0023）
+
+`nai-media-core::playback` 把「提交」与「播放完成」在同一句上分开记账，供 engine 演练链路使用：
+
+- `frame_boundary(seq, rate, fps_num, fps_den)` 与软件渲染器**同一套整数算术**（含截断），
+  `frame_count(samples, …)` 由样本总数推出帧总数，因此帧总数是**声明值**而不是回读值。
+- `PlaybackLane`：`push_audio` 计入音频水位（转交 `UtteranceTimeline`），`push_frame(seq)` 计入视频水位
+  （1 基、必须严格连续且不超过声明帧数）；`commit` 只在双水位达到时为真，且**提交不等于播放完成**。
+- `acknowledge(&OutputAck)` 绑定 `(output_id, utterance_id)` 与**预期样本总数**：未提交即声明进度/完成 →
+  `InvalidAck`；身份或样本数不符 → 拒绝；`RehearsalSink::Cancelled` 之后任何 ACK 都不能再完成（避免跨故障
+  重复播报）。`rehearse(sink, lane)` 驱动 `complete|partial|invalid|cancelled` 四个**正常结局**（非故障注入）
+  并返回 `SinkReport { accepted, rejected, completed }`。
+- 帧总数上界 `MAX_FRAMES = 4096`：更长的一句话必须由调用方分块，不得声明成无界区间。
+
+`RehearsalSink` 的 `OUTPUT_KIND = "rehearsal-sink"` 是**软件替身**，不是设备：它不产生任何输出、不证明
+任何硬件行为。8 项单测（`cargo test -p nai-media-core --offline`，共 28 项）覆盖「帧总数在任何帧存在之前
+就已声明」「仅音频水位不提交」「提交不是完成、部分进度永不完成」「只有匹配的完整 ACK 才完成」「矛盾 ACK
+被拒且不完成」「已取消的通道永不完成」「未提交即报进度被拒」「水位后迟到提交幂等且报 Late」。
+
 ## 输出看门狗演练（W05 前置）
 
 `apps/output-keeper --watchdog-drill <session> <trusted-floor>` 是显式、仅演练的独立进程（详见

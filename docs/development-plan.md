@@ -130,6 +130,31 @@ workspace 测试、check-deps(17包)、portable(fmt/clippy)、registry 通过；
 R07 取得桩回放判据、S01 补真实进程链路证据，均保持 implemented 不自动升级；真实 Provider、播放 ACK、设备与 Windows 认证未做。
 下一主线：`engine-text-to-playback-ack`（TTS → 2D → 播放 ACK 段）。
 
+本轮 `engine-text-to-playback-ack` 已实现/实测（ADR 0023）：链路终点从「文本」延到
+「文本 → 语音合成 → 有界 `AudioBlock` 流 → 真实 RGBA 帧 → 双水位提交 → 实际播放完成 ACK」。
+`nai-provider-core` 新增 `SpeechSynthesizer` 接缝与 **rehearsal-only 确定性语音桩**
+（`rehearsal-speech-deterministic-v1`，样本总数只由文本与采样率决定，因此「预期样本总数」可在合成前
+独立算出）；`nai-media-core` 新增 `playback` 播放通道，把「提交」与「播放完成」在类型与日志上分开，
+帧总数与渲染器同一套整数算术；`apps/engine` 新增可选 `render` 闭包段（缺失即链路止于文本且行为不变，
+给出即准入真实 2D 资产）。
+只有「已提交 + `actual_local_playback_completed` + `played_sample_count = 预期样本总数」的 ACK 才记
+`DecisionKind::PlaybackAck`；`partial`/`invalid`/`cancelled` 三个正常结局不记该 kind，摘要如实标
+`playback_ack=false`；摘要恒标 `devices/output_available/real_tts/frame_slot/keeper_consume=false`，
+帧只存在于内存（`delivery=memory`），演练播放槽是**软件替身**而非设备。
+逐条门控：workspace 测试 317 项通过（13 项既有 Windows 平台差异失败，均不在本轮改动文件）、
+check-deps(17 包)、registry、fmt、workspace clippy `-D warnings` 均通过；`cargo xtask check --profile
+portable` 在本机**无法整体通过**（两个独立原因，见报告），故按其四步等价逐条单独执行并记录；
+`schema --check`/`test --suite contracts` 仍因本机 node 无法 spawn 子进程（EBUSY）未执行（本轮未改任何
+protobuf/JSON schema/OpenAPI，catalog 通过）。
+见 [引擎指南](engine.md)、[媒体指南](media.md)、[Provider 指南](provider.md)、
+[ADR 0023](adr/0023-engine-text-to-playback-ack-boundary.md) 与 [报告](reports/2026-10-10-engine-text-to-playback-ack.md)。
+已归档为 `openspec/changes/archive/2026-10-10-engine-text-to-playback-ack/`，任务全数完成；
+24 个主规格与 27 项归档校验通过。
+R07 补「`PlaybackAck` 条目进入哈希链」证据、A01 补「文本→播放完成」链路证据，**均保持 implemented
+不升级**（真实 TTS 与设备/硬件播放 ACK 仍缺）。
+下一主线：真实 TTS/Provider 付费链路或帧槽位与 keeper 生产接线（`delivery` 从 `memory` 变为真实输出），
+以及 protected IPC/信号停机替换 halt 文件；两者都需先明确设备与凭据条件。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |
@@ -166,14 +191,14 @@ D 表是 V3.5 追溯；自 ADR 0015 起开发按 V3.6 切片发布线（Slice-0/
 | W00 | 工程基线、xtask、契约管线、ADR 模板 | A04 | 已实现/实测（D01–D02 范围） |
 | W01 | 契约 v1 冻结与三语言生成 | 生成无 diff | 已实现/实测（D02；provisional 状态待补） |
 | W02 | 内核骨架与会话租约 | S03；值守租约 | 值守与控制撤权门控已实测；定时驱动/独立媒体接线待runtime |
-| W03 | 存储与决策日志 | R04、R07 | 哈希链及原子有序冲刷/critical优先已实测；R07 桩 Provider 回放已在真实引擎链路实测（见 W10 行）；播放 ACK 生产端仍待 |
+| W03 | 存储与决策日志 | R04、R07 | 哈希链及原子有序冲刷/critical优先已实测；R07 桩 Provider 回放已在真实引擎链路实测（见 W10 行）；`PlaybackAck` 条目已进入哈希链（演练替身），真实设备播放 ACK 生产端仍待 |
 | W04 | 宿主与 IPC | S11、A06 | 已实现/实测（D05）；wasm/remote 只留契约 |
 | W05 | output-keeper | R01、R03、S12 | 看门狗演练进程已实现/实测：强杀源约10ms撤权、停止续租578ms到期、partial卡读250ms期限、keeper重启需更高epoch floor；帧槽位所有权与tmpfs-file传输见W06行；引擎broker授权keeper只读FD单帧消费与待机见W10行；正式窗口/音轨/媒体协调和P0设备独立通道未开始 | [报告](reports/2026-10-09-engine-broker-frame-delivery.md) |
 | W06 | 2D render-worker | A01 | 2D软件像素生产核心与帧槽位所有权/tmpfs-file传输已实现/实测；引擎经broker声明spawn pid并继承写FD完成真实单帧见W10行；独立worker/keeper装配、protected handle broker与Windows帧率未完成 | [报告](reports/2026-10-09-w05-w06-frame-slots.md) |
-| W07 | Provider 核心与适配器 | A02 前置 | 已实现/实测（D08）；新增 `TextGenerator` 接缝与 rehearsal-only 确定性桩（W10 A1）；真实付费生成 Blocked |
+| W07 | Provider 核心与适配器 | A02 前置 | 已实现/实测（D08）；新增 `TextGenerator` 接缝与 rehearsal-only 确定性桩（W10 A1），以及 `SpeechSynthesizer` 接缝与 rehearsal-only 语音桩（W10 A2）；真实付费生成与真实 TTS Blocked |
 | W08 | 默认智能体、守门与手工平台 | S01–S04 | 已实现/实测（D10/D13） |
 | W09 | 最小桌面控制台 | S02、R01、O02 | loopback 控制与审批 API 子切片已实现/实测；审批 GUI/真实候选来源/完整预检与生产 root 接线未开始 |
-| W10 | 集成与故障注入 | R01–R03、R07、A01 | 引擎真实装配：控制面+监督+broker/keeper单帧投递、强杀撤权、预热期halt不提交已实测；手工事件链路（归一化/检索→决策→守门→生成→决策日志哈希链，同事件同桩重放一致，守门缺失/陈旧epoch/注入失败不外发）以真实 engine 进程实测，见 [报告](reports/2026-10-10-engine-manual-event-pipeline.md)；全链路播放ACK与正式IPC未做 | [报告](reports/2026-10-09-engine-broker-frame-delivery.md) |
+| W10 | 集成与故障注入 | R01–R03、R07、A01 | 引擎真实装配：控制面+监督+broker/keeper单帧投递、强杀撤权、预热期halt不提交已实测；手工事件链路（归一化/检索→决策→守门→生成→决策日志哈希链，同事件同桩重放一致，守门缺失/陈旧epoch/注入失败不外发）以真实 engine 进程实测，见 [报告](reports/2026-10-10-engine-manual-event-pipeline.md)；链路终点已延到「语音合成→真实RGBA帧→双水位提交→播放完成ACK」（仅完整完成落 `PlaybackAck`，演练软件替身非设备），见 [报告](reports/2026-10-10-engine-text-to-playback-ack.md)；真实 TTS、设备/硬件播放ACK与正式IPC未做 | [报告](reports/2026-10-10-engine-text-to-playback-ack.md) |
 
 W11 及之后（R1 工作项）在对应切片启动时建任务卡；本表不预建未到切片的目录或空占位。
 
