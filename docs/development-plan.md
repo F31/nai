@@ -482,11 +482,34 @@ W38 桌面审批面与 §30.1 的 UI 层已实现/实测：W09 交付了审批 *
 （**计数勘误**：此前报告的「82 个测试目标」把 cargo 的 `Running ...nai-xtask.exe check --profile portable` 包装行多算了一个，
 精确重数为 **81（64 Running + 17 Doc-tests）**；`675 passed / 0 failed` 不变。W36/W37 报告已加注记。）
 
-下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03、P01 的判定骨架与 O04 的设备侧、W36 的真实链路接入纪律、W37 的线上形状修正与
-W38 的桌面审批面/UI 层）；轨道二的自备资源**已有真实凭据落地**（文本／语音两条真实链路经本栈走通并产出真值证据，文本模型标准化为 `agnes-2.5-flash`）；剩余 **O01**（需演示包与约 10 分钟首句演练、约 30 分钟真实输出验证）、
+W39 攻击者可控输入面的随机输入测试已实现/实测（S11 的「模糊」这一半）：S11 验收名是「IPC **模糊**与路径穿越」，
+状态 `tested`，而同一行 notes 写着「**模糊测试待建**」，全仓库 `grep -ri fuzz` **零命中**——验收名里的一半没实现却被标成 `tested`，
+属**登记与事实不一致**，比缺功能更危险。审计发现四个攻击者可控入口中**两个此前零测试**（`Envelope`/`CapabilityInvocation`/
+`CancelRequest` 解码；`Handshake` 畸形 body），路径面只有 1 项手写用例，且「**撤销/期限先于内容解释**」的顺序不变式
+此前只用**一个特定输入**钉过。本轮落 `crates/nai-plugin-hosts/tests/untrusted_input.rs`（**8 项**，**实现一行未改**、**零新增依赖**）：
+断言**全域性与有界性**（任意字节 ⇒ `Ok` 或具名 `ErrorCode`、不 panic、不按输入无界分配；超长长度前缀在分配前拒；
+取消/期限对**任意**输入都优先）与两条结构性质（随机 body 往返逐字节相同；**被拒的帧终止连接**，其后的合法帧不被继续服务）。
+**非空洞性守卫**是关键：语料**结构化**构造危险形状并统计**实际命中**，计数为零即**测试失败**；守卫做过**反向自检**
+（阈值调到不可能命中 ⇒ 两个测试确实失败并打印计数，随后恢复）。实测命中：帧流 `bodies=683/clean_eof=179/oversized=1982/truncated=1935`；
+结构化 Envelope `invocation_decoded=1569/version_incompatible=601/invalid_argument=846/denied_or_absent=225/completed=185/cancel_acks=191`；
+路径 `rejected=1927/accepted=121/traversal_rejected=651`。过程中 harness 逼出两处**真实语义**：**①** ACL 拒绝与能力缺失是
+**result 级**错误——`dispatch` 把 `CapabilityResult{end:StreamError}` 写回对端后返回 `Ok(())`，故 `serve` 返回 `Ok` 不代表放行，
+**只看返回值会把 225 次拒绝误计为成功**（harness 因此改为解析宿主写出的帧，并断言宿主只输出良构帧）；**②** 空 payload 是**合法**的
+`CancelRequest`（protobuf 默认值），「看起来是垃圾」的帧会走到取消路径并收到 `CancelAck`。**口径**：这不是覆盖率导向模糊测试
+（无 cargo-fuzz/libFuzzer、无 nightly、无独立语料目录），一律称「随机输入测试」；**阴性结果不是安全证明**——
+本轮**未发现**缺陷，**不**据此宣称不存在缺陷；不新增仓库级证据目录（§30.1 未为模糊测试指定，per-crate `tests/` 是既有惯例）。
+实测：`cargo test -p nai-plugin-hosts --offline` 6+3+8 全通过（约 0.5s）；`check --secrets/--registry/check-deps/--profile portable` 全通过。
+见 [报告](reports/2026-10-11-w39-ipc-untrusted-input.md) 与 [宿主/IPC 指南](hosts.md)。未做边界：不测传输层对端身份
+（`SO_PEERCRED` 在钉住 rustc 上仍不稳定、Windows Named Pipe peer PID/AppContainer/Job Object 未实测，Blocked）；
+随机语料计数**不**是分支覆盖证据。
+
+下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03、P01 的判定骨架与 O04 的设备侧、W36 的真实链路接入纪律、W37 的线上形状修正、
+W38 的桌面审批面/UI 层与 W39 的攻击者可控输入面随机测试，S11 的登记缺口已补）；轨道二的自备资源**已有真实凭据落地**（文本／语音两条真实链路经本栈走通并产出真值证据，文本模型标准化为 `agnes-2.5-flash`）；剩余 **O01**（需演示包与约 10 分钟首句演练、约 30 分钟真实输出验证）、
 **O02/O05**（UI 验收，按既有惯例 `pending`）与阻塞项 **B01**（题集与完整评估；真实模型已可用，缺 100 题集内容）、**B02/D12**（模型与目标机证据）、
 **O03**（M0b 定案与真机 S09）、**O04**（干净 Windows 安装、真实音频设备变更与真实回退；安装侧已由 `nai-upgrade-core` 覆盖）、
 **P01**（官方 SDK 与生产宿主；判定机制已由 W35 交付，D13）均需外部条件。
+仓库内仍可控的剩余缺口：**S08**（workspace SBOM 未生成；插件/供应链其余部分已实现）、**把前端 typecheck/build 纳入 xtask 门控**
+（目前为独立命令，未在 `check --profile portable` 内）。
 
 ## 任务依赖与状态
 
@@ -525,7 +548,7 @@ D 表是 V3.5 追溯；自 ADR 0015 起开发按 V3.6 切片发布线（Slice-0/
 | W01 | 契约 v1 冻结与三语言生成 | 生成无 diff | 已实现/实测（D02；provisional 状态待补） |
 | W02 | 内核骨架与会话租约 | S03；值守租约 | 值守与控制撤权门控已实测；定时驱动/独立媒体接线待runtime |
 | W03 | 存储与决策日志 | R04、R07 | 哈希链及原子有序冲刷/critical优先已实测；R07 桩 Provider 回放已在真实引擎链路实测（见 W10 行）；`PlaybackAck` 条目已进入哈希链（演练替身），真实设备播放 ACK 生产端仍待 |
-| W04 | 宿主与 IPC | S11、A06 | 已实现/实测（D05）；wasm/remote 只留契约 |
+| W04 | 宿主与 IPC | S11、A06 | 已实现/实测（D05）；wasm/remote 只留契约；W39 补齐 S11 的「模糊」一半（随机输入测试 8 项、实现零改动） |
 | W05 | output-keeper | R01、R03、S12 | 看门狗演练进程已实现/实测：强杀源约10ms撤权、停止续租578ms到期、partial卡读250ms期限、keeper重启需更高epoch floor；帧槽位所有权与tmpfs-file传输见W06行；引擎broker授权keeper只读FD单帧消费与待机见W10行；正式窗口/音轨/媒体协调和P0设备独立通道未开始 | [报告](reports/2026-10-09-engine-broker-frame-delivery.md) |
 | W06 | 2D render-worker | A01 | 2D软件像素生产核心与帧槽位所有权/tmpfs-file传输已实现/实测；引擎经broker声明spawn pid并继承写FD完成真实单帧见W10行；独立worker/keeper装配、protected handle broker与Windows帧率未完成 | [报告](reports/2026-10-09-w05-w06-frame-slots.md) |
 | W07 | Provider 核心与适配器 | A02 前置 | 已实现/实测（D08）；新增 `TextGenerator` 接缝与 rehearsal-only 确定性桩（W10 A1），以及 `SpeechSynthesizer` 接缝与 rehearsal-only 语音桩（W10 A2）；真实付费生成与真实 TTS Blocked |

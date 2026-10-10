@@ -47,6 +47,40 @@ TcpStream 回环（可移植）与 UnixStream 对（unix，含 OS peer 凭据）
   `CAPABILITY_NOT_READY`（Unavailable）。不可信原生子进程必须在 AppContainer/受限身份
   等经认证边界运行并验证文件/网络/凭据限制；无法满足则拒绝，不使用同用户进程冒充沙箱。
 
+## 随机输入测试（S11「模糊」，W39）
+
+`crates/nai-plugin-hosts/tests/untrusted_input.rs` 用**确定性种子**的随机语料打击**攻击者可控**的输入面：
+帧长度前缀、握手 body、Envelope/CapabilityInvocation/CancelRequest 解码，以及 `verify_within_root` 的路径字符串。
+
+它与上面的定向测试是**两件事**：定向测试证明「**已想到的**形状被正确处理」，随机测试断言**全域性与有界性**——
+任意字节只产生 `Ok` 或**具名 `ErrorCode`**，不 panic、不按输入无界分配；并且撤销/期限**先于**内容解释。
+
+三点必须说清楚：
+
+- **这不是覆盖率导向的模糊测试。** 没有 `cargo-fuzz`/libFuzzer、不用 nightly、**零新增依赖**；
+  探索能力显著弱于真 fuzzer。名字骗人就是证据骗人，故一律称「随机输入测试」。
+- **阴性结果不是安全证明。** 本 harness 未发现缺陷，只说明「这批语料没打出来」，**不**说明「不存在缺陷」。
+- **非空洞性守卫是它成立的前提。** 生成器若只产合法输入，全部断言都会通过而什么都没证明。
+  故每类语料都统计**实际命中**的形状与错误码，计数为零即**测试失败**。已实测的命中计数（固定种子）：
+
+  | 语料 | 命中 |
+  | --- | --- |
+  | 帧流（4096 次） | `bodies=683`、`clean_eof=179`、`oversized=1982`、`truncated=1935` |
+  | 结构化 Envelope（2048 次） | `invocation_decoded=1569`、`version_incompatible=601`、`invalid_argument=846`、`denied_or_absent=225`、`completed=185`、`cancel_acks=191` |
+  | 路径串（2048 次） | `rejected=1927`、`accepted=121`、`traversal_rejected=651` |
+
+  守卫本身做过**反向自检**：把阈值调到不可能命中，两个测试**确实失败**并打印计数，随后恢复。
+
+一个容易读错的语义（本轮踩到）：**ACL 拒绝与能力缺失是「写到对端的 result 级错误」，不是连接级错误**——
+`CapabilityHost::dispatch` 写完 `CapabilityResult{end: StreamError, error: PermissionDenied}` 后返回 `Ok(())`，
+所以 `serve` 返回 `Ok(())` 并不等于「被放行」。只看 `serve` 的返回值会把拒绝**误计为成功**。
+harness 因此解析宿主**写出的帧**（并顺带断言宿主只输出良构帧），才能看到这 225 次拒绝。
+
+```bash
+cargo test -p nai-plugin-hosts --offline
+# 8 项随机输入测试 + 6 项 lib 单测 + 3 项 e2e；实测约 0.5s，不构成门控瓶颈
+```
+
 ## 当前边界
 
 Linux/WSL 已实测帧、握手、ACL、端到端调用、路径守卫与环境清理。Windows 命名管道

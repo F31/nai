@@ -542,3 +542,31 @@ W38 桌面审批面与 §30.1 的 UI 层已实现/实测：W09 交付了审批 *
 （**计数勘误**：此前报告的「82 个测试目标（65 Running + 17 Doc-tests）」把 cargo 打印的 `Running ...nai-xtask.exe check --profile portable`
 包装行多算了一个，它不是测试目标；按 `Running <test target>` 精确重数为 **81（64 Running + 17 Doc-tests）**，`675 passed / 0 failed` 不变。
 W36/W37 报告已加注记、未改写正文。）
+
+W39 攻击者可控输入面的随机输入测试已实现/实测（S11 的「模糊」这一半）：S11 验收名是「IPC **模糊**与路径穿越」，
+状态 `tested`，而同一行 notes 写着「**模糊测试待建**」，全仓库 `grep -ri fuzz` **零命中**——验收名里的一半没实现却被标成 `tested`，
+属**登记与事实不一致**，比缺功能更危险（读者会据此以为攻击者可控输入的健壮性已被验证）。审计发现四个攻击者可控入口中
+**两个此前零测试**：`Envelope`/`CapabilityInvocation`/`CancelRequest` 解码（`host.rs:154,181,195`）与 `Handshake` 畸形 body
+（`handshake.rs:33`）；路径面只有 1 项手写用例（`boundary.rs:119`）；且「**撤销/期限先于内容解释**」的顺序不变式此前只用
+**一个特定输入**钉过。本轮落 `crates/nai-plugin-hosts/tests/untrusted_input.rs`（**8 项**，**实现一行未改**、**零新增依赖**，
+自带 splitmix64 固定种子）：断言**全域性与有界性**——任意字节 ⇒ `Ok` 或**具名 `ErrorCode`**、不 panic、不按输入无界分配
+（超长长度前缀**在分配前**拒）、取消/期限对**任意**输入都优先——外加随机 body 往返逐字节相同、**被拒的帧终止连接**
+（其后的合法帧不被继续服务）。**非空洞性守卫是关键**：生成器只产合法输入会让全部断言通过而什么都没证明，故语料
+**结构化**构造危险形状（`0xFFFFFFFF` 长度前缀、截断 body、合法帧后跟垃圾、**合法 Envelope 头 + 任意 `message_type`/payload**、
+由 `{正常段,"..",".",空段,长段,unicode}` 组合的路径）并统计**实际命中**，计数为零即**测试失败**；守卫做过**反向自检**
+（阈值调到不可能命中 ⇒ 帧流与路径两个测试**确实失败**并打印计数，随后恢复）。实测命中：帧流
+`bodies=683/clean_eof=179/oversized=1982/truncated=1935`；结构化 Envelope
+`invocation_decoded=1569/version_incompatible=601/invalid_argument=846/denied_or_absent=225/completed=185/cancel_acks=191`；
+路径 `rejected=1927/accepted=121/traversal_rejected=651`。过程中 harness 逼出两处**真实语义**（都不是缺陷，但不知道就会读错）：
+**①** ACL 拒绝与能力缺失是**result 级**错误而非连接级错误——`dispatch` 把 `CapabilityResult{end:StreamError, error:PermissionDenied}`
+**写回对端**后返回 `Ok(())`（`host.rs:258-264`），故 `serve` 返回 `Ok` **不代表放行**，只看返回值会把 225 次拒绝**误计为成功**
+（harness 因此改为解析宿主**写出的帧**，并顺带断言宿主只输出良构帧与已登记消息类型）；**②** 空 payload 是**合法**的 `CancelRequest`
+（protobuf 默认值语义），「看起来是垃圾」的帧会走到取消路径并收到 `CancelAck`。**口径必须说准**：这不是覆盖率导向模糊测试
+（无 cargo-fuzz/libFuzzer、无 nightly、无独立语料目录），一律称「随机输入测试」——名字骗人就是证据骗人；
+**阴性结果不是安全证明**，本轮**未发现**缺陷，**不**据此宣称不存在缺陷或「系统安全」；不新增仓库级证据目录
+（§30.1 未为模糊测试指定，per-crate `tests/` 是既有惯例，**不**臆造 `tests/fuzz`）。实测：`cargo test -p nai-plugin-hosts --offline`
+**6+3+8 全通过**（约 0.5s，不构成门控瓶颈）；`check --secrets/--registry/check-deps/--profile portable` 全通过；
+openspec 归档校验全通过。规格：`plugin-hosts-and-ipc` 新增 3 条需求 / 6 个场景。见 docs/hosts.md（新增一节）与
+docs/reports/2026-10-11-w39-ipc-untrusted-input.md。未做边界：**不测传输层对端身份**——真实命名管道/Unix socket 的
+`SO_PEERCRED` 在钉住的 rustc 1.96.0 上仍不稳定（E0658），Windows Named Pipe peer PID、AppContainer/Job Object 未实测（Blocked）；
+fuzz 的是**解码与分发**而非传输；**随机语料计数不是分支覆盖证据**。
