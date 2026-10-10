@@ -75,6 +75,10 @@ $ cargo test -p nai-provider-core --offline
 | 请求体 | `messages[0].role == "system"` + `stream_options.include_usage` | `messages[0].role == "user"`，无 `stream_options` | `text` + `model_id`，无 `voice` |
 | voice 位置 | 体 `voice` | — | 路径段 |
 
+> **勘误（W37）**：上表「请求体」一行记录的 `messages[0].role == "system"` 是**当时实现的写照，并非供应商差异**。
+> 真实网关证明该形状不被普遍接受（严格网关以 400 `No user query found in messages` 拒绝无 user 轮的请求），
+> W37 已把 `openai` 适配器的角色改为 `user`，与 `anthropic` 适配器一致。差异仍在，但**不含角色**。
+
 若有人把适配器改成共用一个协议，测试会在「线上应当不同」一侧失败。
 
 ## 未覆盖边界（不得掩盖）

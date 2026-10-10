@@ -497,3 +497,21 @@ OpenAI 兼容，`Protocol::OpenAiCompatible` 已同时 `serves` 文本与语音�
 `cargo test -p nai-xtask --lib` **35 项**通过；两条真实链路经**本栈**（`ProviderProfile → ProviderClient → 适配器 → 预算网关`）走通；`check --registry` 通过；
 `check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0。详见 docs/adr/0038-live-provider-evidence-boundary.md、
 docs/reports/2026-10-10-w36-live-provider-evidence.md 与 docs/provider-live.md。
+
+W37 文本请求的轮次呈现已实现/实测（ADR 0039）：W36 用真实凭据跑两条冒烟时，**经本栈**的文本链路在 `agnes-2.5-flash` 上被
+`400 No user query found in messages` 拒绝。根因在**我们自己的适配器**——`permitted_context` 这个字段，Anthropic 适配器作为
+`role: "user"` 发出（有注释说明理由），**OpenAI 适配器却作为 `role: "system"` 发出**，**同一语义字段两个相反角色**。W19 把该差异
+当作「实测到的供应商差异」用测试钉住并写进对照表，但**记录差异不等于判断对错**；真实网关给出裁决（同一网关同一请求体，
+`agnes-3.0-flash` 200、`agnes-2.5-flash` 400）⇒ **system-only 不是普遍合法形状**。本轮把 `openai.rs` 的 `messages[0].role`
+由 `system` 改为 `user`（与 Anthropic 一致），并**把性质写进规格**（`api-provider-transport` 新增需求「permitted context 以恰好一条
+user 轮呈现」，2 场景）而不只是改一行。**否决**「system+user 两条」（适配器 MUST NOT 自拟提示文本 = 发明内容）、**否决**「角色可配置」
+（角色是最小合法形状而非供应商差异）。**第二种问题**：修好角色后本栈冒烟返回 `chunks=1 chars=0`——链路通了却**没有可见输出**。
+实测根因是**推理模型与 token 上限的交互**（同一端点：`max_tokens=32` ⇒ 可见 `content` 为空、`reasoning_content` 67 字符、
+`finish_reason=length`；`max_tokens=256` ⇒ `"\n\n收到"`、542 字符、`stop`）：模型先流 `reasoning_content`（思考）再流可见 `content`，
+上限只够思考时冒烟会在**每项检查都通过**时报出**空心成功**。故两处冒烟的 `max_tokens` 由 32 提到 **256**（附注释说明理由），
+**不**把「可见输出为空」做成失败判据。**第三种修正**：`sse_delta_keys` 原取**首帧**，推理模型的 `reasoning_content` 帧完全不被记录
+⇒ 改为记**所有增量帧键的并集**。契约与共享组件**不变**（`Protocol`/`ProviderProfile`/`ProviderClient`/SSE 解码/用量映射/预算接线），
+零新增依赖，18 包与依赖方向不变。勘误：`docs/provider.md` 对照表与 W19/W36 报告已加注记。实测：
+`cargo test -p nai-provider-core --offline` **36 项**通过；两处冒烟文本链路由 400 变为 **200 且有可见输出**；
+`check --secrets` 680 文件零命中；`check --registry` 通过；`check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0。
+详见 docs/adr/0039-provider-message-turn.md 与 docs/reports/2026-10-10-w37-provider-message-turn.md。

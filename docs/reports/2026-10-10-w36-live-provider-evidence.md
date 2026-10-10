@@ -5,6 +5,13 @@
 - 决策：[ADR 0038](../adr/0038-live-provider-evidence-boundary.md)；指南：[docs/provider-live.md](../provider-live.md)
 - 判据：`tests/registry.yaml` S07 / O01 / B01 / A02
 
+> **勘误（W37）**：本报告的证据与门控基于当时的配置——文本模型 `agnes-3.0-flash`，以及**当时**把 `permitted_context`
+> 作为单条 `role: "system"` 发出的 OpenAI 适配器。W37 修正了该角色（改为与 Anthropic 适配器一致的 `user` 轮），
+> 并把文本模型标准化为 **`agnes-2.5-flash`**；两处冒烟的 token 上限也由 32 提到 256（推理模型需给可见输出留余量）。
+> 证据文件已随之重新生成。本报告的**口径与结论不变**（§30.1、D11、登记状态纪律都成立），仅模型标识与线上请求体角色已更新；
+> 详见 [W37 报告](2026-10-10-w37-provider-message-turn.md)。
+
+
 ## 结论
 
 真实凭据到位后，风险从「机制不存在」变成「接入过程会污染仓库、或把事实读错」。本轮把接入纪律固化成**可执行、可检查**的形态：

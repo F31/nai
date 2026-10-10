@@ -76,7 +76,7 @@ cargo xtask check --profile portable
 | 静态头 | — | `anthropic-version: 2023-06-01` | — |
 | 文本路径 | `POST /chat/completions` | `POST /messages` | — |
 | 语音路径 | `POST /audio/speech` | — | `POST /v1/text-to-speech/{voice}?output_format=pcm_{rate}` |
-| 请求体 | `messages[system]` + `stream_options` | `messages[user]`（无 `stream_options`） | `text` / `model_id` |
+| 请求体 | `messages[user]` + `stream_options` | `messages[user]`（无 `stream_options`） | `text` / `model_id` |
 | voice 位置 | 请求体 `voice` | — | **路径段** |
 | 文本流分帧 | `choices[0].delta.content` | `content_block_delta`（`delta.text`） | — |
 | 用量字段 | `prompt_tokens`/`completion_tokens`/`total_tokens` | `input_tokens`/`output_tokens` | 响应头 `x-character-count` |

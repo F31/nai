@@ -406,9 +406,12 @@ async fn the_same_caller_generates_text_through_two_different_wire_protocols() {
         "the credential header is the protocol's, not a default"
     );
     assert_eq!(b.header("anthropic-version"), Some("2023-06-01"));
-    // Body shape differs: the OpenAI-compatible body carries the system turn and
-    // a stream_options flag; the Messages body carries a user turn and no flag.
-    assert_eq!(a.json()["messages"][0]["role"], "system");
+    // Body shape differs: the OpenAI-compatible body carries a stream_options
+    // flag; the Messages body does not. The role does NOT differ — the permitted
+    // context is one user turn under both protocols, because a chat request with
+    // no user turn is not universally valid (a strict gateway answers 400
+    // `No user query found in messages`).
+    assert_eq!(a.json()["messages"][0]["role"], "user");
     assert_eq!(a.json()["stream_options"]["include_usage"], true);
     assert_eq!(b.json()["messages"][0]["role"], "user");
     assert!(b.json().get("stream_options").is_none());

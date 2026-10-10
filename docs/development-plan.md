@@ -430,14 +430,36 @@ W36 真实 Provider 接入纪律与真实调用证据已实现/实测（ADR 0038
 **⑧** 主机差异是**环境事实**（F4：本机对文本端点报 `CRYPT_E_REVOCATION_OFFLINE`，对语音端点不报），记为**主机**注记、**不**读作端点事实（D10）。
 **⑨** **冒烟不是验收**（D11）：连通成功**只**新增连通性事实，**不改** B01/O01 登记状态。实测：`check --secrets` 全部待发布文件**零命中**；
 `cargo test -p nai-xtask --lib` **35 项**通过；两条真实链路经**本栈**（`ProviderProfile → ProviderClient → 适配器 → 预算网关`）走通
-（文本 `chunks=2 chars=2 terminal_chunk=true`；语音 `chunks=33` 且落真实音频字节）；`check --registry` 通过；`check-deps` 18 包；
+（文本 `chunks=2 chars=2 terminal_chunk=true`；语音 `chunks=33` 且落真实音频字节；**本轮实测基于 `agnes-3.0-flash`**，
+W37 修正适配器角色并改用 `agnes-2.5-flash` 后证据已重生成）；`check --registry` 通过；`check-deps` 18 包；
 `cargo xtask check --profile portable` EXIT=0（数字见报告）。见 [接入指南](provider-live.md)、[ADR 0038](adr/0038-live-provider-evidence-boundary.md) 与
 [报告](reports/2026-10-10-w36-live-provider-evidence.md)。未做边界：不挑选供应商、不保存凭据、不替账户充值；**不覆盖未知前缀的令牌**（不得据此宣称「仓库无任何密钥」）；
 日志/诊断包/崩溃转储扫描仍未建（S07 保持 `implemented`）；不新增证据目录约定（§30.1 未为真实 Provider 证据指定目录）；
 B01 保持 `blocked`（真实模型可用是**必要前提而非达标**）、O01 保持 `pending`（演练仍需人工）。
 
-下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03、P01 的判定骨架与 O04 的设备侧、W36 的真实链路接入纪律）；轨道二的自备资源**已有真实凭据落地**
-（文本／语音两条真实链路经本栈走通并产出真值证据）；剩余 **O01**（需演示包与约 10 分钟首句演练、约 30 分钟真实输出验证）、
+W37 文本请求的轮次呈现已实现/实测（ADR 0039）：W36 用真实凭据跑两条冒烟时，**经本栈**的文本链路在 `agnes-2.5-flash` 上被
+`400 No user query found in messages` 拒绝。根因在**我们自己的适配器**——`permitted_context` 这个字段，Anthropic 适配器作为
+`role: "user"` 发出（有注释说明理由），**OpenAI 适配器却作为 `role: "system"` 发出**，**同一语义字段两个相反角色**。W19 把该差异
+当作「实测到的供应商差异」用测试钉住并写进对照表，但**记录差异不等于判断对错**；真实网关给出裁决（同一网关同一请求体，
+`agnes-3.0-flash` 200、`agnes-2.5-flash` 400）⇒ **system-only 不是普遍合法形状**。本轮把 `openai.rs` 的 `messages[0].role`
+由 `system` 改为 `user`（与 Anthropic 一致），并**把性质写进规格**（`api-provider-transport` 新增需求「permitted context 以恰好一条
+user 轮呈现」，2 场景）而不只是改一行。**否决**「system+user 两条」（适配器 MUST NOT 自拟提示文本 = 发明内容）、**否决**「角色可配置」
+（角色是最小合法形状而非供应商差异；做成配置就是把「哪种角色对」变成可配置的正确性）。**第二种问题**：修好角色后本栈冒烟返回
+`chunks=1 chars=0`——链路通了却**没有可见输出**。实测根因是**推理模型与 token 上限的交互**（同一端点：`max_tokens=32` ⇒ 可见
+`content` 为空、`reasoning_content` 67 字符、`finish_reason=length`；`max_tokens=256` ⇒ `"\n\n收到"`、542 字符、`stop`）：模型先流
+`reasoning_content`（思考）再流可见 `content`，上限只够思考时冒烟会在**每项检查都通过**时报出**空心成功**。故两处冒烟的
+`max_tokens` 由 32 提到 **256**（附注释说明理由），**不**把「可见输出为空」做成失败判据（那是参数与模型的交互，不是连通性故障）。
+**第三种修正**：`sse_delta_keys` 原取**首帧**，推理模型的 `reasoning_content` 帧完全不被记录 ⇒ 改为记**所有增量帧键的并集**
+（普通模型 `["content","role"]`、推理模型 `["content","reasoning_content","role"]`）。契约与共享组件**不变**（`Protocol`/`ProviderProfile`/
+`ProviderClient`/SSE 解码/用量映射/预算接线），零新增依赖，18 包与依赖方向不变。勘误：`docs/provider.md` 对照表与 W19/W36 报告已加注记。
+实测：`cargo test -p nai-provider-core --offline` **36 项**通过（lib 18 + provider 10 + substitution 8）；两处冒烟文本链路
+由 400 变为 **200 且有可见输出**（本栈 `chunks=3 chars=4 terminal_chunk=true`）；`check --secrets` 680 文件零命中；`check --registry` 通过；
+`check-deps` 18 包；portable 门控 EXIT=0（数字见报告）；前端 tsc×2 + `vite build` + desktop 5 项测试通过。
+见 [ADR 0039](adr/0039-provider-message-turn.md) 与 [报告](reports/2026-10-10-w37-provider-message-turn.md)。
+未做边界：不改 Anthropic 适配器、不改其余协议路径与用量字段名、不引入角色配置开关；B01 保持 `blocked`、O01 保持 `pending`（冒烟不是验收）。
+
+下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03、P01 的判定骨架与 O04 的设备侧、W36 的真实链路接入纪律与 W37 的线上形状修正）；
+轨道二的自备资源**已有真实凭据落地**（文本／语音两条真实链路经本栈走通并产出真值证据，文本模型标准化为 `agnes-2.5-flash`）；剩余 **O01**（需演示包与约 10 分钟首句演练、约 30 分钟真实输出验证）、
 **O02/O05**（UI 验收，按既有惯例 `pending`）与阻塞项 **B01**（题集与完整评估；真实模型已可用，缺 100 题集内容）、**B02/D12**（模型与目标机证据）、
 **O03**（M0b 定案与真机 S09）、**O04**（干净 Windows 安装、真实音频设备变更与真实回退；安装侧已由 `nai-upgrade-core` 覆盖）、
 **P01**（官方 SDK 与生产宿主；判定机制已由 W35 交付，D13）均需外部条件。

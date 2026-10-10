@@ -9,17 +9,17 @@
   "links": [
     {
       "capability": "text",
-      "chars": 2,
-      "chunks": 2,
+      "chars": 4,
+      "chunks": 3,
       "endpoint": "https://apihub.agnes-ai.com/v1",
-      "model": "agnes-3.0-flash",
+      "model": "agnes-2.5-flash",
       "protocol": "openai",
       "terminal_chunk": true
     },
     {
-      "audio_bytes": 45055,
+      "audio_bytes": 47743,
       "capability": "speech",
-      "chunks": 33,
+      "chunks": 25,
       "endpoint": "https://api.siliconflow.cn/v1",
       "model": "FunAudioLLM/CosyVoice2-0.5B",
       "protocol": "openai"

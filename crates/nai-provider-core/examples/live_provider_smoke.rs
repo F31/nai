@@ -170,7 +170,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Operation::new(OPERATION_CEILING).expect("the smoke stays inside the security ceiling");
     let request = LlmRequest {
         permitted_context: "只回答两个字：收到".into(),
-        max_output_tokens: 32,
+        // Enough room for a reasoning-capable model to finish. Such a model
+        // streams its thinking as `reasoning_content` and only then emits the
+        // visible `content`; a cap that fits only the reasoning yields
+        // `finish_reason: length` with an **empty** completion, which would make
+        // this smoke report a hollow success (`chars == 0` while every check
+        // passes). Measured on the configured gateway: 32 tokens → empty output,
+        // 256 tokens → visible output.
+        max_output_tokens: 256,
         context: Some(RequestContext {
             request_id: "live-llm".into(),
             ..Default::default()

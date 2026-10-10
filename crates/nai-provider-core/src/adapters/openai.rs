@@ -63,11 +63,16 @@ impl<'a> OpenAiAdapter<'a> {
             budget.finish(gateway, None).ok();
             return Err(invalid("llm request missing context or token cap"));
         }
+        // The permitted context is the single user turn, sent verbatim: this
+        // adapter adds no prompt text of its own and constructs no system turn.
+        // A chat request with no user turn is not universally valid — a strict
+        // gateway answers 400 `No user query found in messages` — so the role is
+        // fixed here rather than left to the endpoint.
         let body = json!({
             "model": self.model(),
             "stream": true,
             "stream_options": {"include_usage": true},
-            "messages": [{"role": "system", "content": req.permitted_context}],
+            "messages": [{"role": "user", "content": req.permitted_context}],
             "max_tokens": req.max_output_tokens,
         });
         let stream = match self.client.stream(op, "/chat/completions", &body).await {

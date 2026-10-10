@@ -50,10 +50,12 @@ cargo xtask check --secrets
 这些是实测记录，不是文档假设；端点为 OpenAI 兼容，故都按 `openai` 协议接入（见 ADR 0038 D1）。
 
 - **模型清单以端点为准**：配置里写的模型名可能不在 `/v1/models` 的清单内，此时网关报渠道缺失类错误。
-- **可用性是账户状态**：同一端点、同一凭据下，某档模型 2xx 而另一档 403 且报文给出剩余余量。逐模型记录，结论不推广。
+- **可用性是账户状态**：同一端点、同一凭据下，某档模型 2xx 而另一档 403 且报文给出剩余余量（另有档位被免费套餐限流，报文为 `reached the API rate limit for free users`）。逐模型记录，结论不推广。
 - **音色标识的书写形式是契约**：不合形式会被端点以显式错误码拒绝；按端点要求书写后返回音频。冒烟不做静默归一化。
-- **SSE 帧形状**：`data: <json>` 的增量帧，delta 键为 `role`/`content`；流以 `data: [DONE]` 这一**非 JSON** 帧终止。适配器消费的正是这个形状。
-- **用量字段名**：`prompt_tokens`/`completion_tokens`/`total_tokens`，与 `usage_charge` 的映射表一致。
+- **文本请求的轮次**：`permitted_context` 作为**恰好一条 `user` 轮**发出，适配器不自拟提示文本（ADR 0039）。**系统轮不构成「用户查询」**——严格网关会以 `400 No user query found in messages` 拒绝只有系统轮的请求，故两处冒烟都发 `user` 轮。
+- **SSE 帧形状**：`data: <json>` 的增量帧，流以 `data: [DONE]` 这一**非 JSON** 帧终止。适配器消费的正是这个形状。**增量帧的键集随模型而异**：普通模型为 `role`/`content`；**推理模型**另有 `reasoning_content`（先流思考、再流可见 `content`）。证据记**所有增量帧的键并集**，不取单帧采样。
+- **推理模型与 token 上限**：可见 `content` 可能为空——若上限只够 `reasoning_content`，流以 `finish_reason: length` 结束而**没有任何可见输出**，此时「链路成功」是**空心**的。冒烟的 `max_tokens` 取 256 以容纳思考（32 时实测为空、256 时有可见输出）。**不**把「可见输出为空」做成失败判据：那是参数与模型的交互，不是连通性。
+- **用量字段名随模型而异**：基础为 `prompt_tokens`/`completion_tokens`/`total_tokens`；推理模型另带 `completion_tokens_details`（`reasoning_tokens`/`text_tokens`）与 `prompt_tokens_details`（`cached_tokens`）。映射进同一封闭单位表，**字段名以响应为准**。
 - **块数不稳定**：同一请求两次运行的音频块数可不同（实测 12 与 33），字节数量级稳定。**不要**把块数当断言。
 
 ## 边界与不覆盖项
@@ -70,7 +72,7 @@ cargo xtask check --secrets
 
 ## 相关
 
-- ADR：`docs/adr/0038-live-provider-evidence-boundary.md`
-- 报告：`docs/reports/2026-10-10-w36-live-provider-evidence.md`
+- ADR：`docs/adr/0038-live-provider-evidence-boundary.md`、`docs/adr/0039-provider-message-turn.md`
+- 报告：`docs/reports/2026-10-10-w36-live-provider-evidence.md`、`docs/reports/2026-10-10-w37-provider-message-turn.md`
 - 传输与接线：`docs/provider.md`
 - 黄金集门槛与载荷：`docs/golden-set.md`

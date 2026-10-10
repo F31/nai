@@ -13,19 +13,28 @@
     "protocol": "openai-compatible",
     "auth_scheme": "Bearer",
     "status": 200,
-    "model": "agnes-3.0-flash",
+    "model": "agnes-2.5-flash",
     "streaming": false,
     "usage_fields": [
       "completion_tokens",
+      "completion_tokens_details",
       "prompt_tokens",
+      "prompt_tokens_details",
       "total_tokens"
     ],
     "usage": {
-      "completion_tokens": 2,
-      "prompt_tokens": 79,
-      "total_tokens": 81
+      "completion_tokens": 53,
+      "prompt_tokens": 289,
+      "total_tokens": 342,
+      "completion_tokens_details": {
+        "reasoning_tokens": 50,
+        "text_tokens": 3
+      },
+      "prompt_tokens_details": {
+        "cached_tokens": 256
+      }
     },
-    "completion_chars": 2,
+    "completion_chars": 4,
     "finish_reason": "stop"
   },
   "text_streaming": {
@@ -35,15 +44,16 @@
     "protocol": "openai-compatible",
     "auth_scheme": "Bearer",
     "status": 200,
-    "model": "agnes-3.0-flash",
+    "model": "agnes-2.5-flash",
     "streaming": true,
-    "sse_data_lines": 5,
+    "sse_data_lines": 20,
     "sse_terminator_done": true,
     "sse_unparsable_frames": 0,
-    "sse_delta_events": 4,
+    "sse_delta_events": 19,
     "sse_delta_keys": [
-      "role",
-      "content"
+      "content",
+      "reasoning_content",
+      "role"
     ]
   },
   "speech_synthesis": {
@@ -56,7 +66,7 @@
     "model": "FunAudioLLM/CosyVoice2-0.5B",
     "voice": "FunAudioLLM/CosyVoice2-0.5B:alex",
     "media_type": "audio/mpeg",
-    "bytes": 45823,
+    "bytes": 45055,
     "produced_audio": true
   },
   "audio_artifact": "docs/reports/evidence/voice-FunAudioLLM-CosyVoice2-0-5B.mp3"

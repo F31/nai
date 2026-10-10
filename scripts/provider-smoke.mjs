@@ -104,7 +104,11 @@ async function probeText({ base, key, model, stream }) {
       body: JSON.stringify({
         model,
         messages: [{ role: 'user', content: '只回答两个字：收到' }],
-        max_tokens: 32,
+        // Room for a reasoning-capable model to reach its visible answer. Such a
+        // model spends part of the budget on reasoning tokens; a cap that fits
+        // only the reasoning ends at `finish_reason: length` with an empty
+        // completion, so this probe would record a hollow success.
+        max_tokens: 256,
         stream,
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -138,7 +142,11 @@ async function probeText({ base, key, model, stream }) {
         sse_terminator_done: payloads.includes('[DONE]'),
         sse_unparsable_frames: unparsable,
         sse_delta_events: deltas.length,
-        sse_delta_keys: deltas.length > 0 ? Object.keys(deltas[0]) : [],
+        // The union across every delta, not the first one's keys: a reasoning
+        // model streams `reasoning_content` frames before the visible `content`
+        // frames, and sampling only the first delta would report a frame shape
+        // that omits them.
+        sse_delta_keys: [...new Set(deltas.flatMap((delta) => Object.keys(delta)))].sort(),
       };
     }
     const payload = await response.json();
