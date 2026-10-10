@@ -444,3 +444,20 @@ B 缺应用分发 ⇒ `native_shell_without_distribution`、Tauri 2 成熟度未
 而非仓库载荷，**臆造** `tests/mobile-monitoring` 属过度绑定。实测：`tests/monitoring.rs` **34 项**通过；`cargo xtask check --registry`
 通过；`check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0。详见 docs/adr/0035-mobile-monitoring-surface-boundary.md、
 docs/reports/2026-10-10-w33-mobile-monitoring-surface.md 与 docs/mobile-monitoring.md。
+
+W34 设备接入判定骨架（ADR 0036）已实现/实测：**O04**（安装与设备）三条验收（§1329「干净 Windows 安装且运行库可取得；音频设备变更不重复收音；
+升级可回退」）需外部条件，O04 保持 `blocked`；**安装侧已由 `nai-upgrade-core` 的 `manifest`/`preflight` 覆盖、回退由 `plan`/`gates` 覆盖**，
+本轮补的是此前**全库无落点**的**设备侧**（§1424 缺口清单原文「没有设备与硬件接入的抽象，也没有物理安全联锁」）。落
+`crates/nai-kernel/src/device.rs`（只依赖 contracts，18 包与方向不变，零新增依赖），复用 `golden::Finding`。钉死的口径：**设备能力靠声明**
+（§1469 动作枚举/取值范围/速率限制，缺项指名设备与动作）；**执行类必须安全联锁 + 本地手动覆盖**（§1469/§1497）而**纯 `Sense` 不适用**——
+**否决**把「不适用」读成「不合规」（同 W33 预览未启用）；**物理执行类推导 `risk_3`、默认禁用**（§34.4）、需本地确认与独立开关（§1469），
+`Sense` 标注物理执行为分类错误；**有效风险 = `max(声明, 推导)` 且声明低于推导即拒**（§35.3，声明方可主动提高但不可自我降级）；
+**驱动与 SDK 不进内核进程**（§34.4）落成 `DeviceHostPlacement`，是独立声明故不受是否有设备门控；**热插拔/断线/重复/超时各有处置**（§1498）
+且**写决策日志**（§1497），**未声明设备时不存在设备事件故条件化**；**「音频设备变更不重复收音」**（O04、§8.5「只允许一条有效收音路径」）
+落成 `duplicate_event_opens_second_capture_path`——判**结果**而非「处置了」；**INV-23 实际权限不得超出声明与用户授权**落成使用侧审计
+（宿主强制执行、不靠自觉），未声明只报一次、不重复报越权；`readiness` 三态 `Blocked`/`Defective`/`Ready` 且**先取审计**
+（`Defective` 优先，`Blocked` 判据是审计为空且无声明）。`audit_host` 是描述符纯函数，**十六条**稳定标记逐条可构造。
+**不新增 xtask 命令与证据目录**：§30.1 为升级/RAG/UI 指定 `tests/upgrade`/`tests/rag-golden`/`tests/ui`，未为设备接入指定目录；真值来自
+受控 Windows 机器与真实设备而非仓库载荷。实测：`tests/device.rs` **31 项**通过；`cargo xtask check --registry` 通过；`check-deps` 18 包；
+`cargo xtask check --profile portable` EXIT=0。详见 docs/adr/0036-device-admission-boundary.md、
+docs/reports/2026-10-10-w34-device-admission.md 与 docs/device-admission.md。
