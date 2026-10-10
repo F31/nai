@@ -282,7 +282,26 @@ registry B04/R06/B06 由 pending 升 implemented（三项均**不标 tested**）
 `cargo xtask check --profile portable` EXIT=0（数字见报告）。见 [运营指南](operations.md)、[ADR 0031](adr/0031-operations-review-boundary.md) 与
 [报告](reports/2026-10-10-w29-operations-review.md)。
 未做边界：不采真实指标、不跑长播、不接真实场次数据、不做报告 UI；阈值为保守常量，未由真实数据校准。
-下一主线：B01 知识质量门槛（黄金集与回归门禁，机制可在 portable 落）或 O01 演示包（需演示包与真实音频输出）。
+
+### W30 黄金集知识质量门槛与回归门禁（B01）
+
+B01 的**真值**（100 道贴近真实直播的问题、真实模型在这些题上的表现）需要外部场景包与真实模型评估，本轮不假装有；但 §6 的五条门槛与
+§5.9 的三条生命周期语句此前的**判据口径**没有落点，于是「100 题黄金集未建」被执行成了「什么都不用做」。本轮把口径落进
+`crates/nai-kernel/src/golden.rs`（只依赖 contracts，18 包与依赖方向不变，零新增依赖），registry B01 由 `pending` 升 `implemented`
+（**不标 `tested`**：真实题集内容、真实模型评估与真实检索质量未接）。三处最容易含糊的地方被钉死：**①** §6 的「Recall@5 ≥90%」没有分母——
+本轮定为**题级**（全部所需证据进前 5 才计命中），文档粒度召回只作**对照**且两口径分开呈现；若没有任何有证据用例，召回为**未测量**而非 0%。
+**②** 「检索延迟、证据正确率、最终答案正确率分别报告」是一句**禁止令**——本轮落成三个独立字段，**没有任何合成方法**；`AnswerVerdict::Unknown`
+（未判定）从正确率分母中**排除**。**③** 「必须通过相关回归才生效」是一道**门禁**而不是一次比较——本轮落成 `regression` 的四条拒绝：
+版本不一致 `VERSION_INCOMPATIBLE`、候选任一门槛失败 `candidate_gate_failed`（基线不绿也不放行候选）、**逐用例**由通过变失败 `case_regressed`
+（1000‰→989‰ 亦拒，不因平均分未降而放行）、召回或正确率低于基线 `recall_regressed`/`accuracy_regressed`。四条否定式判据（高风险事实不得自动
+播报错误、无答案必须澄清或转人工、注入/越权/工具返回攻击不得有副作用、取消类必须以取消结束）为逐用例一票否决；检索 P95 复用 W29 的
+`LatencySamples`（<20 样本即未测量，未测量的门槛**计为未达标**，恰好 300ms 判达标）；坏案例入池开放、出池须**具名确认人**
+（`CaseOrigin::Promoted` 保存确认人，未确认候选无法伪装成 authored）；`audit_report` 对上报值做纯函数，五条稳定标记全部可构造。
+实测：`tests/golden.rs` 24 项通过；`cargo xtask check --registry` 通过；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
+见 [黄金集指南](golden-set.md)、[ADR 0032](adr/0032-knowledge-quality-gate-boundary.md) 与
+[报告](reports/2026-10-10-w30-knowledge-quality-gate.md)。
+未做边界：不做题集内容、不接真实模型评估（答案为调用方判定后注入）、不做评估 UI、不改检索管线。
+下一主线：O01 演示包（需演示包与真实音频输出），或 O02/O05 的 UI 验收（按既有惯例保持 `pending`）。
 
 ## 任务依赖与状态
 

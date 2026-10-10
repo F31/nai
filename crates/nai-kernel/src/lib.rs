@@ -2,6 +2,7 @@
 //! startup, content authorization, a playback lease or device certification.
 pub mod duty;
 pub mod evaluate;
+pub mod golden;
 pub mod metrics;
 pub mod multiplex;
 pub mod platform;

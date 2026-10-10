@@ -346,3 +346,20 @@ W29 运营度量与场次复盘已实现/实测（ADR 0031）：把 B04（整链
 `CostView::Unknown` 而**不是 ¥0**；`audit_review` 对公开报告值做纯函数，十条稳定标记全部可构造。
 实测：`tests/metrics.rs` 13 项、`tests/review.rs` 8 项通过；`cargo xtask check --registry` 通过；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
 详见 docs/adr/0031-operations-review-boundary.md、docs/reports/2026-10-10-w29-operations-review.md 与 docs/operations.md。
+
+W30 黄金集知识质量门槛与回归门禁已实现/实测（ADR 0032）：把 B01 从「100 题黄金集未建（阶段 2）」这条口径空缺落成 kernel 的可执行判据
+（真值仍需外部题集与真实模型评估），registry B01 由 pending 升 implemented（**不标 tested**）。落 `crates/nai-kernel/src/golden.rs`（只依赖
+contracts，18 包与依赖方向不变，零新增依赖）——落 kernel 而非 shared 的 `nai-knowledge-core`，因为 §6 的检索 P95 要用 W29 已落在 kernel 的
+`LatencySamples`，放 shared 要么反向依赖 kernel 要么复制一份分位（两个 P95 是必然结果）；比例同样复用 `review::Ratio`。三处最容易含糊的地方被
+钉死：**①** 「Recall@5 ≥90%」没有分母 → 定为**题级**（全部所需证据进前 `RECALL_K=5` 才计命中），文档粒度 `evidence_doc_recall_at_5` 只作
+**对照**且两口径分开呈现（否决单报文档粒度）；没有有证据用例时召回为**未测量**而非 0%。**②** 「检索延迟、证据正确率、最终答案正确率分别报告」
+是一句**禁止令** → 三个独立字段、**没有任何合成方法**（否决加权质量分）；`AnswerVerdict::Unknown`（未判定）从正确率分母**排除**。
+**③** 「必须通过相关回归才生效」是一道**门禁** → `regression` 四条拒绝：版本不一致 `VERSION_INCOMPATIBLE`（跨版本不比较）、候选任一门槛
+失败 `candidate_gate_failed`（基线不绿也不放行候选）、**逐用例**由通过变失败 `case_regressed`（1000‰→989‰ 亦拒，不因平均分未降而放行）、
+召回或正确率低于基线 `recall_regressed`/`accuracy_regressed`。四条否定式判据为逐用例一票否决（`HighRiskFact` 只对自动播报生效——澄清/转人工/
+拒答皆正确；`MustClarifyOrEscalate` 把「自动播报」与「拒答但未澄清」分开报；`MustNotAct` 逐条列出副作用；`MustCancel` 记结束方式）；黄金集绑定
+场景版本、覆盖 §5.9 八类并受 `MINIMUM_CASES=100` 约束，`audit_coverage` 在**运行前**报用例配置缺陷（不污染召回）；检索 P95 <20 样本即未测量
+且门槛**计为未达标**、恰好 300ms 判达标；坏案例入池开放、出池须**具名确认人**（`CaseOrigin::Promoted` 保存确认人，未确认候选无法伪装成
+authored）；`audit_report` 对上报值做纯函数，五条稳定标记全部可构造。
+实测：`tests/golden.rs` 24 项通过；`cargo xtask check --registry` 通过；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
+详见 docs/adr/0032-knowledge-quality-gate-boundary.md、docs/reports/2026-10-10-w30-knowledge-quality-gate.md 与 docs/golden-set.md。
