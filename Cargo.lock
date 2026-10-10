@@ -1333,6 +1333,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "nai-upgrade-core"
+version = "0.1.0"
+dependencies = [
+ "jsonschema",
+ "nai-contracts",
+ "nai-security",
+ "nai-storage",
+ "semver",
+ "serde_json",
+ "sha2",
+ "tempfile",
+]
+
+[[package]]
 name = "nai-xtask"
 version = "0.1.0"
 dependencies = [

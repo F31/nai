@@ -1,0 +1,32 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://nai.invalid/schemas/config/upgrade-package", "title":"UpgradePackageManifest", "type":"object","additionalProperties":false,
+  "required":["manifest_schema","package_id","package_version","kind","kernel_range","requires","hosts","os","architectures","runtime","files","install_bytes","migrated_bytes","signer_ref","license_ref","migration_ref","rollback_range","cost"],
+  "$defs":{
+    "hash":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "bytes":{"type":"string","pattern":"^(0|[1-9][0-9]*)$"},
+    "amount":{"type":["string","null"],"pattern":"^(0|[1-9][0-9]*)$"},
+    "path":{"type":"string","minLength":1,"maxLength":256,"pattern":"^[A-Za-z0-9_][A-Za-z0-9_./-]*$"},
+    "ref":{"type":"string","minLength":1,"maxLength":128}
+  },
+  "properties":{
+    "manifest_schema":{"const":1},
+    "package_id":{"type":"string","pattern":"^[a-z0-9]+(?:[.-][a-z0-9]+)*$"},
+    "package_version":{"type":"string","pattern":"^[0-9]+[.][0-9]+[.][0-9]+$"},
+    "kind":{"enum":["plugin","kernel","model"]},
+    "kernel_range":{"type":"string","minLength":1,"maxLength":128},
+    "requires":{"type":"array","maxItems":64,"uniqueItems":true,"items":{"type":"object","additionalProperties":false,"required":["ref","range"],"properties":{"ref":{"$ref":"#/$defs/ref"},"range":{"type":"string","minLength":1,"maxLength":128}}}},
+    "hosts":{"type":"array","minItems":1,"maxItems":4,"uniqueItems":true,"items":{"enum":["inproc","subprocess","remote","wasm"]}},
+    "os":{"type":"array","minItems":1,"maxItems":5,"uniqueItems":true,"items":{"enum":["windows","linux","macos","android","ios"]}},
+    "architectures":{"type":"array","minItems":1,"maxItems":2,"uniqueItems":true,"items":{"enum":["x86_64","aarch64"]}},
+    "runtime":{"type":"array","maxItems":16,"items":{"type":"object","additionalProperties":false,"required":["id","accel"],"properties":{"id":{"$ref":"#/$defs/ref"},"accel":{"enum":["cpu","cuda","directml","coreml"]},"min_bytes":{"$ref":"#/$defs/bytes"}}}},
+    "files":{"type":"array","minItems":1,"maxItems":4096,"items":{"type":"object","additionalProperties":false,"required":["path","sha256","bytes"],"properties":{"path":{"$ref":"#/$defs/path"},"sha256":{"$ref":"#/$defs/hash"},"bytes":{"$ref":"#/$defs/bytes"}}}},
+    "install_bytes":{"$ref":"#/$defs/bytes"},
+    "migrated_bytes":{"$ref":"#/$defs/bytes"},
+    "signer_ref":{"$ref":"#/$defs/ref"},
+    "license_ref":{"$ref":"#/$defs/ref"},
+    "migration_ref":{"$ref":"#/$defs/ref"},
+    "rollback_range":{"type":"string","minLength":1,"maxLength":128},
+    "cost":{"type":"object","additionalProperties":false,"required":["currency","cloud","download","storage","runtime_delta"],"properties":{"currency":{"type":"string","minLength":1,"maxLength":8},"cloud":{"$ref":"#/$defs/amount"},"download":{"$ref":"#/$defs/amount"},"storage":{"$ref":"#/$defs/amount"},"runtime_delta":{"$ref":"#/$defs/amount"}}}
+  }
+}

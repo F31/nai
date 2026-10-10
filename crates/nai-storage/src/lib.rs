@@ -14,6 +14,8 @@ mod paths;
 mod publication;
 mod snapshot;
 mod store;
+mod upgrade;
+pub use upgrade::{UpgradeRecord, UpgradeStep};
 
 use nai_contracts::v1::ErrorCode;
 pub use nai_security::Operation;
