@@ -461,3 +461,21 @@ W34 设备接入判定骨架（ADR 0036）已实现/实测：**O04**（安装与
 受控 Windows 机器与真实设备而非仓库载荷。实测：`tests/device.rs` **31 项**通过；`cargo xtask check --registry` 通过；`check-deps` 18 包；
 `cargo xtask check --profile portable` EXIT=0。详见 docs/adr/0036-device-admission-boundary.md、
 docs/reports/2026-10-10-w34-device-admission.md 与 docs/device-admission.md。
+
+W35 平台生命周期判定骨架（ADR 0037）已实现/实测：**P01**（平台生命周期，§1328「伴侣启动、退出、重连、切场次不产生旧房间播报；权限撤销停止相关功能」）
+的真值需外部条件（官方 SDK 认证 + 生产 composition root 平台宿主接线 + 真实启动/退出/端口冲突与网关），P01 保持 `blocked`（其 notes 原仅记
+「官方 SDK/生产宿主未实现（D13）」）。**D13 已交付的是平台事件准入**——`nai-kernel::platform` 的 `PlatformLink` 判「一个事件能不能进」；
+本轮补的是此前**全库没有落点**的**桥接进程生命周期**（`grep bridge` 在 kernel 内为空）。落 `crates/nai-kernel/src/bridge.rs`（只依赖 contracts，
+18 包与依赖方向不变，零新增依赖），复用 `golden::Finding`。**①** §27.1「桥接只做：SDK 初始化、官方事件与权限转换、认证 IPC、退出」落成**封闭四项**，
+越界职责逐条指名；**②** §1328 四类转换（启动/退出/重连/切场次）各有处置、**各清播报授权**、各写决策日志，**未声明桥接职责时不存在转换故条件化**；
+**③** 「不产生旧房间播报」判**两个面**——处置面 `transition_keeps_stale_broadcast` + 状态面 `stale_room_broadcast_permitted`（授权绑定**房间与连接代次**，
+`may_broadcast` 为运行时判据），状态面**不受门控**；**④** §347 退出转待机与重连不恢复旧自动权限**都落在转换处置的声明上**（否决另设描述符级引擎状态）；
+**⑤** §349 能力快照 `unknown` 取**最严格**（读作已授予即报出），「**只**关闭对应功能」判**双向**（欠关闭 `feature_active_without_capability` 与
+因能力变更过关闭 `feature_stopped_despite_capability`，后者带 `stopped_by_capability_change` 前置以免误报用户主动关闭）；**⑥** §119 平台中断**三态**
+（撤自动、保手工、保回放）条件化于 `bridge_lost`；**⑦** §347 **原文七类**情形各有处置与记录；**⑧** §27.1/§1075 官方 SDK 只经固定路径与
+签名/nonce/令牌校验加载，无官方 SDK 时如实记 `UNVERIFIED_EXTERNAL_DEPENDENCY`、**不用 fake connector 冒充**（该错误码此前在 workspace 内从未被使用）；
+**⑨** `readiness` 三态且**先取审计**，支点是三条**不受门控**的独立判据（陈旧房间授权、伪造替代、功能开关双向）。`audit_bridge` 是描述符纯函数，
+**十九条**稳定标记逐条可构造。**不新增 xtask 命令与证据目录**：§30.1 为升级/RAG/UI 指定 `tests/upgrade`/`tests/rag-golden`/`tests/ui`，
+未为平台生命周期指定；真值来自官方 SDK 与真实账号而非仓库载荷。实测：`tests/bridge.rs` **44 项**通过；`cargo xtask check --registry` 通过；
+`check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0。详见 docs/adr/0037-platform-lifecycle-boundary.md、
+docs/reports/2026-10-10-w35-platform-lifecycle.md 与 docs/platform-lifecycle.md。

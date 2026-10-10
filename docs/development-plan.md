@@ -389,9 +389,32 @@ W34 设备接入判定骨架已实现/实测（ADR 0036）：**O04**（安装与
 未做边界：不含任何真实设备/驱动/SDK/WASAPI/PCM 混音/安装器、不重复 `preflight` 的安装检查、不重复 `CaptureRegistry` 的租约互斥、
 不新增 xtask 命令与证据目录；O04 保持 `blocked`（安装侧另有 `nai-upgrade-core` 覆盖）。
 
-下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03 的判定骨架与 O04 的设备侧判定骨架）；剩余 **O01**（需演示包与真实音频输出）、
+W35 平台生命周期判定骨架已实现/实测（ADR 0037）：**P01**（平台生命周期）的验收（§1328「伴侣启动、退出、重连、切场次不产生旧房间播报；权限撤销停止相关功能」）
+真值需外部条件（官方 SDK 认证 + 生产 composition root 平台宿主接线 + 真实启动/退出/端口冲突与网关），P01 保持 `blocked`；其 registry notes 此前只有一句
+「官方 SDK/生产宿主未实现（D13）」。**D13 已交付的是平台事件准入**（`nai-kernel::platform` 的 `PlatformLink` 判「一个事件能不能进」），
+本轮补的是此前**全库没有落点**的**桥接进程生命周期**。落 `crates/nai-kernel/src/bridge.rs`（只依赖 contracts，18 包与依赖方向不变，零新增依赖），
+复用 `golden::Finding`。口径被钉死之处：**①** §27.1「桥接只做」四项落成**封闭集**，越界职责逐条指名（`duty_outside_bridge_scope`）。
+**②** §1328 四类转换各有处置、**各清播报授权**、各写决策日志；未声明桥接职责时不存在转换，故条件化。
+**③** 「不产生旧房间播报」判**两个面**——处置面 `transition_keeps_stale_broadcast` + 状态面 `stale_room_broadcast_permitted`
+（授权绑定**房间与连接代次**，`may_broadcast` 是运行时判据）；状态面**不受门控**。
+**④** §347 退出转待机（`exit_without_standby`）与重连不恢复旧自动权限，**都落在转换处置的声明上**（否决另设描述符级引擎状态）。
+**⑤** §349 能力快照 `unknown` 取**最严格**（读作已授予即报出），「**只**关闭对应功能」判**两个方向**——欠关闭 `feature_active_without_capability`
+与因能力变更过关闭 `feature_stopped_despite_capability`（后者带 `stopped_by_capability_change` 前置，避免误报用户主动关闭）。
+**⑥** §119 平台中断**三态**（撤自动、保手工、保回放），条件化于 `bridge_lost`（Provider 等降级不欠此规则）。
+**⑦** §347 **原文七类**情形（多次启动/端口占用/SDK 失联/消息重复/旧房间事件/时间漂移/权限撤销）各有处置与记录。
+**⑧** §27.1/§1075 官方 SDK 只经固定路径与签名/nonce/令牌校验加载，条件化于「声明已核验」；无官方 SDK 时如实记
+`UNVERIFIED_EXTERNAL_DEPENDENCY`、**不用 fake connector 冒充**（该错误码此前在 workspace 内从未被使用）；回调不同步等待 LLM 或磁盘。
+**⑨** `readiness` 三态且**先取审计**；支点是三条**不受门控**的独立判据（陈旧房间授权、伪造替代、功能开关双向）。
+`audit_bridge` 是描述符纯函数，**十九条**稳定标记逐条可构造。
+实测：`tests/bridge.rs` 44 项通过；`cargo xtask check --registry` 通过；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
+见 [平台生命周期指南](platform-lifecycle.md)、[ADR 0037](adr/0037-platform-lifecycle-boundary.md) 与
+[报告](reports/2026-10-10-w35-platform-lifecycle.md)。
+未做边界：不含任何真实交付（伴侣进程/官方 SDK 加载/握手/连接/网关/推流均由外部提供）、不重复 `PlatformLink` 的事件准入判据、
+不改 `platform.rs`/`session.rs`、不新增 xtask 命令与证据目录；P01 保持 `blocked`。
+
+下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03 的判定骨架与 O04 的设备侧、P01 的平台生命周期判定骨架）；剩余 **O01**（需演示包与真实音频输出）、
 **O02/O05**（UI 验收，按既有惯例 `pending`）与阻塞项 **B01**（题集与真实模型评估）、**B02/D12**（模型与目标机证据）、**O03**（M0b 定案与真机 S09）、
-**O04**（干净 Windows 安装、真实音频设备变更与真实回退；安装侧已由 `nai-upgrade-core` 覆盖）、**P01**（官方 SDK 与生产宿主，D13）均需外部条件。
+**O04**（干净 Windows 安装、真实音频设备变更与真实回退；安装侧已由 `nai-upgrade-core` 覆盖）、**P01**（官方 SDK 与生产宿主；判定机制已由 W35 交付，D13）均需外部条件。
 
 ## 任务依赖与状态
 
