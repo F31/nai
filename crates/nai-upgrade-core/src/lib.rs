@@ -14,9 +14,12 @@
 mod cost;
 mod gates;
 mod manifest;
+mod migration;
+mod offline;
 mod plan;
 mod preflight;
 mod rehearsal;
+mod residency;
 mod revocation;
 mod signature;
 mod verify;
@@ -34,6 +37,12 @@ pub use gates::{
     require_rollback_compatible,
 };
 pub use manifest::{FileDecl, Requirement, RuntimeEntry, UpgradeKind, UpgradePackage};
+pub use migration::{
+    Announcement, Deployment, DeploymentState, ImportedState, MigrationFault, MigrationPlan,
+    MigrationRequest, OutputSwitch, PermissionGrant, PermissionMap, RehearsalMigration,
+    plan_migration, verify_migration,
+};
+pub use offline::{OfflineArtifact, OfflineInstall, install_offline, missing_artifacts};
 pub use plan::{
     BackupRef, ExportedWrites, Outcome, Prepared, RecoveryAction, RollbackReport, StagingId,
     UpgradeHost, UpgradeJournal, UpgradeRequest, UpgradeTransaction,
@@ -44,6 +53,11 @@ pub use preflight::{
 };
 pub use rehearsal::{
     EffectCounts, FaultPoint, RehearsalDrain, RehearsalHost, RehearsalJournal, RehearsalSessions,
+};
+pub use residency::{
+    CapabilityResidency, IdlePolicy, MAX_CAPABILITIES, PRO_ADDITIONS, ReclaimReport,
+    ReleasedResources, Residency, ResidencyAudit, ResidencyLedger, ResourceClaim, ResourceKind,
+    STANDARD_ADDITIONS, Tier, TierPlan, Violation, audit_residency, tier_plan,
 };
 pub use revocation::{RevocationEntry, RevocationList, RevocationSource};
 pub use signature::{DeterministicVerifier, SignatureVerifier};

@@ -45,7 +45,7 @@ D01–D11 已建立工程、生成契约、存储/密钥、内核绑定、宿主
 知识完整链路、智能体/守门评估和媒体样本时轴：cargo xtask check-deps、
 check --profile portable/windows-local、schema [--check]、test --suite contracts/storage/kernel/hosts/session/scheduler/provider/knowledge/upgrade
 及前端 typecheck/build 可执行。契约工具要求 protoc 3.21.12，完整 C++ suite 另需同版
-libprotobuf；详见 docs/contracts/README.md、docs/hosts.md、docs/session.md、docs/scheduler.md、docs/provider.md、docs/knowledge.md、docs/upgrade.md 与 docs/kernel.md。
+libprotobuf；详见 docs/contracts/README.md、docs/hosts.md、docs/session.md、docs/scheduler.md、docs/provider.md、docs/knowledge.md、docs/upgrade.md、docs/deployment.md 与 docs/kernel.md。
 真实付费 Provider 生成受账户余额约束（冒烟显示无余额，Blocked）；真实音轨/媒体进程接线待设备里程碑。其他 suite/认证/打包命令仍待实现，
 执行前核实对应 workspace 与 scripts；不可添加空成功占位。
 
@@ -274,3 +274,23 @@ clippy `--all-targets` 与 `cargo fmt --all --check` 干净；`cargo xtask check
 未做边界（四处写明）：**无真实签名链**（`DeterministicVerifier` 为 sha2 演练替身）、无真实安装器/下载器、
 `semver` 只做交集判断、未接入装配根。
 详见 docs/adr/0026-upgrade-core-boundary.md、docs/reports/2026-10-10-w15-upgrade-core.md 与 docs/upgrade.md。
+
+W25 部署生命周期已实现/实测（ADR 0027）：在 `crates/nai-upgrade-core` 内补齐 W15 的另一半——**装完占多少、闲置怎么放手、
+离线与换部署形态怎么办**，registry A08/A09/R11 由 pending 升 implemented（**不标 tested**：A08/A09 为 `manual` 且需真实设备与长播，
+R11 需真实轻云实例。不新开 crate，因为三项与 W15 共享同一条不变量 §14.4「未启用的能力不占用进程、端口、显存或云请求」）。
+`residency.rs` 把「能力占哪些资源」建模成**声明式足迹**（封闭四族 `Process|Port|Vram|CloudRequest`）并**只在 `enable` 时物化**，
+于是「未安装/未启用 ⇒ 零占用」是结构性质而非承诺；只有 `Process`/`Port` 排他（`Vram`/`CloudRequest` 允许两个能力各自持有同一模型/端点）。
+空闲释放**按 TTL 分族**（worker 30s / 端口随进程 30s / 未用预览云请求 60s / 模型显存 300s，方向由重载代价决定），
+`reclaim` 只释放到期的并把仍保留的计入 `held_back`——**否决**「场次一结束就全释放」（代价是下一句一次完整模型重载）；
+回收不动启用状态、不删数据、繁忙能力绝不回收。审计做成**对公开快照值的纯函数** `audit_residency`（宿主可审计自己的视图，
+且每条规则都能被手工构造的状态真实触发），六个稳定标记中 `idle resource past its ttl` 是可达的泄漏检测，其余是改错时的守卫。
+`tier_plan` 把 Lite→Standard→Pro 做成**两段差集的并**，故 Lite→Pro 不需要中间档，「不重装内核」是数据的性质而非需要记住的规则。
+`offline.rs` 的离线前置是「每个声明文件都在本地」，缺件以 `CAPABILITY_NOT_READY` 拒绝并由 `missing_artifacts` 指出是哪个文件，
+随后复用**同一条**校验链；「不会偷偷下载」是**编译期**保证（crate 无 HTTP 客户端），**否决** `allow_fetch` 开关。
+`migration.rs` 在搬动前拒绝三件事（有活动会话 / 分布式目标 + SQLite 多写者 / 权限无映射即拒，不静默丢弃），
+搬动后复验三项且错误码可区分（权限集合 `INVALID_ARGUMENT`、证据版本 `VERSION_INCOMPATIBLE`、数据哈希 `INVALID_ARGUMENT`）——
+**否决**「只比哈希」（哈希一致证明不了权限被正确映射）；`OutputSwitch` 以调用方给的 key 幂等，即「输出切换不重复播报」。
+实测：upgrade-core 3 lib + 17 lifecycle + 11 migration + 12 plan + 8 upgrade = 51 项通过；`cargo xtask check-deps` 18 包；
+clippy `--all-targets` 与 `cargo fmt --all --check` 干净；`cargo xtask check --profile portable` EXIT=0（见报告）。
+未做边界：`Vram` 是声明式索赔而非真实配额；R06 长播、B04 延迟分位、A10 云断连、A11 多会话仍是独立主线。
+详见 docs/adr/0027-deployment-lifecycle-boundary.md、docs/reports/2026-10-10-w25-tier-idle-migration.md 与 docs/deployment.md。

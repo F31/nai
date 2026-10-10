@@ -207,7 +207,25 @@ storage lib 50 项；`cargo xtask check-deps` 18 包；clippy/fmt 干净；`carg
 EXIT=0（70 个测试目标，368 passed / 0 failed，基线 361）。见 [升级器指南](upgrade.md)、[ADR 0026](adr/0026-upgrade-core-boundary.md) 与
 [报告](reports/2026-10-10-w15-upgrade-core.md)。已归档为 `openspec/changes/archive/2026-10-10-w15-upgrade-core/`。
 未做边界：无真实签名链（`DeterministicVerifier` 为 sha2 替身）、无真实安装器/下载器、`semver` 只做交集判断、未接入装配根。
-下一主线：真实安装器/签名链注入，或帧槽位与 keeper 生产接线、protected IPC/信号停机替换 halt 文件。
+
+本轮 `w25-tier-idle-migration` 已实现/实测（ADR 0027）：补上 W15 的另一半，registry A08/A09/R11 由 pending 升 implemented
+（**不标 tested**：A08/A09 为 `manual` 且需真实设备与长播，R11 需真实轻云实例）。**不新开 crate**——三项与 W15 共享同一条
+不变量 §14.4「未启用的能力不占用进程、端口、显存或云请求」，拆开会让它有两个真相。
+`residency.rs` 把足迹建模成**声明式**（封闭四族 `Process|Port|Vram|CloudRequest`）并**只在 `enable` 时物化**，
+于是「未安装/未启用 ⇒ 零占用」是结构性质；只有 `Process`/`Port` 排他。空闲释放**按 TTL 分族**
+（worker 30s / 端口随进程 30s / 未用预览 60s / 模型 300s，方向由重载代价决定），`reclaim` 只释放到期的并报告 `held_back`，
+**否决**「场次一结束就全释放」；回收不动启用状态、不删数据、繁忙能力绝不回收。审计是**对公开快照值的纯函数**
+`audit_residency`（六个稳定标记；`idle resource past its ttl` 是可达的泄漏检测，其余是改错时的守卫）。
+`tier_plan` 把 Lite→Standard→Pro 做成**两段差集的并** ⇒ Lite→Pro 不需中间档，「不重装内核」是数据的性质。
+`offline.rs` 缺件以 `CAPABILITY_NOT_READY` 拒绝并由 `missing_artifacts` 指认文件，之后复用同一条校验链；
+「不会偷偷下载」是**编译期**保证（无 HTTP 客户端），**否决** `allow_fetch` 开关。`migration.rs` 搬动前拒绝三件事
+（有活动会话 / 分布式 + SQLite 多写者 / 权限无映射即拒），搬动后复验权限集合、证据版本、数据哈希三项且错误码可区分
+（**否决**「只比哈希」）；`OutputSwitch` 以 key 幂等 ⇒「输出切换不重复播报」。实测：upgrade-core 3 lib + 17 lifecycle +
+11 migration + 12 plan + 8 upgrade = 51 项通过；`cargo xtask check-deps` 18 包；clippy/fmt 干净；
+`cargo xtask check --profile portable` EXIT=0（数字见报告）。见 [部署指南](deployment.md)、
+[ADR 0027](adr/0027-deployment-lifecycle-boundary.md) 与 [报告](reports/2026-10-10-w25-tier-idle-migration.md)。
+未做边界：`Vram` 是声明式索赔而非真实配额；R06 长播、B04 延迟分位、A10 云断连、A11 多会话是独立主线。
+下一主线：A10（云断连不伤本地链路）与 A11（Pro 多会话隔离），或 R06/B04 的设备侧测量与 O01 演示包。
 
 ## 任务依赖与状态
 
