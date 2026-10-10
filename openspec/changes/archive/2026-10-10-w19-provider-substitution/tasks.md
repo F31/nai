@@ -40,4 +40,4 @@
 - [x] 5.4 报告 `docs/reports/2026-10-10-w19-provider-substitution.md`：实测数字、线上差异证据、未覆盖边界。
 - [x] 5.5 `docs/development-plan.md` 与 `AGENTS.md` 记录本轮；`tests/registry.yaml` 补 A02/B03 证据且**不越权升级**产品项状态。
 - [x] 5.6 归档 `w19-provider-substitution`，跑 `validate --all --strict`（含 `--archived`）。
-- [ ] 5.7 全量 `cargo xtask check --profile portable`（`CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=4`）通过并留档；提交 + 推送。
+- [x] 5.7 全量 `cargo xtask check --profile portable`（`CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=4`）通过并留档；提交 + 推送。
