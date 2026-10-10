@@ -6,7 +6,12 @@
 //! an adapter directly: both wrap the call in reserve -> dispatch -> finish, so
 //! neither can bypass the budget, cancellation or usage accounting. `speech`
 //! returns PCM in a buffer, never over the control bus.
+//!
+//! `binding` is the composition seam: it turns a configured protocol name into
+//! the matching wire adapter, so callers hold a capability client rather than a
+//! vendor adapter and a provider swap stays a configuration edit.
 pub mod adapters;
+pub mod binding;
 pub mod client;
 pub mod gateway;
 pub mod speech;
@@ -14,8 +19,9 @@ pub mod sse;
 pub mod text;
 pub mod usage;
 
-pub use adapters::OpenAiAdapter;
-pub use client::{HttpConfig, ProviderClient, ProviderError, StreamResponse};
+pub use adapters::{AnthropicAdapter, ElevenLabsAdapter, OpenAiAdapter};
+pub use binding::{Capability, LlmClient, Protocol, ProviderProfile, SpeechClient};
+pub use client::{AuthScheme, HttpConfig, ProviderClient, ProviderError, StreamResponse};
 pub use gateway::{CallBudget, DispatchDecision, InMemoryGateway, UsageGateway};
 pub use speech::{
     MAX_SPEECH_CHARS, MAX_SPEECH_SAMPLES, MIN_SAMPLE_RATE, RehearsalSpeechSynthesizer,

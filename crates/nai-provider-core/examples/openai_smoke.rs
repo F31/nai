@@ -4,7 +4,7 @@
 //! embeddings request.
 use nai_budget_core::{Ceiling, Limits};
 use nai_contracts::v1::{AudioFormat, EmbeddingRequest, TtsRequest, UsageLedgerEntry, VoiceRef};
-use nai_provider_core::{HttpConfig, InMemoryGateway, OpenAiAdapter, ProviderClient};
+use nai_provider_core::{AuthScheme, HttpConfig, InMemoryGateway, OpenAiAdapter, ProviderClient};
 use nai_security::{Operation, Secret};
 use std::time::Duration;
 
@@ -33,8 +33,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("OPENAI_API_KEY is empty".into());
     }
     let client = ProviderClient::new(HttpConfig {
+        provider_ref: "openai-smoke".into(),
         endpoint: "https://api.openai.com/v1".into(),
         api_key: Some(Secret::new(key.into_bytes()).unwrap()),
+        auth: AuthScheme::Bearer,
+        extra_headers: Vec::new(),
         model: "text-embedding-3-small".into(),
         price_revision: "smoke-price-1".into(),
         currency: "USD".into(),

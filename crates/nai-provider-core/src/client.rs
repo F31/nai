@@ -52,11 +52,56 @@ impl std::fmt::Display for ProviderError {
 }
 impl std::error::Error for ProviderError {}
 
+/// How a binding presents its credential on the wire. The scheme belongs to
+/// the provider configuration, never to the shared request path: adding a
+/// provider must not mean editing transport code. `Bearer` stays the default so
+/// **not** declaring a scheme is an explicit OpenAI-compatible choice rather
+/// than a silent one.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum AuthScheme {
+    /// `Authorization: Bearer <credential>`.
+    #[default]
+    Bearer,
+    /// A provider-specific credential header (e.g. `x-api-key`, `xi-api-key`).
+    /// The value is the configured credential, exactly as `ApiKey` is for
+    /// `Bearer`; no prefix, encoding or transformation is applied.
+    Header { name: String },
+}
+
+/// Header names the transport owns. A binding may not override them: a
+/// provider that needs its own `Authorization`/`Host`/body framing is a
+/// different transport, not a header.
+const MANAGED_HEADERS: [&str; 4] = ["authorization", "host", "content-length", "content-type"];
+/// Bounds on binding-supplied static headers.
+const MAX_EXTRA_HEADERS: usize = 8;
+const MAX_HEADER_NAME: usize = 64;
+const MAX_HEADER_VALUE: usize = 1024;
+
+/// A single header name is an RFC 9110 token, compared case-insensitively.
+fn valid_header_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= MAX_HEADER_NAME
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b))
+        && !MANAGED_HEADERS.contains(&name.to_ascii_lowercase().as_str())
+}
+
 pub struct HttpConfig {
+    /// Stable identity of the provider this transport talks to. Recorded in
+    /// usage charges and checked against the binding, so a profile swap is
+    /// visible instead of two configs silently sharing one ledger key.
+    pub provider_ref: String,
     /// Base URL, e.g. `https://api.openai.com/v1`. Transport never logs it.
     pub endpoint: String,
-    /// Bearer secret supplied by the composition root; never logged or stored.
+    /// Credential supplied by the composition root; never logged or stored.
+    /// Its presentation is decided by `auth`, not by this field.
     pub api_key: Option<Secret>,
+    /// Credential presentation for this provider.
+    pub auth: AuthScheme,
+    /// Static headers the provider requires (e.g. `anthropic-version`). Never
+    /// carries the credential; that is `api_key` + `auth`.
+    pub extra_headers: Vec<(String, String)>,
     /// Model name from the trusted ProviderConfig profile.
     pub model: String,
     /// Exact price scope passed through to BudgetCharge.
@@ -98,6 +143,47 @@ impl ProviderClient {
                 "invalid provider transport config",
             ));
         }
+        if config.provider_ref.is_empty() || config.provider_ref.len() > 128 {
+            return Err(ProviderError::new(
+                ErrorCode::InvalidArgument,
+                false,
+                "provider binding has no usable identity",
+            ));
+        }
+        // A credential header the transport cannot own is refused up front, so
+        // no request is ever built with an unusable credential placement.
+        if matches!(&config.auth, AuthScheme::Header { name } if !valid_header_name(name)) {
+            return Err(ProviderError::new(
+                ErrorCode::InvalidArgument,
+                false,
+                "provider credential header rejected",
+            ));
+        }
+        if config.extra_headers.len() > MAX_EXTRA_HEADERS {
+            return Err(ProviderError::new(
+                ErrorCode::InvalidArgument,
+                false,
+                "too many provider headers",
+            ));
+        }
+        let mut seen = std::collections::BTreeSet::new();
+        for (name, value) in &config.extra_headers {
+            // A header the binding may not own, a duplicate, a folded value or
+            // a response-splitting payload is refused before any request is
+            // built, not sanitised afterwards.
+            if !valid_header_name(name)
+                || !seen.insert(name.to_ascii_lowercase())
+                || value.is_empty()
+                || value.len() > MAX_HEADER_VALUE
+                || value.bytes().any(|b| b == b'\r' || b == b'\n' || b == 0)
+            {
+                return Err(ProviderError::new(
+                    ErrorCode::InvalidArgument,
+                    false,
+                    "provider header rejected",
+                ));
+            }
+        }
         let http = reqwest::Client::builder()
             .connect_timeout(config.timeout)
             .build()
@@ -114,7 +200,7 @@ impl ProviderClient {
             _ => ProviderError::new(ErrorCode::Internal, false, "operation failed"),
         })
     }
-    fn bearer(&self) -> Result<&str, ProviderError> {
+    fn credential(&self) -> Result<&str, ProviderError> {
         self.config
             .api_key
             .as_ref()
@@ -146,8 +232,8 @@ impl ProviderClient {
             ));
         }
         let url = format!("{}{}", self.config.endpoint.trim_end_matches('/'), path);
-        let bearer = self.bearer()?;
-        let request = self
+        let credential = self.credential()?;
+        let mut request = self
             .http
             .request(
                 reqwest::Method::from_bytes(method.as_bytes()).map_err(|_| {
@@ -155,10 +241,28 @@ impl ProviderClient {
                 })?,
                 url,
             )
-            .header(reqwest::header::AUTHORIZATION, format!("Bearer {bearer}"))
+            // The credential presentation is a property of the binding, so the
+            // shared request path is identical for every provider.
+            .header(
+                match &self.config.auth {
+                    AuthScheme::Bearer => reqwest::header::AUTHORIZATION,
+                    AuthScheme::Header { name } => {
+                        reqwest::header::HeaderName::from_bytes(name.as_bytes()).map_err(|_| {
+                            ProviderError::new(ErrorCode::InvalidArgument, false, "invalid header")
+                        })?
+                    }
+                },
+                match &self.config.auth {
+                    AuthScheme::Bearer => format!("Bearer {credential}"),
+                    AuthScheme::Header { .. } => credential.to_string(),
+                },
+            );
+        for (name, value) in &self.config.extra_headers {
+            request = request.header(name.as_str(), value.as_str());
+        }
+        Ok(request
             .json(body)
-            .timeout(op.remaining().min(self.config.timeout));
-        Ok(request)
+            .timeout(op.remaining().min(self.config.timeout)))
     }
     /// Reads a bounded provider error body, preferring a JSON `error.message`.
     async fn provider_message(&self, response: reqwest::Response) -> String {

@@ -34,7 +34,7 @@ acceptance:
   - {id: "R11", title: "离线升级与部署迁移", release_line: r2, automation: fault, status: pending, notes: "远程/轻云里程碑"}
   # A 系列：架构与能力
   - {id: "A01", title: "无独显演练闭环与降级视图", release_line: slice_0, automation: manual, status: implemented, evidence: "reports/2026-10-09-w06-avatar-2d-core.md", notes: "控制闭环与2D软件像素核心/RMS样本时轴已实测；帧槽位所有权与Linux tmpfs-file跨进程传输见reports/2026-10-09-w05-w06-frame-slots.md；帧句柄授权broker（内核FD证据）与keeper帧消费/待机切换见reports/2026-10-09-w05-w06-frame-handle-broker.md；nai-runtime装配根+监督+render-worker演练闭环（真实像素跨进程、强杀撤权standby）见reports/2026-10-09-w05-w06-composition-root.md；apps/engine可执行已实现（真实进程控制面+监督+媒体演练），见reports/2026-10-09-engine-assembly.md；引擎broker授权keeper单帧投递（真实子进程）见reports/2026-10-09-engine-broker-frame-delivery.md；Slice-0演练链路已延到「文本→语音→真实RGBA帧→双水位提交→播放完成」且帧只在内存,见reports/2026-10-10-engine-text-to-playback-ack.md；protected IPC/信号停机、设备接线、连接对端认证、真实TTS与Windows设备帧率未完成，不标tested"}
-  - {id: "A02", title: "仅改配置换 Provider", release_line: r1, automation: integration, status: implemented, evidence: "reports/2026-10-07-d08-api-provider.md", notes: "单 Provider 已实现；第二家替换测试待建"}
+  - {id: "A02", title: "仅改配置换 Provider", release_line: r1, automation: integration, status: implemented, evidence: "reports/2026-10-10-w19-provider-substitution.md", notes: "第二家替换测试已建：同一调用函数（generate_once/speak_once）分别对 OpenAI兼容/Anthropic（文本）与 OpenAI兼容/ElevenLabs（语音），二者只差一个 ProviderProfile；线上差异（路径、凭据头名、请求体形状、voice 在体内/路径内）被实测到以防假通过；凭据形态与静态头由 Protocol 派生，能力不符显式报错；provider-core 36 项通过，见reports/2026-10-10-w19-provider-substitution.md。真实付费账号无余额、真实 TTS 设备未接，保持 implemented 不升级"}
   - {id: "A03", title: "新增连接器不改内核", release_line: r1, automation: integration, status: implemented, evidence: "reports/2026-10-08-d13-platform-ingress.md", notes: "platform 准入已实现"}
   - {id: "A04", title: "依赖方向强制", release_line: slice_0, automation: unit, status: tested, evidence: "reports/2026-10-07-d01-engineering-foundation.md", notes: "xtask check-deps 通过"}
   - {id: "A05", title: "Frozen 契约一致性套件", release_line: r1, automation: contract, status: tested, evidence: "reports/2026-10-07-d02-versioned-contracts.md", notes: "contracts suite 十三类消息三语言互通通过；其中帧槽位 ticket/commit/event 为 provisional（未 Frozen），冻结状态尚未机器可读，故不据此宣称该契约已 Frozen"}
@@ -47,7 +47,7 @@ acceptance:
   # B 系列：业务质量
   - {id: "B01", title: "知识质量门槛", release_line: r1, automation: integration, status: pending, notes: "100 题黄金集未建（阶段 2）"}
   - {id: "B02", title: "写实 Gate G0–G3", release_line: r2, automation: manual, status: blocked, notes: "缺完整合法模型/Windows GPU 证据（D12）"}
-  - {id: "B03", title: "成本对账", release_line: r1, automation: integration, status: implemented, evidence: "reports/2026-10-07-d07-scheduling-and-budgets.md", notes: "usage ledger 已实现；账单异步对账待接"}
+  - {id: "B03", title: "成本对账", release_line: r1, automation: integration, status: implemented, evidence: "reports/2026-10-10-w19-provider-substitution.md", notes: "usage ledger 已实现；两家协议的用量字段名（Anthropic input_tokens/output_tokens、OpenAI prompt_tokens/completion_tokens/total_tokens）均映射进同一封闭单位表并按 provider_ref 入账；ElevenLabs 用响应头 x-character-count、缺失时用发出文本的确定性字符数；OpenAI 兼容 TTS 不报 usage 则不编造（actual 为空）；账单异步对账待接"}
   - {id: "B04", title: "整链路延迟分位", release_line: r2, automation: manual, status: pending, notes: "设备里程碑"}
   - {id: "B05", title: "真人接管音轨与回声", release_line: r1, automation: manual, status: pending, notes: "混音/回声未实现（W11）"}
   - {id: "B06", title: "场次复盘报告", release_line: r1, automation: manual, status: pending, notes: "依赖决策日志（R07）"}

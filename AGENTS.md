@@ -238,3 +238,19 @@ bin 目标仍被 clippy `--all-targets` 检查（回避的只是链接）。
 contracts/schema 生成检查与前端 pnpm 检查仍因本机工具链限制未执行；registry 不改动任何验收项状态
 （A04 等工程项证据补强，产品项不因测试变绿升级）。
 详见 openspec/changes/engineering-loop-platform-truths/、docs/reports/2026-10-10-engineering-loop-platform-truths.md 与 docs/engineering.md。
+
+W19 第二家 LLM 与 TTS Provider 与替换验证已实现/实测（ADR 0025）：把 registry A02「仅改配置换 Provider」从声明变为可执行判据。
+nai-provider-core 传输接缝去硬编码：`client.rs` 新增 `AuthScheme`（`Bearer` 默认 | `Header{name}`）、`extra_headers`、`provider_ref`
+（`Usage.provider_ref` 由 endpoint 改为稳定供应商身份）；`request()` 按 scheme 构造凭据头使共享路径对所有供应商相同，
+校验为**拒绝而非事后清洗**（头名 RFC 9110 token、禁覆盖 authorization/host/content-length/content-type、禁重复、禁 CR/LF/NUL、有界）。
+新增 `adapters/anthropic.rs`（`POST /messages`、`x-api-key`+`anthropic-version`、SSE 按 JSON `type` 分派、`input_tokens`/`output_tokens`
+在适配器边界映射进封闭单位表）与 `adapters/elevenlabs.rs`（`POST /v1/text-to-speech/{voice}?output_format=pcm_{rate}`、`xi-api-key`、
+裸二进制 PCM、字符成本取 `x-character-count`）；新增 `binding.rs` 由配置字符串选协议并派生 auth/静态头，`ProviderProfile` 不含凭据，
+`LlmClient`/`SpeechClient` 为调用方持有的能力切面，能力不符显式 `InvalidArgument` 不降级。
+`tests/substitution.rs` 两台本地 mock（无外网）：**同一驱动函数**覆盖两家协议，同时断言「调用方可见一致」与「线上确实不同」
+（路径/凭据头名/请求体形状/voice 在体内还是路径内）；用量按供应商分别断言，不报 usage 的一律不编造；
+语音按句独立（两次均从 `seq=0` 起、`sample_start` 恒 0、各自结算一条 usage）与不可达采样率/非单声道显式拒绝并释放预留。
+provider-core 18 lib + 10 provider + 8 substitution = 36 项通过；零新增依赖（复用既有 `tiny_http`）。
+`cargo xtask check --profile portable` 通过：EXIT=0，64 个测试目标，336 passed / 0 failed（基线 321）。
+A02/B03 补证据但保持 implemented **不升级**（真实付费账号无余额 Blocked、真实 TTS 设备与 engine 真实 provider 接线未做）。
+详见 docs/adr/0025-provider-substitution-boundary.md、docs/reports/2026-10-10-w19-provider-substitution.md 与 docs/provider.md。

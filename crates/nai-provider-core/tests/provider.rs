@@ -4,7 +4,7 @@ use nai_contracts::v1::{
     AudioFormat, EmbeddingRequest, ErrorCode, LlmRequest, TtsRequest, UsageLedgerEntry, VoiceRef,
 };
 use nai_provider_core::{
-    CallBudget, HttpConfig, InMemoryGateway, OpenAiAdapter, ProviderClient, SseDecoder,
+    AuthScheme, CallBudget, HttpConfig, InMemoryGateway, OpenAiAdapter, ProviderClient, SseDecoder,
     usage_charge,
 };
 use nai_security::{Operation, Secret};
@@ -96,8 +96,11 @@ impl Mock {
     }
     fn client(&self, max_retries: u32, timeout: Duration) -> ProviderClient {
         ProviderClient::new(HttpConfig {
+            provider_ref: "test-provider".into(),
             endpoint: format!("http://127.0.0.1:{}", self.port),
             api_key: Some(Secret::new(SECRET.as_bytes().to_vec()).unwrap()),
+            auth: AuthScheme::Bearer,
+            extra_headers: Vec::new(),
             model: "test-model".into(),
             price_revision: "price-1".into(),
             currency: "CNY".into(),

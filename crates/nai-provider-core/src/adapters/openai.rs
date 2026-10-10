@@ -33,7 +33,7 @@ impl<'a> OpenAiAdapter<'a> {
     }
     fn token_usage(&self, quantity: u64, estimated: bool) -> Usage {
         Usage {
-            provider_ref: self.client.config().endpoint.clone(),
+            provider_ref: self.client.config().provider_ref.clone(),
             unit: "tokens".into(),
             quantity_decimal: quantity.to_string(),
             estimated,
