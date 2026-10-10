@@ -1,0 +1,29 @@
+{
+  "boundary": [
+    "driven through ProviderProfile -> ProviderClient -> adapter -> budget gateway",
+    "the endpoint is configuration: Protocol::OpenAiCompatible is unchanged",
+    "credentials come from the environment and are absent from this record",
+    "connectivity facts only; a successful run does not accept B01 or O01"
+  ],
+  "generated_by": "crates/nai-provider-core/examples/live_provider_smoke.rs",
+  "links": [
+    {
+      "capability": "text",
+      "chars": 2,
+      "chunks": 2,
+      "endpoint": "https://apihub.agnes-ai.com/v1",
+      "model": "agnes-3.0-flash",
+      "protocol": "openai",
+      "terminal_chunk": true
+    },
+    {
+      "audio_bytes": 45055,
+      "capability": "speech",
+      "chunks": 33,
+      "endpoint": "https://api.siliconflow.cn/v1",
+      "model": "FunAudioLLM/CosyVoice2-0.5B",
+      "protocol": "openai"
+    }
+  ],
+  "run": "live-provider-smoke-bound-stack"
+}

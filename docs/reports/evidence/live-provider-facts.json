@@ -1,0 +1,63 @@
+{
+  "run": "live-provider-smoke",
+  "generated_by": "scripts/provider-smoke.mjs",
+  "boundary": [
+    "connectivity facts only; a successful run does not accept B01 or O01",
+    "credentials are read from the environment and are absent from this record",
+    "byte count and media type come from the response, not from a local default"
+  ],
+  "text_generation": {
+    "host": "apihub.agnes-ai.com",
+    "path": "/v1/chat/completions",
+    "method": "POST",
+    "protocol": "openai-compatible",
+    "auth_scheme": "Bearer",
+    "status": 200,
+    "model": "agnes-3.0-flash",
+    "streaming": false,
+    "usage_fields": [
+      "completion_tokens",
+      "prompt_tokens",
+      "total_tokens"
+    ],
+    "usage": {
+      "completion_tokens": 2,
+      "prompt_tokens": 79,
+      "total_tokens": 81
+    },
+    "completion_chars": 2,
+    "finish_reason": "stop"
+  },
+  "text_streaming": {
+    "host": "apihub.agnes-ai.com",
+    "path": "/v1/chat/completions",
+    "method": "POST",
+    "protocol": "openai-compatible",
+    "auth_scheme": "Bearer",
+    "status": 200,
+    "model": "agnes-3.0-flash",
+    "streaming": true,
+    "sse_data_lines": 5,
+    "sse_terminator_done": true,
+    "sse_unparsable_frames": 0,
+    "sse_delta_events": 4,
+    "sse_delta_keys": [
+      "role",
+      "content"
+    ]
+  },
+  "speech_synthesis": {
+    "host": "api.siliconflow.cn",
+    "path": "/v1/audio/speech",
+    "method": "POST",
+    "protocol": "openai-compatible",
+    "auth_scheme": "Bearer",
+    "status": 200,
+    "model": "FunAudioLLM/CosyVoice2-0.5B",
+    "voice": "FunAudioLLM/CosyVoice2-0.5B:alex",
+    "media_type": "audio/mpeg",
+    "bytes": 45823,
+    "produced_audio": true
+  },
+  "audio_artifact": "docs/reports/evidence/voice-FunAudioLLM-CosyVoice2-0-5B.mp3"
+}

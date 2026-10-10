@@ -6,6 +6,8 @@ cargo test -p nai-provider-core --offline                       # text/speech �
 cargo test -p nai-provider-core --test substitution --offline   # 两家协议的替换验证（本地 mock，无外网）
 cargo xtask check --profile portable
 # 真实冒烟（有凭据时）：OPENAI_API_KEY=... cargo run -p nai-provider-core --example openai_smoke
+# 端点无关的真实冒烟（本栈 + 端点两级，含证据落盘）：见 docs/provider-live.md
+# 凭据边界：cargo xtask check --secrets
 ```
 
 ## 传输与取消

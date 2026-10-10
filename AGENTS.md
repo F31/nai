@@ -479,3 +479,21 @@ W35 平台生命周期判定骨架（ADR 0037）已实现/实测：**P01**（平
 未为平台生命周期指定；真值来自官方 SDK 与真实账号而非仓库载荷。实测：`tests/bridge.rs` **44 项**通过；`cargo xtask check --registry` 通过；
 `check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0。详见 docs/adr/0037-platform-lifecycle-boundary.md、
 docs/reports/2026-10-10-w35-platform-lifecycle.md 与 docs/platform-lifecycle.md。
+
+W36 真实 Provider 接入纪律与真实调用证据已实现/实测（ADR 0038）：真实凭据到位后风险从「机制不存在」变为「接入会污染仓库或把事实读错」，
+本轮把纪律固化成**可执行、可检查**的形态而非写进文档靠自觉。落 **`xtask/src/secrets.rs`**（tool 层，无依赖限制）与 **`scripts/provider-smoke.mjs`**
+（Node 22，零新增依赖），**`provider-core` 零改动**、18 包与依赖方向不变：**①** §30.1/§1469/S07 落成 `cargo xtask check --secrets`，扫描域取
+**git 会发布的内容**（`git ls-files --cached --others --exclude-standard`）——被忽略的本地 `.env` **不在**域（否则本机无法持有凭据），
+而**运行期新建、尚未暂存**的文件**在**域（否则检查只能在错误几乎铸成之后才发现），**两条测试各钉一个方向**；按**前缀＋最小长度表**匹配，
+命中只报**文件/行号/前缀族**、**不回显匹配内容**；扫描器源码**不得自命中**（测试夹具运行期拼装）。**②** 接入**只是配置**：两家真实端点都是
+OpenAI 兼容，`Protocol::OpenAiCompatible` 已同时 `serves` 文本与语音，故 `Protocol` 枚举、适配器集合与 `provider-core` **全部零改动**，只新增一份 `ProviderProfile`。
+**③** 缺凭据 **= `CAPABILITY_NOT_READY`** 非零退出、打印缺失**变量名**、**不写出**任何证据或音频，**绝不回退** `RehearsalTextGenerator`/`RehearsalSpeechSynthesizer`
+（§30.1 点名「用固定素材冒充」）。**④** **可用性是账户状态**：同端点逐模型记录，模型甲 `200`、模型乙 `403 insufficient_user_quota`（报文余量为负）、
+模型丙 `503 model_not_found`（渠道缺失记作**渠道事实**、**不是**凭据无效），结论**只覆盖被测模型**。**⑤** 证据**只含事实、连凭据前缀都不含**：
+主机名/路径/方法/协议名/凭据**方案名**/状态码/网关错误码/用量字段名/字节数/media type，**不记**请求头值、请求行原文与凭据片段。**⑥** 音频证据是**真实字节**，
+字节数取自响应体、media type 取自响应头，空体/错误报文判为**未产出证据**。**⑦** 契约差异**以实测为准**（音色裸名被 `400`＋错误码拒，端点要求的
+`model:voice` 完整形式返回 `audio/mpeg`），**不静默归一化、不重试掩饰**。**⑧** 主机差异是**环境事实**（本机文本端点报 `CRYPT_E_REVOCATION_OFFLINE`），
+记为**主机**注记、**不**读作端点事实。**⑨** **冒烟不是验收**：连通成功**只**新增连通性事实，**不改** B01/O01 登记状态。实测：`check --secrets` 全部待发布文件**零命中**；
+`cargo test -p nai-xtask --lib` **35 项**通过；两条真实链路经**本栈**（`ProviderProfile → ProviderClient → 适配器 → 预算网关`）走通；`check --registry` 通过；
+`check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0。详见 docs/adr/0038-live-provider-evidence-boundary.md、
+docs/reports/2026-10-10-w36-live-provider-evidence.md 与 docs/provider-live.md。

@@ -9,6 +9,7 @@ pub mod deps;
 pub mod golden;
 pub mod registry;
 pub mod schema;
+pub mod secrets;
 
 use std::{env, path::Path, process::Command};
 
@@ -41,6 +42,7 @@ pub fn execute(args: &[String], root: &Path) -> Result<(), String> {
         ["check", "--registry"] => registry::check(root),
         ["check", "--golden"] => golden::check(root, None),
         ["check", "--golden", "--dir", dir] => golden::check(root, Some(dir)),
+        ["check", "--secrets"] => secrets::check(root),
         ["schema"] => schema::generate(root, false),
         ["schema", "--check"] => schema::generate(root, true),
         ["test", "--suite", "contracts"] => schema::contracts(root),
@@ -172,7 +174,7 @@ pub fn execute(args: &[String], root: &Path) -> Result<(), String> {
         }
         ["help"] | ["--help"] | [] => {
             println!(
-                "Usage: cargo xtask check-deps | check --registry | check --golden [--dir <path>] | check --profile portable|windows-local | schema [--check] | test --suite contracts|storage|kernel|hosts|session|scheduler|provider|knowledge|upgrade\nOther suites, certify and package tasks are not available yet."
+                "Usage: cargo xtask check-deps | check --registry | check --golden [--dir <path>] | check --secrets | check --profile portable|windows-local | schema [--check] | test --suite contracts|storage|kernel|hosts|session|scheduler|provider|knowledge|upgrade\nOther suites, certify and package tasks are not available yet."
             );
             Ok(())
         }
