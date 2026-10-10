@@ -24,7 +24,7 @@ cargo xtask check --secrets
 | `NAI_TTS_BASE_URL` | 语音端点基址 |
 | `NAI_TTS_API_KEY` | 语音端点凭据 |
 | `NAI_TTS_MODEL` | 语音模型标识 |
-| `NAI_TTS_VOICE` | 音色标识，**按端点要求的完整书写形式**填写 |
+| `NAI_TTS_VOICE` | 音色标识，**按端点要求的完整书写形式**填写（本端点实测为 `<模型标识>:<音色名>`，如 `FunAudioLLM/CosyVoice2-0.5B:alex`） |
 
 `.env.example` 只登记变量名，值为空。真实值放本地 `.env`——它被 `.gitignore` 覆盖，因此不在 `check --secrets` 的扫描域内。
 
@@ -51,7 +51,7 @@ cargo xtask check --secrets
 
 - **模型清单以端点为准**：配置里写的模型名可能不在 `/v1/models` 的清单内，此时网关报渠道缺失类错误。
 - **可用性是账户状态**：同一端点、同一凭据下，某档模型 2xx 而另一档 403 且报文给出剩余余量（另有档位被免费套餐限流，报文为 `reached the API rate limit for free users`）。逐模型记录，结论不推广。
-- **音色标识的书写形式是契约**：不合形式会被端点以显式错误码拒绝；按端点要求书写后返回音频。冒烟不做静默归一化。
+- **音色标识的书写形式是契约**：不合形式会被端点以显式错误码拒绝；按端点要求书写后返回音频。冒烟不做静默归一化。实测对照（`NAI_TTS_MODEL=FunAudioLLM/CosyVoice2-0.5B`）：裸名 `alex` → `400` `20047 Invalid voice.`；完整形式 `FunAudioLLM/CosyVoice2-0.5B:alex` → `200` `audio/mpeg`。
 - **文本请求的轮次**：`permitted_context` 作为**恰好一条 `user` 轮**发出，适配器不自拟提示文本（ADR 0039）。**系统轮不构成「用户查询」**——严格网关会以 `400 No user query found in messages` 拒绝只有系统轮的请求，故两处冒烟都发 `user` 轮。
 - **SSE 帧形状**：`data: <json>` 的增量帧，流以 `data: [DONE]` 这一**非 JSON** 帧终止。适配器消费的正是这个形状。**增量帧的键集随模型而异**：普通模型为 `role`/`content`；**推理模型**另有 `reasoning_content`（先流思考、再流可见 `content`）。证据记**所有增量帧的键并集**，不取单帧采样。
 - **推理模型与 token 上限**：可见 `content` 可能为空——若上限只够 `reasoning_content`，流以 `finish_reason: length` 结束而**没有任何可见输出**，此时「链路成功」是**空心**的。冒烟的 `max_tokens` 取 256 以容纳思考（32 时实测为空、256 时有可见输出）。**不**把「可见输出为空」做成失败判据：那是参数与模型的交互，不是连通性。
