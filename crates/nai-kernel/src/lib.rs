@@ -4,6 +4,7 @@ pub mod duty;
 pub mod evaluate;
 pub mod golden;
 pub mod metrics;
+pub mod monitoring;
 pub mod multiplex;
 pub mod platform;
 pub mod realistic;

@@ -415,3 +415,32 @@ NotApplicable 只用于**不要求写实**的档位（Lite），Standard/Pro 声
 `tests/rag-golden`，为写实 Gate **臆造**证据目录属过度绑定；G2 真值来自目标机实测而非仓库载荷，待真实模型轨立项后再补载体。
 实测：`tests/realistic.rs` **37 项**通过；`cargo xtask check --registry` 通过；`check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0。
 详见 docs/adr/0034-realistic-gate-verdict-boundary.md、docs/reports/2026-10-10-w32-realistic-gate-verdict.md 与 docs/realistic-gate.md。
+
+W33 手机监控面判定骨架已实现/实测（ADR 0035）：**O03** 的真值（M0b PoC 定路线 A/B + 真机最小形态通过 S09）需外部条件，本轮不可达，
+O03 保持 `blocked`（并**补齐了原先缺失的 blocked 原因**——原 notes 仅记「Blocked 原因待 registry 标注」）；本轮做的是 **O03 的判定骨架**，
+§3.1 L5 与 §10.2 的越界口径此前**全库无落点**（`nai-control-api` 是桌面 loopback 传输面，其文件头明说不做设备认证/预检；
+`nai-kernel::platform` 管的是平台事件门）。落 `crates/nai-kernel/src/monitoring.rs`（只依赖 contracts，18 包与依赖方向不变，
+零新增依赖），复用 `golden::Finding`（同一报告词汇）。**「只发命令、看状态，不持有媒体时钟与密钥」落成白名单投影而非黑名单**：
+`MobileView` 结构上只含十个白名单字段（`mode`/`current_utterance`/`pending_seconds`/`event_source`/`api_status`/`budget_status`/
+`device_status`/`pending_approvals`/`alerts`/`enable_status`），`LiveState` 的 `media_clock`/`secret`/`raw_audio`/`raw_video`/
+`broadcast_control` 在它之上**没有落脚处**；`MobileView::field_names()` 与 `Exposure::ALLOWED` 标签集合被断言相等（**给视图加字段而漏登记
+即测试失败**），`LiveState::sensitive_field_names()` 与投影字段集合被断言不相交（**否决**事后剔除：给 `LiveState` 加字段就会默认流出）。
+**最小形态是四项清单**（`MobileCapability::MINIMUM_FORM`＝看板/审批/接管/紧急静音），缺项逐条指名（`minimum_form_incomplete`），
+预览与推送后置不算缺陷。**「它不是手机开播」**（§10.2）与「手机只做监控管理」（§742）落成禁止暴露类别 `BroadcastControl`
+（`exposes_broadcast_control`），与媒体时钟/密钥/原始音视频同族。**预览四条件仅在启用时受检**（按需、真正编码的低码率、关闭立即释放
+编码器与带宽、不得挤占正式出画），未启用时**一律不产生缺陷**（**否决**把「不适用」读成「不合规」）。**中继终止 TLS 不得宣称端到端**
+（§10.2）：`relay_terminates_tls` 且 `claims_end_to_end` ⇒ `e2e_encryption_claimed_with_relay_terminated_tls`、宣称 E2E 而协议未审核
+⇒ `e2e_encryption_claimed_without_reviewed_protocol`，**如实披露中继可读而不宣称 E2E 不算缺陷**（与 W32「不以 CUDA EP 注册宣称全 GPU」
+同形）。**路线 A/B 前置逐条**：A 缺有效 HTTPS 域名或证书 ⇒ `relay_pwa_without_secure_context`（Service Worker 需安全上下文）、
+B 缺应用分发 ⇒ `native_shell_without_distribution`、Tauri 2 成熟度未验证 ⇒ `native_shell_tauri_maturity_unverified`。
+`readiness` 三态且 `Defective` **优先**——审计非空⇒`Defective`、否则路线 `Undecided`⇒`AwaitingRouteDecision`（**未定案是诚实状态而非
+缺陷**）、已声明路线且无违规⇒`Ready`（**否决**未定案即缺陷或即就绪，也否决未定案掩盖越界）。**远程命令带 S09 契约**（§86 INV-14
+与 §636：身份、会话与 epoch、序号、TTL、实际 ACK，缺项 ⇒ `command_contract_incomplete` 并指名命令）且**高危不得开放给观察者**
+（`high_risk_command_open_to_observer`，**S09「观察者执行高危命令被拒」**）；真实防重放/去重/ACK 与吊销即时生效属 S09 集成验收，
+不在本模块。运营项：紧急静音不可达 ⇒ `emergency_mute_unreachable`（§10.2 最小形态、§37.3 紧急停用）、未提供启用状态 ⇒
+`enable_status_missing`（§37.3）、知识速补未接审核发布流程 ⇒ `knowledge_patch_without_review_flow`（**仅在声明 `KnowledgePatch` 能力时判**）。
+`audit_surface` 是描述符的纯函数，**十九条**稳定标记逐条可构造，并以「恰为这十九条」断言防止出现未登记的额外标记。
+**不新增 xtask 命令与证据目录**：§30.1 为 UI 层指定 `tests/ui`、为 RAG 黄金集指定 `tests/rag-golden`；手机监控面真值来自真机与 M0b PoC
+而非仓库载荷，**臆造** `tests/mobile-monitoring` 属过度绑定。实测：`tests/monitoring.rs` **34 项**通过；`cargo xtask check --registry`
+通过；`check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0。详见 docs/adr/0035-mobile-monitoring-surface-boundary.md、
+docs/reports/2026-10-10-w33-mobile-monitoring-surface.md 与 docs/mobile-monitoring.md。

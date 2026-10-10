@@ -349,8 +349,29 @@ G2 真值来自目标机实测而非仓库载荷，待真实模型轨立项后�
 未做边界：不含任何真实证据（权重/授权文件/ORT 推理/目标机测量均由外部提供）、不接 ORT/CUDA/直播工具、不改
 `model-package-integrity`（完整性 ≠ 认证）、不给写实进度分；B02 与 D12 保持 `blocked`。
 
-下一主线：能在 portable 落地的机制项已全部完成（含 B02 的判定骨架）；剩余 **O01**（需演示包与真实音频输出）、**O02/O05**（UI 验收，
-按既有惯例 `pending`）与阻塞项 **B01**（题集与真实模型评估）、**B02/D12/O03/O04/P01** 均需外部条件。
+W33 手机监控面判定骨架已实现/实测（ADR 0035）：**O03** 的真值（M0b PoC 定路线 A/B + 真机最小形态通过 S09）需外部条件，本轮不可达，
+O03 保持 `blocked`（并**补齐了原先缺失的 blocked 原因**）；本轮做的是 **O03 的判定骨架**——§3.1 L5 与 §10.2 的越界口径此前**全库无落点**。
+落 `crates/nai-kernel/src/monitoring.rs`（只依赖 contracts，18 包与依赖方向不变，零新增依赖），复用 `golden::Finding`。
+**「不持有媒体时钟与密钥」落成白名单投影而非黑名单**：`MobileView` 结构上只含十个白名单字段，`LiveState` 的 `media_clock`/`secret`/
+`raw_audio`/`raw_video`/`broadcast_control` 在它之上没有落脚处；`MobileView::field_names()` 与 `Exposure::ALLOWED` 标签集合被断言相等
+（给视图加字段而漏登记即测试失败），`LiveState::sensitive_field_names()` 与投影字段集合被断言不相交（**否决**事后剔除：给 `LiveState`
+加字段就会默认流出）。**最小形态是四项清单**（看板/审批/接管/紧急静音），缺项逐条指名，预览与推送后置不算缺陷。**「它不是手机开播」**
+（§10.2）与「手机只做监控管理」（§742）落成禁止暴露类别 `BroadcastControl`。**预览四条件仅在启用时受检**（按需、真正编码的低码率、
+关闭立即释放编码器与带宽、不得挤占正式出画），未启用时一律不产生缺陷（**否决**把「不适用」读成「不合规」）。**中继终止 TLS 不得宣称
+端到端**：`relay_terminates_tls` 且宣称 E2E ⇒ 违规、宣称 E2E 而协议未审核 ⇒ 违规，**如实披露中继可读而不宣称 E2E 不算缺陷**（与 W32
+「不以 CUDA EP 注册宣称全 GPU」同形）。**路线 A/B 前置逐条**（A 缺 HTTPS 域名或证书 / B 缺应用分发 / Tauri 2 成熟度未验证）；
+`readiness` 三态且 `Defective` 优先——审计非空⇒`Defective`、否则未定案⇒`AwaitingRouteDecision`（**未定案是诚实状态而非缺陷**）、
+已声明路线无违规⇒`Ready`。**远程命令带 S09 契约**（身份/会话与 epoch/序号/TTL/实际 ACK 缺项指名报出）且**高危不得开放给观察者**；
+紧急静音可达、启用状态齐备、知识速补走审核流逐条可判。`audit_surface` 是描述符的纯函数，**十九条**稳定标记逐条可构造。
+实测：`tests/monitoring.rs` 34 项通过；`cargo xtask check --registry` 通过；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
+见 [手机监控面指南](mobile-monitoring.md)、[ADR 0035](adr/0035-mobile-monitoring-surface-boundary.md) 与
+[报告](reports/2026-10-10-w33-mobile-monitoring-surface.md)。
+未做边界：不含任何真实交付（移动端应用/证书/分发/中继/真机 S09 集成均由外部提供）、不替 M0b 做路线决策、不引入传输层、
+不改 `platform` 模块（它管平台事件门）、不新增 xtask 命令与证据目录；O03 保持 `blocked`，S09 保持 `tested`。
+
+下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03 的判定骨架）；剩余 **O01**（需演示包与真实音频输出）、**O02/O05**（UI 验收，
+按既有惯例 `pending`）与阻塞项 **B01**（题集与真实模型评估）、**B02/D12**（模型与目标机证据）、**O03**（M0b 定案与真机 S09）、
+**O04**（干净 Windows 安装与设备）、**P01**（官方 SDK 与生产宿主，D13）均需外部条件。
 
 ## 任务依赖与状态
 
