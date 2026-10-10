@@ -12,6 +12,7 @@ layer = "tool"
 
 [dependencies]
 cargo_metadata.workspace = true
+nai-kernel.workspace = true
 prost.workspace = true
 prost-build.workspace = true
 prost-types.workspace = true

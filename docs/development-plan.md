@@ -301,7 +301,31 @@ B01 的**真值**（100 道贴近真实直播的问题、真实模型在这些�
 见 [黄金集指南](golden-set.md)、[ADR 0032](adr/0032-knowledge-quality-gate-boundary.md) 与
 [报告](reports/2026-10-10-w30-knowledge-quality-gate.md)。
 未做边界：不做题集内容、不接真实模型评估（答案为调用方判定后注入）、不做评估 UI、不改检索管线。
-下一主线：O01 演示包（需演示包与真实音频输出），或 O02/O05 的 UI 验收（按既有惯例保持 `pending`）。
+
+### W31 黄金集载荷载体与就位门禁（B01 机制侧收口）
+
+W30 之后「100 题黄金集未建」仍无落点：§30.1 指定的 `tests/rag-golden` 目录不存在，§6 的 100 题门槛标注为（设计值）且未指定生成方，
+§5.9 把黄金集列为**场景包字段**。本轮给「题从哪里来」一个**机器可寻**的答案：**一处位置**（`tests/rag-golden/*.json`）+ **一份结构规范**
+（`schemas/rag-golden/case-set.schema.json`）+ **一道就位门禁**（`cargo xtask check --golden [--dir]`）。门禁把三种结论**分开**报告：
+目录内无 `*.json` ⇒ `CAPABILITY_NOT_READY`（**未提供**，指出被搜索目录，既不是通过也不是失败）、有文件但读不出 ⇒ 逐个报出**全部**结构缺陷
+（文件名 + JSON 路径 + 稳定 token）、读出但不达 §5.9/§6 ⇒ 报全部 finding。`is_unsupplied()` 以 `files == 0` 为**唯一**判据，**否决**由
+`sets.is_empty()` 推断（后者在「有文件但全被拒」时同样为真，会把「载荷是垃圾」误报成「从未提供」）。§5.9 的授权边界**前移**到载荷边界：
+`origin.kind = promoted` 缺或空白 `confirmer` 在**读取载荷时**即拒，使含未确认候选的题集不会先参与召回统计、从而把题集缺陷误读成「系统在某类
+问题上表现差」。落 `xtask`（tool 层）：复用 kernel 的 `GoldenSet`/`audit_coverage`/`MINIMUM_CASES`（**判定逻辑只有一个真相**，不复制类别表或
+分位实现），且 xtask 的 **lib 目标在便携门控内**（`cargo test --package nai-xtask --lib`）故逻辑被工程门控覆盖；新增依赖边 `xtask → nai-kernel`
+属 tool 层允许，`check-deps` 仍 **18 包**、方向不变，**外部依赖零新增**（复用已有 `serde_json`；YAML 需新增依赖且 Rust 侧读 YAML 无先例）。
+**口径修正**：§655 的 B01 验收是「知识质量：**100 题集达到**第 6 章门槛」＝**实测达标**，题集不存在时不可能达成，故 registry B01 由
+`implemented` **回调为 `blocked`**（已交付的判定机制与载荷载体在 notes 中完整保留）；**不新增 B01a/B01b 编号**（registry id 正则要求恰好两位
+数字，拆分会使 `check --registry` 失败，且等于改写规格口径）。**本轮不产生任何题内容**：题集由场景包产出方按 §5.9 的三条来源（按场景人工
+编写 / 随场景包发布 / 坏案例经具名人工确认回流）填入，`tests/fixtures/rag-golden/example-min.json` 是夹具（8 例最小集）不是真值。
+实测：`cargo test -p nai-xtask --lib` 27 项通过（golden 17 项）；`check --golden` 对真实目录报 `files: 0` + `CAPABILITY_NOT_READY`、对夹具目录
+报 `below_minimum_cases: 8 of 100`；`check --registry` 通过；`check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
+见 [黄金集指南](golden-set.md)、[ADR 0033](adr/0033-golden-set-payload-boundary.md) 与
+[报告](reports/2026-10-10-w31-golden-set-payload.md)。
+未做边界：不产生题内容、不自动出题（§5.9 要求人工确认）、真实模型评估与真实检索质量未接、不做评估 UI、schema 未接数据文件的自动校验
+（载荷校验由 `check --golden` 承担）。
+下一主线：能在 portable 落地的机制项已全部完成；剩余 **O01**（需演示包与真实音频输出）、**O02/O05**（UI 验收，按既有惯例 `pending`）
+与阻塞项 **B01**（题集与真实模型评估）、**B02/O03/O04/P01** 均需外部条件。
 
 ## 任务依赖与状态
 

@@ -1351,6 +1351,7 @@ name = "nai-xtask"
 version = "0.1.0"
 dependencies = [
  "cargo_metadata",
+ "nai-kernel",
  "prost",
  "prost-build",
  "prost-types",

@@ -363,3 +363,30 @@ contracts，18 包与依赖方向不变，零新增依赖）——落 kernel 而
 authored）；`audit_report` 对上报值做纯函数，五条稳定标记全部可构造。
 实测：`tests/golden.rs` 24 项通过；`cargo xtask check --registry` 通过；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
 详见 docs/adr/0032-knowledge-quality-gate-boundary.md、docs/reports/2026-10-10-w30-knowledge-quality-gate.md 与 docs/golden-set.md。
+
+W31 黄金集载荷载体与就位门禁已实现/实测（ADR 0033）：给「100 题黄金集从哪里来」一个**机器可寻**的答案，并修正 B01 的验收口径。
+**口径修正**：§655 的 B01 验收原文是「知识质量：**100 题集达到**第 6 章门槛」＝**实测达标**；W30 标 `implemented` 的准确含义只是「判定机制
+就位」，题集不存在时达标不可能达成，故 registry B01 由 `implemented` **回调为 `blocked`**（已交付的判定机制与载荷载体在 notes 中完整保留）。
+**不新增 B01a/B01b 编号**——registry 的 id 正则 `^(S|R|A|B|O|P|X)[0-9]{2}$` 要求恰好两位数字，拆分会直接使 `check --registry` 失败，且等于
+改写规格口径（超出本仓库授权）。载体三件：**①一处位置**＝§30.1 指定的 `tests/rag-golden/*.json`（该目录此前不存在）；**②一份结构规范**＝
+`schemas/rag-golden/case-set.schema.json`（`case_set_schema` const 1、`scenario_version`、`cases`；`expectation` 五形
+evidence/high_risk_fact/must_clarify_or_escalate/must_not_act/must_cancel；`origin` 两形 authored/promoted+**非空 confirmer**；
+`additionalProperties:false` 全面拒未知字段——被忽略的拼写错误会读成「字段缺失」并静默改变用例含义）；**③一道就位门禁**＝
+`cargo xtask check --golden [--dir <目录>]`，把三种结论**分开**报告：目录内无 `*.json` ⇒ `CAPABILITY_NOT_READY`（**未提供**，指出被搜索目录，
+既不是通过也不是失败）、有文件但读不出 ⇒ 逐个报出**全部**结构缺陷（文件名 + JSON 路径 + 稳定 token）、读出但不达 §5.9/§6 ⇒ 报全部 finding
+（`below_minimum_cases`/`category_uncovered`/`expectation_category_mismatch`）。`is_unsupplied()` 以 **`files == 0` 为唯一判据**，
+**否决**由 `sets.is_empty()` 推断——后者在「有文件但全部被拒」时同样为真，会把「载荷是垃圾」误报成「从未提供」，这正是本轮要消除的混淆。
+§5.9 的授权边界**前移**到载荷边界：`origin.kind = promoted` 缺或空白 `confirmer` 在**读取载荷时**即拒（空白与缺失同罚），使含未确认候选的
+题集不会先参与召回统计、从而把题集缺陷误读成「系统在某类问题上表现差」。落 `xtask`（**tool 层**）：复用 kernel 的
+`GoldenSet`/`audit_coverage`/`MINIMUM_CASES`，**判定逻辑只有一个真相**（不复制类别表/最低题数/分位），且 xtask 的 **lib 目标在便携门控内**
+（`cargo test --package nai-xtask --lib`）故逻辑被工程门控覆盖——这是选 tool 层而非 shared 的 `nai-knowledge-core` 的关键：kernel 被禁止
+读文件（只依赖 contracts），shared 层不依赖 serde。新增依赖边 `xtask → nai-kernel` 属 tool 层允许（deps.rs 对 tool 层不设禁止规则），
+`check-deps` 仍 **18 包**、方向不变，**外部依赖零新增**（复用已有 `serde_json`；YAML 需新增外部依赖且 Rust 侧读 YAML 无先例，仓库唯一的
+`tests/registry.yaml` 由 Node 侧读取）。该命令**不并入** `check --profile portable`：业务题集未建不应让工程基础门控变红。**本轮不产生任何题
+内容**——题集是场景包载荷（§5.9 场景包含「预算与黄金集」⇒ 逐场景各一份），三条人工来源＝按场景编写（§6「至少 100 个贴近真实直播的问题」，
+整条门槛标注（设计值））/ 随场景包发布 / 坏案例**经具名人工确认**回流；`tests/fixtures/rag-golden/example-min.json` 是**夹具**（8 例最小集，
+验证加载器本身）**不是**真值，且不在默认位置故不被默认命令读取。
+实测：`cargo test -p nai-xtask --lib` **27 项**通过（golden 17 + 原 deps 8 + schema 2）；`check --golden` 对真实目录报 `files: 0` +
+`CAPABILITY_NOT_READY`（退出 1）、对夹具目录读入 8 例并报 `below_minimum_cases: 8 of 100`（退出 1）——两种结论确实分开；`check --registry`
+通过；`check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
+详见 docs/adr/0033-golden-set-payload-boundary.md、docs/reports/2026-10-10-w31-golden-set-payload.md 与 tests/rag-golden/README.md。

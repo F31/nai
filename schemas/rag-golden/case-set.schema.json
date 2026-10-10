@@ -1,0 +1,43 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://nai.invalid/schemas/rag-golden/case-set",
+  "title":"RagGoldenCaseSet",
+  "description":"One scenario's golden case set (§5.9 first bullet, §6 quality threshold). It is a scenario-package payload: nothing in this repository fabricates its contents. §6's minimum of 100 cases is enforced by `cargo xtask check --golden`, which reports the shortfall by name rather than only refusing, so `cases` requires at least one entry here.",
+  "type":"object","additionalProperties":false,
+  "required":["case_set_schema","scenario_version","cases"],
+  "$defs":{
+    "ref":{"type":"string","minLength":1,"maxLength":128},
+    "expectation":{"oneOf":[
+      {"type":"object","additionalProperties":false,"required":["kind","required"],"properties":{
+        "kind":{"const":"evidence"},
+        "required":{"type":"array","minItems":1,"maxItems":32,"uniqueItems":true,"items":{"$ref":"#/$defs/ref"}}}},
+      {"type":"object","additionalProperties":false,"required":["kind","forbidden_claims"],"properties":{
+        "kind":{"const":"high_risk_fact"},
+        "forbidden_claims":{"type":"array","minItems":1,"maxItems":32,"uniqueItems":true,"items":{"type":"string","minLength":1,"maxLength":256}}}},
+      {"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"const":"must_clarify_or_escalate"}}},
+      {"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"const":"must_not_act"}}},
+      {"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"const":"must_cancel"}}}
+    ]},
+    "origin":{"oneOf":[
+      {"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"const":"authored"}}},
+      {"type":"object","additionalProperties":false,"required":["kind","confirmer"],"properties":{
+        "kind":{"const":"promoted"},
+        "confirmer":{"type":"string","minLength":1,"maxLength":128,"pattern":"^\\S(?:.*\\S)?$"}}}
+    ]}
+  },
+  "properties":{
+    "case_set_schema":{"const":1},
+    "scenario_version":{"type":"string","minLength":1,"maxLength":128},
+    "cases":{"type":"array","minItems":1,"maxItems":4096,"items":{
+      "type":"object","additionalProperties":false,
+      "required":["id","category","question","expectation","origin"],
+      "properties":{
+        "id":{"type":"string","minLength":1,"maxLength":128,"pattern":"^[A-Za-z0-9_][A-Za-z0-9_.:-]*$"},
+        "category":{"enum":["normal_answer","fact_update","injection","conflict","privilege_escalation","no_answer","cancelled","tool_return_attack"]},
+        "question":{"type":"string","minLength":1,"maxLength":1024},
+        "expectation":{"$ref":"#/$defs/expectation"},
+        "origin":{"$ref":"#/$defs/origin"}
+      }
+    }}
+  }
+}
