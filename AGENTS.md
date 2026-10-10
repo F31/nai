@@ -215,3 +215,26 @@ contracts/schema 生成检查仍因 node 无法 spawn 子进程（EBUSY）未执
 R07 补「PlaybackAck 条目进入哈希链」证据、A01 补「文本→播放完成」链路证据，均保持 implemented 不升级
 （真实 TTS 与设备/硬件播放 ACK 仍缺）。详见 docs/adr/0023-engine-text-to-playback-ack-boundary.md、
 docs/reports/2026-10-10-engine-text-to-playback-ack.md、docs/engine.md、docs/media.md 与 docs/provider.md。
+
+工程校验回路的平台事实与真缺陷已收敛/实测：上一轮记的「13 项 Windows 平台差异」逐条追到三个互相独立的根因，其中一项是真缺陷。
+（1）**真缺陷**：backup 与 restore 各自调用 `File::open(..).sync_all()`，而 Windows 的 `FlushFileBuffers` 要求可写句柄
+（`PermissionDenied(os error 5)`；Linux 对只读 fd 的 fsync 合法）——**备份与恢复在 Windows 上从未成功过**。
+抽出单一 `flush_durable`（可写句柄 + sync_all）供两处共用，不做平台分叉；storage `--lib` 由 4 项失败变为 48 passed/0 failed，
+备份恢复用例单独重复 8/8 通过。上一轮把它记为「`fs::rename` 覆盖语义差异」，那是把压平后的错误文案当成了结论。
+（2）**平台事实**：宿主对**任何** stdin 为管道的子进程都拒绝 spawn（`ERROR_PIPE_BUSY`；独立程序 spawn `cmd /c echo` 可复现；
+`CreatePipe` 直建可用、piped stdout/stderr 可用），同一受限能力使 node `spawnSync` 返回 `EBUSY`。
+按同包 `frame_drill.rs` 的既有约定，`apps/output-keeper/tests/faults.rs` 与 engine 的 `/proc`+`kill` 监督演练改用
+文件级/用例级 `#![cfg(target_os = "linux")]` 声明范围，并保留 `host_stdin_pipe_refusal` 具名诊断（签名须为 `-> Child`，
+`fn(E) -> !` 无法作为 `unwrap_or_else` 的 `fn(E) -> T`）。不做运行期探测后提前 return——libtest 无 skipped 结局，那会把「没跑」显示成 `ok`。
+（3）**没验证却被写成通过**：`0600` 断言在 Windows 上因别的原因碰巧通过；拆为 `#[cfg(unix)]` 实测与
+`#[cfg(not(unix))]` 特征化断言（把「Windows 尚无 ACL 检查」的缺口钉住，该检查仍未实现）。
+（4）**harness 自锁**：检查逻辑移入 `xtask/src/lib.rs`，`main.rs` 收成 CLI 外壳，测试步改为
+`cargo test --workspace --exclude <env!("CARGO_PKG_NAME")>` 加 `-p <同名> --lib`；包名取自包自身以免改名后静默空排除，
+bin 目标仍被 clippy `--all-targets` 检查（回避的只是链接）。
+（5）错误词表按类别分派（`io::ErrorKind` / SQLite `ErrorCode`），不搬 OS 本地化文本，使「平台差异」这类误判不再成立；
+另修一处自相矛盾的时钟竞态（改用持久化边界推进，遵同文件「不用 flaky sleep」的既有约定）。
+`cargo xtask check --profile portable` **在本机首次整体通过：EXIT=0，63 个测试目标，321 passed / 0 failed**（基线 272 passed / 13 failed）。
+宿主提交限制（`os error 1455` / `LNK1102`）下需 `CARGO_BUILD_JOBS=2`；该开关属 cargo 原生能力，未写进 portable 检查。
+contracts/schema 生成检查与前端 pnpm 检查仍因本机工具链限制未执行；registry 不改动任何验收项状态
+（A04 等工程项证据补强，产品项不因测试变绿升级）。
+详见 openspec/changes/engineering-loop-platform-truths/、docs/reports/2026-10-10-engineering-loop-platform-truths.md 与 docs/engineering.md。

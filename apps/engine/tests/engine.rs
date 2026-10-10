@@ -1,6 +1,15 @@
 //! Real-subprocess engine tests: loopback control on the shared session, keeper
 //! supervision with a hard kill, the explicit media drill and the graceful halt.
 //! These are Linux engineering drills, not device or Windows certification.
+//!
+//! The supervision drills are Linux-only on purpose. They find the supervised
+//! keeper by reading `/proc` and end it with `kill`, so they need the Unix
+//! process model. The media path needs a second, honest limit on the Windows
+//! host used for this round: `nai-runtime`'s supervisor hands the keeper a pipe
+//! as its stdin, and this host refuses that handoff, so no keeper can be
+//! supervised there at all. Both facts are recorded in
+//! docs/reports/2026-10-10-engineering-loop-platform-truths.md rather than being
+//! asserted through a drill that cannot reach the behaviour it names.
 mod common;
 
 use common::*;
@@ -218,6 +227,9 @@ fn control_surface_rejects_missing_token_and_revokes_the_shared_session() {
     );
 }
 
+/// The keeper is found through `/proc` and ended through the Unix signal API, so
+/// this drill runs where that process model exists.
+#[cfg(target_os = "linux")]
 #[test]
 fn killed_keeper_is_halted_by_the_engine_and_the_chain_survives() {
     let root = tempdir().unwrap();
@@ -439,6 +451,9 @@ fn halt_during_media_drill_prewarm_never_commits_a_frame() {
     );
 }
 
+/// Waits for the supervised keeper, which needs the Unix process model: the pid
+/// is discovered by scanning `/proc`, as the drill above does.
+#[cfg(target_os = "linux")]
 #[test]
 fn http_revoke_stops_lease_renewal_without_regranting_output() {
     let root = tempdir().unwrap();
@@ -510,34 +525,49 @@ fn incomplete_or_unsafe_invocation_is_rejected_without_listening() {
         "usage must name the missing inputs"
     );
 
-    // A world-readable token file is refused before any service starts.
+    // A world-readable token file is refused before any service starts. The rule
+    // is a Unix mode check and only exists there: Windows ACLs are not inspected
+    // yet. So the invocation is not run off Unix — it would measure some later,
+    // unrelated rejection and record that as a permission decision — and the gap
+    // is pinned by its own assertion below instead.
     let token_path = root.path().join("token");
     write_token(&token_path);
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(&token_path, std::fs::Permissions::from_mode(0o644)).unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_nai-engine"))
+            .args([
+                "--data-root",
+                &root.path().display().to_string(),
+                "--workspace",
+                WORKSPACE,
+                "--actor",
+                ACTOR,
+                "--profile",
+                PROFILE,
+                "--token-file",
+                &token_path.display().to_string(),
+            ])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(2));
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("0600"),
+            "the token file permission must be named"
+        );
     }
-    let output = Command::new(env!("CARGO_BIN_EXE_nai-engine"))
-        .args([
-            "--data-root",
-            &root.path().display().to_string(),
-            "--workspace",
-            WORKSPACE,
-            "--actor",
-            ACTOR,
-            "--profile",
-            PROFILE,
-            "--token-file",
-            &token_path.display().to_string(),
-        ])
-        .output()
-        .unwrap();
-    assert_eq!(output.status.code(), Some(2));
-    assert!(
-        String::from_utf8_lossy(&output.stderr).contains("0600"),
-        "the token file permission must be named"
-    );
+    #[cfg(not(unix))]
+    {
+        // Characterisation of the documented gap, so it cannot change silently:
+        // a credential readable beyond its owner is accepted because no ACL check
+        // exists yet. Replace this with a refusal when Windows gains the check.
+        assert_eq!(
+            nai_engine::read_token(&token_path).expect("token is read"),
+            TOKEN,
+            "the owner-only token rule is still Unix-only"
+        );
+    }
 }
 
 /// Provisions through the engine binary itself: workspace, permissions and the
@@ -570,6 +600,7 @@ fn provision_with_engine(root: &Path) {
 
 /// Finds this engine's supervised keeper by scanning /proc and matching the
 /// parent pid. Linux-only evidence gathering.
+#[cfg(target_os = "linux")]
 fn wait_for_keeper_pid(parent: u32, timeout: Duration) -> Option<u32> {
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {

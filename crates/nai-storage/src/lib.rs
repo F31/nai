@@ -35,13 +35,51 @@ impl fmt::Display for StorageError {
 }
 impl std::error::Error for StorageError {}
 impl From<rusqlite::Error> for StorageError {
-    fn from(_: rusqlite::Error) -> Self {
-        error(ErrorCode::Internal, "sqlite operation failed")
+    /// Classifies by the portable SQLite result code, for the same reason the
+    /// `std::io::Error` conversion below classifies by kind: a report has to tell
+    /// a contended database from a corrupt or unopenable one without a debug
+    /// build. The codes are SQLite's, not the host's, so the vocabulary stays
+    /// portable across platforms.
+    fn from(sqlite_error: rusqlite::Error) -> Self {
+        use rusqlite::ErrorCode as Code;
+        let reason = match &sqlite_error {
+            rusqlite::Error::SqliteFailure(failure, _) => match failure.code {
+                Code::DatabaseBusy | Code::DatabaseLocked => "sqlite busy",
+                Code::OutOfMemory => "sqlite out of memory",
+                Code::DiskFull => "sqlite storage full",
+                Code::SystemIoFailure => "sqlite io failure",
+                Code::DatabaseCorrupt => "sqlite database corrupt",
+                Code::CannotOpen => "sqlite database unopenable",
+                Code::NotADatabase => "sqlite file is not a database",
+                Code::ReadOnly | Code::PermissionDenied => "sqlite write refused",
+                Code::OperationInterrupted => "sqlite interrupted",
+                Code::SchemaChanged => "sqlite schema changed",
+                Code::ConstraintViolation => "sqlite constraint violated",
+                Code::TypeMismatch => "sqlite type mismatch",
+                _ => "sqlite operation failed",
+            },
+            _ => "sqlite operation failed",
+        };
+        error(ErrorCode::Internal, reason)
     }
 }
 impl From<std::io::Error> for StorageError {
-    fn from(_: std::io::Error) -> Self {
-        error(ErrorCode::Internal, "filesystem operation failed")
+    /// Keeps a portable, stable reason. The OS message is localised platform
+    /// text, so only the kind is carried: a report must be able to tell a
+    /// missing path from a denied one without a debug build.
+    fn from(io_error: std::io::Error) -> Self {
+        let reason = match io_error.kind() {
+            std::io::ErrorKind::NotFound => "filesystem path missing",
+            std::io::ErrorKind::PermissionDenied => "filesystem access denied",
+            std::io::ErrorKind::AlreadyExists => "filesystem target exists",
+            std::io::ErrorKind::InvalidInput | std::io::ErrorKind::InvalidData => {
+                "filesystem input unusable"
+            }
+            std::io::ErrorKind::UnexpectedEof => "filesystem input truncated",
+            std::io::ErrorKind::WriteZero => "filesystem write incomplete",
+            _ => "filesystem operation failed",
+        };
+        error(ErrorCode::Internal, reason)
     }
 }
 impl From<nai_security::SecurityError> for StorageError {

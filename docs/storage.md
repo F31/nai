@@ -57,6 +57,13 @@ outbox 的实际运行/媒体消费者已由 D06/D09 落地。
 
 恢复测试验证可读取原文/配置/事实并创建新演练会话记录，不等于已完成真实 engine preflight 或直播。
 
+备份与恢复在写入后都用同一处 `flush_durable` 确认字节落盘：它按可写方式打开文件再 `sync_all`，
+因为 Windows 的 `FlushFileBuffers` 会拒绝只读句柄，而只读句柄在 Linux 上合法。此前备份与恢复各自
+`File::open(..).sync_all()`，在 Windows 上恒被拒绝——四个 storage 失败曾因此被误记为「`fs::rename` 语义差异」。
+错误词表按类别分派：`std::io::Error` 依 `ErrorKind`、`rusqlite::Error` 依 SQLite `ErrorCode` 映射为稳定 reason
+（如 `filesystem access denied`、`sqlite busy`、`sqlite database corrupt`），仍统一为 `ErrorCode::Internal`。
+reason 不携带 OS 本地化文本，因此跨机器可直接比对；确切类别是上一节「平台差异」误判能够被发现的前提。
+
 ## 决策日志（R07 前置）
 
 `decision_log` 是只追加哈希链：同 workspace 内每条 `prev_hash` 等于前一条 `entry_hash`，创世为

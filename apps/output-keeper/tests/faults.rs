@@ -1,4 +1,18 @@
 //! Real native subprocess drills only. Not engine/Windows/hardware certification.
+//!
+//! Every drill here needs one pipe shared by two real processes: a control
+//! source writes frames, the keeper reads them from its stdin, and the source's
+//! death is what closes that input. `host_stdin_pipe_refusal` names the case
+//! where the host cannot provide that handoff, so a residual failure is not
+//! mistaken for a keeper defect.
+//!
+//! The family is Linux-only, like `frame_drill.rs` beside it and the media drill
+//! in `apps/engine`: the windows this workspace targets do not supervise keeper
+//! processes at all, so these drills have no subject there. The development host
+//! used for this round is one such target — it refuses a pipe as *any* child's
+//! stdin (`ERROR_PIPE_BUSY`) — which is why the gate is a platform fact here
+//! rather than a lost assertion.
+#![cfg(target_os = "linux")]
 use nai_contracts::v1::{
     ErrorCode, OutputWatchdogCommand, OutputWatchdogStatus, PlaybackLease, SessionMode,
     output_watchdog_command::Action,
@@ -12,6 +26,24 @@ use std::{
     thread,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
+
+/// A host that refuses a pipe as a child's stdin makes these drills unrunnable.
+///
+/// Measured on the Windows host used for this round: `Command::spawn` returns
+/// `Os { code: 231 }` (`ERROR_PIPE_BUSY`) for *any* child whose stdin is a pipe,
+/// new or inherited — reproducible in a standalone program that spawns
+/// `cmd /c echo` with `Stdio::piped()` stdin, with the sandbox both on and off.
+/// A pipe created through the OS `CreatePipe` path is accepted, and a child with
+/// a piped stdout or stderr is accepted, so the refusal is specific to piped
+/// stdin. Report that instead of an opaque OS error: the same limitation also
+/// stops `nai-runtime`'s supervisor from starting a keeper on this host.
+fn host_stdin_pipe_refusal(error: std::io::Error) -> Child {
+    panic!(
+        "host refused a pipe as a child's stdin ({error}): these drills need one pipe \
+         shared by two real processes, so they cannot run here. Host stdio limitation, \
+         not a keeper or framing defect; see docs/reports/2026-10-10-engineering-loop-platform-truths.md"
+    );
+}
 
 fn wait_exit(child: &mut Child, timeout: Duration) -> std::process::ExitStatus {
     let end = Instant::now() + timeout;
@@ -103,12 +135,18 @@ impl Drill {
             .stdout(Stdio::piped())
             .spawn()
             .unwrap();
+        // One pipe is shared by two real processes: the source writes control
+        // frames, the keeper reads them, and the source's death is what closes
+        // the keeper's input. That handoff is the whole point of the drill, so a
+        // host that refuses a pipe as a child's stdin cannot run it. Name the
+        // cause instead of surfacing a bare `ERROR_PIPE_BUSY`, which reads like a
+        // keeper or framing defect.
         let mut keeper = Command::new(env!("CARGO_BIN_EXE_nai-output-keeper"))
             .args(["--watchdog-drill", "session", &floor.to_string()])
             .stdin(Stdio::from(source.stdout.take().unwrap()))
             .stdout(Stdio::piped())
             .spawn()
-            .unwrap();
+            .unwrap_or_else(host_stdin_pipe_refusal);
         let mut output = keeper.stdout.take().unwrap();
         let (sender, statuses) = mpsc::sync_channel(16);
         let reader = thread::spawn(move || {

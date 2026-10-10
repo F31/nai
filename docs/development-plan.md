@@ -155,6 +155,24 @@ R07 补「`PlaybackAck` 条目进入哈希链」证据、A01 补「文本→播�
 下一主线：真实 TTS/Provider 付费链路或帧槽位与 keeper 生产接线（`delivery` 从 `memory` 变为真实输出），
 以及 protected IPC/信号停机替换 halt 文件；两者都需先明确设备与凭据条件。
 
+本轮 `engineering-loop-platform-truths` 已实现/实测：把上一轮记的「13 项 Windows 平台差异」逐条追到
+三个互相独立的根因，其中一项是**真缺陷**——`backup`/`restore` 各自 `File::open(..).sync_all()`，而 Windows 的
+`FlushFileBuffers` 要求可写句柄，因此**备份与恢复在 Windows 上从未成功过**；抽出单一 `flush_durable` 供两处共用后，
+storage `--lib` 由 4 项失败变为 **48 passed / 0 failed**。其余两项为**平台事实**：宿主对任何 stdin 为管道的子进程
+都拒绝 spawn（`ERROR_PIPE_BUSY`），node `spawnSync` 同样受限（`EBUSY`）；原生子进程演练按同包 `frame_drill.rs` 的
+既有约定改用 `#![cfg(target_os = "linux")]` 声明范围，并保留具名诊断；`0600` 断言则拆为 Unix 实测 +
+非 Unix 特征化断言，不再把「碰巧通过」当成验证。另修 harness 自锁（检查逻辑移入 `xtask/src/lib.rs`，
+测试步 `--exclude` 自身后再测其 lib，bin 仍被 clippy `--all-targets` 检查）与一处自相矛盾的时钟竞态。
+`cargo xtask check --profile portable` **在本机首次整体通过：EXIT=0，63 个测试目标，321 passed / 0 failed**
+（基线 272 passed / 13 failed）；宿主提交限制下需 `CARGO_BUILD_JOBS=2`，该开关未写进 portable 检查。
+contracts/schema 生成检查与前端 pnpm 检查仍因本机工具链限制未执行。
+见 [工程流程](engineering.md)、[存储指南](storage.md)、[ADR 0024](adr/0024-engineering-loop-platform-truths.md)
+与 [报告](reports/2026-10-10-engineering-loop-platform-truths.md)。
+已归档为 `openspec/changes/archive/2026-10-10-engineering-loop-platform-truths/`，任务全数完成；
+主规格 `engineering-foundation`、`local-persistence` 增量生效。registry 不改动任何验收项状态。
+下一主线：真实 TTS/Provider 付费链路或帧槽位与 keeper 生产接线（`delivery` 从 `memory` 变为真实输出），
+以及 protected IPC/信号停机替换 halt 文件；两者都需先明确设备与凭据条件。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

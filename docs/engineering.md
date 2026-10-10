@@ -22,6 +22,26 @@ Windows 原生环境使用 `cargo xtask check --profile windows-local`。
 声明、路径层级和 workspace 可达关系。库/插件新增时登记 workspace member 与
 `[package.metadata.nai] layer`；新增路径职责必须增加规则与必要测试。
 
+`check --profile` 的测试步不会让 harness 测到自己身上：`cargo test --workspace` 会重新链接
+**正在执行**的 `nai-xtask` 映像，Windows 拒绝覆盖运行中的可执行文件（`LNK1104`）。因此检查逻辑位于
+`xtask/src/lib.rs`，`main.rs` 只是 CLI 外壳，测试步为 `cargo test --workspace --exclude <包名>`
+加 `cargo test -p <包名> --lib`；包名取自包自身而非字面量，改名不会留下静默的空排除。bin 目标仍被
+clippy `--all-targets` 类型检查，回避的只是链接。
+内存受限的宿主可用 cargo 原生开关约束并发（如 `CARGO_BUILD_JOBS=2 cargo xtask check --profile portable`）：
+默认并发下全量链接 30 余个带 debuginfo 的测试二进制可能触到系统提交限制（本机实测 `os error 1455`），
+那是宿主资源而非仓库缺陷，故未写进 portable 检查。
+若宿主同时很慢的文件系统，还需约束**测试**并发（`RUST_TEST_THREADS=4`，libtest 原生读取）：
+`O(memory)` 的单个操作有 30 秒硬上限（`Operation::new` 拒绝更长超时，属产品不变量，不可放宽），
+而本机实测「打开一个 Store 并完成迁移/权限装配」固定约 5 秒、`backup`+`restore` 再加约 7 秒——
+workspace 全局并行时单次操作会被挤压逼近该上限，于是出现 `DeadlineExceeded`。两者都是宿主吞吐事实，
+以文档记录；仓库代码不做平台或资源特化。
+
+需要 Unix 进程模型或原生子进程管道的演练用文件级 `#![cfg(target_os = "linux")]` 声明范围
+（`apps/output-keeper/tests/frame_drill.rs`、`tests/faults.rs`、`apps/render-worker/tests/usage.rs`）；
+在受支持平台仍缺少宿主能力时必须给出具名诊断，不得以 `ok` 报告未执行的演练。只在特定平台机制下成立的
+规则（例如 Unix mode 位）用特征化断言钉住缺口，不静默跳过。平台事实与真缺陷的区分依据见
+[报告](reports/2026-10-10-engineering-loop-platform-truths.md)。
+
 contracts 已由 D02 提供生成消息和结构检查；kernel 注册/绑定与 SDK 清单转换已由 D04 实现，
 宿主/IPC 与 SDK 帧/握手/ACL 已由 D05 实现，会话/epoch/取消及媒体租约门控已由 D06 实现。
 有界调度/公平/债务和共享预算持久账本已由 D07 实现。

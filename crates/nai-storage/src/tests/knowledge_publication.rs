@@ -625,8 +625,14 @@ fn document_expiry_is_rechecked_for_approval_and_preplay() {
     let dir = tempfile::tempdir().unwrap();
     let mut storage = store(dir.path());
     setup(&mut storage);
+    // A window wide enough that a loaded host cannot age the document out while
+    // the setup below runs. The expiry itself is applied afterwards, at the
+    // persisted boundary, the way `expired_facts_block_existing_and_new_approvals`
+    // does it: a real clock plus a fixed sleep makes this drill fail whenever the
+    // machine is busy, which is a property of the host and not of the rule under
+    // test.
     let mut doc = knowledge_doc("保修限时内容");
-    doc.valid_until_ms = Some(utc_ms().unwrap() + 2000);
+    doc.valid_until_ms = Some(utc_ms().unwrap() + 3_600_000);
     storage.import_document(&op(), "operator", &doc).unwrap();
     let sealed = publish_prepared(&mut storage, None);
     storage
@@ -659,7 +665,16 @@ fn document_expiry_is_rechecked_for_approval_and_preplay() {
             .approval_valid(&op(), "test-workspace", "knowledge-session", 0, &hash)
             .unwrap()
     );
-    std::thread::sleep(Duration::from_millis(2100));
+    // Move the published document boundary into the past. This is the clock
+    // passage that both the approval recheck and preplay recheck must notice;
+    // it is the only place a document's expiry is read from.
+    storage
+        .conn
+        .execute(
+            "UPDATE knowledge_snapshot_documents SET valid_until_ms=?1 WHERE workspace_id='test-workspace' AND snapshot_id=?2",
+            (utc_ms().unwrap() - 1, &sealed.snapshot_id),
+        )
+        .unwrap();
     assert!(
         !storage
             .approval_valid(&op(), "test-workspace", "knowledge-session", 0, &hash)

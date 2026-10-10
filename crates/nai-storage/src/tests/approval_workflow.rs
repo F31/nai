@@ -295,9 +295,16 @@ fn list_is_bounded_and_filters_expired_wrong_epoch_and_updated_facts() {
     storage
         .publish_fact(&op(), "operator", &fact(), None)
         .unwrap();
+    // The bound is evaluated against the live pending set, and the shared
+    // fixture expires one minute after it is built. A loaded host can need
+    // longer than that to record 200 candidates (measured: 70s on this one), so
+    // the bulk fixture carries a window that cannot elapse inside the test. The
+    // expiry rule itself is covered by the filters below.
+    let live_until = utc_ms().unwrap() as u64 + 3_600_000;
     for index in 0..200 {
         let mut cue = candidate();
         cue.utterance_id = format!("bounded-{index}");
+        cue.expires_at_utc_ms = live_until;
         setup_approval(&mut storage, &cue);
     }
     let overflow = PerformanceCue {

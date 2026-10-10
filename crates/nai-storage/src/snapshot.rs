@@ -64,6 +64,20 @@ fn unique() -> String {
             .as_nanos()
     )
 }
+/// Flushes a file this store just wrote and proves the bytes are durable.
+///
+/// Flushing needs a writable handle: Windows `FlushFileBuffers` refuses a
+/// read-only one, so open for writing even though nothing is written. Without
+/// this the manifests would be hashing bytes that were never confirmed on disk,
+/// and every backup and restore would fail on Windows.
+fn flush_durable(path: &Path) -> Result<()> {
+    OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)?
+        .sync_all()?;
+    Ok(())
+}
 fn validate_manifest(value: &serde_json::Value) -> Result<()> {
     let schema: serde_json::Value =
         serde_json::from_str(include_str!("../../../schemas/config/backup.schema.json"))
@@ -229,7 +243,9 @@ impl Store {
                 write_new(&staging.join(relative), &bytes)?;
             }
             drop(snapshot);
-            File::open(&path)?.sync_all()?;
+            // Confirm the durable bytes before the manifest hashes them, so the
+            // manifest never describes a write the store did not land.
+            flush_durable(&path)?;
             let database = checked_file(&path, MAX_BYTES, op)?;
             let mut manifest = manifest;
             manifest["database"]["sha256"] = hash(&database).into();
@@ -327,7 +343,7 @@ impl Store {
             recover(&mut restored, op, true)?;
             database_integrity(&restored)?;
             drop(restored);
-            File::open(paths.database())?.sync_all()?;
+            flush_durable(&paths.database())?;
             op.check()?;
             if destination.root.exists() {
                 return Err(error(ErrorCode::Conflict, "restore destination appeared"));
