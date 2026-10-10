@@ -224,8 +224,21 @@ EXIT=0（70 个测试目标，368 passed / 0 failed，基线 361）。见 [升�
 11 migration + 12 plan + 8 upgrade = 51 项通过；`cargo xtask check-deps` 18 包；clippy/fmt 干净；
 `cargo xtask check --profile portable` EXIT=0（数字见报告）。见 [部署指南](deployment.md)、
 [ADR 0027](adr/0027-deployment-lifecycle-boundary.md) 与 [报告](reports/2026-10-10-w25-tier-idle-migration.md)。
-未做边界：`Vram` 是声明式索赔而非真实配额；R06 长播、B04 延迟分位、A10 云断连、A11 多会话是独立主线。
-下一主线：A10（云断连不伤本地链路）与 A11（Pro 多会话隔离），或 R06/B04 的设备侧测量与 O01 演示包。
+未做边界：`Vram` 是声明式索赔而非真实配额；R06 长播、B04 延迟分位是独立主线。
+下一主线：A11（Pro 多会话隔离），或 R06/B04 的设备侧测量与 O01 演示包。
+
+本轮 `w26-cloud-disconnect` 已实现/实测（ADR 0028）：把 A10 的两条**否定式**判据落成可执行值，registry A10 由 pending 升 implemented
+（**不标 tested**：`automation: fault` 的真实断网/弱网注入与真实云 SDK 未接）。「本地链路不依赖云」是**依赖方向图**上的传递闭包断言
+（`LinkGraph` 节点分 Local/Cloud，`audit_local_autonomy` 对每个关键节点断言可达云集合为空；两跳依赖与直连同属可达；三类稳定标记
+区分「依赖云」「不是本地」「未声明」）——**否决**「只查直连」「写成文档表格」「运行时探测作为唯一实现」。可用性是链路状态与归属的函数：
+`(_, Local) => Available` 是一条恒等式，本地静音在断云时仍可用；`CapabilityGate::disconnect` 的循环**只遍历云条目**故本地不受影响，
+`reconnect` 把云能力落到 `NeedsPrepare` 而非 `Active`（§27.3 不自动恢复旧 Auto，须显式 `activate`）。低云容量只能由
+`Sizing::Measured(instances, load_pct)` 构造，`Unmeasured` 以 `CAPABILITY_NOT_READY` 拒绝且**无零默认值**（「没测过」与「测到 0」类型不同），
+`assess` 报出**全部**越界族，超预算而策略为 `Absorb` 时 `audit_low_cloud` 报违规。实测：`tests/cloud.rs` 21 项通过；
+`cargo xtask check-deps` 18 包；clippy/fmt 干净；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
+见 [云与本地自治指南](cloud.md)、[ADR 0028](adr/0028-local-autonomy-boundary.md) 与 [报告](reports/2026-10-10-w26-cloud-disconnect.md)。
+未做边界：真实断网/弱网注入与真实云 SDK 未接（云链路由宿主注入），容量数字是已测量声明的忠实表示而非本轮实测值。
+下一主线：A11（Pro 多会话隔离）。
 
 ## 任务依赖与状态
 

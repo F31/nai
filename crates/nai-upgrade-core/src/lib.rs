@@ -11,6 +11,7 @@
 //! downloader. `DeterministicVerifier` is a rehearsal stand-in, and a
 //! `SignatureVerifier` implementation that chains to a real CA key is a
 //! deliberate later injection point.
+mod cloud;
 mod cost;
 mod gates;
 mod manifest;
@@ -31,6 +32,11 @@ use std::{
     time::Instant,
 };
 
+pub use cloud::{
+    AutonomyAudit, Availability, CapabilityGate, CapabilityMode, Capacity, CapacityBudget,
+    CapacityVerdict, CloudLink, LinkGraph, LinkTransition, LowCloudProfile, MAX_NODES, Measurement,
+    NodeClass, Sizing, ThrottlePolicy, assess, audit_local_autonomy, audit_low_cloud, availability,
+};
 pub use cost::{Component, CostEstimate, Total};
 pub use gates::{
     Activation, ActiveSessionGate, DowngradeReport, SessionDrain, SessionGate, downgrade,

@@ -292,5 +292,16 @@ R11 需真实轻云实例。不新开 crate，因为三项与 W15 共享同一�
 **否决**「只比哈希」（哈希一致证明不了权限被正确映射）；`OutputSwitch` 以调用方给的 key 幂等，即「输出切换不重复播报」。
 实测：upgrade-core 3 lib + 17 lifecycle + 11 migration + 12 plan + 8 upgrade = 51 项通过；`cargo xtask check-deps` 18 包；
 clippy `--all-targets` 与 `cargo fmt --all --check` 干净；`cargo xtask check --profile portable` EXIT=0（见报告）。
-未做边界：`Vram` 是声明式索赔而非真实配额；R06 长播、B04 延迟分位、A10 云断连、A11 多会话仍是独立主线。
+未做边界：`Vram` 是声明式索赔而非真实配额；R06 长播、B04 延迟分位是独立主线；A10 云断连与 A11 多会话由后续变更完成（见 W26/W27）。
 详见 docs/adr/0027-deployment-lifecycle-boundary.md、docs/reports/2026-10-10-w25-tier-idle-migration.md 与 docs/deployment.md。
+
+W26 云断连与低云容量已实现/实测（ADR 0028）：把 A10 的两条**否定式**判据（V3.5 E07/E08）落成可执行值，registry A10 由 pending 升 implemented
+（**不标 tested**：`automation: fault` 的真实断网/弱网注入与真实云 SDK 未接）。仍落在 `crates/nai-upgrade-core`（shared 层，零新增依赖，18 包）。
+`cloud.rs` 的 `LinkGraph` 把系统建模成依赖方向图（节点分 `Local|Cloud`，边 `from depends_on to`），`audit_local_autonomy` 对每个关键节点求**传递闭包**
+并断言可达云集合为空——**两跳依赖与直连同属可达**，三类稳定标记区分「依赖云」「不是本地」「未声明」（**否决**「只查直连」「写成文档表格」「运行时探测作为唯一实现」）。
+可用性是链路状态与**归属**的函数：`(_, Local) => Available` 是一条恒等式，故本地静音在断云时仍可用；`CapabilityGate::disconnect` 的循环**只遍历云条目**，
+本地能力连遍历都不进（「本地不受影响」是作用域事实），`reconnect` 把云能力落到 `NeedsPrepare` 而非 `Active`——§27.3「不自动恢复旧 Auto」由类型强制，
+须一次显式 `activate()`。低云容量只能由 `Sizing::Measured(instances, load_pct)` 构造，`Unmeasured` 以 `CAPABILITY_NOT_READY` 拒绝且**无零默认值**
+（「没测过」与「测到 0」类型不同），`assess` 报出**全部**越界族（不隐藏后项），超预算而策略为 `Absorb` 时 `audit_low_cloud` 报违规。
+实测：`tests/cloud.rs` 21 项通过；`cargo xtask check --registry` 通过；`cargo xtask check --profile portable` EXIT=0（73 个测试目标，见报告）。
+详见 docs/adr/0028-local-autonomy-boundary.md、docs/reports/2026-10-10-w26-cloud-disconnect.md 与 docs/cloud.md。
