@@ -1,7 +1,7 @@
 # nai 开发任务与验收跟踪
 
 基线：[V3.6](直播数字人%20%2B%20智能体系统技术方案%20V3.6.md)（ADR 0015 升基线；V3.5 仅追溯）。
-更新日期：2026-10-09。验收唯一来源 [tests/registry.yaml](../tests/registry.yaml)。
+更新日期：2026-10-10。验收唯一来源 [tests/registry.yaml](../tests/registry.yaml)。
 
 ## 当前检查点
 
@@ -19,7 +19,7 @@ Windows provider/storage GNU 交叉检查缺 MinGW C 工具链（aws-lc-sys/SQLi
 **D12 写实模型管线**：模型声明/内容完整性前置检查已实现；avatar-ort、离线导出与模型特定管线尚未实现。
 真实模型包/授权与 Windows GPU 目标机证据缺失，G0–G3 未执行（Blocked）。
 **D13 平台与网关**：连接/官方事件准入、断线重连与消费复检已实现/实测；官方 SDK、生产宿主接线和网关服务尚未实现。
-**D14 控制 API 与桌面**：本机工程 status/session/mute/takeover 与桌面接线已实现；W09 增加 list/approve/reject API 与存储原子日志；完整开播预检、审批 GUI/证据详情/配置、正式 Tauri/受保护 IPC 尚未实现。
+**D14 控制 API 与桌面**：本机工程 status/session/mute/takeover 与桌面接线已实现；W09 增加 list/approve/reject API 与存储原子日志；W38 增加桌面审批面板（批准二次确认、动作前失效复核、如实披露文本缺口）与 §30.1 指定的 UI 层 `tests/ui`；完整开播预检、证据详情、模式切换界面与升级提示、正式 Tauri/受保护 IPC 尚未实现。
 下一主线为 W05 output-keeper 与 W06 render-worker 的 Slice-0 接线，W09 审批/预检及 W10 进程强杀故障演练随依赖推进；D12/D13 真实集成证据继续保留 Blocked。
 D11 已完成并归档：`openspec/changes/archive/2026-10-08-d11-media-basics/`。
 Windows 独立窗口/音轨、虚拟摄像头/音频设备与真实媒体进程仍待设备里程碑。
@@ -458,8 +458,32 @@ user 轮呈现」，2 场景）而不只是改一行。**否决**「system+user 
 见 [ADR 0039](adr/0039-provider-message-turn.md) 与 [报告](reports/2026-10-10-w37-provider-message-turn.md)。
 未做边界：不改 Anthropic 适配器、不改其余协议路径与用量字段名、不引入角色配置开关；B01 保持 `blocked`、O01 保持 `pending`（冒烟不是验收）。
 
-下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03、P01 的判定骨架与 O04 的设备侧、W36 的真实链路接入纪律与 W37 的线上形状修正）；
-轨道二的自备资源**已有真实凭据落地**（文本／语音两条真实链路经本栈走通并产出真值证据，文本模型标准化为 `agnes-2.5-flash`）；剩余 **O01**（需演示包与约 10 分钟首句演练、约 30 分钟真实输出验证）、
+W38 桌面审批面与 §30.1 的 UI 层已实现/实测：W09 交付了审批 **API** 与存储原子日志，但**没有界面**，且设计 §30.1 为 UI 层指定的
+`tests/ui` 目录在仓库里**从未存在过**。本轮把两者都补上，并在摸清事实时撞到**两条硬约束**。**F1（未满足的验收）**：设计 §662（O02）与
+§425（T-14）要求「审批按钮显示最终文本」，本栈做不到——`utterances` 表只保存 `text_hash`（`migrations/sqlite/0001-foundation.sql:10`），
+审批列表接口也只返回哈希/元信息引用/期限/证据计数（`crates/nai-control-api/src/lib.rs:540`；`schemas/openapi/control.yaml:84-97`、
+`ResourceView`/`ResourceItem` :279-299），载荷里**没有文本字段**。做法是界面**如实说**（`FINAL_TEXT_GAP` 写明「本载荷不含最终文本、
+身份为候选哈希」并直接指向 §662），**不**把哈希当文本展示、**不**为此临时发明字段；补齐需存储侧保存可展示文本并同步契约，**不在本轮范围**，
+已写进 O02 notes 的未满足项。**F2（时效）**：候选的有效性绑定 TTL 与会话代次（`crates/nai-storage/src/store.rs:731` 的 `list_pending_approvals`
+在 SQL 里就按 `u.generation_epoch=?3` 与 `u.expires_at_ms>?5` 过滤），故「界面还显示着、但已经不该批」是正常会发生的事 ⇒ 动作前**复核新鲜度**
+（`approvalFreshness` 比较面板载入时的快照与动作前的实时快照：会话换代/已不在最新队列/无有效期/已过期 ⇒ **不发请求**并给具名理由与下一步）。
+决策 D1–D8：界面侧复核而非信任快照、批准二次确认而拒绝单步（批准是高危方向）、看不见文本就如实说、UI 层放 §30.1 **指定**的 `tests/ui`
+且**不引入 DOM 库**、未实现的断言登记并点名前置、不改服务端与契约（Rust 侧**零改动**）、登记状态不变、零新增依赖。落
+`apps/desktop/src/console.ts`（无 DOM 的可测逻辑：`approvalFreshness`/`nextApprovalStep`/`describeCommandResult`/`runApprovalDecision`/`UI_ASSERTIONS`）
+与 `control.ts` 的 `approvals()`/`decideApproval()`（真实 `ApprovalCommand`：`candidate_hash` 取候选哈希、`hash_algorithm: sha256-canonical-v1`、
+`seq` 单调、epoch/revision 取自真实视图、TTL 有界），界面为待审批面板 + 批准二次确认 + 拒绝。`tests/ui` **15 项**通过（11 项审批面：失效不发请求、
+两步确认、命令字段逐字、假 ACK 不变成已批准且不重试、严格解析、控制 ACK 口径；4 项断言声明：恰为四条、状态确定、未实现点名前置）。
+§30.1 四条里「模式切换条件」（缺 `POST /sessions/{id}/mode` 实现）与「升级与回滚提示」（缺 `nai-upgrade-core` 状态来源）登记为**未实现**并点名前置。
+实测：`check --secrets` 689 文件零命中；`check --registry` 通过；`check-deps` 18 包；`check --profile portable` EXIT=0；两处 `tsc --noEmit` EXIT=0；
+`vite build` 30 模块；desktop 5 项 + `test:ui` 15 项通过。见 [UI 层](ui.md)、[控制面指南](control.md) 与
+[报告](reports/2026-10-10-w38-desktop-approval-surface.md)。未做边界：**不测渲染**（不引入 DOM 库 ⇒ 不构成浏览器/人工 UI 验收）；
+`local_control` 未装配审批 backend（手工点开界面仍返回 `CAPABILITY_NOT_READY`）；真实候选来源/证据详情页/手机审核/生产 root 接线仍未建；
+**O02 保持 `pending`**（界面出现不等于验收达标）、O05 未动。
+（**计数勘误**：此前报告的「82 个测试目标」把 cargo 的 `Running ...nai-xtask.exe check --profile portable` 包装行多算了一个，
+精确重数为 **81（64 Running + 17 Doc-tests）**；`675 passed / 0 failed` 不变。W36/W37 报告已加注记。）
+
+下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03、P01 的判定骨架与 O04 的设备侧、W36 的真实链路接入纪律、W37 的线上形状修正与
+W38 的桌面审批面/UI 层）；轨道二的自备资源**已有真实凭据落地**（文本／语音两条真实链路经本栈走通并产出真值证据，文本模型标准化为 `agnes-2.5-flash`）；剩余 **O01**（需演示包与约 10 分钟首句演练、约 30 分钟真实输出验证）、
 **O02/O05**（UI 验收，按既有惯例 `pending`）与阻塞项 **B01**（题集与完整评估；真实模型已可用，缺 100 题集内容）、**B02/D12**（模型与目标机证据）、
 **O03**（M0b 定案与真机 S09）、**O04**（干净 Windows 安装、真实音频设备变更与真实回退；安装侧已由 `nai-upgrade-core` 覆盖）、
 **P01**（官方 SDK 与生产宿主；判定机制已由 W35 交付，D13）均需外部条件。
@@ -506,7 +530,7 @@ D 表是 V3.5 追溯；自 ADR 0015 起开发按 V3.6 切片发布线（Slice-0/
 | W06 | 2D render-worker | A01 | 2D软件像素生产核心与帧槽位所有权/tmpfs-file传输已实现/实测；引擎经broker声明spawn pid并继承写FD完成真实单帧见W10行；独立worker/keeper装配、protected handle broker与Windows帧率未完成 | [报告](reports/2026-10-09-w05-w06-frame-slots.md) |
 | W07 | Provider 核心与适配器 | A02 前置 | 已实现/实测（D08）；新增 `TextGenerator` 接缝与 rehearsal-only 确定性桩（W10 A1），以及 `SpeechSynthesizer` 接缝与 rehearsal-only 语音桩（W10 A2）；真实付费生成与真实 TTS Blocked |
 | W08 | 默认智能体、守门与手工平台 | S01–S04 | 已实现/实测（D10/D13） |
-| W09 | 最小桌面控制台 | S02、R01、O02 | loopback 控制与审批 API 子切片已实现/实测；审批 GUI/真实候选来源/完整预检与生产 root 接线未开始 |
+| W09 | 最小桌面控制台 | S02、R01、O02 | loopback 控制与审批 API 子切片已实现/实测；W38 补上桌面审批面板与 UI 层 `tests/ui`（15 项）；真实候选来源、证据详情、完整预检与生产 root 接线未开始；O02 保持 pending |
 | W10 | 集成与故障注入 | R01–R03、R07、A01 | 引擎真实装配：控制面+监督+broker/keeper单帧投递、强杀撤权、预热期halt不提交已实测；手工事件链路（归一化/检索→决策→守门→生成→决策日志哈希链，同事件同桩重放一致，守门缺失/陈旧epoch/注入失败不外发）以真实 engine 进程实测，见 [报告](reports/2026-10-10-engine-manual-event-pipeline.md)；链路终点已延到「语音合成→真实RGBA帧→双水位提交→播放完成ACK」（仅完整完成落 `PlaybackAck`，演练软件替身非设备），见 [报告](reports/2026-10-10-engine-text-to-playback-ack.md)；真实 TTS、设备/硬件播放ACK与正式IPC未做 | [报告](reports/2026-10-10-engine-text-to-playback-ack.md) |
 
 W11 及之后（R1 工作项）在对应切片启动时建任务卡；本表不预建未到切片的目录或空占位。

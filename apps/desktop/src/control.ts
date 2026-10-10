@@ -3,11 +3,38 @@ import type { components } from '@nai/contracts';
 export type RuntimeView = components['schemas']['ResourceView'];
 export type CommandAck = components['schemas']['CommandAck'];
 type SessionView = components['schemas']['SessionView'];
-const u64 = (value: unknown): value is string => typeof value === 'string'
-  && /^(0|[1-9][0-9]*)$/.test(value) && value.length <= 20 && BigInt(value) <= 18446744073709551615n;
+/** uint64 的唯一判据：十进制、无前导零、不超界。`u64` 是它的类型谓词形态。 */
+export const asU64 = (value: unknown): bigint | undefined => typeof value === 'string'
+  && /^(0|[1-9][0-9]*)$/.test(value) && value.length <= 20 && BigInt(value) <= 18446744073709551615n
+  ? BigInt(value) : undefined;
+const u64 = (value: unknown): value is string => asU64(value) !== undefined;
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 
-export function parseRuntime(value: unknown): RuntimeView & { session: SessionView; device_id: string; last_command_seq: string } {
+export type ApprovalItem = components['schemas']['ResourceItem'];
+export type ApprovalsView = {
+  resource_id: string; revision: string; status: string; safe_message: string; items: ApprovalItem[];
+};
+
+/** 待审批载荷就是契约的 `ResourceView` + `ResourceItem[]`（`schemas/openapi/control.yaml:279`）。
+ *  `id` 是候选哈希：`ApprovalCommand.candidate_hash` 的 pattern 为 `^[a-f0-9]{64}$`，界面拿不到
+ *  合法身份就无法构造命令，故在此**直接拒绝**，而不是让面板退化成一排点不动的按钮。 */
+export function parseApprovals(value: unknown): ApprovalsView {
+  if (!object(value) || typeof value.resource_id !== 'string' || !value.resource_id
+    || typeof value.revision !== 'string' || typeof value.status !== 'string' || typeof value.safe_message !== 'string'
+    || !Array.isArray(value.items) || value.items.length > 1024) throw new Error('待审批响应结构无效');
+  for (const item of value.items) {
+    if (!object(item) || typeof item.id !== 'string' || !/^[a-f0-9]{64}$/.test(item.id)
+      || typeof item.revision !== 'string' || typeof item.status !== 'string'
+      || (item.encoded_contract_ref !== undefined && typeof item.encoded_contract_ref !== 'string')
+      || (item.expires_at_utc_ms !== undefined && !u64(item.expires_at_utc_ms))
+      || (item.evidence_count !== undefined && !u64(item.evidence_count))) throw new Error('待审批项结构无效');
+  }
+  return value as ApprovalsView;
+}
+
+export type RuntimeStatus = RuntimeView & { session: SessionView; device_id: string; last_command_seq: string };
+
+export function parseRuntime(value: unknown): RuntimeStatus {
   if (!object(value) || !object(value.session) || typeof value.resource_id !== 'string'
     || typeof value.revision !== 'string' || typeof value.status !== 'string' || typeof value.safe_message !== 'string'
     || typeof value.device_id !== 'string' || !value.device_id || !u64(value.last_command_seq)) throw new Error('运行时响应结构无效');
@@ -17,7 +44,7 @@ export function parseRuntime(value: unknown): RuntimeView & { session: SessionVi
     || !['created','preparing','ready','ready_degraded','running','draining','stopped','faulted'].includes(String(s.lifecycle))
     || !['rehearsal','assisted','auto_supervised'].includes(String(s.mode))
     || !['standby','buffering','playing','muted','device_lost','failed'].includes(String(s.media_state))) throw new Error('会话响应结构无效');
-  return value as ReturnType<typeof parseRuntime>;
+  return value as RuntimeStatus;
 }
 
 export class ControlClient {
@@ -63,20 +90,47 @@ export class ControlClient {
     return value;
   }
 
-  async status(): Promise<ReturnType<typeof parseRuntime>> {
+  async status(): Promise<RuntimeStatus> {
     return parseRuntime(await this.request('/runtime/status'));
   }
 
-  async command(view: ReturnType<typeof parseRuntime>, action: 'mute' | 'takeover', id: string): Promise<CommandAck> {
+  /** 命令序号由真实视图单调推进；耗尽即拒绝，不静默回绕。 */
+  private nextSeq(view: RuntimeStatus): string {
     const seq = BigInt(view.last_command_seq) + 1n;
     if (seq > 18446744073709551615n) throw new Error('设备命令序号已耗尽');
-    const body: components['schemas']['SessionCommand'] = {
-      command_id:id,session_id:view.session.session_id,device_id:view.device_id,seq:seq.toString(),
-      generation_epoch:view.session.generation_epoch,expected_state_revision:view.session.state_revision,ttl_ms:4000,
-    };
-    const value = await this.request(`/sessions/${encodeURIComponent(body.session_id)}/${action}`,body);
+    return seq.toString();
+  }
+
+  /** ACK 只在 `executed === true` 且 id/epoch/revision 自洽时被接受；false 或结构异常一律算失败。 */
+  private parseAck(value: unknown, id: string): CommandAck {
     if (!object(value) || value.command_id !== id || value.executed !== true
       || !u64(value.generation_epoch) || !u64(value.state_revision)) throw new Error('命令未取得有效的控制执行 ACK');
     return value as CommandAck;
+  }
+
+  async command(view: RuntimeStatus, action: 'mute' | 'takeover', id: string): Promise<CommandAck> {
+    const body: components['schemas']['SessionCommand'] = {
+      command_id:id,session_id:view.session.session_id,device_id:view.device_id,seq:this.nextSeq(view),
+      generation_epoch:view.session.generation_epoch,expected_state_revision:view.session.state_revision,ttl_ms:4000,
+    };
+    const value = await this.request(`/sessions/${encodeURIComponent(body.session_id)}/${action}`,body);
+    return this.parseAck(value,id);
+  }
+
+  async approvals(): Promise<ApprovalsView> {
+    return parseApprovals(await this.request('/approvals'));
+  }
+
+  /** 审批与命令共用同一 `SessionCommand` 骨架（`ApprovalCommand = SessionCommand & {candidate_hash, hash_algorithm}`）。 */
+  async decideApproval(
+    view: RuntimeStatus, item: ApprovalItem, action: 'approve' | 'reject', id: string,
+  ): Promise<CommandAck> {
+    const body: components['schemas']['ApprovalCommand'] = {
+      command_id:id,session_id:view.session.session_id,device_id:view.device_id,seq:this.nextSeq(view),
+      generation_epoch:view.session.generation_epoch,expected_state_revision:view.session.state_revision,ttl_ms:4000,
+      candidate_hash:item.id,hash_algorithm:'sha256-canonical-v1',
+    };
+    const value = await this.request(`/approvals/${encodeURIComponent(item.id)}/${action}`,body);
+    return this.parseAck(value,id);
   }
 }

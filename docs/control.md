@@ -70,20 +70,44 @@ mount 拒绝 workspace 不一致；actor 由 root 绑定，HTTP body 不能冒�
 存储入库限制同一 workspace/session/epoch 最多 200 个有效待审批候选；超限返回 ResourceExhausted。
 列表过滤旧 epoch、过期/已撤销/已批准候选与失效事实/文档；满 200 条标 approvals_limit_reached。
 列表只返回哈希/元信息引用/期限/证据计数，U64 为字符串；没有分页或载荷查看接口。
-真实候选来源、证据详情页、GUI 二次确认、手机审核与生产 root/媒体接线尚未实现。
+真实候选来源、证据详情页、手机审核与生产 root/媒体接线尚未实现。
 `local_control` 示例未配置审批 backend，因此审批请求仍显式返回 CAPABILITY_NOT_READY；测试里的候选仅为测试夹具。
 
 实测报告：[W09 审批闭环](reports/2026-10-09-w09-approval-surface.md)。S02 保持 implemented、O02 保持 pending，不能据 API 测试声称完整 UI/播放验收。
+
+## 审批面（桌面，W38）
+
+W09 之后审批只有 API、没有界面。W38 补上桌面侧的审批面板与可执行断言（[UI 层](ui.md)）。
+
+**可用**：列出待审批候选（候选哈希、状态、证据计数、有效期、200 条上限提示），批准与拒绝，以及**批准前的二次确认**
+（首次点击只置位、第二次点击才提交；拒绝是安全方向，单步提交）。
+
+**动作前复核新鲜度**：比较「面板载入时的队列快照」与「动作前的实时快照」——会话换代、候选已不在最新队列、
+无有效期、已过期，任一不满足即**不发请求**并给出**具名理由**（以及下一步该做什么）。
+把已失效的候选呈现为可点，本身就是错误的反馈。
+
+**文本缺口（未满足的验收）**：设计 §662（O02）与 §425（T-14）要求「审批按钮显示最终文本」。
+本栈做不到——`utterances` 表只保存 `text_hash`（`migrations/sqlite/0001-foundation.sql:10`），
+审批列表接口也不返回文本。界面如实说明「本载荷不含最终文本、身份为候选哈希」并指向该验收项，**不**把哈希当文本展示。
+补齐需存储侧保存可展示文本并同步契约，已登记在 `tests/registry.yaml` O02 notes；**O02 保持 `pending`**。
+
+**命令 ACK 口径不变**：审批/静音/接管的 ACK 只说「控制状态已执行」，界面对应消息必须写明**未取得硬件 ACK**（§30.1「静音 ACK」断言）。
+
+**本轮仍未覆盖**：`local_control` 示例未装配审批 backend（手工点开界面时审批仍返回 `CAPABILITY_NOT_READY`，`tests/ui` 用替身驱动）；
+真实候选来源、证据详情页、手机审核与生产 root 接线；不测渲染（不引入 DOM 库），故不构成浏览器或人工 UI 验收。
 
 ## 可执行验证
 
 ```bash
 cargo test -p nai-control-api --offline
 pnpm --filter @nai/desktop test
+pnpm test:ui
 pnpm test:control-smoke
 cargo xtask test --suite contracts
 cargo xtask check --profile portable
 ```
+
+`test:ui` 跑 §30.1 指定的 UI 层断言（Node 直接加载 `console.ts`/`control.ts`，无 DOM）；它证明界面行为逻辑，不是浏览器渲染验收，见 [UI 层](ui.md)。
 
 `test:control-smoke` 启动自有示例进程、动态端口和仅内存测试 token，用实际桌面 ControlClient 读取状态并执行 mute/takeover，最后关闭进程。它证明控制闭环，不是浏览器 DOM 或硬件验收。
 具体证据见 [本轮报告](reports/2026-10-08-d14-local-control.md)。

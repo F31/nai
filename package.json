@@ -11,6 +11,7 @@
   "scripts": {
     "typecheck": "pnpm --recursive typecheck",
     "build": "pnpm --recursive build",
+    "test:ui": "node --experimental-strip-types --test tests/ui/*.test.mjs",
     "spec:validate": "openspec validate --all --strict --no-interactive",
     "test:control-smoke": "cargo build -p nai-control-api --example local_control --locked --offline && node --experimental-strip-types scripts/control-smoke.mjs",
     "test:engine-smoke": "cargo build -p nai-engine --locked --offline && node --experimental-strip-types scripts/engine-smoke.mjs"

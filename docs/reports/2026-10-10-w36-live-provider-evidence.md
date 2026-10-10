@@ -141,6 +141,10 @@ EXIT=0；82 个测试目标（65 Running + 17 Doc-tests）；675 passed / 0 fail
 portable: engineering foundation checks passed; device/SDK/GPU/install certification not performed
 ```
 
+> **勘误（W38 复核）**：「82 个测试目标（65 Running + 17 Doc-tests）」**多算了一个**——`65` 里含 cargo 打印的
+> `Running ...nai-xtask.exe check --profile portable` 包装行，它不是测试目标。按 `Running <test target>` 精确重数为
+> **64 + 17 = 81**（`675 passed / 0 failed` 不变）。不改写正文，见 [W38 报告](2026-10-10-w38-desktop-approval-surface.md)。
+
 前端门控（`apps/desktop`、`packages/contracts-ts`）：
 
 ```

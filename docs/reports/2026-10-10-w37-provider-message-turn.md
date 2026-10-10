@@ -127,6 +127,10 @@ node --experimental-strip-types --test tests/*.test.mjs（desktop）  # tests 5 
 目标数与通过项均与 W36 持平（82 / 675）：本变更**未新增测试目标**，只改了既有断言的角色值。
 （首轮门控曾因示例可执行文件被占用报 `LNK1104`，移除被锁文件后一次通过——本机既知现象，与代码无关。）
 
+> **勘误（W38 复核）**：上文的「82 个测试目标（65 Running + 17 Doc-tests）」**多算了一个**——`65` 里含 cargo 打印的
+> `Running ...nai-xtask.exe check --profile portable` 包装行，它不是测试目标。按 `Running <test target>` 精确重数为
+> **64 + 17 = 81**（`675 passed / 0 failed` 不变）。不改写正文，见 [W38 报告](2026-10-10-w38-desktop-approval-surface.md)。
+
 ## 六、未覆盖边界
 
 - **不引入「角色可配置」开关**：角色是最小合法形状，不是供应商差异；做成配置会把「哪种角色是对的」变成可配置的正确性。

@@ -515,3 +515,30 @@ user 轮呈现」，2 场景）而不只是改一行。**否决**「system+user 
 `cargo test -p nai-provider-core --offline` **36 项**通过；两处冒烟文本链路由 400 变为 **200 且有可见输出**；
 `check --secrets` 680 文件零命中；`check --registry` 通过；`check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0。
 详见 docs/adr/0039-provider-message-turn.md 与 docs/reports/2026-10-10-w37-provider-message-turn.md。
+
+W38 桌面审批面与 §30.1 的 UI 层已实现/实测：W09 交付了审批 **API** 与存储原子日志，但**没有界面**，且设计 §30.1 为 UI 层指定的
+`tests/ui` 目录在仓库里**从未存在过**。本轮把两者都补上，并在摸清事实时撞到**两条硬约束**。**F1（未满足的验收）**：设计 §662（O02）与
+§425（T-14）要求「审批按钮显示最终文本」，本栈做不到——`utterances` 表只保存 `text_hash`（`migrations/sqlite/0001-foundation.sql:10`），
+审批列表接口也只返回哈希/元信息引用/期限/证据计数（`crates/nai-control-api/src/lib.rs:540`；`schemas/openapi/control.yaml:84-97`、
+`ResourceView`/`ResourceItem` :279-299），载荷里**没有文本字段**。做法是界面**如实说**（`FINAL_TEXT_GAP` 写明「本载荷不含最终文本、
+身份为候选哈希」并直接指向 §662），**不**把哈希当文本展示、**不**为此临时发明字段；补齐需存储侧保存可展示文本并同步契约，**不在本轮范围**，
+已写进 O02 notes 的未满足项。**F2（时效）**：候选的有效性绑定 TTL 与会话代次（`crates/nai-storage/src/store.rs:731` 的 `list_pending_approvals`
+在 SQL 里就按 `u.generation_epoch=?3` 与 `u.expires_at_ms>?5` 过滤），故「界面还显示着、但已经不该批」是正常会发生的事 ⇒ 动作前**复核新鲜度**
+（`approvalFreshness` 比较面板载入时的快照与动作前的实时快照：会话换代/已不在最新队列/无有效期/已过期 ⇒ **不发请求**并给具名理由与下一步；
+把已失效的候选呈现为可点本身就是错误的反馈）。决策 D1–D8：界面侧复核而非信任快照、批准二次确认而拒绝单步（批准是**高危方向**——放行将要
+播报的内容）、看不见文本就如实说、UI 层放 §30.1 **指定**的 `tests/ui` 且**不引入 DOM 库**、未实现的断言登记并点名前置、不改服务端与契约
+（Rust 侧**零改动**）、登记状态不变、零新增依赖。落 `apps/desktop/src/console.ts`（无 DOM 的可测逻辑：`approvalFreshness`/`nextApprovalStep`/
+`describeCommandResult`/`runApprovalDecision`/`UI_ASSERTIONS`）与 `control.ts` 的 `approvals()`/`decideApproval()`（真实 `ApprovalCommand`：
+`candidate_hash` 取候选哈希、`hash_algorithm: sha256-canonical-v1`、`seq` 单调、epoch/revision 取自真实视图、TTL 有界），界面为待审批面板
+（候选哈希/状态/证据计数/有效期/200 上限提示）+ 批准二次确认 + 拒绝；页脚不再声称「不提供审批按钮」，改为如实说明缺口。`tests/ui` **15 项**通过
+（`approval-surface.test.mjs` 11 项：失效不发请求、两步确认、命令字段逐字、假 ACK 不变成已批准且不重试、严格解析、控制 ACK 口径；
+`ui-layer-declaration.test.mjs` 4 项：断言集合**恰为**四条、状态确定、未实现点名前置）。§30.1 四条里「模式切换条件」（缺
+`POST /sessions/{id}/mode` 实现，契约见 `schemas/openapi/control.yaml:66`）与「升级与回滚提示」（缺 `nai-upgrade-core` 的 plan/journal
+状态来源）登记为**未实现**并点名前置。18 包与依赖方向不变。实测：`check --secrets` 689 文件零命中；`check --registry` 通过；`check-deps` 18 包；
+`check --profile portable` EXIT=0（675 passed / 0 failed）；两处 `tsc --noEmit` EXIT=0；`vite build` 30 模块；desktop 5 项 + `test:ui` 15 项通过。
+见 docs/ui.md、docs/control.md 与 docs/reports/2026-10-10-w38-desktop-approval-surface.md。未做边界：**不测渲染**（不引入 DOM 库 ⇒ 不构成
+浏览器或人工 UI 验收）；`local_control` 示例未装配审批 backend（手工点开界面仍返回 `CAPABILITY_NOT_READY`，`tests/ui` 用替身驱动）；
+真实候选来源/证据详情页/手机审核/生产 root 接线仍未建；**O02 保持 `pending`**（界面出现不等于验收达标）、O05 未动。
+（**计数勘误**：此前报告的「82 个测试目标（65 Running + 17 Doc-tests）」把 cargo 打印的 `Running ...nai-xtask.exe check --profile portable`
+包装行多算了一个，它不是测试目标；按 `Running <test target>` 精确重数为 **81（64 Running + 17 Doc-tests）**，`675 passed / 0 failed` 不变。
+W36/W37 报告已加注记、未改写正文。）
