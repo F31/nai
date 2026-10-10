@@ -390,3 +390,28 @@ evidence/high_risk_fact/must_clarify_or_escalate/must_not_act/must_cancel；`ori
 `CAPABILITY_NOT_READY`（退出 1）、对夹具目录读入 8 例并报 `below_minimum_cases: 8 of 100`（退出 1）——两种结论确实分开；`check --registry`
 通过；`check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
 详见 docs/adr/0033-golden-set-payload-boundary.md、docs/reports/2026-10-10-w31-golden-set-payload.md 与 tests/rag-golden/README.md。
+
+W32 写实准入 Gate 判定骨架已实现/实测（ADR 0034）：B02 与 D12 的**真值**（合法完整模型 + Windows/CUDA 目标机 + 与直播工具并发实测）
+需外部条件，本轮不可达，两项保持 `blocked`；本轮做的是 **B02 的判定骨架**——§8.2 的表只有四行，每行的判据此前无落点。
+落 `crates/nai-kernel/src/realistic.rs`（只依赖 contracts，18 包与依赖方向不变，零新增依赖），复用 `metrics::LatencySamples`（G2 音画偏差
+P95 一个真相）与 `golden::Finding`（同一报告词汇，`Finding::new` 提升为 `pub`）。**四门是合取、各自独立**：G0 `SourceAndRights` / G1
+`Correctness` / G2 `Realtime` / G3 `Stability` 各自 `Passed/Failed/Unmeasured`，总体 `Acceptance` 由四门**派生**（Lite 未启用⇒`NotApplicable`、
+缺模型⇒`Blocked`、任一 `Failed`⇒`NotAccepted`、任一 `Unmeasured`⇒`Unmeasured`、全 `Passed`⇒`Accepted`），**没有任何单分数**。
+**缺测既不是通过也不是零**（帧率无窗口、音画偏差样本不足 `MIN_PERCENTILE_SAMPLES=20`、温度未读一律 `Unmeasured` 且阻断 `Accepted`）。
+**G0**：权重/代码/训练素材/肖像/声音五类权利各为 `Established{basis}`/`Unverified`/`Absent`，**依据空白不算成立**（「许可引用存在不等于
+证据通过」，D12 自身结论），任一 `Absent`、链路不可取得、或存在**留在未声明 Python 服务**的缺组件 ⇒ `Failed`。**G1**：预处理/音频特征/
+生成/后处理四段在**固定输入**下对齐，任一段 `Diverged`⇒`Failed`，未运行或固定输入未指明⇒`Unmeasured`；§26.5 **精度有序**——非 FP32
+精度在 FP32 之前认证⇒`Failed`（`precision_without_fp32_baseline`），INT8 无量化校准报告⇒`Failed`（`int8_without_calibration`）。
+**G2**：目标机未指明⇒`Unmeasured`，未与直播工具并发⇒`Failed`；帧率以**窗口下限**判是否稳定达 `MIN_STABLE_FPS=25`（**否决**会被突发拉高的
+平均），音画偏差 `LatencySamples::percentile(P95)` ≤ `FRAME_SKEW_P95_LIMIT_MS=80`（<20 样本 `Unmeasured`，恰好 80ms 判达标）；
+显存/CPU/温度任一未测⇒非 `Passed`；**「全 GPU」是 `PlacementReport` 放置记录（非空且全 GPU）的性质**，`cuda_ep_registered` 只是审计线索
+（§26.5「不以 CUDA EP 注册成功宣称全 GPU」），宣称全 GPU 而无记录或存在 CPU 回落⇒`Failed`，但**如实记录** CPU 回落且指标达标仍可 `Passed`。
+**G3**：静音/取消/句边界/长播/OOM/进程重启/形象切换与输出恢复七场景，任一 `Failed`⇒`Failed`、未运行⇒`Unmeasured`、**声明通过而证据引用
+空白**⇒`Failed`（`scenario_passed_without_evidence`）。**2D 回退与准入正交**：`FallbackRecord` 不进入 `verdict`/`acceptance`，
+只有「以回退构成验收」的**声明**违规（`fallback_claimed_as_acceptance`；§8.2「自动回退 2D 不等于写实验收通过」），回退缺授权/不在句间/
+未记日志分别被审计报出。**§1311 纪律**：缺模型⇒`Blocked`（缺模型却有门判通过被审计报出 `gates_evaluated_without_model`），
+NotApplicable 只用于**不要求写实**的档位（Lite），Standard/Pro 声明不适用被审计报出（`not_applicable_for_target_capability`），
+**无豁免路径**。`audit_gate` 对报告字段做纯函数，十四条稳定标记全部可构造。**不新增 xtask 命令与证据目录**：§30.1 只为 RAG 黄金集指定
+`tests/rag-golden`，为写实 Gate **臆造**证据目录属过度绑定；G2 真值来自目标机实测而非仓库载荷，待真实模型轨立项后再补载体。
+实测：`tests/realistic.rs` **37 项**通过；`cargo xtask check --registry` 通过；`check-deps` 18 包；`cargo xtask check --profile portable` EXIT=0。
+详见 docs/adr/0034-realistic-gate-verdict-boundary.md、docs/reports/2026-10-10-w32-realistic-gate-verdict.md 与 docs/realistic-gate.md。

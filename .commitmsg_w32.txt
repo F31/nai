@@ -1,0 +1,13 @@
+feat(realistic): 写实准入 Gate G0–G3 判定骨架（W32；B02 机制侧前置解耦）
+
+- 新增 crates/nai-kernel/src/realistic.rs：§8.2 四门（G0 来源与授权 / G1 正确性 /
+  G2 实时性 / G3 稳定性）各自独立判定 Passed/Failed/Unmeasured，总体 Acceptance
+  由四门派生、无单分数；缺测非过、全 GPU 是放置记录的性质（非运行回执）、
+  2D 回退与准入正交、缺模型 Blocked 且无豁免路径；audit_gate 十四条稳定标记纯函数
+- 新增 crates/nai-kernel/tests/realistic.rs（37 项）
+- golden::Finding::new 提升为 pub，两模块共享同一报告词汇
+- 新增 docs/realistic-gate.md、ADR 0034、W32 报告
+- registry B02/D12 保持 blocked，notes 补记已交付的判定机制与阻塞边界
+- OpenSpec 新能力 realistic-gate（12 需求），归档 w32-realistic-gate-verdict
+
+portable 门控 EXIT=0（79 目标 / 558 项，0 失败）；check-deps 18 包方向不变；registry 通过

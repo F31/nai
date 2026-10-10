@@ -6,6 +6,7 @@ pub mod golden;
 pub mod metrics;
 pub mod multiplex;
 pub mod platform;
+pub mod realistic;
 mod registry;
 pub mod review;
 pub mod scheduler;

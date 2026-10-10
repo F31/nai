@@ -72,7 +72,9 @@ pub struct Finding {
 }
 
 impl Finding {
-    fn new(token: &'static str, subject: impl Into<String>) -> Self {
+    /// Construct a finding. Public so a sibling module (e.g. `realistic`) can
+    /// speak the same `{token, subject}` vocabulary without a second type.
+    pub fn new(token: &'static str, subject: impl Into<String>) -> Self {
         Self {
             token,
             subject: subject.into(),
