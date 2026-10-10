@@ -22,10 +22,10 @@
 ## 4. journal 与升级事务（R05）
 
 - [x] 4.1 `nai-storage/src/upgrade.rs`：`UpgradeStep`（`Prepared/Migrated/Checked/Committed/RolledBack`）与 `UpgradeRecord`；`Store::record_upgrade` 以 `step` 单调推进的 `UPSERT` 写入既有 `upgrade_journal` 表，`backup_ref`/`error_code` 一经写入不被后续步骤抹除。
-- [ ] 4.2 `plan.rs`：编排 `stage → preflight → backup → migrate → self-check → commit`，异常收敛到 `rolled_back`；**原子替换版本清单**（写新 `manifest.new` → `flush_durable` → 改名）。
-- [ ] 4.3 崩溃恢复幂等：`recover` 按当前 step 决定继续或回滚；重复调用不叠加副作用；`committed` 重入返回成功。
-- [ ] 4.4 回滚：恢复旧程序与备份，并**导出升级后新增事实与审计**（不静默丢弃）。
-- [ ] 4.5 单测：正常全流程、各步失败回滚、断电（构造中间 step 后重入）、重复提交幂等、回滚保留新写入。
+- [x] 4.2 `plan.rs`：`UpgradeHost` / `UpgradeJournal` 双接缝 + `UpgradeTransaction`。`prepare` = verify → preflight → stage → journal(`prepared`)；`activate` = backup → journal(`migrated`) → migrate → self-check → journal(`checked`) → 原子换清单 → journal(`committed`)。journal **写前**记录（先记 step 再执行效果），崩溃只留下「至多领先一步」的记录；任一步失败收敛到 `rolled_back`。原子换清单的机制（写新文件 → 落盘 → 同目录改名覆盖）由 host 承担，本层只规定契约。激活与暂存拆成两次调用——开播中可暂存不可激活，会话事实归调用方（Slice C 的门控）。
+- [x] 4.3 崩溃恢复幂等：`recover` 只读 journal 当前 step 收敛——`prepared` 丢弃暂存；`migrated` 用 `backup_ref` 恢复；`checked` 先比较 `current_manifest` 与记录的 `to_manifest`（已落地即确认 `committed`，未落地则回滚）；`committed`/`rolled_back` 重入零副作用。
+- [x] 4.4 回滚：恢复旧程序与备份并**导出升级后新增事实与审计**（`ExportedWrites`），不静默丢弃；`cancel`/`deadline` 先完成收敛再向上传播。`RehearsalHost` 对未签发的 `backup_ref` 直接拒绝，杜绝凭空恢复。
+- [x] 4.5 集成测试 `tests/plan.rs`（12 项）：全流程提交且只换一次清单、预检不足/未知不留痕、目标等于当前版本被拒、备份后各步失败收敛 `rolled_back`、备份失败不产生恢复、停止信号先收敛后传播、激活前取消停在 `prepared`、`migrated` 断电恢复幂等、换清单已落地 → 确认提交、未落地 → 回滚、空事务/已提交事务零副作用、真实 `Store` journal 落表。
 
 ## 5. 会话门控、降档与成本（R10 / O05）
 
@@ -49,6 +49,6 @@
 本变更按可独立验证的切片推进，每个切片都以一次提交收口：
 
 - **Slice A（已完成）**：立项与骨架（§1）、包校验与撤销列表（§2，S08 撤销缺口）、升级预检（§3，R09 主体）。覆盖「任何东西在暂存前先被验签验哈希查撤销」与「不足或不可判定即拒绝」两条判据。
-- **Slice B**：journal 与升级事务（§4，R05），含崩溃恢复幂等与回滚保留新写入。
+- **Slice B（已完成）**：journal 与升级事务（§4，R05），含崩溃恢复幂等与回滚保留新写入。
 - **Slice C**：会话门控/降档与成本显示（§5，R10 / O05）。
 - **Slice D**：文档、ADR、registry、归档与全量门控（§6）。

@@ -12,7 +12,9 @@
 //! `SignatureVerifier` implementation that chains to a real CA key is a
 //! deliberate later injection point.
 mod manifest;
+mod plan;
 mod preflight;
+mod rehearsal;
 mod revocation;
 mod signature;
 mod verify;
@@ -25,15 +27,21 @@ use std::{
 };
 
 pub use manifest::{FileDecl, Requirement, RuntimeEntry, UpgradeKind, UpgradePackage};
+pub use plan::{
+    BackupRef, ExportedWrites, Outcome, Prepared, RecoveryAction, RollbackReport, StagingId,
+    UpgradeHost, UpgradeJournal, UpgradeRequest, UpgradeTransaction,
+};
 pub use preflight::{
     CheckResult, HostFacts, NoSpaceProbe, PreflightReport, Probe, ResourceState, SpaceProbe,
     preflight,
 };
+pub use rehearsal::{EffectCounts, FaultPoint, RehearsalHost, RehearsalJournal};
 pub use revocation::{RevocationEntry, RevocationList, RevocationSource};
 pub use signature::{DeterministicVerifier, SignatureVerifier};
 pub use verify::{PackageFile, VerifiedPackage, VerifyLimits, verify_package};
 
 pub use nai_security::Operation;
+pub use nai_storage::{UpgradeRecord, UpgradeStep};
 
 /// A refusal or a failure. `reason` is a stable, portable token (never a
 /// localised OS string) so a report can classify outcomes without a debug build.
