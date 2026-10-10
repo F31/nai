@@ -267,7 +267,22 @@ session id。实测：`tests/multiplex.rs` 24 项通过；`cargo xtask check --r
 `cargo xtask check --profile portable` EXIT=0（数字见报告）。见 [混音指南](mixing.md)、[ADR 0030](adr/0030-talent-takeover-boundary.md) 与
 [报告](reports/2026-10-10-w28-talent-takeover.md)。
 未做边界：不打开设备、不采 PCM、不做回声抑制；keeper 进程内装配与真机验收未做。
-下一主线：运营度量与复盘（B04 延迟分位、R06 长播资源增长、B06 场次复盘，机制可在 portable 落）。
+
+本轮 `w29-operations-review` 已实现/实测（ADR 0031）：把 B04/R06/B06 的**判据口径**落成 **kernel** 的可执行判据（真值仍需设备与长时运行），
+registry B04/R06/B06 由 pending 升 implemented（三项均**不标 tested**）。落 `crates/nai-kernel/src/metrics.rs` 与 `review.rs`（只依赖 contracts，
+18 包与依赖方向不变）。**§12.5 那句写死的口径**落成两个不同的调用：`percentile` 只从**端到端样本**算，`stage_percentile` 各算各的，
+`sum_of_stage_percentiles` 仅作**具名对照**且 `stage_sum_gap` 显式给出差距（否决插值分位与「端到端或阶段之和」开关）；分位用 nearest-rank
+（不插值）故报告返回的必是真实样本、可与原始数据逐条对照；端到端样本少于 20 条以 `CAPABILITY_NOT_READY` 拒绝（十份样本的 P95 实际上就是
+最大值）；`DESIGN_TARGETS` 收录 §12.5 的模板开口 1500ms / API 开口 3000ms / 控制响应 50ms，`evaluate_target` 返回 `Meets | Exceeds`，样本不足
+返回 `Err` 而非达标。**长播判定**：窗口（2h/8h/24h）是**下界**，跨度或样本不足一律 `Insufficient` 并如实报出观察值，绝不报 `Stable`；比较两个
+半段的**中位数**（末端尖峰不误判、起始低值不掩盖增长；否决回归斜率与首尾比较），`record` 要求时间非降序故趋势不能靠重排制造。**场次复盘报告**：
+`SessionReview::build` 覆盖 §5.9 末条全部字段（守门命中分类 = §5.4 四阶段 × 四结果），构造即自洽（回答多于入选、拒答未被原因完全解释即拒），
+`Ratio` 保留分子分母，缺测进 `unmeasured` 且留空而**不写 0**，未定价成本是 `CostView::Unknown` 而**不是 ¥0**；`audit_review` 对公开报告值做纯函数，
+十条稳定标记全部可构造。实测：`tests/metrics.rs` 13 项、`tests/review.rs` 8 项通过；`cargo xtask check --registry` 通过；
+`cargo xtask check --profile portable` EXIT=0（数字见报告）。见 [运营指南](operations.md)、[ADR 0031](adr/0031-operations-review-boundary.md) 与
+[报告](reports/2026-10-10-w29-operations-review.md)。
+未做边界：不采真实指标、不跑长播、不接真实场次数据、不做报告 UI；阈值为保守常量，未由真实数据校准。
+下一主线：B01 知识质量门槛（黄金集与回归门禁，机制可在 portable 落）或 O01 演示包（需演示包与真实音频输出）。
 
 ## 任务依赖与状态
 
