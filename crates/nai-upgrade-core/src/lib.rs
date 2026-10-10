@@ -11,6 +11,8 @@
 //! downloader. `DeterministicVerifier` is a rehearsal stand-in, and a
 //! `SignatureVerifier` implementation that chains to a real CA key is a
 //! deliberate later injection point.
+mod cost;
+mod gates;
 mod manifest;
 mod plan;
 mod preflight;
@@ -26,6 +28,11 @@ use std::{
     time::Instant,
 };
 
+pub use cost::{Component, CostEstimate, Total};
+pub use gates::{
+    Activation, ActiveSessionGate, DowngradeReport, SessionDrain, SessionGate, downgrade,
+    require_rollback_compatible,
+};
 pub use manifest::{FileDecl, Requirement, RuntimeEntry, UpgradeKind, UpgradePackage};
 pub use plan::{
     BackupRef, ExportedWrites, Outcome, Prepared, RecoveryAction, RollbackReport, StagingId,
@@ -35,7 +42,9 @@ pub use preflight::{
     CheckResult, HostFacts, NoSpaceProbe, PreflightReport, Probe, ResourceState, SpaceProbe,
     preflight,
 };
-pub use rehearsal::{EffectCounts, FaultPoint, RehearsalHost, RehearsalJournal};
+pub use rehearsal::{
+    EffectCounts, FaultPoint, RehearsalDrain, RehearsalHost, RehearsalJournal, RehearsalSessions,
+};
 pub use revocation::{RevocationEntry, RevocationList, RevocationSource};
 pub use signature::{DeterministicVerifier, SignatureVerifier};
 pub use verify::{PackageFile, VerifiedPackage, VerifyLimits, verify_package};

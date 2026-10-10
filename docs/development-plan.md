@@ -191,6 +191,24 @@ provider-core 18 lib + 10 provider + 8 substitution = 36 项通过；零新增�
 下一主线：真实 TTS/Provider 付费链路（需凭据/余额）或帧槽位与 keeper 生产接线（`delivery` 从 `memory`
 变为真实输出），以及 protected IPC/信号停机替换 halt 文件——均需先明确设备与凭据条件。
 
+本轮 `w15-upgrade-core` 已实现/实测（ADR 0026）：把 W15 升级器基础从零落到**可执行编排**。
+registry R05/R09/R10 由 `pending` 升 `implemented`（**不标 tested**——故障注入为内存演练宿主而非真实安装器/断电），
+O05 按 O02 惯例只补证据**保持 pending**（其 `automation: ui` 而真实升级 UI 未建），S08 补撤销列表证据保持 `implemented`。
+新增 shared 层 `crates/nai-upgrade-core`（零新增外部依赖），全部世界状态走可注入接缝
+（`SignatureVerifier` / `RevocationList` / `SpaceProbe` / `ActiveSessionGate` / `SessionDrain` / `UpgradeHost` / `UpgradeJournal`）：
+`verify.rs` 在**产生暂存之前**完成 schema→内容集合精确匹配→逐文件 SHA256→签名→撤销；
+`revocation.rs` 把撤销列表做成**带期限的可信缓存**（命中拒绝、未过期放行、**过期拒绝**，安装与启动双入口）；
+`preflight.rs` 六项检查三态化，**未知与不足同等拒绝**且错误码可区分；`plan.rs` 九步事务
+（预检→暂存→备份→迁移→自检→原子换清单）+ **写前记录**的五状态 journal + 崩溃恢复幂等 + 回滚**导出**升级后写入；
+`gates.rs` 门控与激活拆两次调用、降档**先排空后停用**、超 `rollback_range` 阻止静默回滚；
+`cost.rs` 成本分项 `Known | Unknown`、**未知不冒充 0**。`nai-storage/src/upgrade.rs` 复用既有 `upgrade_journal` 表，
+`xtask` 新增 `test --suite upgrade`。实测：upgrade-core 3 lib + 7 gates + 12 plan + 8 upgrade = 30 项通过；
+storage lib 50 项；`cargo xtask check-deps` 18 包；clippy/fmt 干净；`cargo xtask check --profile portable`
+EXIT=0（70 个测试目标，368 passed / 0 failed，基线 361）。见 [升级器指南](upgrade.md)、[ADR 0026](adr/0026-upgrade-core-boundary.md) 与
+[报告](reports/2026-10-10-w15-upgrade-core.md)。已归档为 `openspec/changes/archive/2026-10-10-w15-upgrade-core/`。
+未做边界：无真实签名链（`DeterministicVerifier` 为 sha2 替身）、无真实安装器/下载器、`semver` 只做交集判断、未接入装配根。
+下一主线：真实安装器/签名链注入，或帧槽位与 keeper 生产接线、protected IPC/信号停机替换 halt 文件。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |
@@ -211,7 +229,7 @@ provider-core 18 lib + 10 provider + 8 substitution = 36 项通过；零新增�
 | D14 | 控制 API 与桌面 | D06/D10/D11 | 本机工程状态/撤权闭环已实现实测；完整预检/审批/配置和 Tauri/IPC 未开始 | [报告](reports/2026-10-08-d14-local-control.md)、9 项新增 Rust + 5 项客户端测试、实际进程冒烟；不等于 D14 整体完成 |
 | D15 | 验收注册表与基线切换 | D01–D14 + ADR 0015 | registry.yaml + D→映射已实现/实测；决策日志/值守租约下一轮 | [本轮报告](reports/2026-10-08-d15-admission-registry.md)、`cargo xtask check --registry`、44 项验收回填 |
 | D16 | （V3.5 遗留：Pro 资源与团队） | D07/D14 | 未开始 | 后续按 V3.6 R3 切片推进 |
-| D17 | （V3.5 遗留：升级器） | D03–D05/D14 | 未开始 | 后续按 V3.6 W15/R1 推进 |
+| D17 | 升级器（V3.5 遗留 → V3.6 W15） | D03–D05/D14 | 已实现（R05/R09/R10；真实安装器/签名链未接，不标 tested） | [报告](reports/2026-10-10-w15-upgrade-core.md)、[ADR 0026](adr/0026-upgrade-core-boundary.md) |
 | D18 | （V3.5 遗留：远程渲染与扩展宿主） | 对应契约/profile | 未开始 | 后续按 V3.6 R2/R3 推进 |
 | D19 | （V3.5 遗留：安装与完整认证） | 前述目标能力 | 未开始 | 后续按 V3.6 R1–R3 与 registry 验收推进 |
 

@@ -29,20 +29,20 @@
 
 ## 5. 会话门控、降档与成本（R10 / O05）
 
-- [ ] 5.1 `gates.rs`：`ActiveSessionGate` 使开播中**只暂存**（`stage` 允许、`activate` 被门控）；激活要求无活动会话。
-- [ ] 5.2 降档：先排空多余会话再停用依赖能力，**数据保留**；不兼容（目标更旧或超 `rollback_range`）**阻止静默回滚**并报错。
-- [ ] 5.3 `cost.rs`：`CostEstimate` 逐项列示云资源/下载/存储增量/预估运行增量，分项为 `Known(amount, unit) | Unknown(reason)`，**未知不冒充 0**。
-- [ ] 5.4 单测：有活动会话时激活被拒而暂存成功、降档排空后才停用、数据仍在、不兼容回滚被拒、成本未知项标注、已知项求和。
+- [x] 5.1 `gates.rs`：`ActiveSessionGate` 使开播中**只暂存**（`stage` 允许、`activate` 被门控）；激活要求无活动会话。`SessionGate::activation` 返回 `Allowed | Deferred{active}`（不是裸 `bool`），`require_idle` 在活动会话存在时以 `CAPABILITY_NOT_READY` 拒绝。门控是**独立于 `activate` 的一次调用**：会话事实归调用方，已暂存的包被延后激活而非失败。
+- [x] 5.2 降档：`SessionDrain` 三方法（`dependents` / `drain` / `retire`）+ `downgrade` 逐能力**先排空再停用**——`retire` 只在 `drain` 报告剩余为 0 后调用，排空不彻底即 `CONFLICT` 停止且该能力保持运行；`retire` 契约禁止触碰存储数据（`RehearsalDrain` 记录数不变可证）。不兼容（目标超 `rollback_range`）由 `require_rollback_compatible` 以 `VERSION_INCOMPATIBLE` **阻止静默回滚**。
+- [x] 5.3 `cost.rs`：`CostEstimate` 逐项列示云资源/下载/存储增量/预估运行增量，分项为 `Known(amount) | Unknown(reason)`（金额单位由 estimate 的 `currency` 给出），**未知不冒充 0**；`total()` 全已知时 `Complete`，否则 `Partial{floor, unknown}`——部分和**不当作总额**。清单未声明的分项即 `Unknown`。
+- [x] 5.4 集成测试 `tests/gates.rs`（7 项）：活动会话下暂存成功而激活被门控、会话结束后同一暂存激活且不重复暂存、降档先排空后停用且记录数不变、排空不彻底时停止且不 retire、空 retiring 列表被拒、回滚目标在/超 `rollback_range` 的接受与拒绝、成本未知项标注与已知项求和（部分/完整两种 total）。
 
 ## 6. 规格、文档与提交
 
-- [ ] 6.1 新增 `docs/upgrade.md`（接缝与三态语义、九步流程、journal 状态机与恢复、撤销期限规则、成本口径、未做边界）。
-- [ ] 6.2 新增 ADR 0026，记录 crate 分层选择与三条否决方案（A 塞 storage / B 放 runtime / 以及「撤销列表做成集合」）。
-- [ ] 6.3 报告 `docs/reports/<date>-w15-upgrade-core.md`：实测数字、逐项验收映射、未覆盖边界。
-- [ ] 6.4 `xtask/src/lib.rs` 增加 `test --suite upgrade`；更新 help 文案。
-- [ ] 6.5 `tests/registry.yaml`：R05/R09/R10/O05 补证据并可 `pending → implemented`（**不标 tested**）；S08 补撤销列表证据**保持 implemented**；A08 不动。`AGENTS.md` 与 `docs/development-plan.md` 记录本轮。
-- [ ] 6.6 归档 `w15-upgrade-core`，跑 `validate --all --strict`（含 `--archived`）。
-- [ ] 6.7 全量 `cargo xtask check --profile portable`（`CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=4`）通过并留档；提交 + 推送。
+- [x] 6.1 新增 `docs/upgrade.md`（接缝表、九步流程、journal 状态机与恢复、撤销期限规则、预检三态、会话门控与降档、成本口径、未做边界）。
+- [x] 6.2 新增 ADR 0026，记录 crate 分层选择与三条否决方案（A 塞 storage / B 放 runtime / 「撤销列表做成集合」），并记录写前 journal、两次调用门控、未知≠0 等判定。
+- [x] 6.3 报告 `docs/reports/2026-10-10-w15-upgrade-core.md`：实测数字、逐项验收映射、未覆盖边界与环境边界。
+- [x] 6.4 `xtask/src/lib.rs` 增加 `test --suite upgrade`（`nai-upgrade-core` + `nai-storage`）；更新 help 文案。
+- [x] 6.5 `tests/registry.yaml`：R05/R09/R10 补证据并 `pending → implemented`（**不标 tested**，故障注入为演练宿主而非真实安装器）；**O05 保持 `pending`**（其 `automation: ui` 而真实升级 UI 未建，按 O02 惯例只补证据与说明）；S08 补撤销列表证据**保持 implemented**；A08 不动。`AGENTS.md` 与 `docs/development-plan.md` 记录本轮。
+- [x] 6.6 归档 `w15-upgrade-core`，跑 `validate --all --strict`（含 `--archived`）。
+- [x] 6.7 全量 `cargo xtask check --profile portable`（`CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=4`）通过并留档；提交 + 推送。
 
 ## 里程碑切分
 
@@ -50,5 +50,5 @@
 
 - **Slice A（已完成）**：立项与骨架（§1）、包校验与撤销列表（§2，S08 撤销缺口）、升级预检（§3，R09 主体）。覆盖「任何东西在暂存前先被验签验哈希查撤销」与「不足或不可判定即拒绝」两条判据。
 - **Slice B（已完成）**：journal 与升级事务（§4，R05），含崩溃恢复幂等与回滚保留新写入。
-- **Slice C**：会话门控/降档与成本显示（§5，R10 / O05）。
-- **Slice D**：文档、ADR、registry、归档与全量门控（§6）。
+- **Slice C（已完成）**：会话门控/降档与成本显示（§5，R10 / O05）。覆盖「开播中只暂存不激活」「降档先排空后停用且不丢数据」「不兼容回滚被显式拒绝」「成本未知项不冒充 0」四条判据。
+- **Slice D（已完成）**：文档、ADR、registry、归档与全量门控（§6）。

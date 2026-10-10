@@ -115,6 +115,17 @@ pub fn execute(args: &[String], root: &Path) -> Result<(), String> {
                 "nai-security",
             ],
         ),
+        ["test", "--suite", "upgrade"] => run(
+            root,
+            &[
+                "test",
+                "--locked",
+                "--package",
+                "nai-upgrade-core",
+                "--package",
+                "nai-storage",
+            ],
+        ),
         [
             "check",
             "--profile",
@@ -158,7 +169,7 @@ pub fn execute(args: &[String], root: &Path) -> Result<(), String> {
         }
         ["help"] | ["--help"] | [] => {
             println!(
-                "Usage: cargo xtask check-deps | check --registry | check --profile portable|windows-local | schema [--check] | test --suite contracts|storage|kernel|hosts|session|scheduler|provider|knowledge\nOther suites, certify and package tasks are not available yet."
+                "Usage: cargo xtask check-deps | check --registry | check --profile portable|windows-local | schema [--check] | test --suite contracts|storage|kernel|hosts|session|scheduler|provider|knowledge|upgrade\nOther suites, certify and package tasks are not available yet."
             );
             Ok(())
         }

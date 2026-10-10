@@ -13,6 +13,7 @@
 //! state, recovery is idempotent, and a rollback happens exactly once.
 use crate::{
     Result, error,
+    gates::{ActiveSessionGate, SessionDrain},
     plan::{BackupRef, ExportedWrites, StagingId, UpgradeHost, UpgradeJournal},
     preflight::{HostFacts, Probe},
     verify::VerifiedPackage,
@@ -20,7 +21,10 @@ use crate::{
 use nai_contracts::v1::ErrorCode;
 use nai_security::Operation;
 use nai_storage::{UpgradeRecord, UpgradeStep};
-use std::collections::BTreeMap;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 /// The step at which a rehearsal should fail, so each transition can be driven
 /// without a real failure substrate.
@@ -332,4 +336,94 @@ fn permits(from: UpgradeStep, to: UpgradeStep) -> bool {
         return false;
     }
     to == UpgradeStep::RolledBack || rank(to) == rank(from) + 1
+}
+
+/// An in-memory session gate: a count a test sets and changes between calls.
+#[derive(Debug, Default)]
+pub struct RehearsalSessions {
+    active: AtomicUsize,
+}
+impl RehearsalSessions {
+    pub fn new(active: usize) -> Self {
+        Self {
+            active: AtomicUsize::new(active),
+        }
+    }
+    /// Change the live count — modelling a session starting or ending.
+    pub fn set(&self, active: usize) {
+        self.active.store(active, Ordering::SeqCst);
+    }
+}
+impl ActiveSessionGate for RehearsalSessions {
+    fn active(&self) -> Result<usize> {
+        Ok(self.active.load(Ordering::SeqCst))
+    }
+}
+
+/// An in-memory drain: sessions that end when asked, capabilities that retire
+/// once nothing holds them, and a record count a retire must never touch.
+#[derive(Debug, Default)]
+pub struct RehearsalDrain {
+    dependents: BTreeMap<String, usize>,
+    stubborn: BTreeSet<String>,
+    retired: Vec<String>,
+    records: usize,
+}
+impl RehearsalDrain {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    /// Declare that `sessions` sessions depend on `capability` right now.
+    pub fn with_dependents(mut self, capability: &str, sessions: usize) -> Self {
+        self.dependents.insert(capability.to_owned(), sessions);
+        self
+    }
+    /// Make a capability's sessions outlive any drain, so the core must refuse
+    /// to retire it instead of stranding them.
+    pub fn with_stubborn(mut self, capability: &str, sessions: usize) -> Self {
+        self.dependents.insert(capability.to_owned(), sessions);
+        self.stubborn.insert(capability.to_owned());
+        self
+    }
+    /// Declare how many stored records exist, so a test can prove a downgrade
+    /// kept them.
+    pub fn with_records(mut self, records: usize) -> Self {
+        self.records = records;
+        self
+    }
+    pub fn retired(&self) -> &[String] {
+        &self.retired
+    }
+    pub fn records(&self) -> usize {
+        self.records
+    }
+}
+impl SessionDrain for RehearsalDrain {
+    fn dependents(&self, capability: &str) -> Result<usize> {
+        Ok(self.dependents.get(capability).copied().unwrap_or(0))
+    }
+
+    fn drain(&mut self, op: &Operation, capability: &str) -> Result<usize> {
+        op.check()?;
+        if self.stubborn.contains(capability) {
+            return Ok(self.dependents.get(capability).copied().unwrap_or(0));
+        }
+        self.dependents.insert(capability.to_owned(), 0);
+        Ok(0)
+    }
+
+    fn retire(&mut self, op: &Operation, capability: &str) -> Result<()> {
+        op.check()?;
+        // A retire while sessions still hold the capability is refused, not
+        // silently honoured: the core is supposed to have drained first.
+        if self.dependents.get(capability).copied().unwrap_or(0) > 0 {
+            return Err(error(
+                ErrorCode::Conflict,
+                "rehearsal: retiring a held capability",
+            ));
+        }
+        self.retired.push(capability.to_owned());
+        // Retiring touches code, never the stored records.
+        Ok(())
+    }
 }

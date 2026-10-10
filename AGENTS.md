@@ -43,9 +43,9 @@
 
 D01–D11 已建立工程、生成契约、存储/密钥、内核绑定、宿主/IPC、会话/媒体租约、有界调度/共享预算、API Provider 传输、
 知识完整链路、智能体/守门评估和媒体样本时轴：cargo xtask check-deps、
-check --profile portable/windows-local、schema [--check]、test --suite contracts/storage/kernel/hosts/session/scheduler/provider/knowledge
+check --profile portable/windows-local、schema [--check]、test --suite contracts/storage/kernel/hosts/session/scheduler/provider/knowledge/upgrade
 及前端 typecheck/build 可执行。契约工具要求 protoc 3.21.12，完整 C++ suite 另需同版
-libprotobuf；详见 docs/contracts/README.md、docs/hosts.md、docs/session.md、docs/scheduler.md、docs/provider.md、docs/knowledge.md 与 docs/kernel.md。
+libprotobuf；详见 docs/contracts/README.md、docs/hosts.md、docs/session.md、docs/scheduler.md、docs/provider.md、docs/knowledge.md、docs/upgrade.md 与 docs/kernel.md。
 真实付费 Provider 生成受账户余额约束（冒烟显示无余额，Blocked）；真实音轨/媒体进程接线待设备里程碑。其他 suite/认证/打包命令仍待实现，
 执行前核实对应 workspace 与 scripts；不可添加空成功占位。
 
@@ -254,3 +254,23 @@ provider-core 18 lib + 10 provider + 8 substitution = 36 项通过；零新增�
 `cargo xtask check --profile portable` 通过：EXIT=0，64 个测试目标，336 passed / 0 failed（基线 321）。
 A02/B03 补证据但保持 implemented **不升级**（真实付费账号无余额 Blocked、真实 TTS 设备与 engine 真实 provider 接线未做）。
 详见 docs/adr/0025-provider-substitution-boundary.md、docs/reports/2026-10-10-w19-provider-substitution.md 与 docs/provider.md。
+
+W15 升级器基础已实现/实测（ADR 0026）：新增 shared 层 `crates/nai-upgrade-core`（零新增外部依赖），
+把 V3.6 §14.3 的九步升级流程落成可执行编排，registry R05/R09/R10 由 pending 升 implemented（**不标 tested**：
+故障注入为内存演练宿主而非真实安装器/断电），O05 按 O02 惯例只补证据保持 pending（其 `automation: ui` 而真实升级 UI 未建），
+S08 补撤销列表证据保持 implemented。核心边界全部可注入——`SignatureVerifier` / `RevocationList` / `SpaceProbe` /
+`ActiveSessionGate` / `SessionDrain` / `UpgradeHost` / `UpgradeJournal`，因此升级器零宿主依赖、portable 下可完整测试。
+`verify.rs` 在**产生暂存之前**完成 schema→内容集合精确匹配（缺失/额外/重复拒绝）→逐文件 SHA256→签名→撤销；
+`revocation.rs` 把撤销列表做成**带期限的可信缓存**（命中拒绝、未过期放行、**过期拒绝**，安装与启动双入口），
+否决了「做成集合」；`preflight.rs` 六项检查（依赖闭包/平台+架构/运行时矩阵/双份磁盘 `install+migrated`/凭据）
+三态化，**未知与不足同等拒绝**且错误码可区分（`CAPABILITY_NOT_READY` / `RESOURCE_EXHAUSTED`）；
+`plan.rs` 九步事务 + **写前记录**的五状态 journal（`prepared/migrated/checked/committed/rolled_back`，
+单记录原地 UPSERT，`backup_ref`/`error_code` 不被抹除）+ 崩溃恢复幂等（`checked` 比较清单身份消歧）+ 回滚**导出**
+升级后事实与审计；`gates.rs` 门控与激活**拆两次调用**（被门控的包不失效）、降档**先排空后停用**且不触碰数据、
+超 `rollback_range` 以 `VERSION_INCOMPATIBLE` 阻止静默回滚；`cost.rs` 成本分项 `Known | Unknown`，**未知不冒充 0**，
+`total()` 部分和不当作总额。`nai-storage/src/upgrade.rs` 复用既有 `upgrade_journal` 表；`xtask` 新增 `test --suite upgrade`。
+实测：upgrade-core 3 lib + 7 gates + 12 plan + 8 upgrade = 30 项通过；storage lib 50 项；`cargo xtask check-deps` 18 包；
+clippy `--all-targets` 与 `cargo fmt --all --check` 干净；`cargo xtask check --profile portable` EXIT=0（见报告）。
+未做边界（四处写明）：**无真实签名链**（`DeterministicVerifier` 为 sha2 演练替身）、无真实安装器/下载器、
+`semver` 只做交集判断、未接入装配根。
+详见 docs/adr/0026-upgrade-core-boundary.md、docs/reports/2026-10-10-w15-upgrade-core.md 与 docs/upgrade.md。
