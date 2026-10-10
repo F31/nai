@@ -238,7 +238,21 @@ EXIT=0（70 个测试目标，368 passed / 0 failed，基线 361）。见 [升�
 `cargo xtask check-deps` 18 包；clippy/fmt 干净；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
 见 [云与本地自治指南](cloud.md)、[ADR 0028](adr/0028-local-autonomy-boundary.md) 与 [报告](reports/2026-10-10-w26-cloud-disconnect.md)。
 未做边界：真实断网/弱网注入与真实云 SDK 未接（云链路由宿主注入），容量数字是已测量声明的忠实表示而非本轮实测值。
-下一主线：A11（Pro 多会话隔离）。
+
+本轮 `w27-multi-session-isolation` 已实现/实测（ADR 0029）：把 A11 的三句话落成**结构性**判据，registry A11 由 pending 升 implemented
+（**不标 tested**：`automation: integration` 的真实多路会话与真实音频时序未做，准入用宿主给定的上限表）。落 **kernel**
+（`crates/nai-kernel/src/multiplex.rs`，只依赖 contracts，18 包与依赖方向不变）——kernel 不许依赖 shared 层，且多会话是内核会话语义
+（`session.rs`）的延伸。每会话命名空间以 `session_id` 为键并各有**独立 epoch**（`advance_epoch` 只推进被点会话）；到达 lane 的**唯一**入口
+以**属主**为键，`requester ≠ owner` 即 `CONFLICT`，故「任务/音频/审批/预算/知识无串场」是**签名的性质**而非要记住的检查
+（**否决**全局 lane 表+检查、类型级隔离、lane 不设属主）。共享面是**封闭三枚举** `ImmutableModel | KnowledgeSnapshot | ConnectionPool`，
+活的 lane 状态**没有**可共享表示；`SharedPool::write` 永远 `PERMISSION_DENIED`（没有写路径才是「只读」的实现），连接池持有者上限满即
+`RESOURCE_EXHAUSTED`，零上限在构造时即拒。`Admission` 四族（`GpuThroughput | Vram | AudioTiming | ApiQuota`）**独立判定**
+（某族余量不能换另一族），`admit` 是**两阶段**——先按族汇总并对照全机总量检查，**全部通过才写用量**，任一族不足即 `RESOURCE_EXHAUSTED`
+且不写任何用量（被拒会话为 0、已开播会话数字不变，对应「不能让已开播会话 OOM」），未声明族按 0。`audit_isolation` 检出无持有者租约与重复
+session id。实测：`tests/multiplex.rs` 24 项通过；`cargo xtask check --registry` 通过；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
+见 [多会话指南](multi-session.md)、[ADR 0029](adr/0029-multi-session-isolation-boundary.md) 与 [报告](reports/2026-10-10-w27-multi-session-isolation.md)。
+未做边界：准入用宿主给定上限表、不探测硬件；跨节点会话路由与多会话 UI 未做。
+下一主线：R06/B04 的设备侧测量与 O01 演示包（需真实设备与演示包）。
 
 ## 任务依赖与状态
 

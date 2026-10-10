@@ -305,3 +305,16 @@ W26 云断连与低云容量已实现/实测（ADR 0028）：把 A10 的两条**
 （「没测过」与「测到 0」类型不同），`assess` 报出**全部**越界族（不隐藏后项），超预算而策略为 `Absorb` 时 `audit_low_cloud` 报违规。
 实测：`tests/cloud.rs` 21 项通过；`cargo xtask check --registry` 通过；`cargo xtask check --profile portable` EXIT=0（73 个测试目标，见报告）。
 详见 docs/adr/0028-local-autonomy-boundary.md、docs/reports/2026-10-10-w26-cloud-disconnect.md 与 docs/cloud.md。
+
+W27 Pro 多会话隔离已实现/实测（ADR 0029）：把 A11 的三句话落成**结构性**判据，registry A11 由 pending 升 implemented
+（**不标 tested**：`automation: integration` 的真实多路会话与真实音频时序未做，准入用宿主给定的上限表）。落 **kernel** 的 `multiplex.rs`
+（只依赖 contracts，18 包不变）——kernel 不许依赖 shared 层，且多会话是内核会话语义（`session.rs`）的延伸；kernel 只能依赖 contracts，
+故自带 `MultiplexError{code,reason}`（与 `UpgradeError` 同形）。每会话命名空间以 `session_id` 为键并各有**独立 epoch**（`advance_epoch`
+只推进被点会话）；到达 lane 的**唯一**入口以**属主**为键，`requester ≠ owner` 即 `CONFLICT`，故「任务/音频/审批/预算/知识无串场」是
+**签名的性质**而非检查（**否决**全局 lane 表+检查、类型级隔离、lane 不设属主）。共享面是**封闭三枚举**（不可变模型/只读知识快照/受控连接池），
+活的 lane 状态没有可共享表示；`SharedPool::write` 永远 `PERMISSION_DENIED`（没有写路径才是「只读」的实现），连接池持有者上限满即
+`RESOURCE_EXHAUSTED`、零上限在构造时即拒。`Admission` 四族（`GpuThroughput | Vram | AudioTiming | ApiQuota`）**独立判定**（某族余量不能
+换另一族），`admit` 是**两阶段**——先按族汇总并对照全机总量检查，**全部通过才写用量**，任一族不足即 `RESOURCE_EXHAUSTED` 且不写任何用量
+（被拒会话为 0、已开播会话数字不变，对应「不能让已开播会话 OOM」），未声明族按 0。`audit_isolation` 检出无持有者租约与重复 session id。
+实测：`tests/multiplex.rs` 24 项通过；`cargo xtask check --registry` 通过；`cargo xtask check --profile portable` EXIT=0（74 个测试目标，见报告）。
+详见 docs/adr/0029-multi-session-isolation-boundary.md、docs/reports/2026-10-10-w27-multi-session-isolation.md 与 docs/multi-session.md。
