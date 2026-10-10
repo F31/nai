@@ -2,7 +2,8 @@
 
 代码：`crates/nai-kernel/src/golden.rs`；测试：`crates/nai-kernel/tests/golden.rs`；
 载荷读取与就位门禁：`xtask/src/golden.rs`，命令 `cargo xtask check --golden`；
-决策：[ADR 0032](adr/0032-knowledge-quality-gate-boundary.md)、[ADR 0033](adr/0033-golden-set-payload-boundary.md)。
+评估执行体：`xtask/examples/golden_eval.rs`，命令 `cargo run -p nai-xtask --example golden_eval`；
+决策：[ADR 0032](adr/0032-knowledge-quality-gate-boundary.md)、[ADR 0033](adr/0033-golden-set-payload-boundary.md)、[ADR 0040](adr/0040-golden-eval-runner-boundary.md)。
 
 本模块把 §6 的质量门槛（设计值）与 §5.9 的黄金集生命周期落成可执行判据。它**不产生**真实题集、真实模型评估或真实检索结果——那些由外部场景包与评估流程提供；它负责的是「给定一次运行的输入与结果，判定口径是什么、门槛何时打开、退化如何被拦住」。
 
@@ -29,6 +30,59 @@
 「未提供」的唯一判据是**目录内的 `.json` 文件数为零**，不由「没有成功读入的题集」推断——否则「有一个文件但整个读不出」会被误报成「从未提供」。该命令**不并入** `check --profile portable`：题集内容不属于工程基础门控。
 
 `origin.kind = promoted` 的用例**必须**带非空 `confirmer`，缺失或空白在**读取载荷时**即被拒。这把 §5.9 的授权边界前移到载荷边界：一份含未确认候选的题集不会先参与召回统计，从而使缺陷被误读成「系统在某类问题上表现差」。
+
+## 参考答案（题集修订 2 起必填）
+
+生成侧的 `answer_accuracy` 需要一个判据，否则「正确率」只能由外部判定后注入，达标链条上就有一段没有可复现的执行体。因此修订 2 起每题**必须**声明参考答案：
+
+```json
+"expected": { "kind": "reference", "must_include": ["七小时"], "must_exclude": ["终身保修"] }
+```
+
+| 字段 | 规则 |
+| --- | --- |
+| `must_include` | **必填且至少一条**。全部分别出现才算正确 |
+| `must_exclude` | 可选；一旦出现即判错，**无论「必须包含」是否满足**（否定式优先） |
+
+判定是**纯函数** `crates/nai-kernel/src/golden.rs` 的 `judge_answer`：先做归一化（Unicode 小写折叠 + 连续空白折叠），再按上表比较。取**子串**而非相似度阈值——阈值需要一个数字，而那个数字本身就成了判据，且不可复现。
+
+`must_include` 为空**不**算「没有要求就通过」：载荷边界直接拒绝这种形状，而在 kernel 里手工构造出的空判据返回 `Unknown`（未判定，从分母排除），不返回 `Correct`。这一条与「未判定不等于通过」是同一个口径。
+
+**不做双读**：修订 1 在修订 2 落地后被拒（`case_set_schema_unsupported`），因为同时接受两版会让一份漏写 `expected` 的旧题集读成「没有参考答案要求」，静默改变用例含义。
+
+## 评估执行体
+
+```bash
+# 就绪检查后逐题驱动真实模型：
+NAI_LLM_BASE_URL=... NAI_LLM_API_KEY=... NAI_LLM_MODEL=... \
+  cargo run -p nai-xtask --example golden_eval
+# 用别处的题集演练（夹具：tests/fixtures/rag-golden）：
+  cargo run -p nai-xtask --example golden_eval -- --dir tests/fixtures/rag-golden
+# 需要留档时另存证据：
+  ... --evidence docs/reports/evidence/golden-eval.json
+```
+
+它读的是**门禁自己的读取器**（`read_case_set` 与 `case_set_files`，与审计共用同一个 `parse_case_set`），所以「这里读得进」与「门禁放行」永远是同一件事。
+
+| 情况 | 退出码 | 行为 |
+| --- | --- | --- |
+| 目录内无 `*.json` | 1 | `CAPABILITY_NOT_READY`，指出被搜索的目录，**不发起调用** |
+| 结构不合规 | 1 | 逐条报出缺陷（文件 + token + 位置），**不发起任何调用** |
+| 缺少环境变量 | 1 | `CAPABILITY_NOT_READY` + 变量**名**；凭据值从不打印、从不写进证据 |
+| 真实调用失败 | 2 | 与「前置未就绪」区分 |
+
+**它只驱动生成侧**：问题进、答案出，用 `GoldenCase::answer_verdict` 判定。行为侧（检索证据、守门判定、副作用通道、取消通道）**不被驱动**，因此它不对这些判据报结论，而是把未驱动项具名打印：
+
+```
+unmeasured: evidence_recall_at_5 — no served knowledge base is attached to this runner
+unmeasured: retrieval_p95 — no retrieval samples exist without a served knowledge base
+unmeasured: behaviour_expectations — …the guard, side-effect and cancellation channels, which this runner does not drive
+not a B01 pass: §655 asks for the §6 thresholds, which include the unmeasured fields above
+```
+
+**它不填零、不猜 outcome**。若用答案文本推断 `outcome` 再喂 `evaluate`，会得到一个字段齐全但含义失真的报告：行为类 token **假失败**（把「执行体没驱动」读成「系统差」），`MustNotAct` **假通过**（本路径没有副作用通道，恒为空）。两种误导都比缺字段严重。
+
+该命令**不并入** `check --profile portable`：业务题集未建不代表工程基础有问题。
 
 ## 黄金集的版本、覆盖与规模
 
@@ -135,8 +189,9 @@
 
 ## 未做边界
 
-- **不含任何真实评估**：100 道真实问题、真实模型在这些题上的回答、真实检索结果与时延都由外部场景包与评估流程提供。测试里那 100 题集合是**构造出来的**，只为证明覆盖审计与门槛判定可执行，不代表任何真实质量水平。
-- **题集载荷未提供**：`tests/rag-golden` 目录存在但不是存放真值的地方——`cargo xtask check --golden` 当前以 `CAPABILITY_NOT_READY` 结束（`files: 0`），这是如实反映。`tests/fixtures/rag-golden/example-min.json` 是夹具，不是真值。
-- 不接真实采样器（检索时延由宿主提供）；不做评估 UI；不改 `knowledge-pipeline`（它管**怎么检索**，本模块管**怎么判定检索质量**）。
+- **题集载荷未提供**：`tests/rag-golden` 目录存在但不是存放真值的地方——`cargo xtask check --golden` 当前以 `CAPABILITY_NOT_READY` 结束（`files: 0`），这是如实反映。`tests/fixtures/rag-golden/example-min.json` 是夹具（修订 2 起带参考答案，仍是构造数据），不是真值。
+- **不含真实检索与真实行为侧**：真实知识库内容由外部场景包提供。评估执行体只驱动生成侧，检索召回、检索 P95 与行为类判据（澄清/转义、无副作用、取消）**一律记为未驱动并具名打印**；不接真实采样器（检索时延由宿主提供）；不做评估 UI。
+- 不改 `knowledge-pipeline`（它管**怎么检索**，本模块管**怎么判定检索质量**）。
 - **不提供自动出题路径**：§5.9 要求坏案例经人工确认，任何「从日志自动生成题集」都会让黄金集变成系统自己给自己出题。
-- 注册表 B01 因此为 **`blocked`**：§655 的验收原文是「知识质量：**100 题集达到**第 6 章门槛」＝实测达标，题集不存在时不可能达成。判定机制（W30）与载荷载体（W31）已交付并在 notes 中保留。
+- **执行体不在工程门控内**：`cargo xtask check --profile portable` 不含题集就位与评估运行（ADR 0033 决策 7 / ADR 0040）。
+- 注册表 B01 因此仍为 **`blocked`**：§655 的验收原文是「知识质量：**100 题集达到**第 6 章门槛」＝实测达标，题集与真实知识库不存在时不可能达成。**仓库内可控的两段已齐**：判定机制（W30）、载荷载体（W31）、参考答案判据与评估执行体（W40，ADR 0040），遗留的两段是纯外部投入——100 题内容与真实知识库。到位后**零代码改动**即可出完整结论。

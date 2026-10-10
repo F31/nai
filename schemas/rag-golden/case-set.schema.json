@@ -2,22 +2,30 @@
   "$schema":"https://json-schema.org/draft/2020-12/schema",
   "$id":"https://nai.invalid/schemas/rag-golden/case-set",
   "title":"RagGoldenCaseSet",
-  "description":"One scenario's golden case set (§5.9 first bullet, §6 quality threshold). It is a scenario-package payload: nothing in this repository fabricates its contents. §6's minimum of 100 cases is enforced by `cargo xtask check --golden`, which reports the shortfall by name rather than only refusing, so `cases` requires at least one entry here.",
+  "description":"One scenario's golden case set (§5.9 first bullet, §6 quality threshold). It is a scenario-package payload: nothing in this repository fabricates its contents. §6's minimum of 100 cases is enforced by `cargo xtask check --golden`, which reports the shortfall by name rather than only refusing, so `cases` requires at least one entry here. Revision 2 adds the required `expected` answer: without it the generation side can never be judged, so a case that omits it is structurally broken rather than merely unscored.",
   "type":"object","additionalProperties":false,
   "required":["case_set_schema","scenario_version","cases"],
   "$defs":{
     "ref":{"type":"string","minLength":1,"maxLength":128},
+    "phrase":{"type":"string","minLength":1,"maxLength":256},
     "expectation":{"oneOf":[
       {"type":"object","additionalProperties":false,"required":["kind","required"],"properties":{
         "kind":{"const":"evidence"},
         "required":{"type":"array","minItems":1,"maxItems":32,"uniqueItems":true,"items":{"$ref":"#/$defs/ref"}}}},
       {"type":"object","additionalProperties":false,"required":["kind","forbidden_claims"],"properties":{
         "kind":{"const":"high_risk_fact"},
-        "forbidden_claims":{"type":"array","minItems":1,"maxItems":32,"uniqueItems":true,"items":{"type":"string","minLength":1,"maxLength":256}}}},
+        "forbidden_claims":{"type":"array","minItems":1,"maxItems":32,"uniqueItems":true,"items":{"$ref":"#/$defs/phrase"}}}},
       {"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"const":"must_clarify_or_escalate"}}},
       {"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"const":"must_not_act"}}},
       {"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"const":"must_cancel"}}}
     ]},
+    "expected":{"description":"What the answer must say. A substring contract, not a similarity threshold: every `must_include` point must appear, and no `must_exclude` phrase may appear at all. `must_include` is never empty — an expected answer with nothing to check would judge everything correct or judge nothing, and both quietly turn the generation-side check off.","type":"object","additionalProperties":false,
+      "required":["kind","must_include"],
+      "properties":{
+        "kind":{"const":"reference"},
+        "must_include":{"type":"array","minItems":1,"maxItems":64,"uniqueItems":true,"items":{"$ref":"#/$defs/phrase"}},
+        "must_exclude":{"type":"array","minItems":1,"maxItems":64,"uniqueItems":true,"items":{"$ref":"#/$defs/phrase"}}
+      }},
     "origin":{"oneOf":[
       {"type":"object","additionalProperties":false,"required":["kind"],"properties":{"kind":{"const":"authored"}}},
       {"type":"object","additionalProperties":false,"required":["kind","confirmer"],"properties":{
@@ -26,16 +34,17 @@
     ]}
   },
   "properties":{
-    "case_set_schema":{"const":1},
+    "case_set_schema":{"const":2},
     "scenario_version":{"type":"string","minLength":1,"maxLength":128},
     "cases":{"type":"array","minItems":1,"maxItems":4096,"items":{
       "type":"object","additionalProperties":false,
-      "required":["id","category","question","expectation","origin"],
+      "required":["id","category","question","expectation","expected","origin"],
       "properties":{
         "id":{"type":"string","minLength":1,"maxLength":128,"pattern":"^[A-Za-z0-9_][A-Za-z0-9_.:-]*$"},
         "category":{"enum":["normal_answer","fact_update","injection","conflict","privilege_escalation","no_answer","cancelled","tool_return_attack"]},
         "question":{"type":"string","minLength":1,"maxLength":1024},
         "expectation":{"$ref":"#/$defs/expectation"},
+        "expected":{"$ref":"#/$defs/expected"},
         "origin":{"$ref":"#/$defs/origin"}
       }
     }}

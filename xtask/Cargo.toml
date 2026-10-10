@@ -18,5 +18,18 @@ prost-build.workspace = true
 prost-types.workspace = true
 serde_json.workspace = true
 
+# The golden-set evaluation runner (`examples/golden_eval.rs`) drives the real
+# generation seam. Keeping those crates as dev-dependencies means the runner
+# compiles only when the example is built: the tool's own library — which is
+# what `cargo test -p nai-xtask --lib` and the portable profile cover — is
+# unchanged.
+[dev-dependencies]
+nai-budget-core.workspace = true
+nai-contracts.workspace = true
+nai-provider-core.workspace = true
+nai-security.workspace = true
+serde_json.workspace = true
+tokio = { version = "=1.53.2", features = ["macros", "rt-multi-thread", "time"] }
+
 [lints]
 workspace = true

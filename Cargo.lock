@@ -1351,11 +1351,16 @@ name = "nai-xtask"
 version = "0.1.0"
 dependencies = [
  "cargo_metadata",
+ "nai-budget-core",
+ "nai-contracts",
  "nai-kernel",
+ "nai-provider-core",
+ "nai-security",
  "prost",
  "prost-build",
  "prost-types",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

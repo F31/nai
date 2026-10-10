@@ -175,6 +175,74 @@ pub enum Expectation {
     MustCancel,
 }
 
+/// The generation-side expectation of one case: which points the answer must
+/// contain, and which it must not.
+///
+/// It is a **substring** contract, not a similarity threshold. A threshold
+/// would be a number someone chose, and that number would become the criterion
+/// — unreproducible and arguable. `must_include` is never allowed to be empty:
+/// "no requirement at all" would either judge every answer correct or judge
+/// nothing, and both silently turn the judgement off. [`judge_answer`] reports
+/// the empty case as [`AnswerVerdict::Unknown`] rather than letting it pass.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExpectedAnswer {
+    /// Points the answer must all contain.
+    pub must_include: Vec<String>,
+    /// Phrases that must not appear, whatever else the answer says.
+    pub must_exclude: Vec<String>,
+}
+
+/// Whitespace-folded, case-folded form used by every comparison, so a newline
+/// or an indented paragraph cannot manufacture a mismatch.
+fn normalized(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut pending_space = false;
+    for ch in text.to_lowercase().chars() {
+        if ch.is_whitespace() {
+            pending_space = !out.is_empty();
+            continue;
+        }
+        if pending_space {
+            out.push(' ');
+            pending_space = false;
+        }
+        out.push(ch);
+    }
+    out
+}
+
+/// Judge one answer against its expected answer. A pure function of its two
+/// arguments: no environment, no file, no clock.
+///
+/// The negative rule wins. A phrase in `must_exclude` fails the answer even
+/// when every required point is present — otherwise an answer that says the
+/// right thing *and* the wrong thing would pass.
+pub fn judge_answer(expected: &ExpectedAnswer, answer: &str) -> AnswerVerdict {
+    // No criterion is not a pass. The payload boundary refuses an empty
+    // `must_include`, so reaching this branch means a caller built the type by
+    // hand; it is reported as unjudged rather than quietly counted correct.
+    if expected.must_include.is_empty() {
+        return AnswerVerdict::Unknown;
+    }
+    let haystack = normalized(answer);
+    if expected
+        .must_exclude
+        .iter()
+        .any(|phrase| haystack.contains(&normalized(phrase)))
+    {
+        return AnswerVerdict::Incorrect;
+    }
+    if expected
+        .must_include
+        .iter()
+        .all(|point| haystack.contains(&normalized(point)))
+    {
+        AnswerVerdict::Correct
+    } else {
+        AnswerVerdict::Incorrect
+    }
+}
+
 /// Where a case came from. A promoted case carries the human who confirmed it,
 /// so an unreviewed candidate can never masquerade as authored.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -189,7 +257,23 @@ pub struct GoldenCase {
     pub category: Category,
     pub question: String,
     pub expectation: Expectation,
+    /// What the answer should say. The payload boundary requires it on every
+    /// case; a case built by hand without one is judged [`AnswerVerdict::Unknown`]
+    /// rather than passed.
+    pub expected: Option<ExpectedAnswer>,
     pub origin: CaseOrigin,
+}
+
+impl GoldenCase {
+    /// Judge an answer for this case. A case with no expected answer is
+    /// unjudged, which the accuracy denominator excludes rather than counts as
+    /// wrong.
+    pub fn answer_verdict(&self, answer: &str) -> AnswerVerdict {
+        match &self.expected {
+            Some(expected) => judge_answer(expected, answer),
+            None => AnswerVerdict::Unknown,
+        }
+    }
 }
 
 /// A versioned golden set. It carries the scenario version it belongs to,
@@ -261,6 +345,13 @@ impl GoldenSet {
         for case in &self.cases {
             if !case.category.accepts(&case.expectation) {
                 findings.push(Finding::new("expectation_category_mismatch", &case.id));
+            }
+            // No expected answer means the generation side cannot be judged at
+            // all. Naming it here keeps "never judged" from reading as "all
+            // correct" — the payload boundary refuses it, so reaching this
+            // branch means a set was assembled without the payload reader.
+            if case.expected.is_none() {
+                findings.push(Finding::new("expected_answer_absent", &case.id));
             }
         }
         findings
@@ -717,6 +808,9 @@ pub struct BadCase {
     pub question: String,
     pub category: Category,
     pub expectation: Expectation,
+    /// What the answer should have said. A promoted case carries it into the
+    /// golden set, so the generation side stays judgeable after the promotion.
+    pub expected: ExpectedAnswer,
 }
 
 /// The pool §5.9 describes. Recording is open; promotion is not — a candidate
@@ -767,6 +861,7 @@ impl BadCasePool {
             category: case.category,
             question: case.question.clone(),
             expectation: case.expectation.clone(),
+            expected: Some(case.expected.clone()),
             origin: CaseOrigin::Promoted {
                 confirmer: confirmer.to_owned(),
             },

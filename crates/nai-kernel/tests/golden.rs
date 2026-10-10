@@ -11,12 +11,22 @@ fn retrieval(count: usize, ms: u64) -> LatencySamples {
     samples
 }
 
+/// An expected answer with one required point, for cases whose expectation is
+/// about behaviour rather than wording.
+fn reference(points: &[&str]) -> Option<ExpectedAnswer> {
+    Some(ExpectedAnswer {
+        must_include: points.iter().map(|point| (*point).to_owned()).collect(),
+        must_exclude: Vec::new(),
+    })
+}
+
 fn authored(id: &str, category: Category, expectation: Expectation) -> GoldenCase {
     GoldenCase {
         id: id.to_owned(),
         category,
         question: format!("q-{id}"),
         expectation,
+        expected: reference(&["ok"]),
         origin: CaseOrigin::Authored,
     }
 }
@@ -119,6 +129,7 @@ fn report_for(category: Category, expectation: Expectation, entry: Submission) -
         category,
         question: "q".to_owned(),
         expectation,
+        expected: reference(&["ok"]),
         origin: CaseOrigin::Authored,
     })
     .unwrap();
@@ -596,6 +607,10 @@ fn a_promotion_requires_a_named_human_confirmer() {
         question: "今天有什么优惠".to_owned(),
         category: Category::NoAnswer,
         expectation: Expectation::MustClarifyOrEscalate,
+        expected: ExpectedAnswer {
+            must_include: vec!["暂时无法确认".to_owned()],
+            must_exclude: Vec::new(),
+        },
     });
     assert_eq!(pool.pending().len(), 1);
     assert_eq!(
@@ -630,8 +645,102 @@ fn a_rewritten_candidate_keeps_its_case_id() {
         question: "改过的问法".to_owned(),
         category: Category::NormalAnswer,
         expectation: evidence(&["doc-7"]),
+        expected: ExpectedAnswer {
+            must_include: vec!["7".to_owned()],
+            must_exclude: Vec::new(),
+        },
     });
     let golden = pool.promote(0, "op-li").unwrap();
     assert_eq!(golden.id, "normal-7");
     assert_eq!(golden.category, Category::NormalAnswer);
+    // The promoted case stays judgeable on the generation side.
+    assert_eq!(
+        golden.answer_verdict("续航大约 7 小时"),
+        AnswerVerdict::Correct
+    );
+}
+
+// ---- expected answers (§6 generation side)
+
+fn expected(must_include: &[&str], must_exclude: &[&str]) -> ExpectedAnswer {
+    ExpectedAnswer {
+        must_include: must_include.iter().map(|p| (*p).to_owned()).collect(),
+        must_exclude: must_exclude.iter().map(|p| (*p).to_owned()).collect(),
+    }
+}
+
+#[test]
+fn every_required_point_present_and_nothing_forbidden_passes() {
+    let criterion = expected(&["七小时", "充电二十分钟"], &["终身"]);
+    assert_eq!(
+        judge_answer(&criterion, "充满可以听七小时，充电二十分钟能用一整天。"),
+        AnswerVerdict::Correct
+    );
+}
+
+#[test]
+fn one_missing_required_point_fails() {
+    let criterion = expected(&["七小时", "充电二十分钟"], &[]);
+    assert_eq!(
+        judge_answer(&criterion, "充满可以听七小时。"),
+        AnswerVerdict::Incorrect
+    );
+}
+
+#[test]
+fn a_forbidden_phrase_fails_even_when_every_required_point_is_present() {
+    // The negative rule wins: an answer that says the right thing *and* the
+    // wrong thing must not pass.
+    let criterion = expected(&["七小时"], &["终身"]);
+    assert_eq!(
+        judge_answer(&criterion, "可以听七小时，而且终身保修。"),
+        AnswerVerdict::Incorrect
+    );
+}
+
+#[test]
+fn whitespace_and_case_do_not_change_the_verdict() {
+    let criterion = expected(&["battery life", "20 minutes"], &[]);
+    for answer in [
+        "Battery   Life is 20\nminutes.",
+        "  battery life is 20 minutes  ",
+        "BATTERY\tLIFE\tIS 20 MINUTES",
+    ] {
+        assert_eq!(judge_answer(&criterion, answer), AnswerVerdict::Correct);
+    }
+}
+
+#[test]
+fn an_empty_must_include_is_unjudged_rather_than_correct() {
+    // "No requirement at all" must not become "every answer is correct". The
+    // payload boundary refuses this shape; a hand-built one is unjudged, so the
+    // accuracy denominator excludes it instead of counting a pass.
+    assert_eq!(
+        judge_answer(&expected(&[], &[]), "任意答案"),
+        AnswerVerdict::Unknown
+    );
+}
+
+#[test]
+fn a_case_without_an_expected_answer_is_unjudged() {
+    let mut case = authored("n-1", Category::NormalAnswer, evidence(&["d-1"]));
+    case.expected = None;
+    assert_eq!(case.answer_verdict("七小时"), AnswerVerdict::Unknown);
+}
+
+#[test]
+fn a_set_without_expected_answers_names_every_case() {
+    let mut set = GoldenSet::new("scenario-1");
+    for id in ["n-1", "n-2"] {
+        let mut case = authored(id, Category::NormalAnswer, evidence(&["d-1"]));
+        case.expected = None;
+        set.add(case).unwrap();
+    }
+    let audit = set.audit_coverage();
+    let named: Vec<&str> = audit
+        .iter()
+        .filter(|finding| finding.token == "expected_answer_absent")
+        .map(|finding| finding.subject.as_str())
+        .collect();
+    assert_eq!(named, vec!["n-1", "n-2"]);
 }

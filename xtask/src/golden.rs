@@ -28,7 +28,7 @@
 //! blamed on the system instead of on the set.
 
 use nai_kernel::golden::{
-    CaseOrigin, Category, DocRef, Expectation, Finding, GoldenCase, GoldenSet,
+    CaseOrigin, Category, DocRef, Expectation, ExpectedAnswer, Finding, GoldenCase, GoldenSet,
 };
 use serde_json::{Map, Value};
 use std::{
@@ -42,10 +42,17 @@ pub const PAYLOAD_DIR: &str = "tests/rag-golden";
 
 /// The schema revision every case set must declare. A file that does not name
 /// this revision is refused rather than interpreted leniently.
-const CASE_SET_SCHEMA: u64 = 1;
+const CASE_SET_SCHEMA: u64 = 2;
 
 const SET_KEYS: [&str; 3] = ["case_set_schema", "scenario_version", "cases"];
-const CASE_KEYS: [&str; 5] = ["id", "category", "question", "expectation", "origin"];
+const CASE_KEYS: [&str; 6] = [
+    "id",
+    "category",
+    "question",
+    "expectation",
+    "expected",
+    "origin",
+];
 
 /// The key that discriminates an expectation's or an origin's variant. It is
 /// the only key every shape shares.
@@ -325,6 +332,47 @@ fn parse_expectation(
     }
 }
 
+/// The expected answer of one case. `must_include` is required and non-empty:
+/// an expected answer with nothing to check would let every answer pass or let
+/// none be judged, and both quietly turn the generation-side check off.
+/// `must_exclude` is optional, but when present it too carries at least one
+/// phrase — an empty list is a defect here as everywhere else.
+fn parse_expected(
+    report: &mut Report<'_>,
+    object: &Map<String, Value>,
+    key: &str,
+    at: &str,
+) -> Option<ExpectedAnswer> {
+    let object = map(report, object, key, at)?;
+    let kind_at = format!("{at}.kind");
+    let kind = text(report, object, KIND, &kind_at)?;
+    match kind.as_str() {
+        "reference" => {
+            report.keys(object, &["kind", "must_include", "must_exclude"], at);
+            let include_at = format!("{at}.must_include");
+            let must_include = strings(report, object, "must_include", &include_at)?;
+            let must_exclude = if object.contains_key("must_exclude") {
+                strings(
+                    report,
+                    object,
+                    "must_exclude",
+                    &format!("{at}.must_exclude"),
+                )?
+            } else {
+                Vec::new()
+            };
+            Some(ExpectedAnswer {
+                must_include,
+                must_exclude,
+            })
+        }
+        other => {
+            report.defect("expected_kind_unknown", format!("{kind_at} = {other}"));
+            None
+        }
+    }
+}
+
 /// Where a case came from. `promoted` demands a confirmer here, at the payload
 /// boundary, because §5.9 makes the human confirmation the whole difference
 /// between a bad case and a case.
@@ -363,6 +411,9 @@ fn parse_case(report: &mut Report<'_>, value: &Value, index: usize) -> Option<Go
     let question = text(report, object, "question", &format!("{at}.question"))?;
     let expectation =
         parse_expectation(report, object, "expectation", &format!("{at}.expectation"))?;
+    // Required, not optional: without it the generation side can never be
+    // judged, so a case that omits it is structurally broken.
+    let expected = parse_expected(report, object, "expected", &format!("{at}.expected"))?;
     let origin = parse_origin(report, object, &format!("{at}.origin"))?;
 
     Some(GoldenCase {
@@ -370,6 +421,7 @@ fn parse_case(report: &mut Report<'_>, value: &Value, index: usize) -> Option<Go
         category,
         question,
         expectation,
+        expected: Some(expected),
         origin,
     })
 }
@@ -377,6 +429,27 @@ fn parse_case(report: &mut Report<'_>, value: &Value, index: usize) -> Option<Go
 /// Read one case set and audit it. Every structural problem is collected, so a
 /// broken payload is reported in full rather than one error at a time.
 pub fn audit_case_set(file: &str, source: &str) -> Result<SetAudit, Vec<Defect>> {
+    let (set, findings) = parse_case_set(file, source)?;
+    Ok(SetAudit {
+        file: file.to_owned(),
+        scenario_version: set.scenario_version.clone(),
+        cases: set.len(),
+        findings,
+    })
+}
+
+/// Read one case set into the kernel's set type, for a caller that is going to
+/// **run** it rather than only audit it. It applies the same reading rules as
+/// [`audit_case_set`], because both call [`parse_case_set`] — a file that loads
+/// here is exactly a file the payload gate accepts, so the audit and the runner
+/// can never disagree about what a valid set is.
+pub fn read_case_set(file: &str, source: &str) -> Result<GoldenSet, Vec<Defect>> {
+    parse_case_set(file, source).map(|(set, _)| set)
+}
+
+/// The one reader the audit and the runner share. Every structural rule lives
+/// here, so there is a single answer to "what is a valid case set".
+fn parse_case_set(file: &str, source: &str) -> Result<(GoldenSet, Vec<Finding>), Vec<Defect>> {
     let mut report = Report::new(file);
     let root = match serde_json::from_str::<Value>(source) {
         Ok(value) => value,
@@ -436,12 +509,8 @@ pub fn audit_case_set(file: &str, source: &str) -> Result<SetAudit, Vec<Defect>>
         return Err(report.defects);
     }
 
-    Ok(SetAudit {
-        file: file.to_owned(),
-        scenario_version: set.scenario_version.clone(),
-        cases: set.len(),
-        findings: set.audit_coverage(),
-    })
+    let findings = set.audit_coverage();
+    Ok((set, findings))
 }
 
 /// Every `*.json` directly under `dir`, in name order. A missing directory is
@@ -449,8 +518,25 @@ pub fn audit_case_set(file: &str, source: &str) -> Result<SetAudit, Vec<Defect>>
 /// into an explicit "not supplied" refusal.
 pub fn audit_directory(dir: &Path) -> Result<PayloadAudit, String> {
     let mut audit = PayloadAudit::default();
+    for (name, text) in case_set_files(dir)? {
+        audit.files += 1;
+        match audit_case_set(&name, &text) {
+            Ok(set) => audit.sets.push(set),
+            Err(defects) => audit.defects.extend(defects),
+        }
+    }
+    Ok(audit)
+}
+
+/// Every `*.json` directly under `dir`, in name order, as `(file name,
+/// contents)`. A directory that does not exist yields an empty list — "not
+/// supplied" is a conclusion the caller reaches, not an error raised here.
+///
+/// It exists so a caller that is going to **run** the cases reads them through
+/// the same scan the payload gate uses, rather than growing a second one.
+pub fn case_set_files(dir: &Path) -> Result<Vec<(String, String)>, String> {
     if !dir.is_dir() {
-        return Ok(audit);
+        return Ok(Vec::new());
     }
     let entries =
         fs::read_dir(dir).map_err(|error| format!("cannot read {}: {error}", dir.display()))?;
@@ -464,8 +550,8 @@ pub fn audit_directory(dir: &Path) -> Result<PayloadAudit, String> {
     }
     paths.sort();
 
+    let mut files = Vec::new();
     for path in paths {
-        audit.files += 1;
         let name = path
             .file_name()
             .and_then(|name| name.to_str())
@@ -473,12 +559,9 @@ pub fn audit_directory(dir: &Path) -> Result<PayloadAudit, String> {
             .to_owned();
         let text = fs::read_to_string(&path)
             .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
-        match audit_case_set(&name, &text) {
-            Ok(set) => audit.sets.push(set),
-            Err(defects) => audit.defects.extend(defects),
-        }
+        files.push((name, text));
     }
-    Ok(audit)
+    Ok(files)
 }
 
 /// `cargo xtask check --golden [--dir <path>]`.
@@ -573,12 +656,12 @@ mod tests {
             let category = CATEGORIES[index % CATEGORIES.len()];
             let id = format!("{category}-{index}");
             cases.push(format!(
-                r#"{{"id":"{id}","category":"{category}","question":"q {index}","expectation":{},"origin":{{"kind":"authored"}}}}"#,
+                r#"{{"id":"{id}","category":"{category}","question":"q {index}","expectation":{},"expected":{{"kind":"reference","must_include":["ok"]}},"origin":{{"kind":"authored"}}}}"#,
                 expectation_for(category, &id)
             ));
         }
         format!(
-            r#"{{"case_set_schema":1,"scenario_version":"{scenario_version}","cases":[{}]}}"#,
+            r#"{{"case_set_schema":2,"scenario_version":"{scenario_version}","cases":[{}]}}"#,
             cases.join(",")
         )
     }
@@ -616,11 +699,11 @@ mod tests {
         for index in 0..100 {
             let id = format!("normal-{index}");
             cases.push(format!(
-                r#"{{"id":"{id}","category":"normal_answer","question":"q","expectation":{{"kind":"evidence","required":["d"]}},"origin":{{"kind":"authored"}}}}"#
+                r#"{{"id":"{id}","category":"normal_answer","question":"q","expectation":{{"kind":"evidence","required":["d"]}},"expected":{{"kind":"reference","must_include":["ok"]}},"origin":{{"kind":"authored"}}}}"#
             ));
         }
         let text = format!(
-            r#"{{"case_set_schema":1,"scenario_version":"s","cases":[{}]}}"#,
+            r#"{{"case_set_schema":2,"scenario_version":"s","cases":[{}]}}"#,
             cases.join(",")
         );
         let audit = audit_case_set("set.json", &text).unwrap();
@@ -636,7 +719,7 @@ mod tests {
 
     #[test]
     fn an_incompatible_expectation_points_at_the_case() {
-        let text = r#"{"case_set_schema":1,"scenario_version":"s","cases":[{"id":"n-1","category":"no_answer","question":"q","expectation":{"kind":"evidence","required":["d"]},"origin":{"kind":"authored"}}]}"#;
+        let text = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"n-1","category":"no_answer","question":"q","expectation":{"kind":"evidence","required":["d"]},"expected":{"kind":"reference","must_include":["ok"]},"origin":{"kind":"authored"}}]}"#;
         let audit = audit_case_set("set.json", text).unwrap();
         assert!(
             audit
@@ -656,7 +739,7 @@ mod tests {
 
     #[test]
     fn unknown_keys_and_empty_lists_are_named_with_their_path() {
-        let text = r#"{"case_set_schema":1,"scenario_version":"s","cases":[],"extra":1}"#;
+        let text = r#"{"case_set_schema":2,"scenario_version":"s","cases":[],"extra":1}"#;
         let defects = audit_case_set("set.json", text).unwrap_err();
         assert!(
             defects
@@ -671,21 +754,84 @@ mod tests {
 
     #[test]
     fn an_unsupported_schema_revision_is_refused_not_guessed() {
-        let text = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"no_answer","question":"q","expectation":{"kind":"must_clarify_or_escalate"},"origin":{"kind":"authored"}}]}"#;
+        // Revision 2 is the one this build knows.
+        let current = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"no_answer","question":"q","expectation":{"kind":"must_clarify_or_escalate"},"expected":{"kind":"reference","must_include":["ok"]},"origin":{"kind":"authored"}}]}"#;
+        assert!(audit_case_set("set.json", current).is_ok());
+
+        // The previous revision is refused rather than read leniently. Reading
+        // it would turn a case set that never declares an expected answer into
+        // one that has "no requirement", which is not the same thing.
+        for (revision, value) in [(1u64, "1"), (3, "3")] {
+            let text = format!(
+                r#"{{"case_set_schema":{value},"scenario_version":"s","cases":[{{"id":"a","category":"no_answer","question":"q","expectation":{{"kind":"must_clarify_or_escalate"}},"expected":{{"kind":"reference","must_include":["ok"]}},"origin":{{"kind":"authored"}}}}]}}"#
+            );
+            let defects = audit_case_set("set.json", &text).unwrap_err();
+            assert_eq!(tokens(&defects), vec!["case_set_schema_unsupported"]);
+            assert_eq!(
+                defects[0].detail,
+                format!("$.case_set_schema = {revision}, expected 2")
+            );
+        }
+    }
+
+    #[test]
+    fn a_case_without_an_expected_answer_is_a_defect() {
+        let text = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"normal_answer","question":"q","expectation":{"kind":"evidence","required":["d"]},"origin":{"kind":"authored"}}]}"#;
         let defects = audit_case_set("set.json", text).unwrap_err();
-        assert_eq!(tokens(&defects), vec!["case_set_schema_unsupported"]);
-        assert_eq!(defects[0].detail, "$.case_set_schema = 2, expected 1");
+        assert_eq!(tokens(&defects), vec!["field_missing"]);
+        assert_eq!(defects[0].detail, "cases[0].expected");
+    }
+
+    #[test]
+    fn an_expected_answer_with_nothing_to_check_is_refused() {
+        let text = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"normal_answer","question":"q","expectation":{"kind":"evidence","required":["d"]},"expected":{"kind":"reference","must_include":[]},"origin":{"kind":"authored"}}]}"#;
+        let defects = audit_case_set("set.json", text).unwrap_err();
+        assert_eq!(tokens(&defects), vec!["field_empty"]);
+        assert_eq!(
+            defects[0].detail,
+            "cases[0].expected.must_include must not be empty"
+        );
+    }
+
+    #[test]
+    fn an_unknown_expected_kind_and_an_unknown_key_are_refused() {
+        let kind = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"normal_answer","question":"q","expectation":{"kind":"evidence","required":["d"]},"expected":{"kind":"semantic","must_include":["ok"]},"origin":{"kind":"authored"}}]}"#;
+        assert_eq!(
+            tokens(&audit_case_set("set.json", kind).unwrap_err()),
+            vec!["expected_kind_unknown"]
+        );
+
+        let key = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"normal_answer","question":"q","expectation":{"kind":"evidence","required":["d"]},"expected":{"kind":"reference","must_include":["ok"],"similarity":0.8},"origin":{"kind":"authored"}}]}"#;
+        assert_eq!(
+            tokens(&audit_case_set("set.json", key).unwrap_err()),
+            vec!["unknown_field"]
+        );
+    }
+
+    #[test]
+    fn must_exclude_may_be_absent_but_not_empty() {
+        let absent = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"normal_answer","question":"q","expectation":{"kind":"evidence","required":["d"]},"expected":{"kind":"reference","must_include":["ok"]},"origin":{"kind":"authored"}}]}"#;
+        let audit = audit_case_set("set.json", absent).unwrap();
+        assert_eq!(audit.cases, 1);
+
+        let empty = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"normal_answer","question":"q","expectation":{"kind":"evidence","required":["d"]},"expected":{"kind":"reference","must_include":["ok"],"must_exclude":[]},"origin":{"kind":"authored"}}]}"#;
+        let defects = audit_case_set("set.json", empty).unwrap_err();
+        assert_eq!(tokens(&defects), vec!["field_empty"]);
+        assert_eq!(
+            defects[0].detail,
+            "cases[0].expected.must_exclude must not be empty"
+        );
     }
 
     #[test]
     fn unknown_category_and_unknown_expectation_are_refused() {
-        let category = r#"{"case_set_schema":1,"scenario_version":"s","cases":[{"id":"a","category":"gossip","question":"q","expectation":{"kind":"must_cancel"},"origin":{"kind":"authored"}}]}"#;
+        let category = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"gossip","question":"q","expectation":{"kind":"must_cancel"},"expected":{"kind":"reference","must_include":["ok"]},"origin":{"kind":"authored"}}]}"#;
         assert_eq!(
             tokens(&audit_case_set("set.json", category).unwrap_err()),
             vec!["category_unknown"]
         );
 
-        let expectation = r#"{"case_set_schema":1,"scenario_version":"s","cases":[{"id":"a","category":"normal_answer","question":"q","expectation":{"kind":"maybe"},"origin":{"kind":"authored"}}]}"#;
+        let expectation = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"normal_answer","question":"q","expectation":{"kind":"maybe"},"expected":{"kind":"reference","must_include":["ok"]},"origin":{"kind":"authored"}}]}"#;
         assert_eq!(
             tokens(&audit_case_set("set.json", expectation).unwrap_err()),
             vec!["expectation_kind_unknown"]
@@ -694,7 +840,7 @@ mod tests {
 
     #[test]
     fn an_empty_evidence_list_is_a_broken_case_not_a_failing_system() {
-        let text = r#"{"case_set_schema":1,"scenario_version":"s","cases":[{"id":"a","category":"normal_answer","question":"q","expectation":{"kind":"evidence","required":[]},"origin":{"kind":"authored"}}]}"#;
+        let text = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"normal_answer","question":"q","expectation":{"kind":"evidence","required":[]},"expected":{"kind":"reference","must_include":["ok"]},"origin":{"kind":"authored"}}]}"#;
         let defects = audit_case_set("set.json", text).unwrap_err();
         assert_eq!(tokens(&defects), vec!["field_empty"]);
         assert_eq!(
@@ -705,32 +851,32 @@ mod tests {
 
     #[test]
     fn an_empty_forbidden_list_is_refused_too() {
-        let text = r#"{"case_set_schema":1,"scenario_version":"s","cases":[{"id":"a","category":"fact_update","question":"q","expectation":{"kind":"high_risk_fact","forbidden_claims":[]},"origin":{"kind":"authored"}}]}"#;
+        let text = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"fact_update","question":"q","expectation":{"kind":"high_risk_fact","forbidden_claims":[]},"expected":{"kind":"reference","must_include":["ok"]},"origin":{"kind":"authored"}}]}"#;
         let defects = audit_case_set("set.json", text).unwrap_err();
         assert_eq!(tokens(&defects), vec!["field_empty"]);
     }
 
     #[test]
     fn a_promoted_case_must_name_its_confirmer() {
-        let missing = r#"{"case_set_schema":1,"scenario_version":"s","cases":[{"id":"a","category":"no_answer","question":"q","expectation":{"kind":"must_clarify_or_escalate"},"origin":{"kind":"promoted"}}]}"#;
+        let missing = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"no_answer","question":"q","expectation":{"kind":"must_clarify_or_escalate"},"expected":{"kind":"reference","must_include":["ok"]},"origin":{"kind":"promoted"}}]}"#;
         let defects = audit_case_set("set.json", missing).unwrap_err();
         assert_eq!(defects[0].detail, "cases[0].origin.confirmer");
 
-        let blank = r#"{"case_set_schema":1,"scenario_version":"s","cases":[{"id":"a","category":"no_answer","question":"q","expectation":{"kind":"must_clarify_or_escalate"},"origin":{"kind":"promoted","confirmer":"  "}}]}"#;
+        let blank = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"no_answer","question":"q","expectation":{"kind":"must_clarify_or_escalate"},"expected":{"kind":"reference","must_include":["ok"]},"origin":{"kind":"promoted","confirmer":"  "}}]}"#;
         assert_eq!(
             tokens(&audit_case_set("set.json", blank).unwrap_err()),
             vec!["field_empty"]
         );
 
-        let named = r#"{"case_set_schema":1,"scenario_version":"s","cases":[{"id":"a","category":"no_answer","question":"q","expectation":{"kind":"must_clarify_or_escalate"},"origin":{"kind":"promoted","confirmer":"ops-zhang"}}]}"#;
+        let named = r#"{"case_set_schema":2,"scenario_version":"s","cases":[{"id":"a","category":"no_answer","question":"q","expectation":{"kind":"must_clarify_or_escalate"},"expected":{"kind":"reference","must_include":["ok"]},"origin":{"kind":"promoted","confirmer":"ops-zhang"}}]}"#;
         assert!(audit_case_set("set.json", named).is_ok());
     }
 
     #[test]
     fn a_duplicate_case_id_is_refused() {
-        let case = r#"{"id":"a","category":"no_answer","question":"q","expectation":{"kind":"must_clarify_or_escalate"},"origin":{"kind":"authored"}}"#;
+        let case = r#"{"id":"a","category":"no_answer","question":"q","expectation":{"kind":"must_clarify_or_escalate"},"expected":{"kind":"reference","must_include":["ok"]},"origin":{"kind":"authored"}}"#;
         let text =
-            format!(r#"{{"case_set_schema":1,"scenario_version":"s","cases":[{case},{case}]}}"#);
+            format!(r#"{{"case_set_schema":2,"scenario_version":"s","cases":[{case},{case}]}}"#);
         let defects = audit_case_set("set.json", &text).unwrap_err();
         assert_eq!(tokens(&defects), vec!["duplicate_case_id"]);
         assert_eq!(defects[0].detail, "a");

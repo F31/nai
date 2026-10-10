@@ -570,3 +570,41 @@ openspec 归档校验全通过。规格：`plugin-hosts-and-ipc` 新增 3 条需
 docs/reports/2026-10-11-w39-ipc-untrusted-input.md。未做边界：**不测传输层对端身份**——真实命名管道/Unix socket 的
 `SO_PEERCRED` 在钉住的 rustc 1.96.0 上仍不稳定（E0658），Windows Named Pipe peer PID、AppContainer/Job Object 未实测（Blocked）；
 fuzz 的是**解码与分发**而非传输；**随机语料计数不是分支覆盖证据**。
+
+W40 黄金集评估执行体与参考答案判据已实现/实测（ADR 0040）：B01 的判定机制（W30）与载荷载体（W31）都已交付，但对照 §655
+「100 题集**达到**第 6 章门槛」逐条核对后发现仍缺四段，**性质完全不同**——①100 题题集内容、④真实知识库内容属**数据**（必须由场景包
+产出方人工投入，**代造即臆造真值**，ADR 0033 决策 6 已明禁）；②参考答案判据、③评估执行体属**仓库内可控**。②最容易被忽略：
+题集 schema 原本**不含参考答案**，而 `Submission.answer: AnswerVerdict` 由调用方注入 ⇒ 即使 100 题到位，`answer_accuracy` 依然是
+外部判定后填进去的，达标链条上有一段**没有可复现的执行体**。③是核对后确认的真缺口：全仓库没有任何代码把「题集 → 真实检索 →
+真实生成 → 逐题判定 → 报告」串起来——**判决书（kernel）与卷子格式（xtask）都有，考试却没有组织者**；而两个接缝其实都已具备
+（`nai-provider-core` 的 `TextGenerator`，W36 起真实模型已通；`nai-storage` 的 `retrieve_local`/`retrieve_session_knowledge`）。
+ADR 0033 的后果段把「真实题集内容、真实模型评估与真实检索质量」一并划给外部——对①④正确，对③把**编排代码**也说成外部的，
+代价是真实模型已经可用却没有任何一次运行能产生 B01 的结论。
+
+本轮落 **题集修订 2**：每题**必填** `expected`（`{kind:"reference", must_include:[…], must_exclude:[…]}`，`must_include` **至少一条**——
+没有任何要求的参考答案会让判定在「自动正确」与「永远未判定」之间二选一，两者都等于**把判定关掉**）。判定是 kernel **纯函数**
+`judge_answer`（归一化 = Unicode 小写折叠 + 连续空白折叠；**否定式优先**——任一 `must_exclude` 命中即 `Incorrect`，否则
+`must_include` 全中才 `Correct`；**空判据返 `Unknown` 而非 `Correct`**）；取**子串**而非相似度阈值，因为阈值需要一个数字，
+**那个数字本身就成了判据**且不可复现。判定产物是**既有的** `AnswerVerdict`，故 `Submission`/`evaluate`/`QualityReport`
+**一个字段都没改**，`Unknown` 从分母排除的语义原样继承；放 kernel 而非放执行体，是因为它是**口径**不是编排（放执行体就失去
+portable 门控覆盖）。**修订 1 不做双读**（旧题集被拒而非读成「无参考答案要求」，静默改变用例含义——与 ADR 0033 拒绝未知字段同一理由），
+夹具 `tests/fixtures/rag-golden/example-min.json` 同步升级。
+
+新增**评估执行体** `xtask/examples/golden_eval.rs`，对照既有先例 `crates/nai-provider-core/examples/live_provider_smoke.rs`
+（真实链路一律放 `examples/`，不进测试、不进工程门控）：它复用门禁**自己的**读取器（`read_case_set`/`case_set_files` 与审计共用
+`parse_case_set`，故「这里读得进」与「门禁放行」**永远是同一件事**），经真实 `TextGenerator` 逐题生成并用
+`GoldenCase::answer_verdict` 判定。**缺前置拒绝桩替代**：目录无 `*.json`/结构不合规/缺环境变量 ⇒ `CAPABILITY_NOT_READY` 且
+**不发起任何调用**（凭据只报**变量名**，值从不打印、从不写进证据），真实调用失败退出 2（与「前置未就绪」区分）。
+**它只驱动生成侧**：检索召回、检索 P95 与行为类判据（澄清/转义、无副作用、取消）具名打印为 **未驱动且不填零**，并明示
+「**不是 B01 达标**」——**否决**「用答案文本猜 `outcome` 再喂 `evaluate`」：那会造出字段齐全但含义失真的报告，行为类 token
+**假失败**（把「执行体没驱动」读成「系统差」），`MustNotAct` **假通过**（本路径没有副作用通道故恒为空），**两种误导都比缺字段严重**。
+
+实测：夹具 8 例 → **8/8 judged / 0 correct**（占位问题与夹具参考答案不匹配，正确率**无意义**，只证链路通）；临时探针 1 例 →
+**1/1 correct**（1000‰，证明判定**双向往返**可用，不是恒 `Incorrect`）；默认目录仍 `CAPABILITY_NOT_READY`（`files: 0`）。
+`check-deps` **仍 18 包**方向不变（真实接线仅 `[dev-dependencies]`，example 不进 lib ⇒ portable 覆盖与耗时不变）；
+kernel `tests/golden.rs` **31 项**、xtask lib **39 项**全绿；portable **EXIT=0**（**82 个测试目标**、**694 passed / 0 failed**，
+较 W39 +11，目标数不变）；`check --secrets` **702 文件零命中**；`check --registry` 通过；两处 `tsc` EXIT=0；desktop 5/5、`test:ui` 15/15。**缺口从四段降到两段**（①④），
+两者到位后**零代码改动**即可出完整结论；registry B01 **保持 `blocked`**（达标仍不可能达成，「执行体就位」不是达标）。
+见 docs/golden-set.md、tests/rag-golden/README.md、docs/adr/0040-golden-eval-runner-boundary.md 与
+docs/reports/2026-10-11-w40-golden-eval-runner.md。未做边界：**行为侧执行**（守门/副作用/取消的观测接入）与**真实检索接入**未做，
+执行体目前只在生成侧产出结论。
