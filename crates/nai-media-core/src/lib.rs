@@ -1,8 +1,14 @@
 //! Portable media authorization and media-basics timeline. No PCM/device
 //! implementation or hardware ACK synthesis.
 pub mod frame_slots;
+pub mod mixing;
 pub mod playback;
 pub mod timeline;
+pub use mixing::{
+    AudioMixer, CaptureLease, CapturePath, CaptureRegistry, DeviceId, DeviceObservation,
+    ECHO_TEST_TTL_MS, EchoState, Gain, MAX_AUTO_QUEUE, MixError, MixMode, MixSnapshot,
+    MixViolation, RenderLevels, ResumeProof, TakeoverReport, TakeoverRequest, audit_mix,
+};
 use nai_contracts::v1::{
     Approval, OutputAck, PerformanceCue, PlaybackLease, RevisionRef, SessionMode,
 };

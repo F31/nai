@@ -252,7 +252,22 @@ EXIT=0（70 个测试目标，368 passed / 0 failed，基线 361）。见 [升�
 session id。实测：`tests/multiplex.rs` 24 项通过；`cargo xtask check --registry` 通过；`cargo xtask check --profile portable` EXIT=0（数字见报告）。
 见 [多会话指南](multi-session.md)、[ADR 0029](adr/0029-multi-session-isolation-boundary.md) 与 [报告](reports/2026-10-10-w27-multi-session-isolation.md)。
 未做边界：准入用宿主给定上限表、不探测硬件；跨节点会话路由与多会话 UI 未做。
-下一主线：R06/B04 的设备侧测量与 O01 演示包（需真实设备与演示包）。
+
+本轮 `w28-talent-takeover` 已实现/实测（ADR 0030）：把 B05 从 registry 里「混音/回声未实现（W11）」这条**真的没写**的缺口落成 **media 层**的
+结构性判据，registry B05 由 pending 升 implemented（**不标 tested**：真实声卡、真实 OBS/伴侣回声环境与真实设备默认变化未接入）。
+落 `crates/nai-media-core/src/mixing.rs`（只依赖 contracts，18 包与依赖方向不变，仍无 HTTP 客户端）——§8.5 是**声音通路**语义，与 kernel
+会话语义无交集，且 kernel 不许依赖 media；media 层自带 `MixError{code,reason}`（与 `UpgradeError`/`MultiplexError` 同形）。`takeover` 一次
+做完四件（暂停自动、TTS 静音、清空队列并把**实际清空条数**作为报告值、可选接入真人轨），重复接管即 `CONFLICT`；「两轨不相加」由 `render()`
+从**模式推导**静音轨，故 `{tts>0,talent>0}` **没有构造点**（否决两个增益 setter + 调用约定）；`CaptureRegistry` 只允许**一条**有效收音路径
+（`acquire` 不看 owner/device 一律拒第二条——正是 OBS 与伴侣重复收音场景），`release` 只接受**当前代次**（旧租约 `STALE_EPOCH`，迟到释放掐不掉
+新持有者）；`DeviceId` 是稳定不透明标识，`observe_default` 把默认设备变化报成 `Changed{from,to}` 并记住而**不静默跟随**；接管要求**新鲜通过**的
+回声测试（未跑/运行中/失败→`CAPABILITY_NOT_READY`，过期→`EVIDENCE_EXPIRED`，未来时刻无效，TTL 5 分钟）；`resume_auto` 每次复核授权+事实版本+
+值守租约，而 `on_talent_silence` **只读**返回当前模式，故「不因真人讲话结束而自动恢复」在 API 上**不可表达**（否决定时器与 `ResumeHint`）；
+`audit_mix` 对**上报快照**做纯函数，六类稳定标记全部可构造。实测：`tests/mixing.rs` 18 项通过；`cargo xtask check --registry` 通过；
+`cargo xtask check --profile portable` EXIT=0（数字见报告）。见 [混音指南](mixing.md)、[ADR 0030](adr/0030-talent-takeover-boundary.md) 与
+[报告](reports/2026-10-10-w28-talent-takeover.md)。
+未做边界：不打开设备、不采 PCM、不做回声抑制；keeper 进程内装配与真机验收未做。
+下一主线：运营度量与复盘（B04 延迟分位、R06 长播资源增长、B06 场次复盘，机制可在 portable 落）。
 
 ## 任务依赖与状态
 
