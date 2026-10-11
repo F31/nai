@@ -53,4 +53,6 @@
       `--all --strict --archived` = **62/62**（**只含已归档变更、不含 specs**）——
       W56 教训：两条口径**互不替代**，故两条都跑并分别记录
 - [x] 4.6 一次 commit + push（提交信息用 Write 落 UTF-8 文件，避免 `\u` 字面转义）
-- [x] 4.7 用缓存破坏参数匿名复核 CI：断言 `head_sha` 与推送一致、记录 conclusion 与失败步骤
+- [x] 4.7 用缓存破坏参数匿名复核 CI：run **`38151252071`** 的 `head_sha` = 推送的 `4a35feb`（**一致**）、
+      `conclusion: success`、`attempt: 1`；两 job（`foundation (ubuntu-24.04)` / `foundation (windows-latest)`）
+      **均 success**、各 26 步、**无失败步骤**（该结果推送后测得，故本行随一次 docs-only 提交回填）

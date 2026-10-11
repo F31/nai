@@ -121,7 +121,9 @@ H03/H04 **不自足**，故状态不变，`notes` 里记下本轮交付了什么
 | `openspec validate --all --strict`（归档**后**） | **42/42**（42 specs；活动变更 0） |
 | `openspec validate --all --strict --archived` | **62/62**（**只含已归档变更目录、不含 specs**——两条口径互不替代，故本轮两条都跑；W56 教训） |
 | `openspec archive -y` 输出 | `+ Task status: ✓ Complete`；`agent-harness: +4 added, ~0, -0`；归档为 `2026-10-11-w57-memory-read-write-surface` |
-| CI（推送后匿名复核） | run `—`：`head_sha` 与推送一致、`conclusion: success`、两 job（`ubuntu-24.04` / `windows-latest`）均 success |
+| CI（推送后匿名复核） | run **`38151252071`**：`head_sha = 4a35feb90edbc75ee0d0967468ace44e027c4b4b` **与本地 HEAD 一致**、`conclusion: success`、`attempt: 1`；两 job（`foundation (ubuntu-24.04)` / `foundation (windows-latest)`）**均 success**、各 26 步、**无失败步骤**；历时 11 分 54 秒（15:26:06 → 15:38:00 UTC） |
+
+> CI 结论是**推送后测得**的，故本表该行随一次 docs-only 提交回填——报告与 `tasks.md` 的 CI 行**不用推测值**。
 
 **零 Rust 业务改动之外的部分**：本轮**没有**新增依赖、**没有**改能力目录、**没有**改生成物，
 workspace 仍 **19 包**；唯一的非测试代码改动就是 `evaluate/memory.rs` 的追加。
