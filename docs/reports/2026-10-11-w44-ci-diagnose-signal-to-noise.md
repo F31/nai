@@ -189,3 +189,32 @@ ALL 12 OK
    （例如给测试一个确定性的 prewarm 阻塞点，或注入人为慢的 render-worker），而不是放宽断言——
    断言本身（halt 之后不得再出现新提交）是对的。
 3. 按 §2 的订正，**不要再**用「本机 Windows 门控绿」去论证任何 Linux 侧行为。
+
+### 8.2 同日再跑：ubuntu 转绿、windows 转红——两侧都是时序敏感
+
+`064d754`（**只改文档**，Rust 代码与 `ca47168` **完全相同**）的 run 结论是 **ubuntu `success` / windows `failure`**。
+
+**这是本轮最干净的一条「非确定性」证据**：同一份 Rust 代码，`ca47168` 在 ubuntu 上红、`064d754` 在 ubuntu 上绿，
+两者**只差文档**。历轮的同类证据（`6f3941e`、`21163d0`）由此再添一例。
+
+**windows 侧失败是 10-10 以来的首次**（W42 表格里最后一批 windows 失败在 10-09）。诊断通道给出的注解
+**10 条全部是信号**，失败落在 `crates/nai-runtime` 的 4 个测试上——注解直接给出了其中两条的 panic 位置与错误原文：
+
+| 测试 | 位置 | 错误 |
+| --- | --- | --- |
+| `bootstrap_creates_workspace_and_permissions_before_config_load` | `tests/composition.rs:137:10` | `StorageError { code: PermissionDenied, reason: "scope permission missing" }` |
+| `decision_grading_reports_critical_failures_and_persists_telemetry` | `tests/common/mod.rs:99:61` | `StorageError { code: DeadlineExceeded, reason: "operation stopped" }` |
+| `control_mutes_revokes_and_logs_before_returning` | （同批次 `FAILED`，本条注解未涵盖其位置） | — |
+| `duty_grant_expiry_and_revocation_are_logged` | （同批次 `FAILED`，本条注解未涵盖其位置） | — |
+
+**两个平台的失败是不同测试、不同根因，却属同一类**：`DeadlineExceeded / "operation stopped"` 是超时语义，
+而本次 windows job 也确实慢（跑满约 12 分钟才结束）；`PermissionDenied / "scope permission missing"` 则更像
+并行测试对**共享范围**的竞争。**共同点是指向「并行 + 共享资源 + 慢主机」下的时序脆弱，而非某个平台专有的缺陷。**
+
+**对 §4 的补充观察（更谨慎的表述）**：这三次运行的摘要里**都没有**「（另有 N 行未展示）」这一条，
+而按脚本逻辑，它只在 `omitted > 0`（即 `lines.length > picked.length`）时输出。这**要么**意味着采集到的日志
+确实只有约 10–11 行，**要么**意味着该条注解被服务端丢弃（所有注解都落在同一位置）。
+**两者需要一次真正的完整日志才能区分**，本轮如实登记，**不武断结论**——但#36（11 行、无汇总行）与
+#37（10 行、有汇总行）在截断自证上给出**相反且各自正确**的结果，说明该判据本身是可用的。
+
+**不做**（本轮）：不修这两处竞态。ubuntu 侧的根因已定位到断言行；**windows 侧是本轮首次观测**，需单独一轮定位。

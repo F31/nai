@@ -579,6 +579,10 @@ W38 的桌面审批面/UI 层、W39 的攻击者可控输入面随机测试、W4
 （halt 后决策日志不得再出现 `media_drill_committed`），**不是** `halt_and_wait` 的 15 s 上限、**不是 hang**；
 机制是 `Engine::start` 返回后测试才写 halt 文件，而 supervision 线程此时**可能已把 drill 跑完并提交了帧** ⇒
 **halt 与 drill 的时序竞态**。**修法未做**（方向：给测试确定性的 prewarm 阻塞点，而非放宽断言）；**截断成因仍未定**）。
+同日 `064d754`（**只改文档**）的 run 为 **ubuntu `success` / windows `failure`**：同一份 Rust 代码在 ubuntu 上时红时绿
+（`ca47168` 红、`064d754` 绿）⇒ 非确定性再添一例；**windows 侧失败是 10-10 以来首次**，落在 `crates/nai-runtime` 的 4 个测试上
+（`StorageError { DeadlineExceeded, "operation stopped" }` / `{ PermissionDenied, "scope permission missing" }`）⇒
+与 ubuntu 侧不同测试、不同根因，**但同属「并行 + 共享资源 + 慢主机」下的时序脆弱**。
 **把前端纳入工程门控**已由 W41 关闭（`check --profile full` 覆盖两包 typecheck/build、桌面包单测与 `tests/ui`），
 其**流水线接线**已由 W42 关闭（CI 两个 job 统一执行 `full`，此前 20 项前端测试在 CI 中从不运行）。
 

@@ -703,6 +703,12 @@ W44 让这条通道**第一次真实使用**，并修复了它暴露的三类信
 **不是 hang**；机制是 `Engine::start` 返回后测试才写 halt 文件，而 supervision 线程此时**可能已把 drill 跑完并提交了帧**
 ⇒ **halt 与 drill 的时序竞态**（CI 调度差异使其时快时慢）。**修法未做**（方向是给测试一个确定性的 prewarm 阻塞点，
 而不是放宽断言——断言本身是对的）。
+**同日再跑**（`064d754`，**只改文档**）：结论为 **ubuntu `success` / windows `failure`** ⇒ 同一份 Rust 代码在 ubuntu 上
+时红时绿（`ca47168` 红、`064d754` 绿，**两者只差文档**），非确定性再添一例；**windows 侧失败是 10-10 以来首次**，
+注解同样全是信号，落在 `crates/nai-runtime` 的 4 个测试上（`StorageError { DeadlineExceeded, "operation stopped" }` /
+`{ PermissionDenied, "scope permission missing" }`）⇒ 与 ubuntu 侧**不同测试、不同根因，但同属「并行 + 共享资源 + 慢主机」
+下的时序脆弱**，非平台专有缺陷。三次运行的摘要里都**没有**「（另有 N 行未展示）」，故「采集到的日志只有约 10-11 行」
+与「该条注解被服务端丢弃」**两种解释尚未区分**，如实登记、不武断。
 **同时撤回一条历轮沿用的旁证**：失败测试带 `#[cfg(target_os = "linux")]`（engine 的 6 个 `#[test]` 里 **4 个**如此，
 Windows 上该 target 只跑 2 个测试）⇒「本机 Windows 跑 portable/full 从未复现」是**结构性必然**，**不是**非确定性证据
 （W42/W43 报告的「非确定性」判定用的是「同一份代码时红时绿」，**不受影响**）。
