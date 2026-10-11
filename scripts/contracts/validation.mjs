@@ -25,7 +25,13 @@ export function validateSemantic(kind, value) {
   }
   if (kind === 'catalog') {
     const ids = new Set(value.capabilities.map(capability => capability.id));
-    if (ids.size !== value.capabilities.length || value.adapters_required.some(adapter => !ids.has(adapter.target))) throw new Error('duplicate capability or missing adapter target');
+    const frozen = new Set(value.capabilities.filter(capability => capability.stage === 'frozen').map(capability => capability.id));
+    // Legacy adapters point at what has been frozen: a draft has no frozen wire
+    // representation to adapt to yet, so "target is in the catalog" is too weak.
+    if (ids.size !== value.capabilities.length || value.adapters_required.some(adapter => !frozen.has(adapter.target))) throw new Error('duplicate capability or unresolved adapter target');
+    // Mirrors the JSON Schema: a half-declared draft would make the stage field
+    // unreadable, which is the one thing the field exists to prevent.
+    if (value.capabilities.some(capability => capability.stage === 'draft' && ['request','response','stream','session_scoped'].some(key => capability[key] !== undefined))) throw new Error('draft capability declares consumer messages');
   }
 }
 

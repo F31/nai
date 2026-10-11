@@ -862,3 +862,35 @@ W51 补齐 **O02** 的「审批按钮显示最终文本」（§662／§425）在
 notes 追加本轮成果。新增 ADR **0045**；**不改任何既有验收 `status`**。见
 docs/reports/2026-10-11-w51-approval-final-text.md、docs/adr/0045-approval-display-text-boundary.md、
 docs/ui.md、docs/control.md。
+
+W52 补上「开放兼容」的地基并闭掉一条**门控盲区**，同时**更正 W51 的 CI 结论**。**更正**：W51 的 CI 实为
+`failure`——`347d74e`（run `38133956560`）与 `0e1c233`（run `38134889196`）**两平台同红在步骤 19**
+「Validate schemas and API contract」；根因是 W51 改了 `backup.schema.json` 的 `db_schema_version` 常量（5→6）
+却**没同步** `tests/contracts/schema.test.mjs` 的样本，**而该测试不在 `engineering_checks` 内** ⇒ 本机
+portable/full 绿、CI 红。上一轮「两 job 全绿」的观测来自**被 HTTP 代理缓存的过期 API 响应**（同一次响应
+`total_count: 42` 却只列 2 条，即为征兆），已订正并写入 W51 报告**勘误段**（原文不改写）。**目录**：
+`catalog.schema.json` 条目改 `oneOf` 两支（`frozen` 须有 `request`/`response`/`stream`；`draft` **禁有**这四个字段）、
+`required` 增 `stage`、`minItems` 27→33；`capabilities.json` 现有 **27 条标 `frozen`**、新增 **6 条 `draft`**
+（§37.4 的 `data.query@1`、`data.subscribe@1`、`device.sense@1`、`device.control@1`、`asr.transcribe@1`、
+`market.catalog@1`）。**生成器**（`xtask/src/schema.rs`）**只为 frozen 生成消费者代码**——
+`MESSAGE_TYPES`/`SESSION_MESSAGE_TYPES`/协商用的 `CAPABILITY_IDS` 全取 frozen，draft 另列 `DRAFT_CAPABILITY_IDS`
+（`catalog.rs` +9 行）；draft 声明消费者字段在 **JSON Schema 与 Rust 两侧都报错**。**门控**：`registry.mjs`
+新增读目录 id 与逐条校验——`contract` 必须命中目录（**draft 也算已声明**）或命中**极小且就地附理由**的白名单
+（当前仅 `plugin-hosts-and-ipc`），**不传目录本身即错**（防止「忘了传参数」绕过）；`validation.mjs` 收紧为
+「adapter 目标必须是 frozen」并复述 draft 禁令；`tests/registry.test.mjs` 补悬空引用（`market.catalog@9`）负样本
+与「draft 引用**不使 M04 升级**」正样本。**门控盲区闭法**：按「是否需 protoc 产物」拆分——
+`tests/contracts/schema.test.mjs`（Ajv/Swagger 静态，**无 protoc**）并入 `engineering_checks`，
+`tests/contracts/descriptor.test.mjs`（需 `target/contracts/descriptor.bin`）留在 contracts suite；
+CI 步骤 19 与 contracts suite 均改跑两个文件；同时订正 `lib.rs` 里**不准确**的注释（portable 从来不是
+「只需 Rust 工具链」，真实前置是 Rust + node + **仓库根**依赖）。**如实登记**：①`frozen` 判据本轮是
+「有正式消息绑定并生成消费者代码」，设计第 63 行的**更强判据**（须被切片验收覆盖）**未改判**，列为**待裁决项**；
+②目录完整模型（类别/必需性/首次切片/降级行为）**未落地**，`stage` 是本轮唯一新增字段；③`contract_catalog_sha256`
+是文件**整体哈希** ⇒ 加 draft 会让**早于本轮的备份报 VersionIncompatible**（无生产数据，可接受；收窄哈希是
+独立决定，观察项）；④`catalog.ts` 因 `minItems`+`items` 生成 **33 元组**（原 27 元组，**既有**行为），
+213→561 行，属生成器可读性债；⑤六个 draft **无消息、无实现、无降级行为**，不产生任何可用于真实直播的能力；
+**不改任何 `status`**。实测：`check --profile full`（**与 CI 同命令**）**EXIT=0**；83 目标
+（66 `Running` + 17 `Doc-tests`）、**726 passed/0 failed**；前端 5 步全过、`tests/ui` **37/37**；
+`tests/registry.test.mjs` **2/2**、`tests/contracts/schema.test.mjs` **11/11**、`descriptor.test.mjs` **2/2**；
+`cargo xtask schema`（临时异步 shim，**已还原**）`33 capabilities (27 frozen, 6 draft)`；
+`tsc -p packages/contracts-ts` EXIT=0；`validate --all --strict` 与 `--archived` 全绿。见
+docs/reports/2026-10-11-w52-open-contract-catalog.md、docs/contracts/README.md。

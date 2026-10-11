@@ -5,205 +5,553 @@ export interface CapabilityCatalog {
   protocol_major: 1;
   protocol_minor: number;
   /**
-   * @minItems 27
+   * @minItems 33
    */
   capabilities: [
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    {
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    },
-    ...{
-      id: string;
-      request: string;
-      response: string;
-      stream: boolean;
-      session_scoped?: boolean;
-    }[]
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    (
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    ),
+    ...(
+      | {
+          id: string;
+          stage: "frozen";
+          request: string;
+          response: string;
+          stream: boolean;
+          session_scoped?: boolean;
+          notes?: string;
+        }
+      | {
+          id: string;
+          stage: "draft";
+          notes?: string;
+        }
+    )[]
   ];
   adapters_required: {
     legacy: string;

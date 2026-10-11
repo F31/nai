@@ -127,3 +127,12 @@ pub const CAPABILITY_IDS: &[&str] = &[
     "storage.persist@1",
     "tts.synthesize@1",
 ];
+/// Declared but not frozen: listed so the catalog is judgeable, never negotiable.
+pub const DRAFT_CAPABILITY_IDS: &[&str] = &[
+    "asr.transcribe@1",
+    "data.query@1",
+    "data.subscribe@1",
+    "device.control@1",
+    "device.sense@1",
+    "market.catalog@1",
+];

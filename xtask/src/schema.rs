@@ -130,6 +130,8 @@ fn catalog_types(
 ) -> Result<Vec<String>, String> {
     let mut ids = BTreeSet::new();
     let mut types = BTreeSet::new();
+    let mut frozen = 0usize;
+    let mut drafts = 0usize;
     for capability in catalog["capabilities"]
         .as_array()
         .ok_or("capabilities must be an array")?
@@ -138,6 +140,26 @@ fn catalog_types(
         if !ids.insert(id) {
             return Err(format!("duplicate capability: {id}"));
         }
+        let stage = capability["stage"]
+            .as_str()
+            .ok_or("missing capability stage")?;
+        if stage == "draft" {
+            // A draft has no frozen wire representation and generates no
+            // consumer code. Declaring part of one -- a request without a
+            // response, or a stream flag -- would make the stage field
+            // unreadable, so a draft that declares any of it is an error rather
+            // than something to tolerate.
+            for key in ["request", "response", "stream", "session_scoped"] {
+                if !capability[key].is_null() {
+                    return Err(format!("draft capability {id} declares {key}"));
+                }
+            }
+            drafts += 1;
+            continue;
+        }
+        if stage != "frozen" {
+            return Err(format!("{id} has unknown capability stage {stage}"));
+        }
         for key in ["request", "response"] {
             let name = capability[key].as_str().ok_or("missing message type")?;
             if !messages.contains(name) {
@@ -145,6 +167,7 @@ fn catalog_types(
             }
             types.insert(name.to_owned());
         }
+        frozen += 1;
     }
     for adapter in catalog["adapters_required"]
         .as_array()
@@ -172,8 +195,10 @@ fn catalog_types(
         types.insert(name);
     }
     println!(
-        "catalog checked: {} capabilities; {} protobuf messages",
+        "catalog checked: {} capabilities ({} frozen, {} draft); {} protobuf messages",
         ids.len(),
+        frozen,
+        drafts,
         messages.len()
     );
     Ok(types.into_iter().collect())
@@ -225,31 +250,44 @@ pub fn generate(root: &Path, check: bool) -> Result<(), String> {
         &fs::read(root.join("schemas/catalog/capabilities.json")).map_err(|e| e.to_string())?,
     )
     .map_err(|e| e.to_string())?;
-    let mut session_types = BTreeSet::new();
-    for capability in catalog["capabilities"]
+    let capabilities = catalog["capabilities"]
         .as_array()
-        .ok_or("missing capabilities")?
-    {
-        if capability["session_scoped"].as_bool() == Some(true) {
-            for key in ["request", "response"] {
-                session_types.insert(
-                    capability[key]
-                        .as_str()
-                        .ok_or("missing message type")?
-                        .to_owned(),
-                );
+        .ok_or("missing capabilities")?;
+    let mut session_types = BTreeSet::new();
+    let mut capability_ids = BTreeSet::new();
+    let mut draft_capability_ids = BTreeSet::new();
+    for capability in capabilities {
+        let id = capability["id"]
+            .as_str()
+            .ok_or("missing capability id")?
+            .to_owned();
+        match capability["stage"].as_str() {
+            // Only frozen entries generate consumer code: the negotiation list
+            // and the message-type tables must stay congruent with what has
+            // actually been frozen.
+            Some("frozen") => {
+                if capability["session_scoped"].as_bool() == Some(true) {
+                    for key in ["request", "response"] {
+                        session_types.insert(
+                            capability[key]
+                                .as_str()
+                                .ok_or("missing message type")?
+                                .to_owned(),
+                        );
+                    }
+                }
+                capability_ids.insert(id);
             }
+            Some("draft") => {
+                draft_capability_ids.insert(id);
+            }
+            _ => return Err("capability stage must be draft or frozen".into()),
         }
     }
     let session_types: Vec<_> = session_types.into_iter().collect();
-    let capability_ids: std::collections::BTreeSet<_> = catalog["capabilities"]
-        .as_array()
-        .ok_or("missing capabilities")?
-        .iter()
-        .map(|capability| capability["id"].as_str().ok_or("missing capability id"))
-        .collect::<Result<_, _>>()?;
     let capability_ids: Vec<_> = capability_ids.into_iter().collect();
-    fs::write(stage.join("rust/catalog.rs"), format!("// Generated from schemas/catalog/capabilities.json. Do not edit.\npub const MESSAGE_TYPES: &[&str] = &{types:#?};\npub const SESSION_MESSAGE_TYPES: &[&str] = &{session_types:#?};\npub const CAPABILITY_IDS: &[&str] = &{capability_ids:#?};\n")).map_err(|e| e.to_string())?;
+    let draft_capability_ids: Vec<_> = draft_capability_ids.into_iter().collect();
+    fs::write(stage.join("rust/catalog.rs"), format!("// Generated from schemas/catalog/capabilities.json. Do not edit.\npub const MESSAGE_TYPES: &[&str] = &{types:#?};\npub const SESSION_MESSAGE_TYPES: &[&str] = &{session_types:#?};\npub const CAPABILITY_IDS: &[&str] = &{capability_ids:#?};\n/// Declared but not frozen: listed so the catalog is judgeable, never negotiable.\npub const DRAFT_CAPABILITY_IDS: &[&str] = &{draft_capability_ids:#?};\n")).map_err(|e| e.to_string())?;
     let status = Command::new(&protoc)
         .arg(format!("-I{}", root.join("schemas").display()))
         .arg(format!("--cpp_out={}", stage.join("cpp").display()))
@@ -331,7 +369,14 @@ pub fn contracts(root: &Path) -> Result<(), String> {
             "packages/contracts-ts/tsconfig.json",
         ],
     )?;
-    node(root, &["--test", "tests/contracts/schema.test.mjs"])?;
+    node(
+        root,
+        &[
+            "--test",
+            "tests/contracts/schema.test.mjs",
+            "tests/contracts/descriptor.test.mjs",
+        ],
+    )?;
     program(
         root,
         "cmake",
@@ -467,8 +512,11 @@ mod tests {
     }
 
     #[test]
-    fn catalog_rejects_duplicate_and_unresolved_types() {
-        let catalog = serde_json::json!({"capabilities":[{"id":"test.invoke@1","request":"nai.v1.Handshake","response":"nai.v1.HandshakeAck"}],"adapters_required":[]});
+    fn catalog_rejects_duplicate_unresolved_and_half_declared_entries() {
+        let catalog = serde_json::json!({"capabilities":[
+            {"id":"test.invoke@1","stage":"frozen","request":"nai.v1.Handshake","response":"nai.v1.HandshakeAck"},
+            {"id":"test.draft@1","stage":"draft"}
+        ],"adapters_required":[]});
         let names = [
             "Handshake",
             "HandshakeAck",
@@ -500,6 +548,24 @@ mod tests {
             catalog_types(&catalog, &messages)
                 .unwrap_err()
                 .contains("absent message")
+        );
+        messages.insert("nai.v1.HandshakeAck".into());
+        // A draft that declares any consumer field is an error rather than a
+        // warning: half-declaring makes the stage field unreadable, and the
+        // whole point of the field is that it decides the generated surface.
+        let mut half = catalog.clone();
+        half["capabilities"][1]["request"] = serde_json::json!("nai.v1.Handshake");
+        assert!(
+            catalog_types(&half, &messages)
+                .unwrap_err()
+                .contains("declares request")
+        );
+        let mut unknown = catalog.clone();
+        unknown["capabilities"][1]["stage"] = serde_json::json!("deprecated");
+        assert!(
+            catalog_types(&unknown, &messages)
+                .unwrap_err()
+                .contains("unknown capability stage")
         );
     }
 }

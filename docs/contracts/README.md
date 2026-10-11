@@ -6,7 +6,7 @@
 |---|---|---|
 | `schemas/core/*.proto` | 信封、上下文、错误、版本、状态与能力视图 | Rust/TS/C++ 消息 |
 | `schemas/domain/*.proto` | 平台、知识/事实、候选/审批、Provider、媒体、控制 | Rust/TS/C++ 消息 |
-| `schemas/catalog/capabilities.json` | 27 个能力及正式请求/响应、流/会话作用域 | Rust 类型目录、目录类型检查 |
+| `schemas/catalog/capabilities.json` | 能力目录：27 条 **Frozen**（正式请求/响应、流/会话作用域）与 6 条 **Draft**（§37.4 开放契约：无消息、不生成消费者代码） | Rust 类型目录、目录类型检查 |
 | `schemas/config/*.schema.json` | 运行及 Provider 配置 | 校验与 TS 配置类型 |
 | `schemas/plugin/*.schema.json` | 插件、模型、形象、声明式 UI | 校验与 TS 清单类型 |
 | `schemas/openapi/control.yaml` | HTTP 路径、请求/响应、鉴权与 ACK | TS HTTP 类型、Rust 嵌入校验 schema |
@@ -65,6 +65,16 @@ cargo xtask test --suite contracts
 - 控制 OpenAPI 本轮只有显式 loopback 工程状态读取/mute/takeover 子集已实现，其他操作保持未实现；见 [控制指南](../control.md)。resource_ref 是受控后端引用，不是任意 URL/SQL/路径。
 - SessionCommand 新增必需 device_id/seq，旧 HTTP 请求缺字段拒绝；`control_http::SCHEMAS_JSON` 由源扁平化 allOf 后闭合字段，不手写或手改 schema。实际 control ACK 不等于硬件 ACK。
 - 旧名 adapter 尚未实现，不能自动当新契约使用。
+- 能力目录的**每条**都声明阶段（`stage`：`frozen` / `draft`）。**只有 `frozen` 生成消费者代码**
+  （`MESSAGE_TYPES`、`SESSION_MESSAGE_TYPES` 与协商用的 `CAPABILITY_IDS`）；`draft` 只表示「已登记、未冻结」，
+  **MUST NOT** 声明 `request`/`response`/`stream`/`session_scoped`，也 **MUST NOT** 出现在协商面里
+  （它另列于 `DRAFT_CAPABILITY_IDS`）。验收注册表引用一个 `draft` 契约只说明**名字在册**，
+  **不**说明该验收通过、也不改变任何 `status`。
+- 目录的「完整模型」（类别、必需性、首次出现的切片、缺失时的降级行为）**尚未落地**，
+  `stage` 是本轮唯一新增的字段；不得据此宣称目录已完整。
+- 门控分工：静态 schema 校验（`tests/contracts/schema.test.mjs`）**不需要** protoc，已并入
+  `cargo xtask check --profile portable|full`；需要编译描述符的校验
+  （`tests/contracts/descriptor.test.mjs`）留在 `cargo xtask test --suite contracts`。
 
 ## 变更步骤
 

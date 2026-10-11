@@ -76,7 +76,7 @@ jobs:
       - name: Knowledge algorithms, remote mock transport and local persistence
         run: cargo xtask test --suite knowledge
       - name: Validate schemas and API contract
-        run: node --test tests/contracts/schema.test.mjs
+        run: node --test tests/contracts/schema.test.mjs tests/contracts/descriptor.test.mjs
       - name: Full three-language contract suite (Linux C++ toolchain)
         if: runner.os == 'Linux'
         run: cargo xtask test --suite contracts

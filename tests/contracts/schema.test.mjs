@@ -1,7 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import descriptors from 'ts-proto-descriptors';
-import { readFile } from 'node:fs/promises';
 import { validators, readJson, validateSemantic, apiDocument } from '../../scripts/contracts/validation.mjs';
 
 const check = await validators();
@@ -60,16 +58,22 @@ test('plugin and model do not acquire ready status from incomplete or malformed 
   const missing = structuredClone(model); missing.required_graph_ids.push('missing-audio-encoder');
   assert.throws(()=>validateSemantic('model',missing),/incomplete/);
 });
-test('capability catalog has resolvable types, explicit stream semantics and no duplicate IDs', async () => {
-  const descriptor = descriptors.FileDescriptorSet.decode(await readFile('target/contracts/descriptor.bin'));
-  const names = new Set(descriptor.file.flatMap(file=>file.messageType.map(message=>`${file.package}.${message.name}`)));
-  for (const capability of catalog.capabilities) {
-    assert.ok(names.has(capability.request)); assert.ok(names.has(capability.response));
-  }
+test('capability catalog declares a stage for every entry and no duplicate IDs', () => {
   const ids = new Set(catalog.capabilities.map(capability=>capability.id));
+  assert.equal(ids.size, catalog.capabilities.length, 'duplicate capability id');
+  for (const capability of catalog.capabilities) {
+    assert.ok(['frozen','draft'].includes(capability.stage), capability.id);
+    // A half-declared draft would make the stage field unreadable.
+    if (capability.stage === 'draft') for (const key of ['request','response','stream','session_scoped']) assert.equal(capability[key], undefined, `${capability.id} is draft yet declares ${key}`);
+  }
   for (const required of ['platform.events','agent.decide','guard.check','knowledge.retrieve','memory.access','skill.invoke','show.plan','llm.generate','tts.synthesize','avatar.render','output.deliver','control.manage','storage.persist','runtime.observe','platform.capabilities','platform.lifecycle','avatar.profile','media.preview','channel.open','media.clock','audio.timeline','embedding.generate','rerank.rank','moderation.check','classification.classify','skill.list','gateway.invoke']) assert.ok(ids.has(`${required}@1`),required);
+  // The six §37.4 open-platform contracts are declared but not frozen. Pin the
+  // set so "declared" cannot silently become "negotiable", nor vanish again.
+  assert.deepEqual(catalog.capabilities.filter(capability=>capability.stage==='draft').map(capability=>capability.id).sort(), ['asr.transcribe@1','data.query@1','data.subscribe@1','device.control@1','device.sense@1','market.catalog@1']);
   const bad = structuredClone(catalog); bad.capabilities.push(bad.capabilities[0]);
   assert.throws(()=>validateSemantic('catalog',bad),/duplicate/);
+  const half = structuredClone(catalog); half.capabilities.find(capability=>capability.stage==='draft').request='nai.v1.Handshake';
+  assert.throws(()=>validateSemantic('catalog',half),/draft capability declares consumer messages/);
 });
 test('avatar and UI schemas reject missing license fields or arbitrary HTML/script declarations', () => {
   const avatar = {schema_version:1,avatar_id:'test',version:'test',kind:'2d',license_ref:'fixture-only',assets:[{id:'body',path:'body.png',sha256:'a'.repeat(64),license_ref:'fixture-only'}],model_binding:'none-for-2d',resource_profile_ref:'candidate',supported_actions:['idle'],supported_emotions:['neutral'],voice_binding:'test',native_width:64,native_height:64,output_width:64,output_height:64,fps_num:25,fps_den:1,base_duration_samples:'48000',switch_points:['0'],personalization_refs:{}};
@@ -83,9 +87,13 @@ test('avatar and UI schemas reject missing license fields or arbitrary HTML/scri
   assert.equal(check.ui(ui),false);
 });
 test('backup schema requires bounded hashes/versions and rejects escaping content paths', () => {
-  const backup = {schema_version:1,db_schema_version:5,created_at_utc_ms:'1',runtime_version:'0.1.0',contract_catalog_sha256:'a'.repeat(64),sensitive_scope:'configuration-facts-audit-registered-content;credential-references-only',database:{path:'state.sqlite3',sha256:'b'.repeat(64),bytes:1024},artifacts:[{path:`knowledge/${'c'.repeat(64)}`,sha256:'c'.repeat(64),bytes:5}]};
+  const backup = {schema_version:1,db_schema_version:6,created_at_utc_ms:'1',runtime_version:'0.1.0',contract_catalog_sha256:'a'.repeat(64),sensitive_scope:'configuration-facts-audit-registered-content;credential-references-only',database:{path:'state.sqlite3',sha256:'b'.repeat(64),bytes:1024},artifacts:[{path:`knowledge/${'c'.repeat(64)}`,sha256:'c'.repeat(64),bytes:5}]};
   assert.equal(check.backup(backup),true);
   assert.equal(check.backup({...backup,db_schema_version:2}),false);
+  // Pin the immediately-previous version too: a schema-version bump is a
+  // deliberate compatibility break, and this sample is what goes stale when
+  // only one side of the pair is updated.
+  assert.equal(check.backup({...backup,db_schema_version:5}),false);
   const bad=structuredClone(backup);bad.artifacts[0].path='../../outside';assert.equal(check.backup(bad),false);
   bad.artifacts=[];bad.database.bytes=268435457;assert.equal(check.backup(bad),false);
 });
@@ -113,7 +121,4 @@ test('OpenAPI preserves permissions, session revision/epoch, actual ACK and defe
   assert.ok(api.paths['/knowledge/import'].post.responses['202']);
   assert.equal(api.components.schemas.CommandAck.properties.executed.type,'boolean');
   assert.equal(api.security[0].bearerAuth.length,0);
-  const descriptor = descriptors.FileDescriptorSet.decode(await readFile('target/contracts/descriptor.bin'));
-  const error = descriptor.file.flatMap(file=>file.enumType).find(type=>type.name==='ErrorCode');
-  assert.deepEqual(api.components.schemas.ErrorResponse.properties.error.properties.code.enum.sort(),error.value.filter(value=>value.number!==0).map(value=>value.name).sort());
 });

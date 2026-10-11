@@ -40,6 +40,11 @@ fn run(root: &Path, args: &[&str]) -> Result<(), String> {
 fn engineering_checks(root: &Path) -> Result<(), String> {
     deps::check(root)?;
     registry::check(root)?;
+    // 静态契约 schema 校验（JSON Schema + OpenAPI）不需要 protoc，因此可以放在这里：
+    // 在此之前它**只在 CI 里跑**，于是「改了 schema 的一侧却没同步样本」可以本机全绿、
+    // CI 变红——W51 的 backup schema 版本漂移正是这样发生的。需要编译产物的校验
+    // （`tests/contracts/descriptor.test.mjs`）不在此列，仍留在 contracts suite。
+    schema::node(root, &["--test", "tests/contracts/schema.test.mjs"])?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,
@@ -186,10 +191,10 @@ pub fn execute(args: &[String], root: &Path) -> Result<(), String> {
             Ok(())
         }
         // `full` 是「完整工程基础」：portable 的全部步骤，加上前端 workspace 的类型检查、
-        // 构建与测试。`portable` 刻意不带前端——它的名字承诺「只需 Rust 工具链就能跑」，
-        // 而前端步骤需要已安装的 node 依赖；把两者合并会让「刚 clone、尚未 install」的环境
-        // 变红，而那既不是 Rust 破了也不是前端破了。前端步骤的失败与前置缺失由
-        // `frontend::check` 具名报出，MUST NOT 被跳过或降级。
+        // 构建与测试。两者分开是因为**前置不同**：portable 需要 Rust 工具链、node 与**仓库根**的
+        // 依赖（`check --registry` 与静态契约校验都是 node 脚本），前端步骤还需要各前端包自己的
+        // 依赖与打包工具。把两者合并会让「前端依赖没装好」冒充成工程基础破了。前端步骤的失败与
+        // 前置缺失由 `frontend::check` 具名报出，MUST NOT 被跳过或降级。
         ["check", "--profile", "full"] => {
             engineering_checks(root)?;
             frontend::check(root)?;

@@ -130,3 +130,29 @@ system 24.13.0 均如此，`dangerouslyDisableSandbox` 亦然），而**异步 `
 - 语料侧（W50）的 `display_text` **来源**：真实候选入库时由生成侧提供；本轮只保证「存了就用、没存就具名」。
 
 见 [docs/ui.md](../ui.md)、[docs/control.md](../control.md)、[ADR 0045](../adr/0045-approval-display-text-boundary.md)。
+
+## 勘误（2026-10-11，W52 追加，原文不改写）
+
+**结论订正：W51 的 CI 不是绿色，而是 `failure`。** 当轮交付说明里「`foundation` 两个 job 全部 success、
+步骤 9/10/22 均通过」的观测**不成立**——它来自 GitHub Actions API 的一次**被 HTTP 代理缓存的过期响应**
+（返回的 job/step 数据不属于所查的 run id；同一次查询里 `total_count: 42` 却只列出 2 条，即是征兆）。
+用**缓存破坏参数**重查后的事实是：
+
+- `347d74e`（W51）→ run `38133956560`：`foundation (ubuntu-24.04)` 与 `foundation (windows-latest)`
+  **两个 job 均为 `failure`**，失败步骤同为 **步骤 19「Validate schemas and API contract」**
+  （即 `node --test tests/contracts/schema.test.mjs`）。
+- 紧随其后的 docs-only 提交 `0e1c233`（平台化审视）→ run `38134889196`，同样 `failure`（继承同一断点）。
+
+**根因**：本轮把 `schemas/config/backup.schema.json` 的 `db_schema_version` 常量由 5 改成 6，
+但 `tests/contracts/schema.test.mjs:86` 的 backup 样本仍写 `5`，于是该用例
+（`assert.equal(check.backup(backup), true)`）的两侧不再一致。修复见 W52：样本改 6，
+并补一条「**上一个版本号必须被拒绝**」的负样本，让同类漂移下次能被直接指认。
+
+**为什么本机没发现**：`check --profile portable|full` 的 `engineering_checks` **不含**该测试文件，
+CI 是用**独立步骤**运行它的 ⇒ **本机门控绿、CI 红**。这条覆盖缺口同样在 W52 处理：
+静态 schema 校验（不需要 protoc）并入工程门控，依赖编译描述符的校验拆到
+`tests/contracts/descriptor.test.mjs` 留在 contracts suite。
+
+**教训（已落工作区记忆）**：① 判「CI 绿」必须同时看到**本次推送的 SHA**、**缓存破坏后的响应**与
+`conclusion`，任何一条缺失都不算证据；② **本机门控绿 ≠ CI 绿**，两侧的**步骤集合**要逐条对齐，
+否则门控会在最需要它的时候给出假绿灯。

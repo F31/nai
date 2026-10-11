@@ -5,11 +5,21 @@
   "required":["schema_version","protocol_major","protocol_minor","capabilities","adapters_required"],
   "properties":{
     "schema_version":{"const":1}, "protocol_major":{"const":1}, "protocol_minor":{"type":"integer","minimum":0},
-    "capabilities":{"type":"array","minItems":27,"items":{"type":"object","additionalProperties":false,"required":["id","request","response","stream"],"properties":{
-      "id":{"type":"string","pattern":"^[a-z]+(?:[.][a-z]+)+@1$"},
-      "request":{"type":"string","pattern":"^nai[.]v1[.][A-Za-z]+$"},
-      "response":{"type":"string","pattern":"^nai[.]v1[.][A-Za-z]+$"},"stream":{"type":"boolean"},"session_scoped":{"type":"boolean"}
-    }}},
+    "capabilities":{"type":"array","minItems":33,"items":{"oneOf":[
+      {"type":"object","additionalProperties":false,"required":["id","stage","request","response","stream"],"properties":{
+        "id":{"type":"string","pattern":"^[a-z]+(?:[.][a-z]+)+@1$"},
+        "stage":{"const":"frozen"},
+        "request":{"type":"string","pattern":"^nai[.]v1[.][A-Za-z]+$"},
+        "response":{"type":"string","pattern":"^nai[.]v1[.][A-Za-z]+$"},
+        "stream":{"type":"boolean"},"session_scoped":{"type":"boolean"},
+        "notes":{"type":"string","minLength":1}
+      }},
+      {"type":"object","additionalProperties":false,"required":["id","stage"],"properties":{
+        "id":{"type":"string","pattern":"^[a-z]+(?:[.][a-z]+)+@1$"},
+        "stage":{"const":"draft"},
+        "notes":{"type":"string","minLength":1}
+      }}
+    ]}},
     "adapters_required":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["legacy","target","operation"],"properties":{
       "legacy":{"type":"string","minLength":1},"target":{"type":"string","minLength":1},"operation":{"type":"string","minLength":1}
     }}}
