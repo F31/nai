@@ -72,7 +72,8 @@ engine 的 `pcm_samples` 对 PCM 取 `fs::metadata(..).len()`，而**管道大�
 | `cargo xtask check-deps` | **18** workspace 包，依赖边界通过 |
 | `cargo xtask check --registry` | 通过（V3.7 acceptance + D01–D14 映射） |
 | `cargo xtask check --profile portable` | **82 个测试目标**（65 `Running` + 17 `Doc-tests`）、**706 passed / 0 failed** |
-| `validate --all --strict` | **38 passed / 0 failed**（37 主规格 + 本变更） |
+| `validate --all --strict` | **38 passed / 0 failed**（37 主规格 + 本变更；**归档前**测得，归档后为 37） |
+| `validate --all --strict --archived` | **53 passed / 0 failed**（**归档后**；W47 时为 52） |
 
 706 与 W42 记录的 695 相差 **恰 +11**，等于 W47 新增的 `xtask/src/sbom.rs` **11 项单测**；
 **本轮零新增测试**（改动全部落在 `#[cfg(target_os = "linux")]` 内，Windows 侧一个测试都不增）。

@@ -218,3 +218,18 @@ ALL 12 OK
 #37（10 行、有汇总行）在截断自证上给出**相反且各自正确**的结果，说明该判据本身是可用的。
 
 **不做**（本轮）：不修这两处竞态。ubuntu 侧的根因已定位到断言行；**windows 侧是本轮首次观测**，需单独一轮定位。
+
+---
+
+## 勘误（W48 追加，原文不改）
+
+本文 §8.1「剩余未决」第 2 条写着**「上述竞态的修法——未做」**。该条为 **W44 时点**的记录，**现已失效**：
+
+- ubuntu 侧那条竞态（`halt_during_media_drill_prewarm_never_commits_a_frame`）已由 **W48** 修复——
+  **不放宽断言**，改为给被测 render-worker 一个**确定性的 prewarm 阻塞点**（首个 `--asset` 素材换成无写端命名管道，
+  使 worker 钉死在 prewarm），并在写 halt 前**等到 worker 进程确已派生**。
+  见 [W48 报告](2026-10-11-w48-deterministic-prewarm-halt-drill.md)。
+- 本文 §4 的**截断成因**与 §8.2 的 **windows 侧 `nai-runtime` 时序脆弱**两条**仍然未决**，不在 W48 范围内。
+- 另：本文 §8.1 初稿把机制描述为「supervision 线程此时可能已经把整个 media drill 跑完**并提交了帧**」——
+  这一表述在 W48 复核时得到确认并补强：**engine 的拆除路径本身是完整的**（`DrillGuard::tick` 检查
+  graceful halt 与 epoch 撤销），问题**只**在测试没能保证 halt 真的先到。此为**补充**，非订正。
