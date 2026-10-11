@@ -1,0 +1,17 @@
+[package]
+name = "nai-platform-unavailable"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[package.metadata.nai]
+layer = "plugin"
+
+[dependencies]
+nai-contracts.workspace = true
+nai-plugin-sdk.workspace = true
+
+[lints]
+workspace = true

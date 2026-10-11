@@ -28,6 +28,34 @@ CallContext 负责 deadline/cancellation；手工/回放来源不得走官方入
 本轮没有生产 composition root 自动接线；`tests/platform.rs` 验证准入→入队→断线/重连→消费复检拒绝旧事件。
 平台事件通知不是可信控制命令；真实 SDK 必须把断线/撤权先投到可信控制路径。后续异步工作和播放仍复检 Session epoch、审批、事实与媒体租约。
 
+## 显式 Unavailable 平台连接器（W53）
+
+§9.4 要求「快手、视频号放入**同一平台插件目录**，在核实官方接口前保留**显式 Unavailable 实现**，不宣称可上线」；
+§17.2 要求「尚未取得官方接口的连接器**只保存契约、准入说明与显式 Unavailable 实现，不放伪造 SDK**」。
+本仓的落点是 **`plugins/platform-unavailable`**（层 `plugin`，包名 `nai-platform-unavailable`），
+它同时登记 **快手**与**视频号**两个实例（同一目录、`platform_id` 互异）。
+
+**接缝在 `nai-plugin-sdk::connector`**（层 `sdk`，只依赖 contracts），不属于内核：
+内核不能依赖插件（§17.5），而连接器必须能用接缝实现，所以接缝必须位于内核之外。
+
+- `ConnectorAvailability` 只有两态：`Verified { interface_revision }`（**必须**给出所依据的官方接口修订号，
+  空值即拒——「已核实」是有依据的主张）与 `Unavailable { reason }`（`reason` 取自**封闭五值**）。
+  本仓两个实例都是 `Unavailable { NoOfficialInterface }`。
+- §27.1 的四项职责（SDK 初始化、事件与权限转换、认证 IPC、退出）是**提供的公开方法**，
+  每个方法先过 `require_available()` 再交给 `*_impl` 钩子。因此不可用连接器**不可能**从任何一项职责返回成功，
+  「返回 Ok 但什么都没做」在接缝里**没有表示**。失败统一是 `CAPABILITY_NOT_READY` +
+  `details["reason"] = "UNVERIFIED_EXTERNAL_DEPENDENCY"`（§27.1 的原文术语，与
+  `bridge.rs` 的 `SdkAvailability::UnverifiedExternalDependency` 同名）+ `retryable`。
+- 准入说明 `AdmissionNotes` 覆盖 §13.1 的**五项**合规核对与 §9.3 的**四项**接入节奏；
+  `AdmissionNotes::declared` 对缺项**按名拒绝**。
+- **不放伪造 SDK 是结构事实**：该包只依赖 `nai-contracts` 与 `nai-plugin-sdk`，
+  且 `tests/unavailable.rs` **读该包自身的 `Cargo.toml`** 做白名单与 SDK 形态断言（含「注入一个 vendor 依赖必须被抓到」的自检）。
+- **A03「新增连接器不改内核」两个方向都由门控强制**：`xtask check-deps` 既禁「内核依赖连接器」（既有分层规则），
+  也禁「**平台连接器依赖内核**」（W53 新增；接缝充分则无需内核类型）。
+
+**没接上的仍然没接上**：真实官方接口、调试版伴侣 PoC、平台用途/产物/权限与费用的准入决定都是**外部真值**（§9.3），
+本轮一律如实记为 `Unavailable`，**不宣称可上线**，也**不因此改变任何验收 `status`**。
+
 ## 验证与剩余工作
 
 ```bash
@@ -40,4 +68,6 @@ Protobuf 新增 PlatformEvent optional generation_epoch=20 和 connection_genera
 Rust/TS/C++ 互通 fixture 增加平台事件的大整数 epoch/代次。
 
 官方 SDK、真实账户用途准入、平台宿主启动/退出、端口冲突与重连网络处理、无可靠消息 ID 的降级去重、云网关服务尚未实现。
+**显式 Unavailable 连接器（W53）已就位**，故「无官方接口」不再是一个空位而是一份**可判定的声明**；
+但真实接入所需的一切（官方接口文档、调试版伴侣 PoC、平台准入决定）仍**未提供**。
 真实 Windows 伴侣/SDK 权限与设备认证未执行，详见 [本轮报告](reports/2026-10-08-d13-platform-ingress.md)。

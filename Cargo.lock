@@ -1242,6 +1242,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "nai-platform-unavailable"
+version = "0.1.0"
+dependencies = [
+ "nai-contracts",
+ "nai-plugin-sdk",
+]
+
+[[package]]
 name = "nai-plugin-hosts"
 version = "0.1.0"
 dependencies = [

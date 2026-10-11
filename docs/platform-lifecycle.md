@@ -135,6 +135,23 @@
 
 每条都可在测试里**直接构造**（无需启动伴侣、加载 SDK 或建立连接）；干净描述符审计为空；构造描述的审计并集**恰为**这十九条——既证每条可构造，也防未登记的额外标记。
 
+## 判定面与连接器实物的分工（W53）
+
+本模块判的是**一份声明的桥接描述符**是否越界，其中一条是
+`fake_connector_claimed_as_real_capability`——「无官方 SDK 时不用 fake connector 冒充真实能力」（§27.1）。
+W53 之前，这条规则**没有被判定的对象**：`plugins/` 下没有任何平台连接器，A03「新增连接器不改内核」也就没有主语。
+
+W53 补上了实物：`plugins/platform-unavailable` 提供快手与视频号的**显式 Unavailable 实现**
+（接缝在 `nai-plugin-sdk::connector`）。两者的分工是：
+
+- **`bridge.rs`**：判**声明**——某个桥接描述符是否把不可用冒充成可用（纯函数，不启动任何东西）。
+- **`nai-plugin-sdk::connector` + `plugins/platform-unavailable`**：给出**声明本身**——
+  可用性是声明的一部分，不可用连接器的四项职责由接缝的闸门**按名失败**，不可能返回成功。
+
+`UNVERIFIED_EXTERNAL_DEPENDENCY` 是两处**共用**的同一术语（本模块的
+`SdkAvailability::UnverifiedExternalDependency` 与接缝的错误 `details["reason"]`），不得各起一个名字。
+本模块**未改动**：判定规则、十九条稳定标记与 `readiness()` 三态都与 W35 一致。
+
 ## 未做边界
 
 - **不启动伴侣、不加载官方 SDK、不建网络连接、不推流、不做真实握手、不做网关与回调服务**。本模块判的是**声明与处置**。

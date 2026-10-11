@@ -21,6 +21,9 @@ Windows 原生环境使用 `cargo xtask check --profile windows-local`。
 可单独运行 `cargo xtask check-deps`。CLI 依据真实 metadata 检查所有 normal/build/dev/target
 声明、路径层级和 workspace 可达关系。库/插件新增时登记 workspace member 与
 `[package.metadata.nai] layer`；新增路径职责必须增加规则与必要测试。
+**平台连接器**（路径 `plugins/platform-*`）**不得依赖 `kernel` 层**——A03「新增连接器不改内核」的另一半：
+接缝 `nai-plugin-sdk::connector` 充分则无需内核类型，依赖内核即意味着接缝有缺（W53 新增）。
+反方向「内核不得依赖连接器」由普通分层规则强制（kernel 只能依赖 contracts）。
 
 `check --profile` 的测试步不会让 harness 测到自己身上：`cargo test --workspace` 会重新链接
 **正在执行**的 `nai-xtask` 映像，Windows 拒绝覆盖运行中的可执行文件（`LNK1104`）。因此检查逻辑位于

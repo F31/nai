@@ -894,3 +894,33 @@ CI 步骤 19 与 contracts suite 均改跑两个文件；同时订正 `lib.rs` �
 `cargo xtask schema`（临时异步 shim，**已还原**）`33 capabilities (27 frozen, 6 draft)`；
 `tsc -p packages/contracts-ts` EXIT=0；`validate --all --strict` 与 `--archived` 全绿。见
 docs/reports/2026-10-11-w52-open-contract-catalog.md、docs/contracts/README.md。
+
+W53 补上 **A03「新增连接器不改内核」的实物落点**，并顺手把两处「说了但没主语」的性质变成**可判定的结构事实**。
+**缺口性质（本轮的核心判断）**：缺的**不是判定**而是**被判定的实物**——§27.1 的
+`fake_connector_claimed_as_real_capability` 早在 `bridge.rs` 里，`deps.rs` 的单测夹具甚至已经叫
+`plugins/platform-manual`（结构照着「有一个平台连接器」设计），但 `plugins/` 下**从没有任何平台连接器**，
+A03 的命题因此**无主语**。**接缝**落 `crates/nai-plugin-sdk/src/connector.rs`（层 `sdk`，只依赖 contracts；
+内核不得依赖插件，故接缝必须在内核之外）：`ConnectorAvailability` 只有两态——`Verified { interface_revision }`
+（**空值即拒**：「已核实」是有依据的主张）与 `Unavailable { reason }`（`reason` 取自**封闭五值**），
+`ConnectorIdentity`（连接器 id + 平台 id + 标签，三者非空）、`AdmissionNotes`（§13.1 **五项** +
+§9.3 **四项**，`declared` 对缺项**按名拒绝**）。**§27.1 的四项职责是「提供的方法」**：每个先过
+`require_available()` 再交 `*_impl` 钩子（钩子默认返回具名 `NOT_IMPLEMENTED` ⇒ 失败关闭）
+⇒ 不可用连接器**不可能**从任何职责返回成功，**「返回 Ok 但什么都没做」在接缝里没有表示**；失败统一是
+`CAPABILITY_NOT_READY` + `details["reason"] = "UNVERIFIED_EXTERNAL_DEPENDENCY"`（§27.1 **原文术语**，
+与 `bridge.rs::SdkAvailability::UnverifiedExternalDependency` 同名）+ `retryable`。
+**连接器**：新建 `plugins/platform-unavailable`（层 `plugin`，包名 `nai-platform-unavailable`，
+workspace 成员 **18 → 19**），登记**快手**与**视频号**两个显式 Unavailable 实例（§9.4 同一平台插件目录、
+`platform_id` 互异），二者**只声明身份/可用性/准入说明，不实现任何 `*_impl`**——这正是「显式 Unavailable 实现」
+的形状。**「不放伪造 SDK」是结构事实而非承诺**（§17.2）：该包只依赖 `nai-contracts` 与 `nai-plugin-sdk`，
+且 `tests/unavailable.rs` 用 `include_str!("../Cargo.toml")` **读该包自身的清单**做依赖白名单与 SDK 形态断言，
+并**自检该断言非空洞**（把 `douyin-sdk` 注入清单必须被抓到、把 `platform-bindings` 注入同样被抓到）。
+**A03 的两个方向现在都由门控强制**：`deps.rs` 既有规则禁「内核依赖连接器」，**W53 新增**禁
+「**平台连接器依赖内核**」（`plugins/platform-*` → kernel；对普通插件不适用，测试钉住这一点）。
+**非空洞守卫**：测试内有一个 `Verified` 替身走通四项职责的成功路径（§17.5/§721 允许 mock 仅存在于测试），
+否则「全部失败」会被一个恒失败的接缝同样满足。实测：`cargo test -p nai-platform-unavailable` **9 项**通过；
+`nai-plugin-sdk` lib **14 → 18 项**；`nai-xtask` lib **51 → 52 项**（新增 deps 规则单测）；
+`check-deps` **19 包**、依赖方向不变、**外部依赖零新增**。**未升级**：真实官方接口、调试版伴侣 PoC 与
+平台准入决定（§9.3）仍是外部真值，两个平台一律如实记 `Unavailable { NoOfficialInterface }`、不宣称可上线，
+**A03 保持 `implemented`、P01 保持 `blocked`**，`registry.yaml` 只补 A03 notes。见
+docs/reports/2026-10-11-w53-explicit-unavailable-connector.md、docs/platform.md、
+docs/platform-lifecycle.md、docs/engineering.md。

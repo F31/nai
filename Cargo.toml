@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
-members = ["plugins/avatar-2d", "apps/engine", "apps/output-keeper", "apps/render-worker", "crates/nai-control-api", "crates/nai-knowledge-core", "crates/nai-contracts", "crates/nai-kernel", "crates/nai-runtime", "crates/nai-plugin-sdk", "crates/nai-plugin-hosts", "crates/nai-storage", "crates/nai-security", "crates/nai-upgrade-core", "crates/nai-media-core", "crates/nai-budget-core", "crates/nai-provider-core", "xtask"]
-default-members = ["plugins/avatar-2d", "apps/engine", "apps/output-keeper", "apps/render-worker", "crates/nai-control-api", "crates/nai-knowledge-core", "crates/nai-contracts", "crates/nai-kernel", "crates/nai-runtime", "crates/nai-plugin-sdk", "crates/nai-plugin-hosts", "crates/nai-storage", "crates/nai-security", "crates/nai-upgrade-core", "crates/nai-media-core", "crates/nai-budget-core", "crates/nai-provider-core", "xtask"]
+members = ["plugins/avatar-2d", "plugins/platform-unavailable", "apps/engine", "apps/output-keeper", "apps/render-worker", "crates/nai-control-api", "crates/nai-knowledge-core", "crates/nai-contracts", "crates/nai-kernel", "crates/nai-runtime", "crates/nai-plugin-sdk", "crates/nai-plugin-hosts", "crates/nai-storage", "crates/nai-security", "crates/nai-upgrade-core", "crates/nai-media-core", "crates/nai-budget-core", "crates/nai-provider-core", "xtask"]
+default-members = ["plugins/avatar-2d", "plugins/platform-unavailable", "apps/engine", "apps/output-keeper", "apps/render-worker", "crates/nai-control-api", "crates/nai-knowledge-core", "crates/nai-contracts", "crates/nai-kernel", "crates/nai-runtime", "crates/nai-plugin-sdk", "crates/nai-plugin-hosts", "crates/nai-storage", "crates/nai-security", "crates/nai-upgrade-core", "crates/nai-media-core", "crates/nai-budget-core", "crates/nai-provider-core", "xtask"]
 
 [workspace.package]
 version = "0.1.0"

@@ -1,6 +1,8 @@
 //! Manifest conversion and plugin surface: framing, handshake, Plugin trait,
-//! PluginContext and CapabilityClient. Not a native loader or authorization
-//! authority; host isolation is enforced by nai-plugin-hosts.
+//! PluginContext, CapabilityClient and the platform connector seam. Not a native
+//! loader or authorization authority; host isolation is enforced by
+//! nai-plugin-hosts.
+pub mod connector;
 pub mod frame;
 pub mod handshake;
 pub mod model;

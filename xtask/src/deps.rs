@@ -90,6 +90,17 @@ fn validate(packages: &[Package]) -> Vec<String> {
                     source.name, source.layer, target.name, target.layer
                 ));
             }
+            // §9.4/§17.2 + A03 "新增连接器不改内核": the plugin seam is meant to
+            // be sufficient, so a platform connector must not need a kernel type.
+            // If it did, "adding a connector" would be a kernel change, which is
+            // exactly the property A03 claims. (The other direction — the kernel
+            // must not reach a connector — is the plain layer rule above.)
+            if source.path.starts_with("plugins/platform-") && target.layer == "kernel" {
+                errors.push(format!(
+                    "{} is a platform connector and must not depend on {} ({})",
+                    source.name, target.name, target.layer
+                ));
+            }
         }
         // Inspect external names at every reachable workspace node as well.
         for node in std::iter::once(source).chain(reachable(source, &by_name)) {
@@ -296,6 +307,60 @@ mod tests {
             let disguised = package("media-process", path, "app", &[]);
             assert!(!validate(&[disguised]).is_empty());
         }
+    }
+
+    #[test]
+    fn a_platform_connector_never_depends_on_the_kernel() {
+        // A03 "新增连接器不改内核" has two directions. The kernel → connector one is
+        // the plain layer rule, covered above. This is the other one: a connector
+        // that needed a kernel type would make "adding a connector" a kernel
+        // change, which is precisely what A03 claims cannot happen.
+        let reaching = package(
+            "platform-unavailable",
+            "plugins/platform-unavailable",
+            "plugin",
+            &["nai-kernel"],
+        );
+        let errors = validate(&[
+            reaching,
+            package("nai-kernel", "crates/nai-kernel", "kernel", &[]),
+            package("nai-contracts", "crates/nai-contracts", "contracts", &[]),
+        ]);
+        assert!(
+            errors
+                .iter()
+                .any(|error| error.contains("is a platform connector and must not depend on")),
+            "{errors:?}"
+        );
+
+        // The rule is targeted at `plugins/platform-*`, not at every plugin: an
+        // ordinary plugin reaching the kernel still has to be a deliberate choice,
+        // not a gate failure.
+        let ordinary = package("avatar", "plugins/avatar-2d", "plugin", &["nai-kernel"]);
+        assert!(
+            validate(&[
+                ordinary,
+                package("nai-kernel", "crates/nai-kernel", "kernel", &[]),
+                package("nai-contracts", "crates/nai-contracts", "contracts", &[]),
+            ])
+            .is_empty()
+        );
+
+        // The honest connector: contracts and the seam only, no kernel.
+        let honest = package(
+            "platform-unavailable",
+            "plugins/platform-unavailable",
+            "plugin",
+            &["nai-contracts", "nai-plugin-sdk"],
+        );
+        assert!(
+            validate(&[
+                honest,
+                package("nai-contracts", "crates/nai-contracts", "contracts", &[]),
+                package("nai-plugin-sdk", "crates/nai-plugin-sdk", "sdk", &[]),
+            ])
+            .is_empty()
+        );
     }
 
     #[test]
