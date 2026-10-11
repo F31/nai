@@ -513,8 +513,9 @@ W39 攻击者可控输入面的随机输入测试已实现/实测（S11 的「�
 **只驱动生成侧**：检索召回、检索 P95 与行为类判据（澄清/转义、无副作用、取消）具名打印为未驱动且**不填零**，并明示「不是 B01 达标」——
 **否决**「用答案文本猜 `outcome` 喂 `evaluate`」：那会造出字段齐全但含义失真的报告（行为类**假失败**、注入类**假通过**，本路径没有副作用通道故恒为空）。
 实测：夹具 `tests/fixtures/rag-golden/example-min.json`（修订 2）8 例 → **8/8 judged / 0 correct**（占位问题与夹具参考答案不匹配，正确率无意义，
-只证链路通）；临时探针 1 例 → **1/1 correct**（证明判定双向往返可用）。缺口从**四段降到两段**（①100 题题集内容、④真实知识库内容，均外部投入），
-到位后**零代码改动**即可出完整结论。零新增包（仍 18），真实接线仅 `[dev-dependencies]` 故 portable 覆盖与耗时不变。
+只证链路通）；临时探针 1 例 → **1/1 correct**（证明判定双向往返可用）。缺口从**四段降到两段**（①100 题题集内容、④真实知识库内容，均外部投入），但**两段的充分性不同**：①到位即让门禁放行并出生成侧
+`answer_accuracy`（零代码改动）；④到位**本身不产生**检索侧结论——未驱动项是**常量**（`golden_eval.rs` 的 `UNDRIVEN`，无条件打印），
+检索侧与行为类判据要出数**仍需扩展执行体或另接采样器**。零新增包（仍 18），真实接线仅 `[dev-dependencies]` 故 portable 覆盖与耗时不变。
 见 [报告](reports/2026-10-11-w40-golden-eval-runner.md)、[黄金集指南](golden-set.md) 与 [ADR 0040](adr/0040-golden-eval-runner-boundary.md)。
 
 本轮 `w41-frontend-gate-profile` 已实现/实测（[ADR 0041](adr/0041-engineering-profile-frontend-boundary.md)）：`engineering-foundation` 规格从 D01 起就要求

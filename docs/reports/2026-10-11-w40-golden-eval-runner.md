@@ -183,3 +183,18 @@ openspec validate --all --strict --archived
 B01 达标链条上**仓库内可控的两段已齐**（判据、执行体）。遗留的两段是纯外部投入——100 题内容与真实知识库内容——
 两者到位后**零代码改动**即可出完整结论。因此本轮**不**把 B01 升级：**「执行体就位」不等于「达标」**，
 一次可运行的评估不是质量证据（`live-provider-evidence` 规格对此已有明条：一次连通冒烟不得用来把 B01 标为达标）。
+
+## 勘误（2026-10-11 同日复核）
+
+上文（第五节结论与正文所引）的「两者到位后**零代码改动**即可出完整结论」**对检索侧不成立**。原文保留不改，此处订正：
+
+- **①100 题集内容到位** ⇒ 就位门禁放行、生成侧 `answer_accuracy` 出数，**确实零代码改动**（判据与执行体均已就位）。
+- **④真实知识库内容到位** ⇒ **本身不会**让执行体去驱动检索：未驱动项是**常量**
+  （`xtask/examples/golden_eval.rs` 的 `UNDRIVEN`＝`evidence_recall_at_5`/`retrieval_p95`/`behaviour_expectations`，第 323 行**无条件**打印）。
+  全仓库只有这一个执行体，`xtask/` 与 `scripts/` 内也没有别处调用 `retrieve_local`/`retrieve_session_knowledge`
+  （`grep -rln` 只命中该文件自身，且仅是标签字符串）。故 Recall@5、检索 P95 与行为类判据要出数
+  **仍需扩展执行体或另接采样器**。
+
+本文档「未做边界」段与 `docs/golden-set.md` 的「未做边界」段本来就写着「执行体只驱动生成侧」，与本订正**一致**；
+被订正的是「零代码改动」这一句对**检索侧**的隐含承诺。`tests/registry.yaml` 的 B01 notes、`docs/golden-set.md`、
+`AGENTS.md`、`docs/development-plan.md` 已就地订正，ADR 0040 追加同样的勘误段。

@@ -603,8 +603,7 @@ portable 门控覆盖）。**修订 1 不做双读**（旧题集被拒而非读�
 **1/1 correct**（1000‰，证明判定**双向往返**可用，不是恒 `Incorrect`）；默认目录仍 `CAPABILITY_NOT_READY`（`files: 0`）。
 `check-deps` **仍 18 包**方向不变（真实接线仅 `[dev-dependencies]`，example 不进 lib ⇒ portable 覆盖与耗时不变）；
 kernel `tests/golden.rs` **31 项**、xtask lib **39 项**全绿；portable **EXIT=0**（**82 个测试目标**、**694 passed / 0 failed**，
-较 W39 +11，目标数不变）；`check --secrets` **702 文件零命中**；`check --registry` 通过；两处 `tsc` EXIT=0；desktop 5/5、`test:ui` 15/15。**缺口从四段降到两段**（①④），
-两者到位后**零代码改动**即可出完整结论；registry B01 **保持 `blocked`**（达标仍不可能达成，「执行体就位」不是达标）。
+较 W39 +11，目标数不变）；`check --secrets` **702 文件零命中**；`check --registry` 通过；两处 `tsc` EXIT=0；desktop 5/5、`test:ui` 15/15。**缺口从四段降到两段**（①100 题内容、④真实知识库内容，均外部投入），**但两段的充分性不同**：①到位即让门禁放行并出生成侧 `answer_accuracy`（零代码改动）；④到位**本身不产生**检索侧结论——未驱动项是**常量**（`golden_eval.rs` 的 `UNDRIVEN`，无条件打印），Recall@5／检索 P95／行为类判据要出数**仍需扩展执行体或另接采样器**；registry B01 **保持 `blocked`**（达标仍不可能达成，「执行体就位」不是达标）。
 见 docs/golden-set.md、tests/rag-golden/README.md、docs/adr/0040-golden-eval-runner-boundary.md 与
 docs/reports/2026-10-11-w40-golden-eval-runner.md。未做边界：**行为侧执行**（守门/副作用/取消的观测接入）与**真实检索接入**未做，
 执行体目前只在生成侧产出结论。
