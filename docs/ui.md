@@ -14,10 +14,30 @@
 
 未实现的两条**登记为未实现并点名缺失前置**，不伪造「已覆盖」。这条纪律本身有测试守着：`an unimplemented assertion names the prerequisite it lacks, an implemented one claims none`。
 
+> **别把 O05 与第 4 条混淆**：§30.1 第 4 条是「升级与回滚**提示**」（需要控制面暴露 `plan`/`journal` 状态来源），
+> 与之相关但**不同**的是 O05「升级**成本**显示」。后者的呈现层已在 W49 落地（见下），
+> 但两者**都**因同一个缺失前置（控制面未暴露 `nai-upgrade-core` 的计划与成本来源）而未接入界面。
+
+## 升级成本显示（O05 的库内部分，W49）
+
+`apps/desktop/src/upgrade.ts` 把「成本逐项**准确列示**」落成可断言的呈现口径，与 `console.ts` 同形（零 DOM）：
+
+| 性质 | 落点 | 断言 |
+|---|---|---|
+| 未知分项呈现为**原因**，绝不呈现为 0 | `costRows` | `未知分项呈现为原因，绝不呈现为 0` |
+| 显式的 0 是一个断言，被如实呈现为 0 | `costRows` | `显式的 0 是一个断言，被如实呈现为 0` |
+| 全已知 ⇒ 合计 | `totalPresentation` | `全已知时总额是合计` |
+| 含未知 ⇒ **下界 + 未知计数**，且**不是**总额 | `totalPresentation` | `含未知分项时总额是下界加未知计数，不是总额` |
+| 缺字段/未知字段/非法金额/空原因 ⇒ **具名拒绝** | `parseCostEstimate` | 十条拒绝用例（缺分项、多分项、负金额、小数、字符串金额、空原因、两者并存、非法货币码、非对象…） |
+
+**它不构成 O05 的完整验收**：`tests/ui` 证明的是**呈现口径**，不是渲染；控制面尚未暴露升级计划与成本来源，
+故该模块**未接入任何界面**（与 §30.1 第 4 条同一缺失前置）。`tests/registry.yaml` 的 **O05 保持 `pending`**。
+
 ## 位置与分层
 
 - 断言：`tests/ui/*.test.mjs`（Node 22 + `--experimental-strip-types` 直接加载 `.ts`）。
-- 被测逻辑：`apps/desktop/src/console.ts`（**零 DOM 依赖**，只用标准库）与 `apps/desktop/src/control.ts`。
+- 被测逻辑：`apps/desktop/src/console.ts`（**零 DOM 依赖**，只用标准库）、`apps/desktop/src/control.ts`
+  与 `apps/desktop/src/upgrade.ts`（成本显示口径，W49）。
 - 运行：`pnpm test:ui`（根 `package.json`），即 `node --experimental-strip-types --test tests/ui/*.test.mjs`。
 
 为什么把逻辑抽到 `console.ts` 而不是写进 React 组件：§30.1 要求这四条**可被机器检查**，而 React 组件需要 DOM 才能驱动。
@@ -25,7 +45,7 @@
 
 `.ts` 显式扩展名：Node 的 ESM 解析**不做扩展名补全**，相对导入必须写 `./control.ts`；`apps/desktop/tsconfig.json` 因此开启 `allowImportingTsExtensions`。
 
-## 本轮落下的 15 项（`tests/ui`）
+## `tests/ui` 的断言（W38 起）
 
 `approval-surface.test.mjs`（11 项）：
 
@@ -47,6 +67,8 @@
 2. 每条断言都有确定状态，且**不发明** id；
 3. 未实现的断言**点名前置**，已实现的不声称任何前置；
 4. 两个界面尚不存在的断言被登记为未实现并给出锚点。
+
+`upgrade-cost.test.mjs`（19 项，W49）：见上「升级成本显示」一节——逐项呈现、总额呈现与十条严格解析用例。
 
 ## 边界
 

@@ -793,3 +793,24 @@ Windows 上不编译**，本机 `tests\engine.rs` 目标只跑 2 个跨平台测
 **不做**：不改 `src/`/`crates/`、不改监督语义与 `AVATAR_TIMEOUT`、不改任何验收 `status`、
 不修 Windows 侧 `nai-runtime` 的时序脆弱（另属一类）、截断成因仍未定。
 见 docs/reports/2026-10-11-w48-deterministic-prewarm-halt-drill.md。
+
+W49 收尾 O01 与 O05 中「外部依赖最少」的一半，**两者 `status` 均保持 `pending`**（W38 的 O02 先例：
+逻辑/界面出现**不等于**验收达标）。**O01** 的缺项原是「演示包未建」（`preset`/`演示包` 两词在 `crates/`、`apps/`、
+`schemas/` 里此前一次都没出现过）：新增 `crates/nai-kernel/src/demo.rs`（与 O03 的 `monitoring.rs`、O04 的
+`device.rs` 同层同形）把 §615 演示包五要素与 §612 两条时间目标落成 `audit_demo_package`（**十六条**稳定标记）
++ `DemoReadiness` 三态；四条口径是本轮要定死的：**未声明即条件化**（空描述符审计为空、读作 `Blocked`——
+尚未交付不是违规；声明了任一部分则其余成为**欠项**）、**「授权的」是要求而非形容词**、
+**连通不等于达标**（常量桩与把冒烟当验收各报一条）、**时间戳早于安装就绪是不自洽**而非「跑得快」。
+`tests/demo.rs` **19 项**，含「一组构造描述的审计并集**恰为**这十六条」断言（用一组而非一份：`missing` 与
+`defective` 对同一部分互斥）。**O05** 的缺项原是「成本显示未建」：新增 `apps/desktop/src/upgrade.ts`
+（零 DOM，与 W38 的 `console.ts` 同形）——未知分项呈现为**原因**（绝不呈现为 0）、部分和呈现为**下界+未知计数**
+并明说不是总额、载荷严格解析（十条具名拒绝）；`tests/ui/upgrade-cost.test.mjs` **19 项**。
+**验证**：`check-deps` **18 包**、`check --registry`、`check --profile portable`（**83 目标 = 66 `Running` + 17
+`Doc-tests`、725 passed / 0 failed**；706 → 725 **恰 +19 = 本轮 demo 单测**，新增 `tests/demo.rs` 目标使 `Running`
+65 → 66）、`pnpm test:ui` **34/34**、`frontend-gate.mjs` 六步全通过、`validate --all --strict` 38/38。
+**与 W48 相反的平台边界**：本轮的 kernel 判定与前端呈现层**没有任何 `#[cfg(target_os)]`**，portable 全程可测，
+**本机门控即可证其成立**。新增规格能力 **`demo-package`（9 条需求）**；`local-control-surface` +1 条需求；
+**ADR 0044**。**不做**：不建真实演示包内容、不跑人工演练、不接控制面升级状态来源（**O05 的呈现层因此未接入
+任何界面**——与 §30.1 第 4 条「升级与回滚提示」**同一缺失前置**）、不加 xtask 命令与约定外证据目录、
+不改任何既有验收 `status`。见 docs/reports/2026-10-11-w49-o01-o05-in-repo-closeout.md、
+docs/demo-package.md、docs/adr/0044-demo-package-readiness-boundary.md。
