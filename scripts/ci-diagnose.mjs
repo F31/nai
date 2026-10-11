@@ -31,19 +31,30 @@ const DEFAULT_MAX_LINES = 25;
 /** 单条 annotation 的最大字符数，避免被服务端截断后丢掉尾部信息。 */
 const DEFAULT_MAX_CHARS = 400;
 
-/** 参与挑选的日志窗口大小：门控失败的关键信息总是出现在日志尾部。 */
-const TAIL_WINDOW = 400;
+/**
+ * **强信号**：这一行几乎必然指向失败原因。
+ *
+ * 覆盖本仓库门控实际会产出的形态：`FRONTEND_STEP_FAILED: …`（前端门控）、`error[E0308]: …`（rustc/clippy）、
+ * `error: process didn't exit successfully: …`（cargo）、`thread '…' panicked at …`、`failures:`、
+ * `test result: FAILED.`、xtask 对未实现任务的具名拒绝（`unsupported or not implemented task: …`）。
+ *
+ * 注意 `FAILED` 必须**区分大小写**地单独成条：cargo 成功时输出的是小写的 `test result: ok. 6 passed;
+ * 0 failed;`，若用 `/failed/i` 匹配，每一个**成功**的测试目标都会变成「失败信号」——真实 CI 失败时
+ * 满屏都是这种噪音，会把真正的错误挤出配额。**这是本脚本第一版的真实缺陷，由 2026-10-11 的一次真实
+ * ubuntu 失败暴露**（12 条注释里 8 条是 `0 failed`，真正的错误行一条也没出现）。
+ */
+const STRONG =
+  /error|FAILED|panicked|unsupported|not implemented|unimplemented|assertion|失败|未通过|不通过/;
+
+/** 弱信号：`failures:` 之类的小写措辞，可能出现在正常叙述里，故排在强信号之后。 */
+const WEAK = /\bfailures?:/;
 
 /**
- * 判定「这一行像是失败信息」的信号。
- *
- * 覆盖本仓库门控实际会产出的形态：`FRONTEND_STEP_FAILED: …`（前端门控）、
- * `error[E0308]: …`（rustc/clippy）、`---- xxx stdout ----`、`thread '…' panicked at …`、
- * `failures:`、`test result: FAILED.`、`失败于 …；后续步骤不再执行`，以及 xtask 对未实现任务的
- * 具名拒绝（`unsupported or not implemented task: …`）。
+ * **永不入选**的噪音：cargo 对每个**成功**的测试目标都会印一行 `test result: ok. N passed; 0 failed; …`。
+ * 它既不含信息量，又会在补齐阶段挤满配额——2026-10-11 的真实 ubuntu 失败里，12 条注释有 8 条是它，
+ * 而真正的错误一行都没出现。识别它比逐个排除更稳：整行以 `test result: ok.` 开头即丢弃。
  */
-const SIGNAL =
-  /error|failed|failures?|panicked|assertion|unsupported|not implemented|unimplemented|失败|未通过|不通过/i;
+const NOISE = /^test result: ok\./;
 
 // CSI（ESC [ … 最终字节）与 OSC（ESC ] … BEL）两类转义序列。
 const ANSI = /\u001B\[[0-9;?]*[A-Za-z]|\u001B\][^\u0007]*(?:\u0007|\u001B\\)/g;
@@ -97,21 +108,38 @@ function clamp(text, limit) {
 /**
  * 优先挑选「看起来像失败原因」的行，不足再用尾部普通行补齐，并**按原顺序**输出。
  *
- * 只看尾部会漏掉「错误在前、大段 cargo 输出在后」的情况；只看信号行则在纯编译失败、
- * 或失败行恰好不含关键词时全空。两者结合，再用 Set 恢复原顺序。
+ * **强信号在全量日志里找**，而不是只看尾部：cargo 会先打印成千上万行 `Compiling` / `Checking`，
+ * 真实错误可能出现在数千行之前，只看尾部会漏掉根因。
+ * 弱信号与「尾部普通行」只作为补齐手段，并按原顺序输出（`Set` 选集合 + 按 `lines` 过滤）。
  */
 function pickLines(lines, maxLines) {
-  const signals = lines.filter((line) => SIGNAL.test(line));
-  if (signals.length >= maxLines) {
-    const picked = lines.filter((line) => signals.slice(-maxLines).includes(line));
-    return { picked, omitted: Math.max(0, signals.length - maxLines), total: lines.length };
+  const strong = [];
+  const weak = [];
+  const rest = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    if (STRONG.test(lines[i])) {
+      strong.push(i);
+    } else if (WEAK.test(lines[i])) {
+      weak.push(i);
+    } else if (!NOISE.test(lines[i])) {
+      rest.push(i);
+    }
   }
-  const rest = lines.filter((line) => !SIGNAL.test(line));
-  const need = maxLines - signals.length;
-  const chosen = new Set([...signals, ...rest.slice(-need)]);
+  // 按**索引**选取，不按行内容：cargo 的输出里大量存在重复行（每个成功测试目标都印一遍
+  // `test result: ok. …`），按值去重会让「同一内容的所有行」一起被选中——第一版正是这样把
+  // 803 条注释塞满上限、把真正的错误挤掉的。索引天然去重且保持原顺序。
+  const chosen = new Set(strong.slice(0, maxLines));
+  for (const index of weak.slice(0, maxLines - chosen.size)) {
+    chosen.add(index);
+  }
+  const budget = maxLines - chosen.size;
+  for (const index of rest.slice(Math.max(0, rest.length - budget))) {
+    chosen.add(index);
+  }
+  const ordered = [...chosen].sort((a, b) => a - b);
   return {
-    picked: lines.filter((line) => chosen.has(line)),
-    omitted: Math.max(0, rest.length - need),
+    picked: ordered.map((index) => lines[index]),
+    omitted: lines.length - ordered.length,
     total: lines.length,
   };
 }
@@ -152,8 +180,7 @@ function main(argv) {
     return 0;
   }
 
-  const window = lines.slice(-TAIL_WINDOW);
-  const { picked, omitted, total } = pickLines(window, maxLines);
+  const { picked, omitted, total } = pickLines(lines, maxLines);
   const title = escapeProperty('gate-failure-summary');
   for (const line of picked) {
     console.log(`::error title=${title}::${escapeData(clamp(line, maxChars))}`);
@@ -164,7 +191,7 @@ function main(argv) {
     );
   }
   console.log(
-    `[ci-diagnose] 共 ${total} 行（窗口取尾部 ${window.length} 行），输出 ${picked.length} 条 annotation`,
+    `[ci-diagnose] 共 ${total} 行，输出 ${picked.length} 条 annotation（其余 ${omitted} 行未展示）`,
   );
   return 0;
 }
