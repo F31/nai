@@ -1,7 +1,7 @@
 # decision-log-integrity Specification
 
 ## Purpose
-建立统一的只追加哈希链决策日志（V3.7 §5.8、INV-19、R07 前置）：所有事件→决策→守门→审批→取消的关键链路记录在同一追加日志中，链完整性可机器校验；按 ADR 0015 勘误实现 critical/telemetry 分级写入与有界缓冲。
+建立统一的只追加哈希链决策日志（V3.8 §5.8、INV-19、R07 前置）：所有事件→决策→守门→审批→取消的关键链路记录在同一追加日志中，链完整性可机器校验；按 ADR 0015 勘误实现 critical/telemetry 分级写入与有界缓冲。
 
 ## Requirements
 

@@ -87,7 +87,7 @@ node --test tests/platform/platform-matrix.test.mjs      # 或经 cargo xtask ch
 
 ## macOS：覆盖 Standard 与 Pro
 
-**这是一条新增需求**：基线 V3.7 全文对 `macos`/`darwin`/`apple` 的命中数为 **0**（只有 Windows 首发、
+**这是一条新增需求**：基线 V3.8 全文对 `macos`/`darwin`/`apple` 的命中数为 **0**（随基线订正重新实测，V3.8 亦为 0；只有 Windows 首发、
 Linux 轻云与 WSL、iOS/Android 实验），registry 里也没有任何平台维度条目。用户拍板 macOS 覆盖
 **R2（Standard）与 R3（Pro）**，该归属已落为**数据断言**（`platforms[macos].release_lines`），由校验钉住——
 文档会漂移，数据不会。

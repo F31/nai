@@ -1,7 +1,7 @@
 # admission-registry Specification
 
 ## Purpose
-建立唯一的机器可读验收注册表，作为 V3.7 切片发布线（Slice-0/R1/R2/R3/实验）的单一事实源；自建 D01–D14 到新验收编号的映射与回填规则，落实 ADR 0015 对基线文本内部矛盾的勘误裁决，保证后续任务卡、认证与报告使用同一套编号且旧编号不再新增。
+建立唯一的机器可读验收注册表，作为 V3.8 切片发布线（Slice-0/R1/R2/R3/实验）的单一事实源；自建 D01–D14 到新验收编号的映射与回填规则，落实 ADR 0015 对基线文本内部矛盾的勘误裁决，保证后续任务卡、认证与报告使用同一套编号且旧编号不再新增。
 
 ## Requirements
 
@@ -14,7 +14,7 @@
 - **THEN** 注册表校验失败，不进入后续切片任务
 
 #### Scenario: Missing release line
-- **WHEN** 某验收项缺少合法 release_line 或线号与 V3.7 §16 裁决不符
+- **WHEN** 某验收项缺少合法 release_line 或线号与 V3.8 §16 裁决不符
 - **THEN** 校验失败并给出可读原因
 
 ### Requirement: Honest backfill mapping with traceable evidence
@@ -39,17 +39,24 @@
 
 ### Requirement: Registry covers every baseline acceptance family
 
-注册表 SHALL 覆盖基线（V3.7 §16、§39.5）定义的**全部**验收家族——`S`/`R`/`A`/`B`/`O`/`P`/`M`/`X`。
+注册表 SHALL 覆盖基线（V3.7 §16 与 §39.5、V3.8 §48.5）定义的**全部**验收家族——`S`/`R`/`A`/`B`/`O`/`P`/`M`/**`H`**/`X`。
 基线把某编号体系段列为验收时，其条目 MUST 全部登记在 `tests/registry.yaml`；
 **「尚未开始」MUST 以 `pending` 表达，MUST NOT 以之为由省略条目**——在册与测得是两个不同的陈述。
 校验 SHALL 拒绝不属这些家族的编号（例如从既有条目拆分出的 `B01a`），
-并 SHALL 断言 M 家族（§37.5、§38.10 共 18 条）全部在册。
+并 SHALL 断言每个「基线已定义完整编号段」的家族**逐号在册**（当前为 **M01–M18** 与 **H01–H18**，各 **18** 条）。
 
 #### Scenario: A baseline family is entirely absent
 
-- **WHEN** 基线把某家族定义为验收编号体系的一部分（如开放平台与技能市场的 M01–M18，见 V3.7 §37.5/§38.10），
-  而 `tests/registry.yaml` 未登记其中任何条目
+- **WHEN** 基线把某家族定义为验收编号体系的一部分（如开放平台与技能市场的 M01–M18，见 V3.7 §37.5/§38.10；
+  或智能体 Harness 与开放互操作的 H01–H18，见 V3.8 §48.5），而 `tests/registry.yaml` 未登记其中任何条目
 - **THEN** 注册表视为不完整，`cargo xtask check --registry` MUST 失败并指出缺失的编号
+
+#### Scenario: A gap inside a registered family
+
+- **WHEN** 某家族已在册但**缺号**（例如 18 条中少了 `H05`），或出现超出该家族定义范围的编号（例如 `H19`）
+- **THEN** 校验失败并**指名**缺失或多出的编号，MUST NOT 因为「家族非空」而通过
+- **AND** 断言 MUST 按家族**分别**计数与比号，MUST NOT 用「合计至少 36 条」这类**可互相掩盖**的口径；
+  且 MUST NOT 是空洞的——MUST 以「人为删掉某个在册编号」的注册表验证它确实失败
 
 #### Scenario: Not-yet-started is registered, not omitted
 

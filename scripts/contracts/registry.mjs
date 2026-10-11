@@ -1,9 +1,24 @@
 import { readFile } from 'node:fs/promises';
 import YAML from 'yaml';
 
-const ID_RE = /^(S|R|A|B|O|P|M|X)[0-9]{2}$/;
+const ID_RE = /^(S|R|A|B|O|P|M|H|X)[0-9]{2}$/;
 const RELEASE_LINES = ['slice_0', 'r1', 'r2', 'r3', 'experimental'];
 const STATUSES = ['implemented', 'tested', 'blocked', 'not_applicable', 'pending'];
+
+/// Families whose baseline definition is a *complete* id range, with the count
+/// the baseline fixes. "Defined but absent", and "present with a hole", are the
+/// two failures this table exists for.
+///
+/// The reason it is a hard gate rather than a comment: ADR 0042 decision 4
+/// deliberately left M01-M18 unregistered, and the consequence was recorded as
+/// a defect — "not started" has to read as `pending`, because *registered* and
+/// *measured* are two different statements, and an omitted family silently
+/// drops the whole part from the "the registry is authoritative" view.
+/// ADR 0047 decision 4 applies that lesson instead of repeating it.
+const COMPLETE_FAMILIES = new Map([
+  ['M', {count: 18, baseline: 'V3.8 §37.5、§38.10'}],
+  ['H', {count: 18, baseline: 'V3.8 §40–§47、§48.5'}],
+]);
 
 /// Contract labels that name an architectural property instead of a callable
 /// capability in `schemas/catalog/capabilities.json`. Kept deliberately tiny:
@@ -80,6 +95,26 @@ export function validateRegistry(registry, catalogIds) {
   // New legacy ids (T/E/U) must not appear in acceptance ids.
   for (const item of registry.acceptance ?? []) {
     if (/^(T|E|U)[0-9]{2}$/.test(item.id)) errors.push(`legacy id ${item.id} must not be re-added`);
+  }
+  // Every family the baseline defines as a complete range must be registered in
+  // full. Counted and compared per family: summing M and H into one "at least 36
+  // rows" total would let one family's surplus hide the other's hole.
+  for (const [family, {count, baseline}] of COMPLETE_FAMILIES) {
+    const expected = Array.from(
+      {length: count},
+      (_, index) => `${family}${String(index + 1).padStart(2, '0')}`,
+    );
+    const present = [...seen].filter(id => id.startsWith(family));
+    const missing = expected.filter(id => !present.includes(id));
+    if (missing.length > 0) {
+      errors.push(
+        `${family} family incomplete (${baseline}, ${count} items): missing ${missing.join(', ')}`,
+      );
+    }
+    const extra = present.filter(id => !expected.includes(id));
+    if (extra.length > 0) {
+      errors.push(`${family} family has ids outside the defined range: ${extra.join(', ')}`);
+    }
   }
   return errors;
 }
