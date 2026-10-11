@@ -2,7 +2,7 @@
 
 - 代码：`crates/nai-media-core/src/mixing.rs`（media 层）
 - 测试：`crates/nai-media-core/tests/mixing.rs`
-- 决策：[ADR 0030](adr/0030-talent-takeover-boundary.md)；判据：`tests/registry.yaml` B05（V3.6 §8.5、W11）
+- 决策：[ADR 0030](adr/0030-talent-takeover-boundary.md)；判据：`tests/registry.yaml` B05（V3.7 §8.5、W11）
 
 本模块把「接管」这件事的**通路语义**落成可执行判据：哪条轨在出声、哪条麦克风在收音、什么时候允许回到自动。
 它不打开任何设备、不采 PCM、不做回声抑制——真实声卡、真实 OBS/伴侣环境与真实回声测试是设备里程碑。

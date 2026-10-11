@@ -3,9 +3,9 @@
 - 项目英文名为 `nai`，仓库为 https://github.com/F31/nai。命名映射见
   `docs/adr/0001-project-name-and-design-baseline.md`。
 - `docs/design.md` 指向唯一实现基线
-  `docs/直播数字人 + 智能体系统技术方案 V3.6.md`（ADR 0015 升基线并勘误）。历史版本（V3.5 等）只供参考；
-  不自行拼接旧条款覆盖 V3.6。规范变更记录 ADR。V3.6 的 dh-* 命名不采纳，工程标识一律 nai-*。
-- 验收唯一来源为 `tests/registry.yaml`（V3.6 S/A/R/O/X + release_line，D→新编号映射自建）。
+  `docs/直播数字人 + 智能体系统技术方案 V3.7.md`（ADR 0042 升基线；ADR 0015 的勘误裁决继续有效）。历史版本（V3.6/V3.5 等）只供参考；
+  不自行拼接旧条款覆盖 V3.7。规范变更记录 ADR。V3.7 的 dh-* 命名不采纳，工程标识一律 nai-*。
+- 验收唯一来源为 `tests/registry.yaml`（V3.7 S/A/R/O/X + release_line，D→新编号映射自建）。
   后续任务卡以 registry 验收为准；旧 T/E/U 编号仅追溯，不再新增。
 - 保持统一稳定内核；Lite/Standard/Pro 为能力预设，
   Local/Hybrid/Distributed 为部署配置，不创建三套核心实现。
@@ -74,13 +74,13 @@ OpenAPI SessionCommand 必需 device_id/seq；校验 schema 与 TS 从源生成�
 Local 正式 protected IPC 默认不变；完整预检/审批/配置、Tauri/IPC、真实设备接线尚未实现，Windows/生产认证未执行。
 详见 docs/control.md、ADR 0014 与 docs/reports/2026-10-08-d14-local-control.md。
 
-D15 验收注册表与基线切换已实现/实测：ADR 0015 把 V3.6 升为唯一实现基线（勘误清单生效，dh-* 命名不采纳），
+D15 验收注册表与基线切换已实现/实测：ADR 0015 把 V3.6 升为唯一实现基线（勘误清单生效，dh-* 命名不采纳；V3.6 后由 ADR 0042 升为 V3.7），
 tests/registry.yaml 为验收唯一来源（S/A/R/O/X + release_line，D01–D14 映射自建并回填）。
 `cargo xtask check --registry` 与 `cargo xtask check --profile portable` 可执行；17 个主规格、15 项归档校验通过。
 决策日志 decision_log（R07 前置）与值守租约（600ms 短期限）为下一轮；播放 ACK 段保持 Draft，不冒充完整 R07。
 详见 docs/adr/0015-v36-baseline-and-admission-registry.md、docs/reports/2026-10-08-d15-admission-registry.md 与 tests/registry.yaml。
 
-W02/W03 决策日志与值守租约已实现/实测（按 V3.6 §31 工作项推进，不再新增 D 编号）：
+W02/W03 决策日志与值守租约已实现/实测（按 V3.7 §31 工作项推进，不再新增 D 编号）：
 nai-storage 新增 0005 迁移、`decision_log` 只追加哈希链、critical/telemetry 分级写入与有界缓冲、`verify_decision_chain`；
 nai-kernel 新增值守租约（显式确认、心跳不续期、到期 600ms 内撤权、重连不恢复）。
 备份契约随迁移升至 schema 5 并重新生成 TS。R07 由 pending 更新为 implemented，S01 补值守证据。
@@ -256,7 +256,7 @@ A02/B03 补证据但保持 implemented **不升级**（真实付费账号无余�
 详见 docs/adr/0025-provider-substitution-boundary.md、docs/reports/2026-10-10-w19-provider-substitution.md 与 docs/provider.md。
 
 W15 升级器基础已实现/实测（ADR 0026）：新增 shared 层 `crates/nai-upgrade-core`（零新增外部依赖），
-把 V3.6 §14.3 的九步升级流程落成可执行编排，registry R05/R09/R10 由 pending 升 implemented（**不标 tested**：
+把 V3.7 §14.3 的九步升级流程落成可执行编排，registry R05/R09/R10 由 pending 升 implemented（**不标 tested**：
 故障注入为内存演练宿主而非真实安装器/断电），O05 按 O02 惯例只补证据保持 pending（其 `automation: ui` 而真实升级 UI 未建），
 S08 补撤销列表证据保持 implemented。核心边界全部可注入——`SignatureVerifier` / `RevocationList` / `SpaceProbe` /
 `ActiveSessionGate` / `SessionDrain` / `UpgradeHost` / `UpgradeJournal`，因此升级器零宿主依赖、portable 下可完整测试。

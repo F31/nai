@@ -1,6 +1,6 @@
 # nai 开发任务与验收跟踪
 
-基线：[V3.6](直播数字人%20%2B%20智能体系统技术方案%20V3.6.md)（ADR 0015 升基线；V3.5 仅追溯）。
+基线：[V3.7](直播数字人%20%2B%20智能体系统技术方案%20V3.7.md)（ADR 0042 升基线；V3.6/V3.5 仅追溯）。
 更新日期：2026-10-10。验收唯一来源 [tests/registry.yaml](../tests/registry.yaml)。
 
 ## 当前检查点
@@ -8,7 +8,7 @@
 已实现 **D01–D11**：工程/生成契约、存储/密钥、内核绑定、宿主/IPC、会话/媒体租约、有界调度与共享预算、API Provider 传输、
 知识完整链路（算法/发布/冻结/远端门控）、智能体/守门评估内核与媒体样本时轴内核。
 已补充 D12 模型包完整性前置检查、D13 平台事件准入逻辑；本轮 D14 本机控制/桌面客户端闭环实测通过。
-ADR 0015 已把基线升为 V3.6 并完成勘误：验收切换为 tests/registry.yaml（S/A/R/O/X + release_line），
+ADR 0015 已把基线升为 V3.6 并完成勘误（V3.6 后由 ADR 0042 升为 V3.7）：验收切换为 tests/registry.yaml（S/A/R/O/X + release_line），
 D01–D14 已回填映射（D12 标 blocked、D13 标 implemented、D14 标 tested，其余 D01–D11 均标 tested）。
 Linux/WSL 当前全 workspace 324 项 Rust 测试、生成无漂移通过。本轮 engine-broker-frame-delivery 以真实 broker+keeper+render-worker 完成单帧投递与有界监督/故障撤权；contracts suite 实际完成 Rust/TS/C++ 编译及十三类消息双向互通。
 `pnpm test:control-smoke` 实际启动自有控制进程并由桌面客户端读取状态、执行 mute/takeover，通过；不等于浏览器人工或声卡验收。
@@ -66,7 +66,7 @@ D11 变更已归档为 `openspec/changes/archive/2026-10-08-d11-media-basics/`�
 本轮 D14 本机控制变更已归档为 `openspec/changes/archive/2026-10-08-d14-local-control/`，6/6 任务完成；16 个主规格与 14 项归档通过校验，见 [控制指南](control.md) 与 [实测报告](reports/2026-10-08-d14-local-control.md)。D14 整体仍未完成。
 本轮 D15 验收注册表与基线切换已归档为 `openspec/changes/archive/2026-10-08-d15-admission-registry/`，6/6 任务完成，主规格 `admission-registry` 生效；17 个主规格与 15 项归档通过校验，见 [实测报告](reports/2026-10-08-d15-admission-registry.md)。下一轮：decision_log 哈希链（R07 前置）与值守租约。
 
-本轮 W02/W03（决策日志哈希链与值守租约，V3.6 工作项，不使用 D 编号）已归档为
+本轮 W02/W03（决策日志哈希链与值守租约，V3.7 工作项，不使用 D 编号）已归档为
 `openspec/changes/archive/2026-10-08-w02-w03-decision-log-duty-lease/`，主规格 `decision-log-integrity` 与
 `duty-lease` 生效；19 个主规格与 16 项归档通过校验，见
 [实测报告](reports/2026-10-08-w02-w03-decision-log-duty-lease.md)。
@@ -605,17 +605,17 @@ W38 的桌面审批面/UI 层、W39 的攻击者可控输入面随机测试、W4
 | D13 | 平台与网关 | D05/D06 + 官方资料/条件 | 准入逻辑已实现/实测；SDK/网关未开始；真实平台认证 Blocked | [报告](reports/2026-10-08-d13-platform-ingress.md)、8 项新增 Rust 测试、平台 epoch/代次三语言互通 |
 | D14 | 控制 API 与桌面 | D06/D10/D11 | 本机工程状态/撤权闭环已实现实测；完整预检/审批/配置和 Tauri/IPC 未开始 | [报告](reports/2026-10-08-d14-local-control.md)、9 项新增 Rust + 5 项客户端测试、实际进程冒烟；不等于 D14 整体完成 |
 | D15 | 验收注册表与基线切换 | D01–D14 + ADR 0015 | registry.yaml + D→映射已实现/实测；决策日志/值守租约下一轮 | [本轮报告](reports/2026-10-08-d15-admission-registry.md)、`cargo xtask check --registry`、44 项验收回填 |
-| D16 | （V3.5 遗留：Pro 资源与团队） | D07/D14 | 未开始 | 后续按 V3.6 R3 切片推进 |
-| D17 | 升级器（V3.5 遗留 → V3.6 W15） | D03–D05/D14 | 已实现（R05/R09/R10；真实安装器/签名链未接，不标 tested） | [报告](reports/2026-10-10-w15-upgrade-core.md)、[ADR 0026](adr/0026-upgrade-core-boundary.md) |
-| D18 | （V3.5 遗留：远程渲染与扩展宿主） | 对应契约/profile | 未开始 | 后续按 V3.6 R2/R3 推进 |
-| D19 | （V3.5 遗留：安装与完整认证） | 前述目标能力 | 未开始 | 后续按 V3.6 R1–R3 与 registry 验收推进 |
+| D16 | （V3.5 遗留：Pro 资源与团队） | D07/D14 | 未开始 | 后续按 V3.7 R3 切片推进 |
+| D17 | 升级器（V3.5 遗留 → V3.7 W15） | D03–D05/D14 | 已实现（R05/R09/R10；真实安装器/签名链未接，不标 tested） | [报告](reports/2026-10-10-w15-upgrade-core.md)、[ADR 0026](adr/0026-upgrade-core-boundary.md) |
+| D18 | （V3.5 遗留：远程渲染与扩展宿主） | 对应契约/profile | 未开始 | 后续按 V3.7 R2/R3 推进 |
+| D19 | （V3.5 遗留：安装与完整认证） | 前述目标能力 | 未开始 | 后续按 V3.7 R1–R3 与 registry 验收推进 |
 
-D 表是 V3.5 追溯；自 ADR 0015 起开发按 V3.6 切片发布线（Slice-0/R1/R2/R3/实验）与
+D 表是 V3.5 追溯；开发按切片发布线（Slice-0/R1/R2/R3/实验，基线版本经 ADR 0042 升为 V3.7）与
 `tests/registry.yaml` 验收推进，不再新增 D 编号。旧 T/E/U 仅追溯，不再新增。
 任务顺序不缩减 Standard/Pro 功能目标。D12/D13 外部条件未满足时，继续独立任务；
 对应真实认证保留 Blocked，不用演练结果替代。
 
-## V3.6 切片工作项进展
+## V3.7 切片工作项进展
 
 | 工作项 | 目标 | 验收 | 状态 |
 |---|---|---|---|

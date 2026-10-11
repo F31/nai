@@ -6,7 +6,7 @@ test('registry.yaml is machine-readable and internally consistent', async () => 
   const registry = await readRegistry();
   const errors = validateRegistry(registry);
   assert.deepEqual(errors, []);
-  // Cover V3.6 §16 + §30.4 acceptance families and release lines.
+  // Cover V3.7 §16 + §30.4 acceptance families and release lines.
   assert.ok(registry.acceptance.length >= 44, 'expected >=44 acceptance items');
   assert.ok(registry.mapping.d01_to_d14.D14, 'expected D14 mapping');
   const slice0 = registry.acceptance.filter(a => a.release_line === 'slice_0');

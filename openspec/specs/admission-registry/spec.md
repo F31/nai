@@ -1,7 +1,7 @@
 # admission-registry Specification
 
 ## Purpose
-建立唯一的机器可读验收注册表，作为 V3.6 切片发布线（Slice-0/R1/R2/R3/实验）的单一事实源；自建 D01–D14 到新验收编号的映射与回填规则，落实 ADR 0015 对 V3.6 内部矛盾的勘误裁决，保证后续任务卡、认证与报告使用同一套编号且旧编号不再新增。
+建立唯一的机器可读验收注册表，作为 V3.7 切片发布线（Slice-0/R1/R2/R3/实验）的单一事实源；自建 D01–D14 到新验收编号的映射与回填规则，落实 ADR 0015 对基线文本内部矛盾的勘误裁决，保证后续任务卡、认证与报告使用同一套编号且旧编号不再新增。
 
 ## Requirements
 
@@ -14,7 +14,7 @@
 - **THEN** 注册表校验失败，不进入后续切片任务
 
 #### Scenario: Missing release line
-- **WHEN** 某验收项缺少合法 release_line 或线号与 V3.6 §16 裁决不符
+- **WHEN** 某验收项缺少合法 release_line 或线号与 V3.7 §16 裁决不符
 - **THEN** 校验失败并给出可读原因
 
 ### Requirement: Honest backfill mapping with traceable evidence
