@@ -566,6 +566,19 @@ W44 让这条通道**第一次真实使用**：W43 的勘误提交 `81ce88b` 触
 故「本机 Windows 从未复现」是**结构性必然**而非非确定性证据（报告正文的判定依据是「同一份代码时红时绿」，不受影响）。见
 [报告](reports/2026-10-11-w44-ci-diagnose-signal-to-noise.md)。
 
+W48 **修掉**了 W44 定位到断言行的那条 ubuntu 间歇失败（`halt_during_media_drill_prewarm_never_commits_a_frame`）。
+定性先说清：**engine 的拆除路径本来就是完整的**（`DrillGuard::tick` 在每个轮询点检查 graceful halt 与 epoch 撤销），
+所以问题**不在**「engine 不会中止」，而在**测试没能保证 halt 真的先到**——`Engine::start` 返回后测试才写 halt 文件，
+而 supervision 线程此时可能已把 drill 跑完并提交；断言「halt 先于提交 ⇒ 不得记录提交」里的那个**先后顺序是靠墙钟赌出来的**。
+W48 **不放宽断言**，而是让前提成立：新增 Linux 专用夹具 `park_asset_on_fifo`（把首个 avatar 素材换成**无写端命名管道**，
+render-worker 在 prewarm 按序读素材、`File::open` 即阻塞，于是它**不可能**走到提交），并在写 halt 前
+`wait_for_worker_pid`（复用既有 `/proc` 扫描，`wait_for_keeper_pid` 抽成通用 `wait_for_supervised_pid`）确认
+worker **确已进入 prewarm**——否则 halt 可能落在更早的 keeper 握手里，drill 根本到不了 prewarm，测试会**假通过**。
+夹具同形（不带管道）在 `media_drill_produces_a_committed_frame_through_the_real_worker` 里确实提交过帧，
+故它移除的是**时序赌博**，不是提交能力。**如实披露**：被修测试与夹具都是 `#[cfg(target_os = "linux")]`，本机（Windows）
+**不编译**它们，故本机门控只能证明「未误伤可移植目标」，**成立与否以 CI 的 ubuntu job 结论为准**。见
+[报告](reports/2026-10-11-w48-deterministic-prewarm-halt-drill.md)。
+
 下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03、P01 的判定骨架与 O04 的设备侧、W36 的真实链路接入纪律、W37 的线上形状修正、
 W38 的桌面审批面/UI 层、W39 的攻击者可控输入面随机测试、W40 的 B01 判据+执行体、W41 的完整工程 profile（前端门控）与 W42 的 CI 接线，S11 与 B01 的登记缺口均已补）；轨道二的自备资源**已有真实凭据落地**（文本／语音两条真实链路经本栈走通并产出真值证据，文本模型标准化为 `agnes-2.5-flash`）；剩余 **O01**（需演示包与约 10 分钟首句演练、约 30 分钟真实输出验证）、
 **O02/O05**（UI 验收，按既有惯例 `pending`）与阻塞项 **B01**（**判定机制、载荷载体、参考答案判据与评估执行体均已就位**；缺 100 题集内容与真实知识库内容，均为外部投入）、**B02/D12**（模型与目标机证据）、
@@ -585,7 +598,10 @@ R1 含 `M01–M07、M13–M16、M18`、R2 含 `M08–M12、M17`），而注册�
 并给出精确到行的根因——`panicked at apps/engine/tests/engine.rs:446:5`，即**第二个**断言
 （halt 后决策日志不得再出现 `media_drill_committed`），**不是** `halt_and_wait` 的 15 s 上限、**不是 hang**；
 机制是 `Engine::start` 返回后测试才写 halt 文件，而 supervision 线程此时**可能已把 drill 跑完并提交了帧** ⇒
-**halt 与 drill 的时序竞态**。**修法未做**（方向：给测试确定性的 prewarm 阻塞点，而非放宽断言）；**截断成因仍未定**）。
+**halt 与 drill 的时序竞态**。**W48 已修**（**不放宽断言**：给被测 render-worker 一个确定性的 prewarm 阻塞点——
+把首个 avatar 素材换成**无写端命名管道**使 worker 钉死在 prewarm，且**等到 worker 进程真的被派生**才发 halt；
+断言与决策链校验一字不改。该测试与夹具均为 Linux-only，本机门控**不能**证明修法成立，**以 CI ubuntu 结论为准**）；
+**截断成因仍未定**）。
 同日 `064d754`（**只改文档**）的 run 为 **ubuntu `success` / windows `failure`**：同一份 Rust 代码在 ubuntu 上时红时绿
 （`ca47168` 红、`064d754` 绿）⇒ 非确定性再添一例；**windows 侧失败是 10-10 以来首次**，落在 `crates/nai-runtime` 的 4 个测试上
 （`StorageError { DeadlineExceeded, "operation stopped" }` / `{ PermissionDenied, "scope permission missing" }`）⇒

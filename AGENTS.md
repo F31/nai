@@ -766,3 +766,30 @@ W47 消除「SBOM」这个**无定义空位**。基线三处要求它（§11.6�
 portable 语义按 ADR 0041 不变；但**其单测在门控内**，故不是幽灵工具）；不覆盖前端 npm 依赖/原生二进制/模型素材/插件包 BOM；
 不做发布期元数据注入；不做外部 Schema 校验（**只声称是 CycloneDX 1.5 文档，不声称通过完整 schema 校验**）。
 见 docs/reports/2026-10-11-w47-sbom-supply-chain.md、docs/adr/0043-sbom-generation-and-scope.md。
+
+W48 修掉 W44 定位到断言行的那条 **ubuntu 间歇失败**（`halt_during_media_drill_prewarm_never_commits_a_frame`）。
+**先把定性说清：engine 的拆除路径本来就是完整的**（`DrillGuard::tick` 在每个轮询点检查 graceful halt 与
+epoch 撤销，且所有 tick/wait 都在提交之前），所以问题**不在**「engine 不会中止」，而在**测试没能保证 halt 真的先到**——
+`Engine::start` 在 engine 打印控制地址后即返回、测试**随后才写 halt 文件**，而 supervision 线程此时**可能已把
+整个 media drill 跑完并提交了帧** ⇒ 那条「halt 先于提交 ⇒ 不得记录提交」里的**先后顺序是靠墙钟赌出来的**，
+CI 调度差异使它时红时绿（同一份 Rust 代码 `ca47168` 红、只改文档的 `064d754` 绿）。
+故 **不放宽断言**（断言与决策链校验一字不改），而是**让前提成立**：新增 Linux 专用夹具 `park_asset_on_fifo`
+（把**首个 avatar 素材**换成**无写端命名管道**——render-worker 在 prewarm 按序读素材、`File::open` 即阻塞，
+于是它**不可能**走到提交），并在写 halt 前 `wait_for_worker_pid` 确认 **worker 确已进入 prewarm**。
+**为何必须等 worker 出现**：否则 halt 可能落在更早的 `await_grant` keeper 握手里，drill 根本到不了 prewarm，
+worker 不被派生、提交无从发生——测试会**假通过**，不再在测它名字里的那件事。
+**为何阻塞点不是恒过**：同夹具（不带管道）在 `media_drill_produces_a_committed_frame_through_the_real_worker`
+里**确实提交过帧**，它移除的是时序赌博而非提交能力；且若 halt 路径失效，drill 会卡在 prewarm 直到**自身 15s 期限**，
+`halt_and_wait`（同样 15s）便无法干净通过。**记下一个边界**：`--pcm` **不能**当阻塞点——engine 的
+`pcm_samples` 取 `metadata().len()`，管道大小为 0，会在派生 worker **之前**判 `PCM must hold whole f32 samples`，
+那是另一条路径而非 prewarm；素材则可以，因为 engine 侧**不读素材内容**（只作为 `--asset` 转发给 worker）。
+不引入 `libc`：`mkfifo` 走 `Command::new("mkfifo")`，与同文件既有的 `Command::new("kill")` 同构。
+**验证与边界（如实披露）**：`check-deps` 18 包、`check --registry`、`check --profile portable`
+（**82 目标 = 65 `Running` + 17 `Doc-tests`、706 passed / 0 failed**；706 较 W42 的 695 **恰 +11 = W47 的 sbom 单测**，
+**本轮零新增测试**）、`validate --all --strict` 38/38 均通过——但**被修测试与夹具都是 `#[cfg(target_os = "linux")]`，
+Windows 上不编译**，本机 `tests\engine.rs` 目标只跑 2 个跨平台测试，故**本机门控不能证明修法成立**，
+**以 CI 的 ubuntu job 结论为准**（匿名读 `/actions/runs` 与 `/check-runs/{id}/annotations`）。
+新增规格需求「断言因果顺序的演练 SHALL 由构造保证该顺序、MUST NOT 依赖墙钟时序」。
+**不做**：不改 `src/`/`crates/`、不改监督语义与 `AVATAR_TIMEOUT`、不改任何验收 `status`、
+不修 Windows 侧 `nai-runtime` 的时序脆弱（另属一类）、截断成因仍未定。
+见 docs/reports/2026-10-11-w48-deterministic-prewarm-halt-drill.md。

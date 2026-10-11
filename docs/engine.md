@@ -121,6 +121,10 @@ pnpm test:engine-smoke            # 真实 engine + 桌面 ControlClient
 
 实测见 [报告](reports/2026-10-09-engine-assembly.md)：无 token 401、mute 后 epoch 递增并落 critical
 日志、keeper 强杀后撤权且控制服务保持可达、HTTP 撤权后停止续租、媒体演练真实提交、halt 后退出 0。
+`halt_during_media_drill_prewarm_never_commits_a_frame` 的**确定性由夹具保证**，不依赖「halt 请求发得足够早」：
+把首个 avatar 素材换成**无写端命名管道**让 render-worker 钉在 prewarm（其素材按序读取，读第一项即阻塞），
+并**等到该 worker 进程真的被派生**才写 halt；断言与决策链校验不放宽。该测试与夹具均为 Linux-only
+（Windows 不编译），见 [报告](reports/2026-10-11-w48-deterministic-prewarm-halt-drill.md)。
 手工事件链路的真实进程证据（哈希链校验、回放一致、守门缺失/陈旧 epoch/注入失败不外发）见
 [报告](reports/2026-10-09-engine-manual-event-pipeline.md) 与 [ADR 0022](adr/0022-engine-manual-event-pipeline-boundary.md)。
 文本→语音→2D→播放完成的证据（`PlaybackAck` 只在完整完成时出现、帧总数与声明样本总数一致、注入语音

@@ -211,6 +211,27 @@ pub fn write_avatar(dir: &Path) -> AvatarFiles {
     }
 }
 
+/// Replaces one declared avatar asset with a named pipe that has no writer, so
+/// the render-worker parks in prewarm: it reads its assets in order and its
+/// first read blocks in `File::open` (the pipe is opened `O_RDONLY` without
+/// `O_NONBLOCK`). The engine tears the process down when it halts, so the pipe
+/// never leaves a stray process behind.
+///
+/// This exists to make "the halt arrives while the worker is still prewarming"
+/// a fact rather than a race: without it the drill could finish before the halt
+/// is observed, and the assertion would measure scheduler timing instead of the
+/// halt. `write_pcm` cannot carry the same role — the engine reads the PCM's
+/// length before it spawns the worker, and a pipe has length zero.
+#[cfg(target_os = "linux")]
+pub fn park_asset_on_fifo(path: &Path) {
+    fs::remove_file(path).unwrap();
+    let status = std::process::Command::new("mkfifo")
+        .arg(path)
+        .status()
+        .expect("mkfifo runs");
+    assert!(status.success(), "mkfifo failed for {}", path.display());
+}
+
 /// Raw little-endian f32 PCM (no JSON, no base64).
 pub fn write_pcm(dir: &Path, samples: usize) -> PathBuf {
     let path = dir.join("pcm.bin");

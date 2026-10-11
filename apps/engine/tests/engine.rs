@@ -406,6 +406,13 @@ fn halt_during_media_drill_prewarm_never_commits_a_frame() {
     let keeper = binary("nai-output-keeper");
     let render_worker = binary("nai-render-worker");
     let avatar = write_avatar(root.path());
+    // Park the render-worker in prewarm: its first declared asset is a named
+    // pipe with no writer, so the prewarm read blocks. Without this the drill
+    // could reach its commit before the halt is observed, and the assertion
+    // below would be measuring scheduler timing rather than the halt. The same
+    // fixture without the pipe commits a frame in the drill test above, so this
+    // removes the race, not the ability to commit.
+    park_asset_on_fifo(&avatar.assets[0].1);
     let pcm = write_pcm(root.path(), 320);
     let mut extra = vec![
         "--keeper".to_string(),
@@ -430,8 +437,13 @@ fn halt_during_media_drill_prewarm_never_commits_a_frame() {
     extra.push("test-license".to_string());
     let mut engine = Engine::start(root.path(), &extra);
 
-    // Halt right away, while the render-worker is still prewarming: the bounded
-    // wait must stop without blocking and must never log a committed frame.
+    // Halt only once the drill has actually spawned its render-worker. From
+    // that point the worker is inside prewarm and parked on the pipe, so the
+    // halt is issued while the worker is prewarming and never before it exists
+    // — otherwise the drill would never reach the stage this test names. The
+    // bounded wait must stop without blocking and must never log a commit.
+    wait_for_worker_pid(engine.child.id(), Duration::from_secs(15))
+        .expect("the drill spawns its render-worker");
     assert!(
         engine.halt_and_wait().success(),
         "halt must be bounded and clean"
@@ -602,6 +614,21 @@ fn provision_with_engine(root: &Path) {
 /// parent pid. Linux-only evidence gathering.
 #[cfg(target_os = "linux")]
 fn wait_for_keeper_pid(parent: u32, timeout: Duration) -> Option<u32> {
+    wait_for_supervised_pid(parent, timeout, "nai-output-keeper", "--watchdog-drill")
+}
+
+/// Finds this engine's supervised render-worker, which is spawned by the drill
+/// and parked in prewarm. Linux-only, like the helper above.
+#[cfg(target_os = "linux")]
+fn wait_for_worker_pid(parent: u32, timeout: Duration) -> Option<u32> {
+    wait_for_supervised_pid(parent, timeout, "nai-render-worker", "--render-drill")
+}
+
+/// Finds a supervised child of `parent` whose command line names `exe` and
+/// carries `marker`. A /proc scan: an entry may vanish between read_dir and the
+/// status read, so a missing file skips the entry rather than failing.
+#[cfg(target_os = "linux")]
+fn wait_for_supervised_pid(parent: u32, timeout: Duration, exe: &str, marker: &str) -> Option<u32> {
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
         if let Ok(entries) = std::fs::read_dir("/proc") {
@@ -624,7 +651,7 @@ fn wait_for_keeper_pid(parent: u32, timeout: Duration) -> Option<u32> {
                     continue;
                 };
                 let text = String::from_utf8_lossy(&cmdline);
-                if text.contains("nai-output-keeper") && text.contains("--watchdog-drill") {
+                if text.contains(exe) && text.contains(marker) {
                     return Some(pid);
                 }
             }
