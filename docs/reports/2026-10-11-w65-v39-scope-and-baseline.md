@@ -197,18 +197,28 @@ D6/D7 与 D1–D5 同源：**陈述与仓库不符**。其中 D7 严重度最高
 按 `^     Running ` 数会得到 **70**，比真实值多 1。
 
 **契约零漂移的取证方式（如实说明）**：`cargo xtask schema --check` 在本机**无法运行**——
-`generate.mjs` 内部的 `spawnSync(process.execPath, …)` 报 **`EBUSY`**（managed 与 system node 均复现）。
-这是**主机/沙箱对「node 自旋 node」的限制**，不是仓库缺陷（本机 `wsl.exe`、Docker 亦不可用）。
-故本轮不以「跑过 `schema --check`」取证，而以**结构性理由**取证并如实标注其边界：
+`generate.mjs` 内部的 `spawnSync(process.execPath, …)` 报 **`EBUSY`**；连最小复现也失败：
+`node -e "require('child_process').spawnSync(process.execPath,['-v'])"` 在 **managed 与 system node 上都报 EBUSY**
+⇒ 这是**主机/沙箱对「node 自旋 node」的限制**，不是仓库缺陷（本机无 `wsl.exe`、无 Docker，无法绕过）。
+故本轮不以「跑过 `schema --check`」取证，改用**两条互补的证据**：
 
-- 生成器的输入只有 `schemas/catalog/capabilities.json` 与 `schemas/{config,plugin}/*.schema.json`
-  （`generate.mjs` 的 `jsonSources` 列表）；
-- 实测 `git status`：`schemas/catalog/capabilities.json` **未被修改**，`crates/`、`packages/` 亦无改动；
-  本轮改动的两个 schema 文件（`schemas/tests/registry.schema.json`、`schemas/platform-matrix/platforms.json`）
-  **都不在**生成器输入列表内；
-- ⇒ 输入不变 ⇒ 生成物不可能漂移；
-- 该检查由 **CI 的独立步骤**兜底（`.github/workflows/foundation.yml`：「Check generated contracts without modifying
-  consumers」⇒ `cargo xtask schema --check`），故推送后仍需看 CI 结论。
+1. **结构性理由**（本机可判，充分条件）：生成器的输入只有 `schemas/catalog/capabilities.json` 与
+   `schemas/{config,plugin}/*.schema.json`（`generate.mjs` 的 `jsonSources` 列表）。实测 `git status`：
+   `schemas/catalog/capabilities.json` **未被修改**，`crates/`、`packages/` 亦无改动；本轮改动的两个 schema 文件
+   （`schemas/tests/registry.schema.json`、`schemas/platform-matrix/platforms.json`）**都不在**生成器输入列表内
+   ⇒ **输入不变 ⇒ 生成物不可能漂移**。
+2. **CI 的独立步骤**（直接证据）：见下表的第 9 步。
+
+### CI 复核（匿名观测 `api.github.com`，无需 runner、无需凭据）
+
+推送后 `on: push` 自动触发；两个平台（`ubuntu-24.04` / `windows-latest`）**跑同一条 `check --profile full`**：
+
+| run | head | 结论 | 关键步骤 |
+|---|---|---|---|
+| 38176350018 | `d71c542` | **success** | 两 job **全绿**；第 9 步 **Check generated contracts without modifying consumers = success**（即本机跑不了的 `cargo xtask schema --check`）；第 21 步 `pnpm spec:validate`、第 22 步 `openspec validate --archived` 均通过；第 10 步为 `check --profile full` |
+| 38177280541 | `0e938a9` | **success** | 两 job **全绿**（`foundation (ubuntu-24.04)` 与 `foundation (windows-latest)` 均 `completed success`）⇒ job 内全部步骤含第 9 步 `Check generated contracts without modifying consumers` 通过；本轮仅订正 ADR 0048 的三处规模数字与一处 schema 描述，**未触及生成器输入与 `crates/`·`packages/`** |
+
+⇒ **本机限制被 CI 兜底，且已实测通过**：「契约零漂移」至此是**直接证据**，不再是推理。
 
 ## 七、未做与遗留
 
@@ -237,3 +247,9 @@ D6/D7 与 D1–D5 同源：**陈述与仓库不符**。其中 D7 严重度最高
 6. **只断言「非空」的门控是空洞门控**。能力包断言必须是**三向**的（集合完整 / 无混入 / 与首版门槛不相交），
    并用**三种注入**证明它确实会失败；把一条能力包条目复制到别的线，集合计数不会变。
 7. **数字口径要自己数**：cargo 的包装行会让测试目标数**多 1**（70 vs 69）；`cmd | tail`/`| tee` 会吞退出码。
+8. **本机跑不了 ≠ 可以不写**。`cargo xtask schema --check` 在本机报 `EBUSY` 是**主机限制**（node 自旋 node）；
+   正确做法是**写清限制**、给出**结构性理由**当替代取证、并**指到 CI 的对应步骤**，然后**真去看 CI 结论**。
+   **不要把「跑不了」写成「已通过」**，也不要因为跑不了就把这条验证从报告里删掉。
+9. **代码写完文档 ≠ 文档就对了**：本轮 ADR 先写、之后又在基线文档补了一处订正（§47.6 编号说明行），
+   规模随之从 23 hunk / 41 行变成 **24 / 42**，而 ADR 里的三个数字**没跟着改**（已由后续提交 `0e938a9` 订正）。
+   **凡文档内出现可实测的数字，改完后要重新数一遍**；ADR 的「可复核不变量」如果自己不自洽，就失去了意义。
