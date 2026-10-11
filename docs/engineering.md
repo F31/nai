@@ -56,6 +56,10 @@ API Provider 传输、SSE/二进制流解析、有界重试/取消与 usage 接�
 已实现 `cargo xtask test --suite scheduler`，覆盖调度、共享预算/并发、结算/对账与持久派发 claim，详见 [调度指南](scheduler.md)。
 已实现 `cargo xtask test --suite provider`，覆盖传输/重试/取消/SSE/二进制流与 usage 接线，详见 [Provider 指南](provider.md)。
 已实现 `cargo xtask test --suite knowledge`，运行 knowledge-core 与 storage，覆盖中文/向量检索、发布 CAS/冻结绑定/恢复、远端契约/政策门控与 rerank，详见 [知识指南](knowledge.md)。
+W47 新增 `cargo xtask sbom [--out <path>]`：从 `cargo metadata --locked` 与 `Cargo.lock` 的 SHA-256 生成
+CycloneDX 1.5 物料清单（**零新增依赖、离线、逐字节确定**；许可只在能断言时记为 SPDX id/expression，
+否则原样记为 name；产物自带范围与「不能用作什么」声明）。它是产出命令，**不在 `check --profile` 内**；
+其单测在 `cargo test -p nai-xtask --lib` 内运行。见 [报告](reports/2026-10-11-w47-sbom-supply-chain.md) 与 [ADR 0043](adr/0043-sbom-generation-and-scope.md)。
 D10 新增 `nai-kernel::evaluate` 纯逻辑智能体/守门评估（decision 路由、四阶段 guard、skill/memory/show），详见 [内核指南](kernel.md)；实际守门插件由插件层实现。
 D11 新增 `nai-media-core::timeline` 可移植媒体时序内核（audio/clock/ring/resample/record/ack 与双水位 commit），`cargo test -p nai-media-core` 覆盖，详见 [媒体指南](media.md)；Windows 窗口/音轨设备仍 Blocked。
 W06 前置新增 plugin 层 `nai-avatar-2d`：素材许可/hash/闭包准入、样本时轴RMS平滑嘴型和实际RGBA帧合成；`cargo test -p nai-avatar-2d --offline` 可执行。详见 [2D指南](avatar-2d.md)；独立worker/共享内存/root接线未实现，软件测试不替代Windows帧率/设备认证。

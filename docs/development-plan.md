@@ -575,7 +575,10 @@ W38 的桌面审批面/UI 层、W39 的攻击者可控输入面随机测试、W4
 R1 含 `M01–M07、M13–M16、M18`、R2 含 `M08–M12、M17`），而注册表一条未列、id 家族白名单 `^(S|R|A|B|O|P|X)[0-9]{2}$` 也不含 `M`。
 现已登记 18 条 `pending`（在册未开始）并扩白名单、加家族守卫；**不改任何既有 status**。见
 [报告](reports/2026-10-11-w46-register-m-series.md)。）
-仓库内仍可控的剩余缺口：**S08**（workspace SBOM 未生成；插件/供应链其余部分已实现）；
+仓库内仍可控的剩余缺口：**S08 的真实签名链**（**W47 已消除「SBOM」这个无定义空位**——立 `supply-chain-sbom`
+规格并落地 `cargo xtask sbom`：CycloneDX 1.5、零新增依赖、离线、逐字节确定，产物自带范围声明；
+但基线同样要求的**依赖漏洞与许可政策审计**（需 advisory 数据源与允许/拒绝清单）仍缺，故 **S08 保持 `implemented` 不升级**。
+见 [报告](reports/2026-10-11-w47-sbom-supply-chain.md) 与 [ADR 0043](adr/0043-sbom-generation-and-scope.md)）；
 **ubuntu 侧 CI 的间歇性失败**（W42 登记事实、W43 补上观测通道；**W44 由该通道首次真实捕获**，失败已定位到**测试级**——
 `halt_during_media_drill_prewarm_never_commits_a_frame`，且该测试为 Linux-only，故「本机 Windows 从未复现」属**结构性必然**；
 但**根因类别已定**：推送后该 run 在 ubuntu 上再次失败，新脚本产出 **11 条注解全部是信号**且**无截断警示**，

@@ -735,3 +735,34 @@ W46 把注册表补全到「全部验收家族在册」：基线 §16 与汇总�
 规格（admission-registry）新增一条需求：注册表 SHALL 覆盖基线定义的全部验收家族，未开始 MUST 以 `pending` 在册、不得省略。
 **不做**：不实现 M01–M18 任何一条（W26–W40 未动工）；不把 M 并入 `check --profile portable`（未实现不应让工程门控变红）；
 不写通用的设计文档解析器（只对触发缺口的 M 家族落确定守卫）。见 docs/reports/2026-10-11-w46-register-m-series.md。
+
+W47 消除「SBOM」这个**无定义空位**。基线三处要求它（§11.6「每次发布附 SBOM」、§29.5 发布目录含「SBOM 与许可」、
+§11.3 T-08 列为供应链控制），仓库实现为零，S08 notes 自记「SBOM 与真实签名链仍待建」。真正的问题不是缺文件而是
+**没有定义**：不说谁产、什么格式、覆盖什么 ⇒「每次发布附 SBOM」不可判真伪，任何清单都能自称 SBOM。
+先立规格（新能力 `supply-chain-sbom`，6 条需求）再实现，裁决见 **ADR 0043**。
+**工具链选型以实测为据**：`cargo metadata --locked` 已提供 299 包的 name/version/license/source/repository
+（299/299 带 license），只有 `checksum` 拿不到（当前 cargo 的 metadata 输出与 `cargo_metadata 0.23.1` 的 `Package`
+都没有该字段）；`Cargo.lock` 有 281 条 `checksum`，**恰等于 299 − 18 个 workspace 成员**。而 `xtask` 本来就依赖
+`cargo_metadata`/`serde_json`（`check-deps` 正用前者）⇒ **自建生成器零新增依赖**。故**不装**任何新工具：
+`cargo-cyclonedx`/`cargo-sbom` 需联网 `cargo install`（为审计供应链先引入一个自己进入供应链的工具），
+`syft` 是需下载的非 Rust 二进制（违反 ADR 0041 的「portable 只需 Rust 工具链」）。
+交付 `cargo xtask sbom [--out <path>]`（`xtask/src/sbom.rs`，11 项单测）：输出 **CycloneDX 1.5 JSON**，
+实测 299 组件、175,111 字节、`id 95 / expression 194 / name 10 / no-license 0`、281 带 SHA-256。
+**三条取舍**：①**确定性优先于时间戳**——省略可选的 `timestamp`/`serialNumber` 使「同一锁文件 ⇒ 逐字节相同」成立
+（两份 SBOM 的 diff 即等价于依赖闭包真变了），发布期元数据注入不在本轮范围；②**许可三态、绝不静默改写**——
+工作区 4 种旧式斜杠写法（`Apache-2.0 / MIT` 等，共 10 个包）**不是合法 SPDX 表达式**（`/` 不是运算符），
+塞进 `expression` 会产出「格式不合法却看似正常」的数据、改写成 `OR` 则替上游做许可解释，故原样记入 `license.name`
+（CycloneDX 里 `id`/`name` 是两个字段，「是不是 SPDX 标识」天然可见）；「已知 id」是**显式表而非形状匹配**
+（`BSD-2-Clause-FreeBSD` 已被 SPDX 废弃 ⇒ 断成 `id` 可能说错，记成 `name` 只是少说），代价是表外合法 id 会降级为 name
+——所以生成时把四类计数打到 stderr 让偏移**可见**；③**范围声明写进产物自身**（`metadata.properties`
+的 `nai:sbom:scope|excluded|not-evidence-for`），因为用仓库内文档约束一份会外发的产物等于没有约束。
+**验证**：与两个独立来源逐项交叉核对——组件 299 = 锁文件 `[[package]]` 299；哈希**逐个**比对 **281/281 一致、0 不符**；
+许可**逐条**比对 **299/299 原样、0 改写**；斜杠包数 10 = verbatim-name 计数；`purl` 唯一。上述两项是用**独立的 Python 实现**
+重新解析比对的，不是复用被测代码的结论。单测 40 → **51 passed**；反向自检：缺 `checksum` 的 registry 包与畸形校验和
+都被**具名拒绝**。**解析器有一个 bug 是靠测试失败才发现的**——最初在匹配键**之前**就解引号，于是 `dependencies = [`
+被当作「不是带引号的字符串」而报错；修法是**先匹配键、再解引号**。
+**不做**：不改任何验收 `status`（S08 仍 `implemented`——真实签名链仍缺、漏洞与许可**政策**审计仍缺，那需要 advisory
+数据源与允许/拒绝清单，是**政策**而非**记录**）；不并入 `engineering_checks`（生成是产出命令会写文件，非只读检查，
+portable 语义按 ADR 0041 不变；但**其单测在门控内**，故不是幽灵工具）；不覆盖前端 npm 依赖/原生二进制/模型素材/插件包 BOM；
+不做发布期元数据注入；不做外部 Schema 校验（**只声称是 CycloneDX 1.5 文档，不声称通过完整 schema 校验**）。
+见 docs/reports/2026-10-11-w47-sbom-supply-chain.md、docs/adr/0043-sbom-generation-and-scope.md。
