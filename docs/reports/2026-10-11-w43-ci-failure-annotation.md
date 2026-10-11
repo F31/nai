@@ -149,3 +149,49 @@ probe 分支已在验证后删除（本地与远端）。
 - 不把 `::error::` 这类 CI 语法写进 `xtask` 或前端门控——那是 CI 关注点，写进工具会让工具在没有 CI 的环境里
   产生无意义输出，也会把「工具的失败语义」与「CI 的呈现」耦合。
 - 不动 `scripts/frontend-gate.mjs` 一行；不新增依赖；不新增 workspace 包。
+
+## 勘误（2026-10-11 同日复核）：通道的第一次真实使用暴露了选取缺陷
+
+**触发事件**：run [`38109458805`](https://github.com/F31/nai/actions/runs/38109458805)（提交 `1aee4d6`，
+**只含文档与归档改动**，与此前全绿的 `9e6ddfe` **代码完全相同**）在 `foundation (ubuntu-24.04)` 上
+`Complete[failure]` + `Publish[success]` ⇒ §1 登记的那个间歇失败**再次发生**，
+且再次发生在**只改文档**的提交上（再次印证非确定性）。
+
+诊断步骤如约产出了注释——**通道本身成立**。但**内容被噪音淹没**：匿名读到的 12 条里
+
+```
+[failure] gate-failure-summary :: test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; …   ← ×8
+[failure] gate-failure-summary ::     Checking thiserror v2.0.21
+[failure] gate-failure-summary ::    Compiling thiserror-impl v2.0.21
+[failure]  Process completed with exit code 1.
+```
+
+**真正的错误行一条都没有。** 缺陷在**选取逻辑**，不在通道。
+
+### 缺陷一：信号正则把小写 `failed` 当成失败信号
+
+cargo 对**每个成功**的测试目标都印 `test result: ok. N passed; 0 failed; …`，`/failed/i` 把它们全部判成失败行，
+瞬间占满配额。修复：拆成**强信号**（`error`、`FAILED`、`panicked`、`unsupported`、`not implemented`、
+`unimplemented`、`assertion`、`失败`、`未通过`、`不通过`，其中 `FAILED` **区分大小写**——cargo 的失败总结行
+`test result: FAILED.` 是大写）与**弱信号**（`failures?:`）；并新增 **NOISE** 规则：整行以 `test result: ok.`
+开头即**永不入选**。
+
+### 缺陷二：按行内容去重，让重复行被整体捞回
+
+第一版用 `Set` 存**行内容**再 `lines.filter(chosen.has)`。日志里大量存在重复行（每个成功目标各印一遍），
+按值匹配会把「同内容的所有行」一起选中——实测把上限 25 冲成 **803 条**。
+同处还有 `rest.slice(-0)` 返回**整个数组**的陷阱（`-0 === 0`）。
+修复：改为**按索引**选取（索引天然去重且保持原序），尾部起点写成 `Math.max(0, len - budget)`。
+
+同时，强信号改为在**全量日志**里找，而不是只看尾部——cargo 会先印上千行 `Compiling`，只看尾部会漏掉根因。
+
+### 修复后的复验（本机，真实形态样本）
+
+2307 行样本：1500 行 `Compiling` + 中部 `error[E0599]` 及其 4 行上下文 + **800 行 `test result: ok.`** +
+尾部 `test result: FAILED.` 与 `error: could not compile …`。结果：**输出 25 条**（守住上限），
+三条真错误全部命中且带上下文，`test result: ok.` 全部排除。
+
+### 仍未复验的部分（如实标注）
+
+- **本次选取修复尚未在真实 CI 失败上复验**——它要等下一次 ubuntu 间歇失败（届时自动验证，无需干预）。
+- GitHub 对 `::error::` 的解析与匿名可读性，已由 §3.2 的 probe **实测证明**，不受本次修复影响。
