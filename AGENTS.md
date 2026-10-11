@@ -3,9 +3,9 @@
 - 项目英文名为 `nai`，仓库为 https://github.com/F31/nai。命名映射见
   `docs/adr/0001-project-name-and-design-baseline.md`。
 - `docs/design.md` 指向唯一实现基线
-  `docs/直播数字人 + 智能体系统技术方案 V3.8.md`（ADR 0047 升基线；ADR 0042 与 ADR 0015 的裁决继续有效）。历史版本（V3.7/V3.6/V3.5 等）只供参考；
-  不自行拼接旧条款覆盖 V3.8。规范变更记录 ADR。V3.8 的 dh-* 命名不采纳，工程标识一律 nai-*。
-- 验收唯一来源为 `tests/registry.yaml`（V3.8 S/R/A/B/O/P/M/H/X + release_line，D→新编号映射自建）。
+  `docs/直播数字人 + 智能体系统技术方案 V3.9.md`（ADR 0048 升基线；ADR 0047、ADR 0042 与 ADR 0015 的裁决继续有效）。历史版本（V3.7/V3.6/V3.5 等）只供参考；
+  不自行拼接旧条款覆盖 V3.9。规范变更记录 ADR。V3.9 的 dh-* 命名不采纳，工程标识一律 nai-*。
+- 验收唯一来源为 `tests/registry.yaml`（V3.9 S/R/A/B/O/P/M/H/X + release_line（新增 capability_pack），D→新编号映射自建）。
   后续任务卡以 registry 验收为准；旧 T/E/U 编号仅追溯，不再新增。
 - 保持统一稳定内核；Lite/Standard/Pro 为能力预设，
   Local/Hybrid/Distributed 为部署配置，不创建三套核心实现。
@@ -74,13 +74,13 @@ OpenAPI SessionCommand 必需 device_id/seq；校验 schema 与 TS 从源生成�
 Local 正式 protected IPC 默认不变；完整预检/审批/配置、Tauri/IPC、真实设备接线尚未实现，Windows/生产认证未执行。
 详见 docs/control.md、ADR 0014 与 docs/reports/2026-10-08-d14-local-control.md。
 
-D15 验收注册表与基线切换已实现/实测：ADR 0015 把 V3.6 升为唯一实现基线（勘误清单生效，dh-* 命名不采纳；V3.6 后由 ADR 0042 升为 V3.7、V3.7 后由 ADR 0047 升为 V3.8），
+D15 验收注册表与基线切换已实现/实测：ADR 0015 把 V3.6 升为唯一实现基线（勘误清单生效，dh-* 命名不采纳；V3.6 后由 ADR 0042 升为 V3.7、V3.7 后由 ADR 0047 升为 V3.8、V3.8 后由 ADR 0048 升为 V3.9），
 tests/registry.yaml 为验收唯一来源（S/R/A/B/O/P/M/H/X + release_line，D01–D14 映射自建并回填）。
 `cargo xtask check --registry` 与 `cargo xtask check --profile portable` 可执行；17 个主规格、15 项归档校验通过。
 决策日志 decision_log（R07 前置）与值守租约（600ms 短期限）为下一轮；播放 ACK 段保持 Draft，不冒充完整 R07。
 详见 docs/adr/0015-v36-baseline-and-admission-registry.md、docs/reports/2026-10-08-d15-admission-registry.md 与 tests/registry.yaml。
 
-W02/W03 决策日志与值守租约已实现/实测（按 V3.8 §31 工作项推进，不再新增 D 编号）：
+W02/W03 决策日志与值守租约已实现/实测（按 V3.9 §31 工作项推进，不再新增 D 编号）：
 nai-storage 新增 0005 迁移、`decision_log` 只追加哈希链、critical/telemetry 分级写入与有界缓冲、`verify_decision_chain`；
 nai-kernel 新增值守租约（显式确认、心跳不续期、到期 600ms 内撤权、重连不恢复）。
 备份契约随迁移升至 schema 5 并重新生成 TS。R07 由 pending 更新为 implemented，S01 补值守证据。
@@ -256,7 +256,7 @@ A02/B03 补证据但保持 implemented **不升级**（真实付费账号无余�
 详见 docs/adr/0025-provider-substitution-boundary.md、docs/reports/2026-10-10-w19-provider-substitution.md 与 docs/provider.md。
 
 W15 升级器基础已实现/实测（ADR 0026）：新增 shared 层 `crates/nai-upgrade-core`（零新增外部依赖），
-把 V3.8 §14.3 的九步升级流程落成可执行编排，registry R05/R09/R10 由 pending 升 implemented（**不标 tested**：
+把 V3.9 §14.3 的九步升级流程落成可执行编排，registry R05/R09/R10 由 pending 升 implemented（**不标 tested**：
 故障注入为内存演练宿主而非真实安装器/断电），O05 按 O02 惯例只补证据保持 pending（其 `automation: ui` 而真实升级 UI 未建），
 S08 补撤销列表证据保持 implemented。核心边界全部可注入——`SignatureVerifier` / `RevocationList` / `SpaceProbe` /
 `ActiveSessionGate` / `SessionDrain` / `UpgradeHost` / `UpgradeJournal`，因此升级器零宿主依赖、portable 下可完整测试。
@@ -721,7 +721,7 @@ docs/reports/2026-10-11-w44-ci-diagnose-signal-to-noise.md。
 W46 把注册表补全到「全部验收家族在册」：基线 §16 与汇总索引 §39.5 把开放平台与技能市场的 **M01–M18** 列为
 「唯一验收编号体系」的一部分（§37.5/§38.10 给出逐条用例；§1.4 明写 R1 含 `M01–M07、M13–M16、M18`、R2 含 `M08–M12、M17`），
 而 `tests/registry.yaml` 里 **M 一条都没有**（`grep -cE '\{id: "M[0-9]'` = 0）。这不是「未开始」的表达而是**登记缺失**——
-`pending` 才是在册未开始。缺口的后果是「以注册表为准」这条规则会把 V3.8 第三部分（§33–§38、W26–W40）从验收视野里抹掉；
+`pending` 才是在册未开始。缺口的后果是「以注册表为准」这条规则会把 V3.9 第三部分（§33–§38、W26–W40）从验收视野里抹掉；
 它长期不可见是因为 **`check --registry` 只校验已登记条目的合法性，不校验家族是否齐全**。
 本轮：登记 **M01–M18 共 18 条 `status: pending`**（title/release_line 取自两张表；`automation` 是**规划意图**并在 notes 写明，
 `contract` 仅在 §37.4 命名了契约时填，M10/M12 留空）；**扩 id 家族白名单到 `M`**
@@ -962,7 +962,7 @@ docs/control.md、docs/ui.md。
 
 W55 把**平台**变成仓库的一等公民（用户五项决策的第 4 项：macOS 覆盖 Standard 与 Pro）。
 **缺口性质（本轮的核心判断，与前两项不同）**：W53（第 3 项）与 W54（第 1 项）都是「**基线有明文、仓库零落点**」，
-而这一项是**全新需求**——基线 V3.8 全文对 `macos`／`darwin`／`apple` 的命中数为 **0**（随基线订正重新实测，V3.8 亦为 0；只有 Windows 首发、
+而这一项是**全新需求**——基线 V3.9 全文对 `macos`／`darwin`／`apple` 的命中数为 **0**（随基线订正重新实测，V3.9 亦为 0；只有 Windows 首发、
 Linux 轻云与 WSL、iOS／Android 实验），`tests/registry.yaml` 亦无任何平台维度条目（全部验收按业务分系列，
 `release_line` 只表达 Slice-0／R1／R2／R3／实验）⇒ **无基线判据、无验收标准、无目标三元组、无签名与分发策略**。
 故按仓规「验收唯一来源为 `tests/registry.yaml`、新需求先立验收」先做**可判定的一步**，而不是凭想象写 macOS 实现。
@@ -1002,7 +1002,7 @@ Standard 与 Pro」**（`r2`／`manual`／`pending`）；**零 Rust 业务改动
 见 docs/platform-matrix.md、docs/reports/2026-10-11-w55-platform-boundary-matrix.md、schemas/platform-matrix/。
 
 W56 把「智能体 Harness 的工程化能力 + 开放互操作（MCP、A2A）」写进设计基线，产出
-`docs/直播数字人 + 智能体系统技术方案 V3.8.md`，并由 **ADR 0047** 升为唯一实现基线（V3.7 降为历史参考）。
+`docs/直播数字人 + 智能体系统技术方案 V3.8.md`，并由 **ADR 0047** 升为唯一实现基线（V3.7 降为历史参考；**V3.8 后由 ADR 0048 升为 V3.9**）。
 **方法沿用 V3.6 → V3.7 的形状**：第四部分**追加**在文档末尾（§40–§48，**491 行**），§1–§39 **一字不动**——
 实测仅 **8 行**改动（4 个 diff hunk，全部 1:1 行替换：标题、副标题、§0.2、§1.4 两行、§16 前导、§17.3 两行），
 **1875 → 2366 行、行号一一对应**，故全部既有 `§NNN` 引用在本版解析结果一致。
@@ -1024,7 +1024,7 @@ W56 把「智能体 Harness 的工程化能力 + 开放互操作（MCP、A2A）�
 并**如实登记** §20.6 与能力目录对 `memory.access@1` 阶段的不一致（以目录为准，**不改 §20.6 原文**）。
 **明确不做**：**零 harness 实现**（W56–W64 未开始，H01–H18 一律 `pending`）、**本轮不新增静态门控**
 （无实现可门控，写了只能是**空洞门控**）、不改任何既有 acceptance 的 `status`、不重排 W 编号
-（V3.7 计划止于 W40，**W41–W55 已被实际执行轮次占用** ⇒ 第四部分从 **W56** 起）、不扩张观众长期记忆字段集、
+（V3.7 计划止于 W40，**W41–W44、W46–W55 已被实际执行轮次占用**——**W45 无任何记录**（V3.9 §56-C6 订正）⇒ 第四部分从 **W56** 起）、不扩张观众长期记忆字段集、
 不臆造 MCP/A2A 协议版本。**三处阈值**（意图置信度、语义缓存相似度、上下文利用率）一律「**待本场景回放实测**」，
 MUST NOT 直接采用外部观察值（外部「40% 利用率」之类的数字**不可外推**）。
 **校验口径的一处修正（本轮发现，容易漏）**：`openspec validate --all --strict --archived` **只校验已归档变更**
@@ -1035,3 +1035,47 @@ MUST NOT 直接采用外部观察值（外部「40% 利用率」之类的数字*
 （541 → **336**）。
 见 docs/adr/0047-design-baseline-v38.md、docs/直播数字人 + 智能体系统技术方案 V3.8.md、
 openspec/changes/archive/2026-10-11-w56-agent-harness-and-interop/、docs/reports/2026-10-11-w56-agent-harness-and-interop.md。
+
+W57 在 W56 开出的轨道上落下**第一个判定面**（记忆的**读写与遗忘**：`crates/nai-kernel/src/evaluate/memory.rs` 的
+**只增不改**扩展 + `crates/nai-kernel/tests/memory.rs` **21 项**，H03/H04 机制已交付、**状态仍 `pending`**）。
+**本条此前在 AGENTS.md 中缺记**（本文件的轮次记录止于 W56）——本轮补记指针：
+见 docs/kernel.md、docs/reports/2026-10-11-w57-memory-read-write-surface.md。
+
+W65 做的是**范围重排与升基线**，不是加能力。产出 `docs/直播数字人 + 智能体系统技术方案 V3.9.md`（新增**第五部分
+§49–§57**），并由 **ADR 0048** 升为唯一实现基线（V3.8 降为历史参考；ADR 0047 **决策 1 被替代**，其决策 2–5 继续有效）。
+触发是一次外部审视（对 V3.8 的五维批评）与用户对它的反批评，**两份主张都被逐条取证核实**：产品向批评成立
+（首版范围膨胀——收缩前 `r1` 56 + `slice_0` 10 = **66** 条；版本只做加法，无「砍掉/延后/降级」栏），
+多项技术判断不成立（`181.9` 全文 **0 命中**；§23.2 实测 **32** 项而非 44）。**双方都没发现的 7 处问题**里有一条
+严重项：`openspec/specs/spec-driven-delivery/spec.md` 的基线指针**自 V3.6 起就停在 V3.5**，
+而 ADR 0042、ADR 0047 **两轮**都把它记为遗留而**不**订正。
+**本轮第一次不再以「纯追加」处理升基线**：前两轮纯追加的前提是「无矛盾可订正」；本轮查出 7 处矛盾，
+继续追加只会把矛盾**登记第二遍**。故 V3.9 §56.2 确立一般规则——**活文档就地订正 / 历史记录保留原文 + 追加勘误段**，
+并给就地订正加硬约束：**MUST 是 1:1 行替换（不增删行）**。实测前 2366 行 **24 个 hunk / 42 行 / 全 1:1 / 零增删**
+（`a`、`d` 型 hunk 为 0），**2366 → 2647 行** ⇒ 全部既有 `§NNN` 引用继续有效。规范订正 **C1–C9**：
+**C6 的教训**——同一条不实陈述（「W41–W55」）实测**散落在四个活文档**（§47.6 编号说明、§48.6、`AGENTS.md`、
+`docs/development-plan.md`），只订正主规范一处不够；**C8/C9 的教训**——**易漂移的计数与版本号 MUST NOT 写进活文档**。
+**核心交付是机制**：新增**第六条发布线 `capability_pack`**（§51.1）——**「已设计」与「已承诺」是两个不同的陈述**，
+此前只有前者有地方可写，于是「降级」只能表现为删除。**29** 条（M01–M18、H05–H14、H16）自 `r1`/`r2` 降为能力包，
+收缩后 `slice_0` **10** + `r1` **36** + `r2` **9** + `capability_pack` **29** + `r3` **1** + `experimental` **2** = **87**
+（**只改归属、不加条目、不改任何 `status`**）。**INV-33**（默认组合不依赖能力包：R1 内每条验收 MUST 在
+**未安装任何能力包**时可判定）与 **INV-34**（降级不删边界，MUST NOT 使既有 `§NNN` 引用失效）是**用户三条约束的
+可判定形式**（轻量由**默认组合**定义而非能力上限；降级是**排期**动作而非**设计**动作；§51.4 保证加装沿用
+**同一条**升级与迁移图，**MUST NOT** 有第二条安装路径）。**分界判据**：*「一个确定性的上下文装配函数能不能满足它？」*
+能 ⇒ 留在 R1；只有建独立子系统才能满足 ⇒ 能力包。**门控增量**（本版唯一机器可判定处）：`tests/registry` 的**三向**
+能力包集合断言（集合恰为 29 条 / 无归属外 id 混入 / **无能力包 id 落在 `slice_0`/`r1`/`r2`**），
+失败时**同时给出 id 与当前所在线**（形如 `M01=r1`），并以**三种注入**证其非空洞（**4/4 通过**）；
+`schemas/tests/registry.schema.json` 的**两处**硬编码（`release_lines` 与 `acceptance.release_line.enum`）同改。
+另引入**版本减法纪律**：每个版本的变化表 MUST 含**新增/砍掉/延后/降级为能力包**四栏且**同权重**评审，
+只有「新增」栏的版本 SHALL 被读作**未做范围评审**——V3.9 是第一条适用记录，**本版砍掉的：无**（范围重排，不是能力删除）。
+**明确不做**：不删任何能力、不整体移出第四部分、不删 workspace 作用域、不删决策日志、不停止内核开发、
+**不新增契约名**（能力目录零漂移）、不改任何 `status`、不重排 W 编号（第五部分从 **W65** 起）。
+**验证**：`cargo xtask check --profile full` **EXIT=0**，测试目标 **87（69 `Running` + 18 `Doc-tests`）**、
+**761 passed / 0 failed**（**与 W57 完全相同**——本轮零 Rust 测试改动，数字不变即「未误改代码」的旁证）；
+`check-deps` **19 包**；注册表输出串已为 **V3.9**。**本机限制（如实登记）**：`cargo xtask schema --check` 在本机
+**跑不了**——`generate.mjs` 内部的 `spawnSync(process.execPath, …)` 报 **`EBUSY`**（managed 与 system node 均复现，
+属**主机/沙箱**对「node 自旋 node」的限制，非仓库缺陷）；契约零漂移改以**结构性理由**取证
+（生成器输入仅 `schemas/catalog/capabilities.json` 与 `schemas/{config,plugin}/*.schema.json`，实测均未改动，
+`crates/`、`packages/` 亦无改动），并由 **CI 的独立步骤**兜底。
+见 docs/adr/0048-design-baseline-v39.md、docs/直播数字人 + 智能体系统技术方案 V3.9.md、
+docs/reports/2026-10-11-w65-v39-scope-and-baseline.md、docs/reports/2026-10-11-v38-review-adjudication.md、
+openspec/changes/archive/2026-10-11-w65-v39-scope-and-baseline/。

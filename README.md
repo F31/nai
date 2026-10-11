@@ -6,7 +6,7 @@
 
 ## 设计基线
 
-- [V3.8 完整设计（唯一实现基线）](docs/直播数字人%20%2B%20智能体系统技术方案%20V3.8.md)
+- [V3.9 完整设计（唯一实现基线）](docs/直播数字人%20%2B%20智能体系统技术方案%20V3.9.md)
 - [设计入口](docs/design.md)
 - [开发任务与验收跟踪](docs/development-plan.md)
 - [开发准备记录](docs/reports/2026-10-07-development-readiness.md)
@@ -32,7 +32,7 @@ Windows 凭据/Named Pipe/沙箱/窗口音轨未实测。
 另已实现 D12 模型包完整性前置检查与 D13 平台事件准入逻辑；真实模型推理、官方 SDK/网关尚待实现。
 本轮 D14 本机控制工程服务与桌面客户端已接线：真实状态读取、静音/接管，完整预检/审批/配置仍待实现。
 当前238项 workspace Rust测试与portable/生成无漂移通过。十类消息互通、5项客户端测试与真实控制进程冒烟为此前归档证据。
-基线已升为 V3.8（ADR 0047；此前 ADR 0042 升 V3.7、ADR 0015 升 V3.6，其裁决继续有效）：验收唯一来源为 tests/registry.yaml（S/R/A/B/O/P/M/H/X + release_line，D01–D14 映射回填），
+基线已升为 V3.9（ADR 0048；此前 ADR 0047 升 V3.8、ADR 0042 升 V3.7、ADR 0015 升 V3.6，其裁决继续有效）：验收唯一来源为 tests/registry.yaml（S/R/A/B/O/P/M/H/X + release_line（新增 capability_pack），D01–D14 映射回填），
 `cargo xtask check --registry` 通过。决策日志哈希链/原子冲刷与值守门控已实现实测，真实ACK/root定时与媒体进程接线仍待W05/W06/W10。
 真实 Provider 冒烟验证传输/鉴权/错误映射；账户无余额，付费生成 Blocked。
 真实音轨/媒体进程静音、实际业务插件及 Tauri 原生宿主仍待后续任务。

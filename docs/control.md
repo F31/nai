@@ -136,7 +136,8 @@ pnpm test:engine-smoke
 ## 桌面壳宿主边界（W54）
 
 设计 §1248 规定技术栈为 Tauri 2，§1151 / §1259 / §900 / §1101 规定了壳的四组边界。W54 把这些落成**可判定的声明**：
-[ADR 0046](adr/0046-desktop-shell-form-and-tauri-boundary.md)（形态与边界裁决，44 篇 ADR 中首条桌面壳条目）＋
+[ADR 0046](adr/0046-desktop-shell-form-and-tauri-boundary.md)（形态与边界裁决，`docs/adr/` 中的**首条**桌面壳条目；
+V3.9 §56-C8 订正此处原写的固定篇数——该计数随 ADR 增补即时失效，故不再写死）＋
 `apps/desktop/src-tauri/{tauri.conf.json, capabilities/default.json, shell-policy.json}` ＋
 `tests/ui/desktop-shell.test.mjs`（15 项，含非空洞守卫；经既有 `test:ui` 自动进入 `full` 门控）。
 

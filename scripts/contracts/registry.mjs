@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import YAML from 'yaml';
 
 const ID_RE = /^(S|R|A|B|O|P|M|H|X)[0-9]{2}$/;
-const RELEASE_LINES = ['slice_0', 'r1', 'r2', 'r3', 'experimental'];
+const RELEASE_LINES = ['slice_0', 'r1', 'r2', 'r3', 'experimental', 'capability_pack'];
 const STATUSES = ['implemented', 'tested', 'blocked', 'not_applicable', 'pending'];
 
 /// Families whose baseline definition is a *complete* id range, with the count
@@ -16,9 +16,25 @@ const STATUSES = ['implemented', 'tested', 'blocked', 'not_applicable', 'pending
 /// drops the whole part from the "the registry is authoritative" view.
 /// ADR 0047 decision 4 applies that lesson instead of repeating it.
 const COMPLETE_FAMILIES = new Map([
-  ['M', {count: 18, baseline: 'V3.8 §37.5、§38.10'}],
-  ['H', {count: 18, baseline: 'V3.8 §40–§47、§48.5'}],
+  ['M', {count: 18, baseline: 'V3.9 §37.5、§38.10'}],
+  ['H', {count: 18, baseline: 'V3.9 §40–§47、§48.5'}],
 ]);
+
+/// The post-V3.9 scope split: ids that are *capability packs* — designed and
+/// contract-bounded, but deliberately NOT part of the first release's gate.
+///
+/// V3.9 added the `capability_pack` release line because "designed" and
+/// "committed" are two different statements and only the former had a place to
+/// live. INV-33 ("the default composition must not depend on a capability
+/// pack") is only checkable if the split itself is machine-readable, so the
+/// split is asserted here rather than described in prose. Three distinct
+/// failures are caught: a pack id sitting on a first-release line, a pack id
+/// left off the pack line, and a non-pack id parked on the pack line.
+const CAPABILITY_PACK_IDS = [
+  ...Array.from({length: 18}, (_, index) => `M${String(index + 1).padStart(2, '0')}`),
+  ...['H05', 'H06', 'H07', 'H08', 'H09', 'H10', 'H11', 'H12', 'H13', 'H14', 'H16'],
+];
+const FIRST_RELEASE_LINES = ['slice_0', 'r1', 'r2'];
 
 /// Contract labels that name an architectural property instead of a callable
 /// capability in `schemas/catalog/capabilities.json`. Kept deliberately tiny:
@@ -115,6 +131,35 @@ export function validateRegistry(registry, catalogIds) {
     if (extra.length > 0) {
       errors.push(`${family} family has ids outside the defined range: ${extra.join(', ')}`);
     }
+  }
+  // The capability-pack split (V3.9 §51.3, INV-33). Checked from both sides so
+  // neither "quietly promote a pack into the first release" nor "quietly demote
+  // a first-release item into a pack" can pass, and the check cannot be
+  // satisfied by an empty pack line.
+  const byId = new Map((registry.acceptance ?? []).map(item => [item.id, item]));
+  const packSet = new Set(CAPABILITY_PACK_IDS);
+  const onPackLine = [...byId.values()]
+    .filter(item => item.release_line === 'capability_pack')
+    .map(item => item.id);
+  const notOnPackLine = CAPABILITY_PACK_IDS.filter(id => !onPackLine.includes(id));
+  if (notOnPackLine.length > 0) {
+    errors.push(
+      `capability pack set incomplete (V3.9 §51.3): not on capability_pack line: ${notOnPackLine.join(', ')}`,
+    );
+  }
+  const strayOnPackLine = onPackLine.filter(id => !packSet.has(id));
+  if (strayOnPackLine.length > 0) {
+    errors.push(
+      `capability_pack line holds ids outside the V3.9 §51.3 set: ${strayOnPackLine.join(', ')}`,
+    );
+  }
+  const leaked = [...byId.values()]
+    .filter(item => packSet.has(item.id) && FIRST_RELEASE_LINES.includes(item.release_line))
+    .map(item => `${item.id}=${item.release_line}`);
+  if (leaked.length > 0) {
+    errors.push(
+      `capability pack ids must not sit on a first-release line (INV-33): ${leaked.join(', ')}`,
+    );
   }
   return errors;
 }

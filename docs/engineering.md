@@ -82,8 +82,8 @@ pnpm --filter @nai/desktop dev
 
 ## OpenSpec SDD
 
-项目上下文位于 `openspec/config.yaml`；每轮按 V3.8 工作项及 registry 验收选一个完整可验证变更，D 编号只供追溯。
-V3.8 是唯一实现基线（ADR 0047；此前 ADR 0042 升 V3.7、ADR 0015 升 V3.6），`openspec/specs/` 是已归档增量规格；有冲突时先澄清并记录 ADR。
+项目上下文位于 `openspec/config.yaml`；每轮按 V3.9 工作项及 registry 验收选一个完整可验证变更，D 编号只供追溯。
+V3.9 是唯一实现基线（ADR 0048；此前 ADR 0047 升 V3.8、ADR 0042 升 V3.7、ADR 0015 升 V3.6），`openspec/specs/` 是已归档增量规格；有冲突时先澄清并记录 ADR。
 
 1. 新建变更：`pnpm exec openspec new change <name> --schema spec-driven`。
 2. 读取当前阶段：`pnpm exec openspec status --change <name> --json`。

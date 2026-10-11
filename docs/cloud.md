@@ -1,6 +1,6 @@
 # 云断连与低云容量
 
-本页说明 A10（V3.8 §30.4，旧编号 E07/E08）在代码里的落点：**本地关键链路对控制云的依赖方向**与**低云容量数字的来源**。实现位于 `crates/nai-upgrade-core/src/cloud.rs`（shared 层），与 W25 的档位/驻留/离线/迁移（[deployment.md](deployment.md)）同一 crate。
+本页说明 A10（V3.9 §30.4，旧编号 E07/E08）在代码里的落点：**本地关键链路对控制云的依赖方向**与**低云容量数字的来源**。实现位于 `crates/nai-upgrade-core/src/cloud.rs`（shared 层），与 W25 的档位/驻留/离线/迁移（[deployment.md](deployment.md)）同一 crate。
 
 ## 1. 依赖方向图：本地关键链路不含云
 
