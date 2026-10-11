@@ -680,3 +680,25 @@ W43 让 CI 失败**在无凭据下可诊断**：W42 勘误段确立了「注释�
 规格新增三条需求（摘要 MUST 匿名可读 / 采集 MUST NOT 改变判定 / 无内容 MUST NOT 制造注释）——
 不写进规格，这条通道会被当冗余删掉。registry **不改任何 `status`**。见
 docs/reports/2026-10-11-w43-ci-failure-annotation.md。
+
+W44 让这条通道**第一次真实使用**，并修复了它暴露的三类信噪比缺陷。W43 的勘误提交 `81ce88b` 触发 ubuntu 失败
+（run `38110014189`，第 10 步失败、第 11 步诊断步成功），**匿名**读到 check-run `114383450000` 的 12 条注解，
+**首次拿到测试级结论**：`test halt_during_media_drill_prewarm_never_commits_a_frame ... FAILED`——即 W42 登记、
+历轮只能定位到**步级**的那个间歇失败。但 11 条里只有 1 条是信号，三类成因各有明确来源：
+①`Checking thiserror`/`Compiling thiserror-impl` 因**裸 `error` 子串**被判成强信号；
+②一个**通过**的测试（`…cors_queries_unimplemented_routes… ... ok`）因名字含 `unimplemented` 被判成强信号，
+**并把它的上下文拖进摘要**；③信号稀少时被无关行填满配额。
+修法**不是收窄关键词**（那只会把一种漏判换成另一种），而是把判据从「这行含不含某个词」改为**「这行报告了失败吗」**：
+新增噪音类 `test <name> ... ok|ignored`、`error` 改为 `\berror(\[|:)`、选行改为「信号 → 后置上下文与所属目标头 → 弱信号」，
+且**一条信号都没有时**才退化到尾部窗口（**绝不**用无关行填充）。
+另新增**截断自证**：本次采集到的日志**只有 11 行**，而该 job 跑了 **2 分 50 秒**，且**没有** `test result:` 汇总行
+（判断依据：省略提示只在 `omitted>0` 时输出，而 `lines.length===11` 时不会出现）⇒ **一份被截断的日志正在被当成全部证据**。
+现在「有逐测试行却无汇总行」会输出一条 `::warning::` 并给出总行数。**截断成因未定，如实登记、不猜**。
+**同时撤回一条历轮沿用的旁证**：失败测试带 `#[cfg(target_os = "linux")]`（engine 的 6 个 `#[test]` 里 **4 个**如此，
+Windows 上该 target 只跑 2 个测试）⇒「本机 Windows 跑 portable/full 从未复现」是**结构性必然**，**不是**非确定性证据
+（W42/W43 报告的「非确定性」判定用的是「同一份代码时红时绿」，**不受影响**）。
+**当前实测**（匿名 `GET /actions/runs?per_page=100` 后取最近 30 次）：**13 `failure` / 17 `success`**——
+与 W42 时点的 15 不同，是**窗口滑动**所致（期间新增了 W43 为验证通道人为制造的那 1 次 probe 失败），
+故 `AGENTS.md` 上文 W42 段的「15 次」按**当时时点**理解，不回改。
+规格新增两条需求（摘要以信号为中心 / 采集不完整 MUST 明示），**workflow 未改**、registry **不改任何 `status`**。见
+docs/reports/2026-10-11-w44-ci-diagnose-signal-to-noise.md。
