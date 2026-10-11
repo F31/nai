@@ -67,7 +67,7 @@ mapping:
   notes: "自建 D01–D14 → V3.6 验收映射（V3.6 §30.4 不提供 D→新编号）。回填规则：已完成并有归档测试证据的项目标 tested 并引用报告；仅实现未完整认证的标 implemented 并注明缺口；外部条件缺失标 blocked；本 profile 未启用或尚未开始的目标标 pending/not_applicable。映射是追溯声明，不重新认证。"
   legacy_note: "V3.5 的 T/E/U 与附录 B A1–A17 旧编号仅追溯，不再新增；对应关系见 V3.6 §30.4。"
   d01_to_d14:
-    D01: {status: tested, targets: ["A04"], evidence: "reports/2026-10-07-d01-engineering-foundation.md", notes: "工程/依赖检查实测通过；前端检查（@nai/contracts 与 @nai/desktop 各自 typecheck/build、桌面包单测、tests/ui）自 W41 起由 cargo xtask check --profile full 覆盖——portable 保持「只要 Rust 工具链就能跑」的语义不变，前端步骤缺失前置时具名失败而非跳过，见 reports/2026-10-11-w41-frontend-gate-profile.md"}
+    D01: {status: tested, targets: ["A04"], evidence: "reports/2026-10-07-d01-engineering-foundation.md", notes: "工程/依赖检查实测通过；前端检查（@nai/contracts 与 @nai/desktop 各自 typecheck/build、桌面包单测、tests/ui）自 W41 起由 cargo xtask check --profile full 覆盖——portable 保持「只要 Rust 工具链就能跑」的语义不变，前端步骤缺失前置时具名失败而非跳过，见 reports/2026-10-11-w41-frontend-gate-profile.md；自 W42 起 CI（.github/workflows/foundation.yml，Linux 与 Windows 两 job）统一执行 check --profile full 并删除被其完全覆盖的根 pnpm typecheck/build，前端 workspace 检查于是每次提交都实际执行（此前 20 项前端测试在 CI 中从不运行）；流水线的实际执行未经本机观测（无 runner），见 reports/2026-10-11-w42-ci-complete-profile.md"}
     D02: {status: tested, targets: ["A05", "A07"], evidence: "reports/2026-10-07-d02-versioned-contracts.md", notes: "十类消息三语言互通通过"}
     D03: {status: tested, targets: ["R04", "R08"], evidence: "reports/2026-10-07-d03-storage-and-credentials.md", notes: "WAL/事务/备份测试通过；Windows 原生凭据 blocked"}
     D04: {status: tested, targets: ["A04"], evidence: "reports/2026-10-07-d04-kernel-registration-and-binding.md", notes: "闭包/冻结/降级测试通过"}

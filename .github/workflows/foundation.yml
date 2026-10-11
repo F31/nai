@@ -39,14 +39,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libprotobuf-dev
       - name: Check generated contracts without modifying consumers
         run: cargo xtask schema --check
-      - name: Portable foundation
-        if: runner.os == 'Linux'
-        run: cargo xtask check --profile portable
-      - name: Windows foundation (no device or SDK certification)
-        if: runner.os == 'Windows'
-        run: cargo xtask check --profile windows-local
-      - run: pnpm typecheck
-      - run: pnpm build
+      # 完整工程 profile：portable 的全部步骤 + 前端 workspace（两包 typecheck/build、桌面包单测、tests/ui）。
+      # 两个平台跑同一命令是有意的——在没有设备/SDK 认证的 CI 上，full 相对 windows-local 是严格超集
+      # （同一套 engineering_checks，另加前端步骤），平台要求已由 runs-on 满足。前端命令只在各包
+      # package.json 的 scripts 里定义，此处不重复一份，避免与门控漂移。结果不构成任何认证验收。
+      - name: Complete engineering foundation (portable steps + frontend workspace)
+        run: cargo xtask check --profile full
       - name: Storage and credential boundary (Windows native vault only on Windows)
         run: cargo xtask test --suite storage
       - name: Kernel registration and binding

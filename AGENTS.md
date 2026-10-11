@@ -632,5 +632,21 @@ Windows 不可解析的符号链接（`realpathSync` 报 `EACCES`），前端依
 `@rollup/rollup-win32-x64-msvc` 与 `@esbuild/win32-x64` 缺失，已按既有做法从 `.pnpm` 补齐；重装后可能需重补。
 registry **不改任何 `status`**（本轮是覆盖面扩展不是达标），D01 notes 只补记事实。见
 docs/adr/0041-engineering-profile-frontend-boundary.md、docs/reports/2026-10-11-w41-frontend-gate-profile.md。
-未做边界：**不配 CI**（是否在流水线调 `full` 另行决定）、**不测渲染**（仍不引入 DOM 库）、**不代跑 `install`**；
+未做边界：**不测渲染**（仍不引入 DOM 库）、**不代跑 `install`**；
 前端门控通过只说明工程基础可执行，MUST NOT 读成浏览器/人工 UI 或任何 `O` 系列验收达标。
+
+W42 把完整工程 profile 接进 CI（上一段的「另行决定」，本轮落定）：W41 建的 `check --profile full` 在流水线里**从未被调用**——
+`foundation.yml` 只有 `portable`（Linux）/`windows-local`（Windows）两条分支，外加两平台各一次的根 `pnpm typecheck`
+（`pnpm --recursive typecheck`）与 `pnpm build`（`pnpm --recursive build`）；于是 `apps/desktop` 的 `test`（5 项）与根 `test:ui`
+（15 项）**在 CI 中从不运行**，流水线跑绿不能排除这 20 项已回归（与 W41 的缺口同构：门控已建、流水线没接线）。本轮把两个
+job **统一为 `check --profile full`**，并**删除**被其逐包完全覆盖的两步根命令（保留它们等于让「前端怎么检查」在 CI 里出现
+**第二处定义**，与「命令取自各包 `scripts`」的既有规格相抵）；不新增 job、不改 matrix/timeout，8 个 `test --suite`、`schema --check`
+与 openspec 校验步骤保留。`windows-local` profile 在**工具中保留**（本机与未来用途），CI 不再用它——在 Windows runner 上
+`full` 是它的**严格超集**（同一套 `engineering_checks` + 前端步骤），平台要求由 `runs-on` 天然满足。规格新增两条需求：
+CI SHALL 执行完整工程 profile；CI MUST NOT 在 profile 之外另定义前端命令（单一真源）。
+验证：用 Node **解析 YAML** 做结构断言 **13/13 通过**（含 `full` 恰 1 步、不含 `portable`/`windows-local` 与两步根命令、
+保留 8 个 suite、矩阵与 timeout 未变）；本机 `check --profile full` **EXIT=0**（82 目标 / 695 passed / 0 failed，与 W41 一致，
+本轮**零源码改动**）；`check-deps` 18 包、`--registry` 通过、`--secrets` **714 文件零命中**、`validate --all --strict` **37 项**。
+**边界**：本机无 GitHub Actions runner（亦无 `act`），流水线的**实际执行未经观测**——只验证了工作流结构与本机 `full` 通过，
+MUST NOT 写成「CI 已验证通过」。registry **不改任何 `status`**，D01 notes 只补记事实。见
+docs/reports/2026-10-11-w42-ci-complete-profile.md。
