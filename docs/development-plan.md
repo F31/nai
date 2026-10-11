@@ -543,12 +543,26 @@ glob 自行展开且**空匹配即失败**；无 `node`/依赖不可解析/某�
 （近 30 次 run 中 13 次为该单点失败、同 run 的 windows 侧均通过，且同一代码在不同提交上时绿时红 ⇒ 非确定性），
 定位需 admin 权限下的 job 日志。见 [报告](reports/2026-10-11-w42-ci-complete-profile.md) 的**勘误**段。
 
+本轮 `w43-ci-failure-annotation` 补上「注释位可读、内容是空的」那一段：annotations API 匿名可读却只有
+`Process completed with exit code 1.`，而日志端点需 admin（403）⇒ 间歇失败只能定位到步级。门控步改
+`shell: bash` + **`set -o pipefail`** + `tee`，其后加 `if: failure()` + `continue-on-error: true` 的诊断步跑
+`scripts/ci-diagnose.mjs`（信号行优先 + 尾部兜底，逐行转成 `::error::`；日志缺失/为空不输出注释）。
+**`set -o pipefail` 是必需的而非风格问题**——`cmd | tee f` 的退出码恒 0，实测无它时失败路径 `EXIT=0`，
+CI 会永远绿且看上去一切正常。端到端**两个方向**都实测：正常路径 run `38108824691` 两平台
+`Complete[success]`+`Publish[skipped]`；失败路径（临时分支换成 `check --profile bogus`）run `38108847930`
+两平台 `Complete[failure]`+`Publish[success]`，**匿名**读到 xtask 的具名拒绝信息（Windows 上另抓到 cargo 的
+`error: process didn't exit successfully …`）⇒ 通道成立且两平台都成立；两平台门控步都 failure 反证
+`pipefail` 在 Windows 的 Git Bash 下同样生效。probe 分支已删除；代价是仓库永久留下一个失败 run 记录。
+**本轮只解决「查不到原因」，未解决那个间歇失败本身**。见 [报告](reports/2026-10-11-w43-ci-failure-annotation.md)。
+
 下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03、P01 的判定骨架与 O04 的设备侧、W36 的真实链路接入纪律、W37 的线上形状修正、
 W38 的桌面审批面/UI 层、W39 的攻击者可控输入面随机测试、W40 的 B01 判据+执行体、W41 的完整工程 profile（前端门控）与 W42 的 CI 接线，S11 与 B01 的登记缺口均已补）；轨道二的自备资源**已有真实凭据落地**（文本／语音两条真实链路经本栈走通并产出真值证据，文本模型标准化为 `agnes-2.5-flash`）；剩余 **O01**（需演示包与约 10 分钟首句演练、约 30 分钟真实输出验证）、
 **O02/O05**（UI 验收，按既有惯例 `pending`）与阻塞项 **B01**（**判定机制、载荷载体、参考答案判据与评估执行体均已就位**；缺 100 题集内容与真实知识库内容，均为外部投入）、**B02/D12**（模型与目标机证据）、
 **O03**（M0b 定案与真机 S09）、**O04**（干净 Windows 安装、真实音频设备变更与真实回退；安装侧已由 `nai-upgrade-core` 覆盖）、
 **P01**（官方 SDK 与生产宿主；判定机制已由 W35 交付，D13）均需外部条件。
-仓库内仍可控的剩余缺口：**S08**（workspace SBOM 未生成；插件/供应链其余部分已实现）。
+仓库内仍可控的剩余缺口：**S08**（workspace SBOM 未生成；插件/供应链其余部分已实现）；
+**ubuntu 侧 CI 的间歇性失败**（W42 登记事实、W43 补上观测通道——下一次它发生时失败测试名会自动出现在匿名可读的
+annotation 里，但**原因尚未定位**，登记至今 13 次失败仍无结论）。
 **把前端纳入工程门控**已由 W41 关闭（`check --profile full` 覆盖两包 typecheck/build、桌面包单测与 `tests/ui`），
 其**流水线接线**已由 W42 关闭（CI 两个 job 统一执行 `full`，此前 20 项前端测试在 CI 中从不运行）。
 

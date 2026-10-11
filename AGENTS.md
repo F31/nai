@@ -658,3 +658,25 @@ ubuntu-24.04 与 windows-latest 上均通过 ⇒ 本轮 CI 改动**已被流水�
 返回 403 `Must have admin rights`，annotations 只给 `exit code 1`（无测试名）；本机非 Linux（`wsl.exe` 被安全策略禁止、无 Docker）
 ⇒ **定位需 admin 权限下的日志或另设观测通道**（如让 CI 失败时把摘要写成 annotation）。registry **不改任何 `status`**，
 D01 notes 只补记事实。见 docs/reports/2026-10-11-w42-ci-complete-profile.md 的**勘误**段。
+
+W43 让 CI 失败**在无凭据下可诊断**：W42 勘误段确立了「注释位可读、内容是空的」——
+`GET /check-runs/{id}/annotations` 匿名可读却只有 `Process completed with exit code 1.`，而真正的日志端点
+`GET /actions/jobs/{id}/logs` 需要 admin（403）⇒ 那 13 次 ubuntu `Portable foundation` 间歇失败只能定位到**步级**、
+定位不到**测试级**。GitHub 会把 workflow command（`::error::…`）解析成 check-run annotation，而该 API 匿名可读
+⇒ 把门控日志的失败摘要转成 annotation 即可补上这一段。门控步改 `shell: bash` + **`set -o pipefail`** +
+`tee "$RUNNER_TEMP/nai-gate.log"`，其后加 `if: failure()` + `continue-on-error: true` 的诊断步跑
+`scripts/ci-diagnose.mjs`（**失败信号行优先 + 尾部兜底**，逐行输出、剥离 ANSI、转义 `%`/`\r`/`\n`、
+双层截断与省略提示；**日志缺失/为空一律退出 0 且不输出任何注释**）。
+**`set -o pipefail` 是必需的而非风格问题**：`cmd | tee f` 的退出码恒为 `tee` 的 0——实测同一条命令有它时失败路径
+`EXIT=1`、无它时 `EXIT=0`，**少了这一行 CI 会永远绿且看上去一切正常**。
+端到端实测（**两个方向都做**）：正常路径 run `38108824691` 两平台 `Complete[success]` + `Publish[skipped]`
+（成功时诊断步跳过，**不制造注释**）；失败路径在临时分支把命令换成 `check --profile bogus`，run `38108847930`
+两平台 `Complete[failure]` + `Publish[success]`，**匿名**读到
+`xtask: unsupported or not implemented task: check --profile bogus (use cargo xtask help)`
+（Windows 上还多抓到 cargo 的 `error: process didn't exit successfully …`）⇒ **通道成立，且两平台都成立**；
+两平台门控步都是 `failure` 也**反证** `pipefail` 在 Windows 的 Git Bash 下生效。probe 分支已删除。
+**代价**：仓库永久留下一个失败 run 记录（GitHub 不支持删 run 历史，已在 proposal 事先声明）。
+本轮只解决「查不到原因」，**未解决**那个间歇失败本身；变化是下次它发生时失败测试名会自动出现在匿名可读的注释里。
+规格新增三条需求（摘要 MUST 匿名可读 / 采集 MUST NOT 改变判定 / 无内容 MUST NOT 制造注释）——
+不写进规格，这条通道会被当冗余删掉。registry **不改任何 `status`**。见
+docs/reports/2026-10-11-w43-ci-failure-annotation.md。
