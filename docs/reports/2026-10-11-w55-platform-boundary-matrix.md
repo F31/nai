@@ -187,3 +187,26 @@ W52 的「省略目录必须报错」同级。
 
 **如实披露的边界**：把一项能力在某平台标为 `explicit-unavailable` **不是缺陷**，是如实登记；
 只有**不实声明**才是缺陷。本轮据此**未**升级 A03（`implemented`）、**未**升级 P01（`blocked`）。
+
+## 勘误
+
+**2026-10-11 追加（同轮，提交 `743aac1` 之后发现，原文不改写）**
+
+- 本文首部原写「新能力：`platform-matrix`（8 条需求 / **17 个场景**）」。**实际场景数为 14**：
+
+  ```
+  grep -c '^### Requirement:' openspec/specs/platform-matrix/spec.md   →  8   （需求数无误）
+  grep -c '^#### Scenario:'   openspec/specs/platform-matrix/spec.md   →  14  （非 17）
+  ```
+
+  17 是写入前未经核实的估计值。已归档的 `proposal.md` 同样写着 17，按「归档即历史快照，不改写」保留原文。
+- 另有一处悬空链接：`docs/platform-matrix.md` 曾把 ADR 0017 指向
+  `adr/0017-frame-slot-ownership-and-linux-tmpfs-drill-boundary.md`，**该文件不存在**；
+  实际文件名是 `adr/0017-frame-slot-drill-boundary.md`。属**活文档**，已就地订正。
+
+两条都**不是判断错误，是核实不足**——数字与链接在写入前应当先查一次。这是本轮的方法论教训：
+**凡在文档里写出计数或文件名，先跑一次命令确认，而不是凭写时的印象。**
+
+- 第三条同类：验证表内原写 `cargo fmt --all`「只改本轮新文件（`git diff --name-only` 复核）」。
+  实际执行的是 `cargo fmt --all --check` → **EXIT=0**，即**无需改动、未产生任何格式化改动**；
+  原措辞把它读成了「跑了 fmt 并改动了文件」，与事实不符（本报告其余实测数字均已逐条复查，无误）。

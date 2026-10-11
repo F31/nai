@@ -38,7 +38,7 @@
 
 **三条容易误读的条目，如实说明**：
 
-1. **共享内存帧槽在 windows 上不可用，不是缺陷**。[ADR 0017](adr/0017-frame-slot-ownership-and-linux-tmpfs-drill-boundary.md)
+1. **共享内存帧槽在 windows 上不可用，不是缺陷**。[ADR 0017](adr/0017-frame-slot-drill-boundary.md)
    已裁决：Linux 用 `/dev/shm` 私有 tmpfs 文件、0600、继承 FD 的**工程演练**后端（名为 `tmpfs-file-drill`，有复制，
    不称为 mmap/零拷贝），并明文「**Windows/非 Linux 后端明确 `CapabilityNotReady`**，不改变 Windows 正式共享内存目标」。
    Windows 映射、受保护句柄 broker 与命名管道身份是**独立待做项**。
