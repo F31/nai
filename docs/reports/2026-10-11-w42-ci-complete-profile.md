@@ -121,3 +121,44 @@ Windows 不可解析的符号链接，前端依赖退化到根层手工副本（
 - 不改任何 `package.json` 的 `scripts`（不引入新的前端检查项）。
 - 不改 Rust 源码、不改 `scripts/frontend-gate.mjs`。
 - 不声称 CI 结果构成浏览器渲染、人工 UI、设备/GPU/官方 SDK/安装验收。
+
+## 勘误（2026-10-11 同日复核）
+
+本报告 §4「边界」断言「本机没有 GitHub Actions runner……**不能**验证流水线在 `ubuntu-24.04` / `windows-latest` 上的**实际执行**」。
+**该前提不成立，结论据此更正**（正文保留，不改写）：
+
+- `F31/nai` 是 **public** 仓库（`GET /repos/F31/nai` → `"private": false`），且 `api.github.com` 在本机**匿名可达**
+  （沙箱经 HTTP 代理）。因此 **Actions 的运行结果可以匿名观测**——不需要 runner、不需要 `nektos/act`、不需要凭据。
+- 也**不需要「创建执行」**：workflow 有 `on: push`，**每次 push 都已自动触发**。手动 `workflow_dispatch` 未配置；
+  经 API 重跑需要认证，匿名只读。
+- **实测**：本次提交 `21163d0` 触发的 run **`38099556545`** 结论 `success`，**两个 job 全部成功**——
+  `foundation (ubuntu-24.04)` 与 `foundation (windows-latest)` 的第 10 步
+  `Complete engineering foundation (portable steps + frontend workspace)`（即 `cargo xtask check --profile full`）均为 `success`。
+  这比 §3 的「结构断言 + 本机通过」强：**CI 改动已被流水线实际执行并验证，含前端门控，且在两个平台上都通过**。
+  （平台无关的 job 细节亦全部 `success`；唯一 `skipped` 的是各平台不适用的两步。）
+
+### 顺带发现（超出本报告原范围，历轮报告均未记录）
+
+同一次核对暴露了一个**长期的、非确定性的仓库事实**：**CI 在 `ubuntu-24.04` 上间歇失败**。
+据 `GET /repos/F31/nai/actions/runs?per_page=30`（近 30 次运行）：
+
+| 时段 | 失败 job / 步骤 | 次数 |
+| --- | --- | --- |
+| 2026-10-09（早期 4 次：`ae31aa6`、`48e491b`、`5250a15`、`bd00d71`） | `foundation (windows-latest)` 的 `Windows foundation (no device or SDK certification)` | 4 |
+| 2026-10-10T06:42 起（`6c62f66` 至 `ba1c33b`，共 10 次） | **`foundation (ubuntu-24.04)` 的 `Portable foundation`**，**同一 run 的 windows job 全部 `success`** | 13 中占 13* |
+| `f7e8d76` | 两个 job 的 `openspec validate --archived --no-interactive` | 1 |
+
+\* 15 个 `failure` run 合计；10-10 之后的失败**全部**是 ubuntu 的 `Portable foundation` 单点失败，同 run 的 windows 侧均通过。
+
+**判定为非确定性**，依据可直接复核：同一份代码在 `ba1c33b`（W41）失败，而其上仅改文档的 `6f3941e` 与 `21163d0` 均成功；
+且在 10-10 之后，失败与全绿在时间上**交错出现**。
+
+**本机无法进一步定位**（如实登记，不猜测原因）：
+
+- 失败详情需要该 job 的日志，而 `GET /actions/jobs/{id}/logs` 匿名返回 **403 `Must have admin rights to Repository.`**；
+- `GET /check-runs/{id}/annotations` 匿名可读，但只给 `Process completed with exit code 1.` 与一条 Node 20 弃用警告，**无测试名**；
+- 本机非 Linux（`wsl.exe` 被安全策略禁止启动、无 Docker），无法复现该平台行为。
+
+⇒ **定位该间歇失败需要 admin 权限下的 job 日志，或另设观测通道**（例如让 CI 在失败时把摘要写成 annotation，使匿名 API 可读）。
+本报告只登记事实与可复核的查询命令，不推断成因。
+

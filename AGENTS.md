@@ -647,6 +647,14 @@ CI SHALL 执行完整工程 profile；CI MUST NOT 在 profile 之外另定义前
 验证：用 Node **解析 YAML** 做结构断言 **13/13 通过**（含 `full` 恰 1 步、不含 `portable`/`windows-local` 与两步根命令、
 保留 8 个 suite、矩阵与 timeout 未变）；本机 `check --profile full` **EXIT=0**（82 目标 / 695 passed / 0 failed，与 W41 一致，
 本轮**零源码改动**）；`check-deps` 18 包、`--registry` 通过、`--secrets` **714 文件零命中**、`validate --all --strict` **37 项**。
-**边界**：本机无 GitHub Actions runner（亦无 `act`），流水线的**实际执行未经观测**——只验证了工作流结构与本机 `full` 通过，
-MUST NOT 写成「CI 已验证通过」。registry **不改任何 `status`**，D01 notes 只补记事实。见
-docs/reports/2026-10-11-w42-ci-complete-profile.md。
+**观测（原写「未经观测」，同日复核订正）**：`F31/nai` 是 **public** 仓库，Actions 结果可**匿名**经 `api.github.com` 读取
+（本机沙箱走 HTTP 代理）——**不需要 runner、不需要 `act`、不需要凭据，也不需要手动「创建执行」**：workflow 有 `on: push`，
+每次 push 都已自动触发。实测本次 `21163d0` 的 run `38099556545` **两个 job 全部 `success`**，含第 10 步
+`Complete engineering foundation (portable steps + frontend workspace)`（即 `check --profile full`，含前端门控）在
+ubuntu-24.04 与 windows-latest 上均通过 ⇒ 本轮 CI 改动**已被流水线实证**（强于「结构断言 + 本机通过」）。
+**但同一次核对暴露了历轮从未记录的仓库事实**：CI 在 ubuntu 上**长期间歇失败**——近 30 次运行中 15 次 `failure`，
+其中 10-10 之后的失败**全部**是 ubuntu 的 `Portable foundation` 单点失败，而**同一 run 的 windows 侧通过**；
+同一份代码在 `ba1c33b` 失败、其上仅改文档的 `6f3941e`/`21163d0` 成功 ⇒ **非确定性**。失败详情需 job 日志，而该端点匿名
+返回 403 `Must have admin rights`，annotations 只给 `exit code 1`（无测试名）；本机非 Linux（`wsl.exe` 被安全策略禁止、无 Docker）
+⇒ **定位需 admin 权限下的日志或另设观测通道**（如让 CI 失败时把摘要写成 annotation）。registry **不改任何 `status`**，
+D01 notes 只补记事实。见 docs/reports/2026-10-11-w42-ci-complete-profile.md 的**勘误**段。

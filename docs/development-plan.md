@@ -537,8 +537,11 @@ glob 自行展开且**空匹配即失败**；无 `node`/依赖不可解析/某�
 并删除被其逐包覆盖的两步根命令（保留等于让同一检查存在第二处定义）；`windows-local` 在工具中保留、CI 不再用它
 （在 Windows runner 上 `full` 是它的严格超集）。规格新增两条需求：CI SHALL 执行完整工程 profile；CI MUST NOT 在 profile
 之外另定义前端命令。验证：Node **解析 YAML** 的结构断言 **13/13**；本机 `check --profile full` **EXIT=0**（82 目标 / 695 passed，
-与 W41 一致、零源码改动）；`validate --all --strict` **37 项**。**边界**：本机无 runner，流水线实际执行**未经观测**，
-不写成「CI 已验证通过」。见 [报告](reports/2026-10-11-w42-ci-complete-profile.md)。
+与 W41 一致、零源码改动）；`validate --all --strict` **37 项**。**观测（原写「未经观测」，同日复核订正）**：仓库是 public，Actions 结果可**匿名**读（`api.github.com`），
+且 `on: push` 使每次 push 自动触发——本次 run `38099556545` **两 job 全绿**（含第 10 步 `check --profile full`，ubuntu 与 windows），
+故流水线**已实证**而非「未经观测」。但同次核对发现 ubuntu 侧 `Portable foundation` 步**长期间歇失败**
+（近 30 次 run 中 13 次为该单点失败、同 run 的 windows 侧均通过，且同一代码在不同提交上时绿时红 ⇒ 非确定性），
+定位需 admin 权限下的 job 日志。见 [报告](reports/2026-10-11-w42-ci-complete-profile.md) 的**勘误**段。
 
 下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03、P01 的判定骨架与 O04 的设备侧、W36 的真实链路接入纪律、W37 的线上形状修正、
 W38 的桌面审批面/UI 层、W39 的攻击者可控输入面随机测试、W40 的 B01 判据+执行体、W41 的完整工程 profile（前端门控）与 W42 的 CI 接线，S11 与 B01 的登记缺口均已补）；轨道二的自备资源**已有真实凭据落地**（文本／语音两条真实链路经本栈走通并产出真值证据，文本模型标准化为 `agnes-2.5-flash`）；剩余 **O01**（需演示包与约 10 分钟首句演练、约 30 分钟真实输出验证）、
