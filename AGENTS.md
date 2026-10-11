@@ -814,3 +814,23 @@ W49 收尾 O01 与 O05 中「外部依赖最少」的一半，**两者 `status` 
 任何界面**——与 §30.1 第 4 条「升级与回滚提示」**同一缺失前置**）、不加 xtask 命令与约定外证据目录、
 不改任何既有验收 `status`。见 docs/reports/2026-10-11-w49-o01-o05-in-repo-closeout.md、
 docs/demo-package.md、docs/adr/0044-demo-package-readiness-boundary.md。
+
+W50 把使用者提供的外部语料 **LiveChat**（ACL 2023／**MIT**，实测 **2,411,678** 条真实中文直播对话、346 主播，
+结构 `[streamer_id, audience_comment, streamer_response]`）接入为 B01「贴近真实直播的问题」（§284）的**取材素材**。
+起点是一个**口径缺口**：设计规格 §5.9 只列举三条**题集**来源（按场景编写／随场景包发布／坏案例经具名确认回流），
+**未覆盖「外部语料取材」**——故该语料不作第四条来源，而被定义为**素材层**：供问题**措辞与语境**，
+**不**供产品知识库与每题的 `evidence`/`expected`，因而**不使 B01 达标**（**保持 `blocked`**）。
+**安全摄取**（`.pk` 是 pickle，反序列化即任意代码执行）：核验**不先 `pickle.load`**，先用 `pickletools.genops`
+枚举 opcode 并对**数据白名单**放行（`GLOBAL`/`STACK_GLOBAL`/`REDUCE`/`NEWOBJ`/`BUILD`/`EXT*`/`PERSID` 一律拒绝），
+**8 个 `.pk` 全通过**（自检非空洞：含 `os.system` 的 pickle 被具名拒绝）；解压**先校验成员路径**防 zip-slip。
+**候选提取**：从 1,440,191 条对话提取 **154,812 条**提问候选（去重去噪、带溯源与主播真实回应），候选**不进仓库**、
+仍须**具名人工确认**才入 `tests/rag-golden`（复用既有 `promoted`+`confirmer` 机制）。**一次被实测推翻的尝试**：
+初版按词映射 §5.9 类别（`连麦/上麦/管理`→越权、`给你`→注入），抽样显示 `injection` 档几乎全是打赏互动、
+`privilege_escalation` 96 条里真正求权限的不到 10 条 ⇒ **整段移除**，工具只输出**原始信号词**；结论是该语料
+**可靠覆盖的只有「问题措辞」**，对非 `normal_answer` 类别**基本不适用**。抽样验真 60 条 ≈ **78%**（如实披露）。
+**可达性**：Google 全不可达（代理 502／直连 000）、HF/ModelScope 无镜像、上游无 tag/release ⇒ 全量只能人下载。
+**零仓库代码改动**（数据在仓库外、读 pickle 需 Python）、零新依赖、零新命令与证据目录；语料与候选池**不入库**。
+新增证据 `docs/reports/evidence/livechat-corpus-provenance.md`；规格 `knowledge-quality-gate` **+1 条需求**
+（外部语料只作素材／候选须具名确认／未使门槛满足／先验后读／来源可追溯）；`docs/golden-set.md`、
+`tests/rag-golden/README.md`、B01 notes 同步。遗留：§④ 真实知识库与 100 题内容仍是外部投入。
+见 docs/reports/2026-10-11-w50-livechat-corpus-sourcing.md。
