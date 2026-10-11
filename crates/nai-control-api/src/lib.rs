@@ -18,6 +18,9 @@ pub struct PendingApprovalView {
     pub expires_at_utc_ms: String,
     pub status: i32,
     pub evidence_count: u64,
+    /// Display-only candidate text so the operator approves content, not a hash.
+    /// The approval identity stays `candidate_hash`.
+    pub text: String,
 }
 impl From<PendingApproval> for PendingApprovalView {
     fn from(item: PendingApproval) -> Self {
@@ -27,6 +30,7 @@ impl From<PendingApproval> for PendingApprovalView {
             expires_at_utc_ms: item.expires_at_utc_ms.to_string(),
             status: item.status,
             evidence_count: item.evidence_count,
+            text: item.display_text,
         }
     }
 }
@@ -565,6 +569,7 @@ impl ControlApi {
                             "encoded_contract_ref": format!("approval:candidate_hash:{}", item.candidate_hash),
                             "expires_at_utc_ms": item.expires_at_utc_ms,
                             "evidence_count": item.evidence_count.to_string(),
+                            "display_text": item.text,
                         })
                     })
                     .collect();

@@ -834,3 +834,31 @@ W50 把使用者提供的外部语料 **LiveChat**（ACL 2023／**MIT**，实测
 （外部语料只作素材／候选须具名确认／未使门槛满足／先验后读／来源可追溯）；`docs/golden-set.md`、
 `tests/rag-golden/README.md`、B01 notes 同步。遗留：§④ 真实知识库与 100 题内容仍是外部投入。
 见 docs/reports/2026-10-11-w50-livechat-corpus-sourcing.md。
+
+W51 补齐 **O02** 的「审批按钮显示最终文本」（§662／§425）在**逻辑面**的缺口。W09 交付审批 API、W38 交付桌面
+审批面，但这条例验**一直未满足**——`utterances` 表只保存 `text_hash`（`migrations/sqlite/0001-foundation.sql:10`），
+审批列表只返回哈希/元信息/期限/证据计数。**存储侧承载**：迁移 `0006-utterance-display-text.sql` 新增
+`utterances.display_text`（`DEFAULT ''`；**只增不改**——`verify()` 逐文件 SHA-256，改 `0001` 会让既有库校验和漂移；
+`VERSION` 5→6、`SQL` 5→6 项、`backup.schema.json` 的 `db_schema_version` 5→6），`record_candidate` 具名列写入
+候选自身 `display_text`，`list_pending_approvals`/`read_approval` 返回该列。**契约**：`control.yaml` 的 `ResourceItem`
+增**可选** `display_text`（**description 含逗号必须加引号**，否则 YAML 流式映射解析成多余键触发校验失败——
+本轮真实踩到；选可选而非必填，因必填会让早于 `0006` 的候选无法表示「文本缺失」），三份生成物（`control_http.rs` 1 行、
+`http.ts` +2、`backup.ts` 5→6）随之重建。**控制面/桌面**：`PendingApprovalView`+`display_text`；
+`console.ts` 的 `candidateText`/`approveConfirmPrompt` 显示文本并在二次确认文案里**点名身份为候选哈希**；
+`control.ts` 严格解析拒绝非字符串 `display_text`。**三条口径（ADR 0045）**：**文本是只读呈现、身份始终是候选哈希**
+（命令也以哈希为准）；**缺文本具名缺口**（`FINAL_TEXT_GAP`）而非用空串/哈希冒充；`display_text` 在哈希覆盖范围内
+（`candidate_hash` 对整个 cue 含该列做 SHA-256）但存储只留哈希与文本两列、**无法**由文本重算哈希本地核对
+⇒ **不声称「文本已被哈希校验」**，文本被篡改不会让审批绑定到另一候选、但**可能误导操作员**（**剩余风险**）。
+**本机边界**：Node 同步子进程创建被阻断（`spawnSync`/`execSync` 一律 `EBUSY`，managed/system node 均如此，
+`sandbox:false` 亦然；**异步 `spawn` 正常**）⇒ `scripts/contracts/generate.mjs`（三处 `spawnSync`）本机必败；
+处理是**临时**换异步 shim 跑一次生成、**随后还原脚本**（`git diff` 为空），**不**为主机限制永久改源码。
+实测：`check-deps` **18 包**、`check --registry`、`cargo xtask schema` 生成成功；`cargo check --workspace` EXIT=0；
+**`check --profile portable` EXIT=0（83 目标 = 66 `Running` + 17 `Doc-tests`、726 passed/0 failed**；W49 为 725，
+**+1 本轮新增存储测试**）；`tests/ui` **37/37**（W49 后 34，**+3 本轮**）；两包 `tsc --noEmit`、`@nai/contracts` build、
+`vite build` 均 EXIT=0（`index-9TygVhoX.js 206.90 kB`）；`validate --all --strict` **39/39**。
+（**本机 `LNK1104` 三次复现**为**主机事实**：portable 两次因链接被瞬时占用失败——修法是把 **workspace 与
+`nai-xtask --lib` 两个目标都预热**，一次成功后再跑门控即 LNK=0。）**O02 保持 `pending`**
+（真实候选来源/桌面渲染/生产 root 接线/手机审核未接；按 admission-registry 诚实回填**不得**自动升级），
+notes 追加本轮成果。新增 ADR **0045**；**不改任何既有验收 `status`**。见
+docs/reports/2026-10-11-w51-approval-final-text.md、docs/adr/0045-approval-display-text-boundary.md、
+docs/ui.md、docs/control.md。

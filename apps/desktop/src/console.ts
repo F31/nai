@@ -51,14 +51,35 @@ export function nextApprovalStep(
 export const HARDWARE_ACK_NOTE = '控制 ACK 仅表示控制状态已执行，未取得硬件静音/播放 ACK';
 
 /**
- * 本载荷不提供候选的最终文本：`utterances` 表只保存 `text_hash`
- * （`migrations/sqlite/0001-foundation.sql:10`），审批列表接口也不返回文本。
- * 设计 §662（O02 验收）与 §425（T-14）要求「审批按钮显示最终文本」，该验收**当前未满足**。
+ * 候选的展示文本随列表载荷下发（`ResourceItem.display_text`），供操作员核对**将要播报的内容**。
+ * 身份始终是 `item.id`（候选哈希）——批准命令也只用哈希，展示文本不参与构造命令。
+ */
+export type CandidateText = { id: string; present: boolean; text?: string; label: string };
+
+/**
+ * 缺文本的两种来源是同一件事：载荷没有该字段，或存储行早于该字段（迁移 0006 的默认空串）。
+ * 两者都必须**具名说明缺失**，绝不显示哈希冒充文本，也绝不用空串冒充「内容为空」。
  */
 export const FINAL_TEXT_GAP =
-  '本载荷不含候选的最终文本（存储只保存 text_hash），身份为候选哈希；设计 §662「审批按钮显示最终文本」尚未满足。';
+  '该候选未随载荷提供展示文本（该行早于文本保存字段，或载荷未含该字段）；身份是候选哈希，请勿据哈希推断将要播报的内容。';
+
+export function candidateText(item: ApprovalItem): CandidateText {
+  const raw = item.display_text;
+  if (typeof raw !== 'string' || raw.length === 0) {
+    return { id: item.id, present: false, label: FINAL_TEXT_GAP };
+  }
+  return { id: item.id, present: true, text: raw, label: raw };
+}
 
 export const APPROVE_CONFIRM_PROMPT = `${FINAL_TEXT_GAP} 再次点击同一候选才提交批准。`;
+
+/** 二次确认里要么给**文本本身**，要么给**具名缺失**；两者都不给就等于让操作员盲批。 */
+export function approveConfirmPrompt(item: ApprovalItem): string {
+  const shown = candidateText(item);
+  return shown.present
+    ? `将批准播报：「${shown.text}」；身份为候选哈希。再次点击同一候选才提交批准。`
+    : APPROVE_CONFIRM_PROMPT;
+}
 
 export type ControlAction = 'mute' | 'takeover' | 'approve' | 'reject';
 
@@ -109,7 +130,7 @@ export async function runApprovalDecision(
   }
   const step = nextApprovalStep(flow, action, item.id);
   if (!step.submit) {
-    return { kind: 'armed', flow: step.flow, status, list, live, message: APPROVE_CONFIRM_PROMPT };
+    return { kind: 'armed', flow: step.flow, status, list, live, message: approveConfirmPrompt(item) };
   }
   await transport.decideApproval(status, item, action, commandId);
   const after = await transport.approvals();

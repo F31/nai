@@ -26,6 +26,7 @@ export function parseApprovals(value: unknown): ApprovalsView {
     if (!object(item) || typeof item.id !== 'string' || !/^[a-f0-9]{64}$/.test(item.id)
       || typeof item.revision !== 'string' || typeof item.status !== 'string'
       || (item.encoded_contract_ref !== undefined && typeof item.encoded_contract_ref !== 'string')
+      || (item.display_text !== undefined && typeof item.display_text !== 'string')
       || (item.expires_at_utc_ms !== undefined && !u64(item.expires_at_utc_ms))
       || (item.evidence_count !== undefined && !u64(item.evidence_count))) throw new Error('待审批项结构无效');
   }

@@ -149,6 +149,7 @@ fn list_read_and_reject_close_awaiting_workflow() {
         .unwrap();
     assert_eq!(pending.len(), 2);
     assert!(pending.iter().all(|p| p.approval_id.is_none()));
+    assert!(pending.iter().all(|p| p.display_text == "测试价格"));
     let read = storage
         .read_approval(
             &op(),
@@ -161,6 +162,7 @@ fn list_read_and_reject_close_awaiting_workflow() {
         .unwrap();
     assert_eq!(read.candidate_hash, hash_first);
     assert!(read.evidence_count >= 1);
+    assert_eq!(read.display_text, "测试价格");
     assert_eq!(
         storage
             .list_pending_approvals(&op(), "test-workspace", "operator", "session-test", 0, 1)
@@ -373,4 +375,58 @@ fn list_is_bounded_and_filters_expired_wrong_epoch_and_updated_facts() {
             .unwrap()
             .is_empty()
     );
+}
+
+/// An approval operator sees the candidate's own text, not only its hash. The
+/// stored value is exactly what was admitted: no transformation, and no
+/// fabricated placeholder when the candidate carried no text.
+#[test]
+fn stored_display_text_is_the_admitted_text_and_never_a_hash() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut storage = store(dir.path());
+    setup(&mut storage);
+    storage
+        .create_session(&op(), "test-workspace", "operator", "session-test")
+        .unwrap();
+    storage
+        .publish_fact(&op(), "operator", &fact(), None)
+        .unwrap();
+    let mut cue = candidate();
+    cue.display_text = "限量版 买一送一".into();
+    let hash = setup_approval(&mut storage, &cue);
+    let listed = storage
+        .list_pending_approvals(&op(), "test-workspace", "operator", "session-test", 0, 200)
+        .unwrap();
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].display_text, "限量版 买一送一");
+    let read = storage
+        .read_approval(
+            &op(),
+            "test-workspace",
+            "operator",
+            "session-test",
+            0,
+            &hash,
+        )
+        .unwrap();
+    assert_eq!(read.display_text, "限量版 买一送一");
+    assert_ne!(read.display_text, read.candidate_hash);
+    // A candidate admitted without text stores no text: "nothing stored" must stay
+    // distinguishable from a fabricated placeholder or from the hash itself.
+    let mut blank = candidate();
+    blank.utterance_id = "approval-blank".into();
+    blank.display_text = String::new();
+    let blank_hash = setup_approval(&mut storage, &blank);
+    let blank_read = storage
+        .read_approval(
+            &op(),
+            "test-workspace",
+            "operator",
+            "session-test",
+            0,
+            &blank_hash,
+        )
+        .unwrap();
+    assert!(blank_read.display_text.is_empty());
+    assert_ne!(blank_read.display_text, blank_hash);
 }

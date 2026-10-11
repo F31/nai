@@ -1,0 +1,11 @@
+-- Approval operators must be able to read the candidate's own text, not only its
+-- hash: the approval binds to the hash, but a human approving it has to see what
+-- would be broadcast. The display text exists on the cue at admission time, so it
+-- is written then (store::create_candidate); an older row cannot have it.
+--
+-- Added as a new migration rather than editing 0001: verify() checks the SHA-256
+-- of each applied migration file, so editing 0001 would invalidate every existing
+-- database. The default '' is meaningful, not absent data: it marks rows written
+-- before this column existed, and the surface must name that gap instead of
+-- rendering empty content.
+ALTER TABLE utterances ADD COLUMN display_text TEXT NOT NULL DEFAULT '';

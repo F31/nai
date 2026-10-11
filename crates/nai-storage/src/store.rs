@@ -587,15 +587,18 @@ impl Store {
         let tx = self
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        // display_text is stored alongside the hash: the approval binds to the hash,
+        // but the operator has to approve what would actually be broadcast.
         tx.execute(
-            "INSERT INTO utterances VALUES(?1,?2,?3,?4,1,?5,?6,0)",
+            "INSERT INTO utterances(utterance_id,workspace_id,session_id,generation_epoch,status,text_hash,expires_at_ms,actual_played,display_text) VALUES(?1,?2,?3,?4,1,?5,?6,0,?7)",
             params![
                 cue.utterance_id,
                 workspace,
                 cue.session_id,
                 epoch,
                 candidate_hash,
-                sql_int(cue.expires_at_utc_ms)?
+                sql_int(cue.expires_at_utc_ms)?,
+                cue.display_text
             ],
         )?;
         for (index, (product, field, revision)) in dependencies.iter().enumerate() {
@@ -748,7 +751,8 @@ impl Store {
         let now = utc_ms()?;
         let mut statement = self.conn.prepare(
             "SELECT u.text_hash, a.approval_id, u.expires_at_ms, u.status,
-                (SELECT COUNT(*) FROM evidence_links e WHERE e.workspace_id=u.workspace_id AND e.utterance_id=u.utterance_id)
+                (SELECT COUNT(*) FROM evidence_links e WHERE e.workspace_id=u.workspace_id AND e.utterance_id=u.utterance_id),
+                u.display_text
              FROM utterances u JOIN sessions s ON s.session_id=u.session_id
              LEFT JOIN approvals a ON a.workspace_id=u.workspace_id AND a.session_id=u.session_id AND a.candidate_hash=u.text_hash AND a.generation_epoch=?6 AND a.revoked_at_ms IS NULL AND a.expires_at_ms>?5
              WHERE u.workspace_id=?1 AND u.session_id=?2 AND u.generation_epoch=?3 AND s.generation_epoch=u.generation_epoch
@@ -773,6 +777,7 @@ impl Store {
                     expires_at_utc_ms: r.get::<_, i64>(2)? as u64,
                     status: r.get(3)?,
                     evidence_count: r.get::<_, i64>(4)? as u64,
+                    display_text: r.get(5)?,
                 })
             },
         )?;
@@ -809,12 +814,13 @@ impl Store {
         let now = utc_ms()?;
         let record=self.conn.query_row(
             "SELECT u.text_hash, a.approval_id, u.expires_at_ms, u.status,
-                    (SELECT COUNT(*) FROM evidence_links e WHERE e.workspace_id=u.workspace_id AND e.utterance_id=u.utterance_id)
+                    (SELECT COUNT(*) FROM evidence_links e WHERE e.workspace_id=u.workspace_id AND e.utterance_id=u.utterance_id),
+                    u.display_text
              FROM utterances u JOIN sessions s ON s.session_id=u.session_id
              LEFT JOIN approvals a ON a.workspace_id=u.workspace_id AND a.session_id=u.session_id AND a.candidate_hash=u.text_hash AND a.generation_epoch=?4 AND a.revoked_at_ms IS NULL AND a.expires_at_ms>?3
              WHERE u.workspace_id=?1 AND u.session_id=?2 AND u.generation_epoch=?4 AND s.generation_epoch=u.generation_epoch AND u.text_hash=?5 AND u.expires_at_ms>?3 AND u.status NOT IN(12,13,14,15)",
             params![workspace, session, now, sql_int(epoch)?, candidate],
-            |r| Ok(PendingApproval { candidate_hash: r.get(0)?, approval_id: r.get(1)?, expires_at_utc_ms: r.get::<_,i64>(2)? as u64, status: r.get(3)?, evidence_count: r.get::<_,i64>(4)? as u64 }),
+            |r| Ok(PendingApproval { candidate_hash: r.get(0)?, approval_id: r.get(1)?, expires_at_utc_ms: r.get::<_,i64>(2)? as u64, status: r.get(3)?, evidence_count: r.get::<_,i64>(4)? as u64, display_text: r.get(5)? }),
         ).optional()?.ok_or_else(|| error(ErrorCode::DeadlineExceeded, "approval not found or expired"))?;
         if !crate::publication::candidate_documents_valid(
             &self.conn, workspace, session, candidate, now,
@@ -896,6 +902,9 @@ pub struct PendingApproval {
     pub expires_at_utc_ms: u64,
     pub status: i32,
     pub evidence_count: u64,
+    /// The candidate's own display text, as admitted. Empty means the row predates
+    /// the column (migration 0006), not that the candidate had no text.
+    pub display_text: String,
 }
 fn validate_fact(fact: &AuthoritativeFact) -> Result<()> {
     if let Some(from) = fact.valid_from_utc_ms {

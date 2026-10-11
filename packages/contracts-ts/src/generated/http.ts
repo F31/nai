@@ -1883,6 +1883,8 @@ export interface components {
             encoded_contract_ref?: string;
             expires_at_utc_ms?: components["schemas"]["U64"];
             evidence_count?: components["schemas"]["U64"];
+            /** @description Display-only candidate text for operator review; the item identity remains id and the approval binds to the candidate hash; absent when a row predates the field. */
+            display_text?: string;
         };
         KnowledgeQuery: {
             request_id: string;

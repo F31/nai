@@ -73,16 +73,24 @@
 ## 边界
 
 - **不测渲染**：本轮不引入 DOM 库（jsdom/playwright 等），**零新增依赖**。像素、布局、可访问性、真实浏览器行为均不在本层。
-- **不宣称 UI 验收达标**：`tests/ui` 通过只是**逻辑面**成立；设计 §662（O02）/ §425（T-14）的「审批按钮显示最终文本」**当前未满足**——载荷里没有候选文本（见下）。
+- **不宣称 UI 验收达标**：`tests/ui` 通过只是**逻辑面**成立；设计 §662（O02）/ §425（T-14）的「审批按钮显示最终文本」**W51 起逻辑面已满足**——载荷返回候选展示文本、界面显示它（见下）。但仍**不**据此宣称 UI 验收达标：真实候选来源、桌面渲染与生产 root 接线未接，故 O02 保持 `pending`。
 - **`local_control` 示例未装配审批 backend**：故手工点开界面时审批请求仍显式返回 `CAPABILITY_NOT_READY`；`tests/ui` 用替身驱动，证明的是**编排与判据**。
 
-## 文本缺口（诚实披露）
+## 审批显示文本（W51）
 
-设计 §662 与 §425 要求审批按钮**显示最终文本**。本栈做不到，原因是存储只保存哈希：
-`migrations/sqlite/0001-foundation.sql:10` 的 `utterances` 表只存 `text_hash`，审批列表接口也只返回哈希/元信息引用/期限/证据计数。
+设计 §662 与 §425 要求审批按钮**显示最终文本**。W51 起本栈做得到：存储侧迁移 `0006-utterance-display-text.sql`
+新增 `utterances.display_text`，`record_candidate` 写入候选自身的 `display_text`；`list_pending_approvals` 与
+`read_approval` 返回该列；控制面 `ResourceItem` 新增可选 `display_text`，列表载荷随之携带。
+`apps/desktop/src/console.ts` 的 `candidateText()` 把载荷映射为 `{present, text, label}`——**有文本则显示文本**，
+命令与批准冒泡仍以**候选哈希**为准（`id`），二次确认文案（`approveConfirmPrompt`）也点名「身份为候选哈希」。
 
-界面的做法是**如实说出来**（`FINAL_TEXT_GAP` 文案：本载荷不含最终文本、身份为候选哈希、并指向未满足的验收项），
-而不是把哈希当文本展示、或含糊地叫「内容」。补齐它需要存储侧保存可展示文本并同步契约——**不在本轮范围**，已登记在 `tests/registry.yaml` 的 O02 notes。
+界面对**缺文本**如实具名（`FINAL_TEXT_GAP`：本载荷未随候选提供展示文本，该行早于 `display_text` 字段），
+**绝不**把哈希或空串当作将要播报的内容——`label !== ''` 与「`text !== hash`」在 `tests/ui/approval-surface.test.mjs` 被断言。
+
+**真值边界（ADR 0045）**：`display_text` 在候选哈希覆盖范围内（`candidate_hash` 对整个 cue 含 `display_text` 做 SHA-256），
+但存储只保留哈希与文本两列、不保留完整 cue ⇒ **无法**由文本重算哈希本地核对，故**不声称「文本已被哈希校验」**；
+文本篡改不会让审批绑定到另一候选，但**可能误导操作员**（剩余风险）。存储字段就位**不等于 O02 达标**：真实候选来源、
+桌面渲染与生产 root 接线未接 ⇒ **O02 保持 `pending`**，见 `tests/registry.yaml` O02 notes。
 
 ## 可执行验证
 

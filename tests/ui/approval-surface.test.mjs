@@ -6,8 +6,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ControlClient, parseApprovals } from '../../apps/desktop/src/control.ts';
 import {
-  APPROVE_CONFIRM_PROMPT, FINAL_TEXT_GAP, IDLE_APPROVAL_FLOW, approvalFreshness,
-  describeCommandResult, runApprovalDecision,
+  APPROVE_CONFIRM_PROMPT, FINAL_TEXT_GAP, IDLE_APPROVAL_FLOW, approvalFreshness, approveConfirmPrompt,
+  candidateText, describeCommandResult, runApprovalDecision,
 } from '../../apps/desktop/src/console.ts';
 
 const HASH_A = 'a'.repeat(64);
@@ -211,4 +211,47 @@ test('a command ACK is reported as a control ACK, never as a hardware mute', () 
     assert.ok(!/已静音|已停止|硬件已/.test(message), message);
   }
   assert.match(describeCommandResult('approve'), /未取得硬件静音/);
+});
+
+// 设计 §662（O02）与 §425（T-14）：审批按钮显示**最终文本**，不能只显示「同意模型回复」。
+test('the approval surface shows the candidate text and never substitutes the hash', async () => {
+  const text = '满 300 减 50，今晚 8 点上架';
+  const withText = { ...candidate(HASH_A, NOW + 60_000), display_text: text };
+  const shown = candidateText(withText);
+  assert.equal(shown.present, true);
+  assert.equal(shown.label, text);
+  const prompt = approveConfirmPrompt(withText);
+  assert.ok(prompt.includes(text), prompt);
+  assert.ok(!prompt.includes(HASH_A), prompt);
+
+  const { transport } = transportStub([queue([withText])]);
+  const armed = await runApprovalDecision(
+    transport, withText, 'approve', { epoch: '7', ids: [HASH_A] }, IDLE_APPROVAL_FLOW, 'cmd-11', NOW,
+  );
+  assert.equal(armed.kind, 'armed');
+  assert.ok(armed.message.includes(text), armed.message);
+  assert.ok(!armed.message.includes(HASH_A), armed.message);
+});
+
+test('a candidate with no stored text is named as missing, never as empty content', () => {
+  const absent = candidate(HASH_B, NOW + 60_000);
+  const missing = candidateText(absent);
+  assert.equal(missing.present, false);
+  assert.equal(missing.label, FINAL_TEXT_GAP);
+  assert.ok(!missing.label.includes(HASH_B));
+  assert.equal(approveConfirmPrompt(absent), APPROVE_CONFIRM_PROMPT);
+  // 存储侧迁移 0006 的默认空串表示「该行早于该字段」，不是「内容为空」。
+  const empty = { ...absent, display_text: '' };
+  const blank = candidateText(empty);
+  assert.equal(blank.present, false);
+  assert.equal(blank.label, FINAL_TEXT_GAP);
+  assert.notEqual(blank.label, '');
+});
+
+test('a display text of the wrong shape is refused by the strict parser', () => {
+  for (const bad of [3, {}, [], true]) {
+    assert.throws(() => parseApprovals(queue([{ ...candidate(HASH_A, NOW), display_text: bad }])), /结构无效/);
+  }
+  const parsed = parseApprovals(queue([{ ...candidate(HASH_A, NOW), display_text: '文本' }]));
+  assert.equal(parsed.items[0].display_text, '文本');
 });

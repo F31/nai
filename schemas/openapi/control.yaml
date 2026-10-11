@@ -301,6 +301,7 @@ components:
         encoded_contract_ref: {type: string, description: Reference to authorized typed resource; never a secret or raw media.}
         expires_at_utc_ms: {$ref: '#/components/schemas/U64'}
         evidence_count: {$ref: '#/components/schemas/U64'}
+        display_text: {type: string, description: 'Display-only candidate text for operator review; the item identity remains id and the approval binds to the candidate hash; absent when a row predates the field.'}
     KnowledgeQuery:
       type: object
       additionalProperties: false

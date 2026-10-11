@@ -2,13 +2,14 @@ use crate::{Operation, Result, error, hash, utc_ms};
 use nai_contracts::v1::ErrorCode;
 use rusqlite::{Connection, TransactionBehavior};
 
-pub(crate) const VERSION: i64 = 5;
-const SQL: [&str; 5] = [
+pub(crate) const VERSION: i64 = 6;
+const SQL: [&str; 6] = [
     include_str!("../../../migrations/sqlite/0001-foundation.sql"),
     include_str!("../../../migrations/sqlite/0002-authority.sql"),
     include_str!("../../../migrations/sqlite/0003-knowledge-index.sql"),
     include_str!("../../../migrations/sqlite/0004-knowledge-publication.sql"),
     include_str!("../../../migrations/sqlite/0005-decision-log.sql"),
+    include_str!("../../../migrations/sqlite/0006-utterance-display-text.sql"),
 ];
 
 pub(crate) fn verify(connection: &Connection) -> Result<i64> {

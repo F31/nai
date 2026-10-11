@@ -368,7 +368,7 @@ fn seed_approval_store() -> (tempfile::TempDir, nai_storage::Store, String) {
         utterance_id: "approval-candidate".into(),
         session_id: "s".into(),
         speech_text: "test".into(),
-        display_text: "test".into(),
+        display_text: "待审批文本：满 300 减 50".into(),
         risk: 2,
         expires_at_utc_ms: 4_294_967_296_000,
         ..Default::default()
@@ -497,6 +497,19 @@ async fn approval_list_and_real_reject_workflow_over_loopback() {
     );
     assert_eq!(items[0]["id"], hash);
     assert_eq!(items[0]["status"], "awaiting_approval");
+    // The operator approves content, not a hash: the candidate's own text rides
+    // along, and it is never the identity.
+    assert_eq!(items[0]["display_text"], "待审批文本：满 300 减 50");
+    assert_ne!(items[0]["display_text"], items[0]["id"]);
+    // The rest of the candidate payload stays out of the list.
+    for absent in [
+        "speech_text",
+        "candidate_hash",
+        "performance",
+        "evidence_refs",
+    ] {
+        assert!(items[0].get(absent).is_none(), "list item leaked {absent}");
+    }
     // Reject the real candidate through the API.
     let reject = h
         .client
