@@ -1,6 +1,6 @@
 # 本机控制面（D14 / W09）
 
-提供显式 loopback 工程控制服务 `nai-control-api` 和桌面客户端，消费真实 Session 状态，接入独立 EmergencyHandle。W09 增加可注入真实存储 owner 的审批 API；正式 Windows Tauri/受保护 IPC、媒体设备、完整开播预检与审批 GUI 尚未实现。
+提供显式 loopback 工程控制服务 `nai-control-api` 和桌面客户端，消费真实 Session 状态，接入独立 EmergencyHandle。W09 增加可注入真实存储 owner 的审批 API。**W54 起桌面壳的形态与边界已裁决**（[ADR 0046](adr/0046-desktop-shell-form-and-tauri-boundary.md)：Tauri 2、壳只做四件事、最小权限面、**受保护 IPC 为生产路径而 loopback HTTP 为测试适配**）；但**壳体的构建、打包与签名尚未实现**——「形态与边界已定」与「壳已做出来」是两件事。媒体设备、完整开播预检与审批 GUI 同样尚未实现。
 
 ## 实际支持
 
@@ -132,3 +132,25 @@ pnpm test:engine-smoke
 
 `test:engine-smoke` 用真实 `nai-engine` 进程 + 桌面 `ControlClient` 验证 401/status/mute/takeover 与
 优雅停机；不产生硬件 ACK，也不代表 protected IPC 或远程认证。
+
+## 桌面壳宿主边界（W54）
+
+设计 §1248 规定技术栈为 Tauri 2，§1151 / §1259 / §900 / §1101 规定了壳的四组边界。W54 把这些落成**可判定的声明**：
+[ADR 0046](adr/0046-desktop-shell-form-and-tauri-boundary.md)（形态与边界裁决，44 篇 ADR 中首条桌面壳条目）＋
+`apps/desktop/src-tauri/{tauri.conf.json, capabilities/default.json, shell-policy.json}` ＋
+`tests/ui/desktop-shell.test.mjs`（15 项，含非空洞守卫；经既有 `test:ui` 自动进入 `full` 门控）。
+
+| 边界 | 判定方式 |
+|---|---|
+| 壳只做四件事（窗口与托盘生命周期／受保护 IPC 宿主侧／数据根解析／sidecar 拉起与监督） | 能力声明命中业务语义（会话·守门·审批·知识·媒体编排）即失败 |
+| 最小权限面 | 权限集合与声明**逐一相等**（多授少授都失败）；须形如 `core:<模块>:allow-<动作>`，聚合权限集被拒 |
+| CSP | 无 `unsafe-eval`、任一指令无通配源；`connect-src` 必须含 `ipc:` |
+| sidecar | 逻辑名**不带**目标三元组且须对应真实二进制包；命名规则 `包名-目标三元组(+.exe)` |
+| 后台生命周期 | 不随界面关闭而终止（supervisor 或托盘），不依赖 WebView 保活 |
+| 三形态 | 桌面／macOS／移动端路线 B **共用同一套边界**，差异只允许落在目标与分发上 |
+
+**这些文件当前不被任何构建消费**：不引入 `tauri` crate、不建 Rust 壳主体（理由见 ADR 0046 D3——把 WebView2
+与网络拉进构建链，会让门控结论取决于**主机事实**，这是 [ADR 0041](adr/0041-engineering-profile-frontend-boundary.md)
+已裁过的禁忌）。因此 `tests/registry.yaml` 的 **A12 保持 `pending`**，缺失前置是真实依赖、可运行壳体与打包/签名链。
+校验读的是配置的**形状**，**不能**证明它被某个 Tauri 版本接受（ADR 0046 R1/R3）。
+

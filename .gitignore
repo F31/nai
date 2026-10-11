@@ -10,3 +10,6 @@ dist/
 /graphify-out/
 # 本机智能体会话数据（记忆/日志），不进入仓库
 /.workbuddy/
+# Tauri 构建产物（引入真实依赖后才会出现；当前只声明不构建，见 ADR 0046 D3）
+/apps/desktop/src-tauri/target/
+/apps/desktop/src-tauri/gen/

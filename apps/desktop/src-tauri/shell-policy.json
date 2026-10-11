@@ -1,0 +1,19 @@
+{
+  "$comment": "本仓库自有的**壳策略声明**，不是 Tauri 的配置字段（Tauri 配置见同目录 tauri.conf.json）。它把 ADR 0046 里 Tauri schema 无法表达的边界（四件事的范围、后台生命周期归谁、受保护 IPC 与 HTTP 的角色、三形态共用）变成**可判定的数据**；校验见 tests/ui/desktop-shell.test.mjs，规格见 openspec/specs/desktop-shell。",
+  "shellResponsibilities": [
+    "window-and-tray-lifecycle",
+    "protected-ipc-host-side",
+    "data-root-resolution",
+    "sidecar-supervision"
+  ],
+  "businessLogicInShell": "forbidden",
+  "backendsOutliveUi": true,
+  "backendSupervisor": "independent-supervisor-or-tray",
+  "webviewKeepAliveRequiredForBackends": false,
+  "protectedIpcIsProductionPath": true,
+  "loopbackHttpRole": "test-adaptation",
+  "dataRootResolvedBy": ["os-path-api", "shell"],
+  "sidecarNamingTemplate": "{name}-{target_triple}{ext}",
+  "formFactors": ["windows", "macos", "mobile-route-b"],
+  "formFactorDiffsAllowed": ["target", "distribution"]
+}

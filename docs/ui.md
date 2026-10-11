@@ -100,4 +100,18 @@ pnpm --filter @nai/desktop test
 pnpm typecheck
 ```
 
+## 桌面壳宿主边界（W54）
+
+`tests/ui` 的另一半在**宿主侧**：`apps/desktop/src-tauri/` 的形态声明与最小权限面
+（[ADR 0046](adr/0046-desktop-shell-form-and-tauri-boundary.md)／[控制面指南](control.md) 末节）。
+
+`desktop-shell.test.mjs`（15 项）读 `tauri.conf.json`、`capabilities/default.json` 与 `shell-policy.json` 的**形状**，断言：
+权限集合与声明**逐一相等**（多授少授都失败；聚合权限集被拒）、CSP 无 `unsafe-eval` 与通配源且 `connect-src` 含 `ipc:`、
+sidecar 逻辑名**不带**目标三元组且对应真实二进制包、后台生命周期不绑界面、桌面／macOS／移动端三形态共用边界、
+前端源码不 import `@tauri-apps/*`。每条检查都配**非空洞守卫**（注入违反样本必须被抓到）。
+
+**它不是壳体验收**：本目录不引入 `tauri` crate、不建 Rust 壳主体、不打包（ADR 0046 D3）。校验读的是**配置的形状**，
+**不能**证明配置被某个 Tauri 版本接受，`tests/registry.yaml` 的 A12 因此保持 `pending`。
+同理，`tests/ui` 通过仍**不构成**浏览器渲染或人工 UI 验收。
+
 相关：[控制面指南](control.md)、[本轮报告](reports/2026-10-10-w38-desktop-approval-surface.md)。

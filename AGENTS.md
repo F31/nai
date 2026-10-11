@@ -924,3 +924,38 @@ workspace 成员 **18 → 19**），登记**快手**与**视频号**两个显式
 **A03 保持 `implemented`、P01 保持 `blocked`**，`registry.yaml` 只补 A03 notes。见
 docs/reports/2026-10-11-w53-explicit-unavailable-connector.md、docs/platform.md、
 docs/platform-lifecycle.md、docs/engineering.md。
+
+W54 裁决 **桌面壳形态与 Tauri 边界**（用户五项决策的第 1 项），并把它落成**可判定的边界**。
+**缺口性质（本轮的核心判断）**：形状**早已定了**（§1248 明文 Tauri 2 + React + TS + Vite；§1260 产物含
+`desktop-shell`），缺的**不是选型**，而是**一条裁决**与**可查的落点**——`docs/adr/` 的 44 篇里**没有**桌面壳形态
+这一条；`apps/desktop` 是**纯 Web**（deps 只有 react/react-dom/vite，无 `src-tauri/`）；而 §1151（capabilities/CSP
+最小权限）、§1259（sidecar 三元组与 UI 父子生命周期）、§900（数据根）、§1101（同机优先受保护 IPC）四组条款在
+`crates/`/`apps/`/`schemas/` **零命中**；`tests/registry.yaml` 的 66 条里**没有**桌面壳条目。
+**注意一条「不是缺口」的事实**：INV-18「内核不依赖 Tauri」**已由 `xtask/src/deps.rs` 强制**
+（`starts_with("tauri")` + 单测夹具 `&["windows-sys","tauri"]`），本轮**不重复实现**，ADR 只引用它。
+**ADR 0046** 裁决：形态 = Tauri 2；**壳只做四件事**（窗口与托盘生命周期／受保护 IPC 宿主侧／数据根解析／
+sidecar 拉起与监督），业务语义（会话·守门·审批·知识·媒体编排）MUST NOT 进壳（§17.5、§181）；
+**最小权限面「逐一相等」**——§1151 的「只开放必要」是**上界**断言，而「包含」只证下界（含 `shell:allow-execute`
+的集合显然「包含」必要权限），且**禁止 `core:default` 一类聚合权限集**（一条标识符展开成一组权限，使「最小」
+不可逐条检查），故权限标识符须匹配 `^core:[a-z]+:allow-[a-z0-9-]+$`；CSP 无 `unsafe-eval`、任一指令无通配源
+（`*`／`http:`／`https:`／`ws:`／`wss:`）、`connect-src` 必须含 `ipc:`（`data:` 与 `http://ipc.localhost`
+**不在**通配列）；**受保护 IPC 是生产路径、loopback HTTP 是测试适配**（§1101：既有 `ControlClient` 不变，
+只在声明里定性）；后台生命周期**不绑界面**、**不依赖 WebView 保活**（§1259）；sidecar 声明写**不带三元组**的
+**逻辑名**且必须对应 `apps/` 下**真实存在**的二进制包，命名规则 `包名-目标三元组(+.exe)`；**三形态共用边界**
+（桌面／macOS／移动端路线 B，§10.2/§10.3），差异只允许落在**目标与分发**上。
+**本轮最关键的一取舍：不引入真实 Tauri 依赖**。`tauri`/`tauri-build` 在 Windows 上需要 WebView2 的导入库、
+构建链会访问网络 ⇒ 拉进 workspace 会让 `check --profile portable|full` 的结论取决于**本机是否装了 WebView2、
+网络是否可达**——那是**主机事实**，正是 ADR 0041 已裁过的禁忌。故本轮交付**真实格式的声明**与**自建的形状校验**
+而不是构建产物；**workspace 仍 19 包、零新增依赖、Rust 侧零改动**。**落点**：
+`apps/desktop/src-tauri/{tauri.conf.json, capabilities/default.json, shell-policy.json}`
+（`shell-policy.json` 是本仓库自有的策略声明，把 Tauri schema 表达不了的四条边界——范围／生命周期／IPC 角色／
+形态共用——变成可判定数据）＋ `tests/ui/desktop-shell.test.mjs`（**15 项**，经既有 `test:ui` 自动进入 `full` 门控，
+**不改门控代码**——`scripts/frontend-gate.mjs` 按 `package.json` 的 `scripts` 驱动）。**非空洞守卫**：注入
+`shell:allow-execute`、`core:default`、`unsafe-eval`、通配源、`@tauri-apps/plugin-fs`、未登记 sidecar、
+`backendsOutliveUi=false` 等样本，各检查**必须分别抓到**——否则「配置通过」与「检查恒真」无法区分。
+**未升级**：`tests/registry.yaml` 新增 **A12「桌面壳宿主边界」**、`status: pending`；§1248/§1260 的真值是
+**可运行、可打包、可签名**的壳体，本轮无 `tauri` crate、无 Rust 主体、未打包未签名。**已知后果（如实登记，非缺陷）**：
+形状校验**不能**证明配置被某个 Tauri 版本接受；Tauri 大版本改动配置字段时本仓检查**不会自动发现**；
+`tauri.conf.json` 的 `$schema` 指向官方 URL、**离线不可校验**（故校验自建、不依赖网络）。
+见 docs/adr/0046-desktop-shell-form-and-tauri-boundary.md、docs/reports/2026-10-11-w54-desktop-shell-boundary.md、
+docs/control.md、docs/ui.md。

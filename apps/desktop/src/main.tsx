@@ -127,8 +127,9 @@ function App() {
           {assertion.label}：{assertion.status === 'implemented' ? '已实现' : `未实现——${assertion.missing}`}
         </li>)}</ul>
       </section>
-      <p>本轮不提供开播、恢复自动或模式切换。真实设备、平台 SDK 和 Tauri/受保护 IPC 尚未接线。</p>
-      <p>设计基线：V3.6 · 统一内核 · 按需插件 · LLM / TTS API</p>
+      <p>本界面不提供开播、恢复自动或模式切换。桌面壳的形态与边界已裁决（Tauri 2；ADR 0046），
+        但<strong>壳体尚未构建</strong>：受保护 IPC 未接线，真实设备与平台 SDK 未接。</p>
+      <p>设计基线：V3.7 · 统一内核 · 按需插件 · LLM / TTS API</p>
     </main>
   );
 }
