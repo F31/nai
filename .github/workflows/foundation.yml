@@ -43,8 +43,24 @@ jobs:
       # 两个平台跑同一命令是有意的——在没有设备/SDK 认证的 CI 上，full 相对 windows-local 是严格超集
       # （同一套 engineering_checks，另加前端步骤），平台要求已由 runs-on 满足。前端命令只在各包
       # package.json 的 scripts 里定义，此处不重复一份，避免与门控漂移。结果不构成任何认证验收。
+      #
+      # shell: bash 让 Linux 与 Windows 用同一条命令（Windows runner 自带 Git Bash）。
+      # set -o pipefail 是**关键**：tee 会吞掉被管道的退出码，没有它这条命令永远成功，
+      # CI 也就永远不会红——「看起来接了诊断，实际把门控废掉了」。
       - name: Complete engineering foundation (portable steps + frontend workspace)
-        run: cargo xtask check --profile full
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo xtask check --profile full 2>&1 | tee "$RUNNER_TEMP/nai-gate.log"
+      # 诊断通道：把门控日志的失败摘要转成 check-run annotation。
+      # 动机：CI 的执行日志只能经 GET /actions/jobs/{id}/logs 读取，而该端点要求仓库 admin 权限，
+      # 无凭据的读者只能看到「Process completed with exit code 1.」；annotation 则匿名可读。
+      # continue-on-error 保证诊断自身的问题不会掩盖或替换原始失败的结论。
+      - name: Publish the gate failure summary as annotations
+        if: failure()
+        shell: bash
+        run: node scripts/ci-diagnose.mjs "$RUNNER_TEMP/nai-gate.log"
+        continue-on-error: true
       - name: Storage and credential boundary (Windows native vault only on Windows)
         run: cargo xtask test --suite storage
       - name: Kernel registration and binding
