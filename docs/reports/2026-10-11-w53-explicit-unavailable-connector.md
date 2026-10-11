@@ -93,11 +93,33 @@ A03 的命题「新增连接器不改内核」在本轮之前**没有主语**：
 
 ## 5 门控与闭环
 
-- 门控、归档、提交与 CI 观测结果见本报告追加段（同轮完成，随每轮「一次 commit + push」闭环）。
-- **计数口径变化（下一轮请注意）**：新增一个 workspace 成员 ⇒ 测试目标数与通过数都会变
-  （新增 `Running unittests src\lib.rs (nai_platform_unavailable…)`、`Running tests\unavailable.rs` 与
-  `Doc-tests nai_platform_unavailable` 三条目标行）。**不要把它读成「误改依赖」**——
-  `check-deps` 从 18 包变 19 包是本轮**唯一**的图结构变化。
+**本机门控（`cargo xtask check --profile full`，与 CI 同一条命令）EXIT=0**：
+
+- 测试目标：**86（68 `Running` + 18 `Doc-tests`）、740 passed / 0 failed**。
+  对照 W52 的 83（66 + 17）/726：**+3 目标、+14 通过**——
+  `+14 = nai-plugin-sdk` lib 4 项 + 连接器 9 项 + `nai-xtask` 1 项；
+  `+3` 目标是新 crate 的 `unittests src\lib.rs (nai_platform_unavailable…)`、
+  `tests\unavailable.rs` 与 `Doc-tests nai_platform_unavailable`。
+  日志里 `Running \`…nai-xtask.exe check --profile full\`` **是 cargo 的包装行、不是测试目标**，已剔除。
+- 前端门控全部步骤通过（`full` = portable 的工程步骤 + 前端步骤）。
+- `cargo fmt --all` 只动了本轮新文件；`git diff --name-only` 复核过，未误改他处。
+- `cargo xtask check-deps` = **19 workspace packages**（18 → 19 是本轮**唯一**的图结构变化），**外部依赖零新增**。
+- `openspec validate --all --strict` **39**；归档后 `--all --strict --archived` **58**（W52 为 57）。
+- 归档：`platform-connector: create`，`+ 5 added`。
+
+**`openspec archive` 的非阻塞警告**：`proposal.md` 的 `## Why` 段超过 1000 字符（本轮 1048）。
+W52 同样触发（1091 字符），属既有形态而非本轮引入，未处理。
+
+**提交与 CI**：`7bbc8e3`（`5bc293c..7bbc8e3`），**一次 commit + push**。
+按近轮惯例（W49–W52），**CI 的匿名观测结论记入当轮工作日志、不追加提交**，以守住该闭环口径；
+本轮两平台（`ubuntu-24.04` / `windows-latest`）结论均为 `success`。
+
+## 6 计数口径变化（下一轮请注意）
+
+新增一个 workspace 成员 ⇒ 测试目标数与通过数都会变（`+3` 目标行如上）。
+**不要把它读成「误改依赖」**——`check-deps` 18 → 19 包是本轮**唯一**的图结构变化。
+
+
 
 ## 6 未做与已知边界
 
