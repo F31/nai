@@ -156,11 +156,36 @@ ALL 12 OK
 
 ## 8. 未决与下一步
 
-1. **采集日志为何只有 11 行**——未定。新的截断自证会在**下一次**失败时自动点破它。
-2. **`halt_during_media_drill_prewarm_never_commits_a_frame` 的根因**——本轮只把结论推进到**测试级**。已知线索：
-   - 该测试断言「halt 必须**有界**且干净」，而 `Engine::halt_and_wait` 的上限是 **15 s**；
-   - `AVATAR_TIMEOUT`（prewarm 等待上限）**同样是 15 s** —— 两者相等，任何一侧的偏差都直接吃到另一个的余量；
-   - `DrillGuard::wait/tick` **确实**响应 halt（`stop` ⇒ `Err("HALT")`），故「halt 被忽略」这一解释不成立；
-   - 疑似挂点在 `supervisor.shutdown()` 或 `server.await`，**未证实**——本机无法复现（测试是 Linux-only），
-     需要一次完整日志或一台 Linux 主机。
+### 8.1 追加观测：新脚本在真实失败上的第一次运行（run `38111087579` / `ca47168`）
+
+修复推送后 ubuntu job **再次失败**（第 10 步 failure、第 11 步诊断步 success）——这是**新脚本的第一次真实运行**。
+**11 条注解全部是信号**（对比 §3 修复前的「1 真 + 10 噪」），且**没有出现截断警示**：
+
+| 注解内容 | 价值 |
+| --- | --- |
+| `     Running tests/engine.rs (target/debug/deps/engine-f2152189a41cd270)` | 目标头（新增） |
+| `test halt_during_media_drill_prewarm_never_commits_a_frame ... FAILED` | 失败测试名 |
+| `failures:` / `---- … stdout ----` / 失败名 | 汇总段 |
+| `thread '…' (19037) panicked at apps/engine/tests/engine.rs:446:5:` | **精确到行** |
+| `a halt before the worker commits must not log a committed frame: [DecisionEntryView { seq: 1, …, "event":"armed" }, …]` | **断言原文** |
+| `test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.03s` | 汇总行 |
+| `error: test failed, to rerun pass …` | 收束 |
+
+**两条独立结论：**
+
+1. **截断自证的分辨力成立**。这次**没有**警示，因为本次日志确实含 `test result:` 汇总行；而 §4 那次（只有 11 行、无汇总行）**会**被警示。
+   同一个判据在两种真实形态上给出了相反且**各自正确**的结论——这正是它该有的行为。
+2. **根因类别确定，且与本节原先的猜测不同**。失败点是 `apps/engine/tests/engine.rs:446`，
+   即**第二个**断言（`!entries.any(… "media_drill_committed" …)`），**不是** `halt_and_wait` 的 15 s 上限
+   ⇒ **不是 hang**，而是「halt 之后决策日志里仍出现了 `media_drill_committed`」。
+   机制：`Engine::start` 在 engine 打印出控制地址后即返回，**测试随后才写 halt 文件**；而 supervision 线程
+   此时**可能已经把整个 media drill 跑完并提交了帧**。CI 上的调度差异让这个时序时快时慢 ⇒ 间歇性。
+   这也再次说明它与「本机」无关（§2）——该测试在 Windows 上根本不执行。
+
+**剩余未决：**
+
+1. **采集日志为何只有 11 行**（§4）——未定。截断自证会在下一次该形态出现时自动点破它。
+2. **上述竞态的修法**——未做。方向是让断言不再依赖「halt 一定先于提交到达」这一时序假设
+   （例如给测试一个确定性的 prewarm 阻塞点，或注入人为慢的 render-worker），而不是放宽断言——
+   断言本身（halt 之后不得再出现新提交）是对的。
 3. 按 §2 的订正，**不要再**用「本机 Windows 门控绿」去论证任何 Linux 侧行为。

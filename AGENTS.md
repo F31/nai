@@ -694,6 +694,15 @@ W44 让这条通道**第一次真实使用**，并修复了它暴露的三类信
 另新增**截断自证**：本次采集到的日志**只有 11 行**，而该 job 跑了 **2 分 50 秒**，且**没有** `test result:` 汇总行
 （判断依据：省略提示只在 `omitted>0` 时输出，而 `lines.length===11` 时不会出现）⇒ **一份被截断的日志正在被当成全部证据**。
 现在「有逐测试行却无汇总行」会输出一条 `::warning::` 并给出总行数。**截断成因未定，如实登记、不猜**。
+**收尾观测**（推送后该 run 在 ubuntu 上**再次失败**，run `38111087579`）：新脚本的**第一次真实运行**产出
+**11 条注解全部是信号**（对比修复前的「1 真 + 10 噪」），**且没有截断警示**——本次日志确实含 `test result:` 汇总行
+⇒ 同一个判据在两种真实形态上给出了相反且**各自正确**的结论。更重要的是**拿到了精确到行的根因**：
+`thread '…' (19037) panicked at apps/engine/tests/engine.rs:446:5`，断言原文
+`a halt before the worker commits must not log a committed frame: [DecisionEntryView { seq: 1, …, "event":"armed" }, …]`
+⇒ 失败点是**第二个**断言（halt 后决策日志不得再出现 `media_drill_committed`），**不是** `halt_and_wait` 的 15 s 上限、
+**不是 hang**；机制是 `Engine::start` 返回后测试才写 halt 文件，而 supervision 线程此时**可能已把 drill 跑完并提交了帧**
+⇒ **halt 与 drill 的时序竞态**（CI 调度差异使其时快时慢）。**修法未做**（方向是给测试一个确定性的 prewarm 阻塞点，
+而不是放宽断言——断言本身是对的）。
 **同时撤回一条历轮沿用的旁证**：失败测试带 `#[cfg(target_os = "linux")]`（engine 的 6 个 `#[test]` 里 **4 个**如此，
 Windows 上该 target 只跑 2 个测试）⇒「本机 Windows 跑 portable/full 从未复现」是**结构性必然**，**不是**非确定性证据
 （W42/W43 报告的「非确定性」判定用的是「同一份代码时红时绿」，**不受影响**）。

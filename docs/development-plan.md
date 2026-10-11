@@ -574,8 +574,11 @@ W38 的桌面审批面/UI 层、W39 的攻击者可控输入面随机测试、W4
 仓库内仍可控的剩余缺口：**S08**（workspace SBOM 未生成；插件/供应链其余部分已实现）；
 **ubuntu 侧 CI 的间歇性失败**（W42 登记事实、W43 补上观测通道；**W44 由该通道首次真实捕获**，失败已定位到**测试级**——
 `halt_during_media_drill_prewarm_never_commits_a_frame`，且该测试为 Linux-only，故「本机 Windows 从未复现」属**结构性必然**；
-但**根因仍未定位**：已知线索是该测试的 halt 上限为 15 s，而 `AVATAR_TIMEOUT` 同为 15 s，
-`DrillGuard::wait/tick` 确实响应 stop（「halt 被忽略」不成立），疑似挂点在 `supervisor.shutdown()`/`server.await`，**未证实**）。
+但**根因类别已定**：推送后该 run 在 ubuntu 上再次失败，新脚本产出 **11 条注解全部是信号**且**无截断警示**，
+并给出精确到行的根因——`panicked at apps/engine/tests/engine.rs:446:5`，即**第二个**断言
+（halt 后决策日志不得再出现 `media_drill_committed`），**不是** `halt_and_wait` 的 15 s 上限、**不是 hang**；
+机制是 `Engine::start` 返回后测试才写 halt 文件，而 supervision 线程此时**可能已把 drill 跑完并提交了帧** ⇒
+**halt 与 drill 的时序竞态**。**修法未做**（方向：给测试确定性的 prewarm 阻塞点，而非放宽断言）；**截断成因仍未定**）。
 **把前端纳入工程门控**已由 W41 关闭（`check --profile full` 覆盖两包 typecheck/build、桌面包单测与 `tests/ui`），
 其**流水线接线**已由 W42 关闭（CI 两个 job 统一执行 `full`，此前 20 项前端测试在 CI 中从不运行）。
 
