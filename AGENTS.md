@@ -5,7 +5,7 @@
 - `docs/design.md` 指向唯一实现基线
   `docs/直播数字人 + 智能体系统技术方案 V3.7.md`（ADR 0042 升基线；ADR 0015 的勘误裁决继续有效）。历史版本（V3.6/V3.5 等）只供参考；
   不自行拼接旧条款覆盖 V3.7。规范变更记录 ADR。V3.7 的 dh-* 命名不采纳，工程标识一律 nai-*。
-- 验收唯一来源为 `tests/registry.yaml`（V3.7 S/A/R/O/X + release_line，D→新编号映射自建）。
+- 验收唯一来源为 `tests/registry.yaml`（V3.7 S/R/A/B/O/P/M/X + release_line，D→新编号映射自建）。
   后续任务卡以 registry 验收为准；旧 T/E/U 编号仅追溯，不再新增。
 - 保持统一稳定内核；Lite/Standard/Pro 为能力预设，
   Local/Hybrid/Distributed 为部署配置，不创建三套核心实现。
@@ -75,7 +75,7 @@ Local 正式 protected IPC 默认不变；完整预检/审批/配置、Tauri/IPC
 详见 docs/control.md、ADR 0014 与 docs/reports/2026-10-08-d14-local-control.md。
 
 D15 验收注册表与基线切换已实现/实测：ADR 0015 把 V3.6 升为唯一实现基线（勘误清单生效，dh-* 命名不采纳；V3.6 后由 ADR 0042 升为 V3.7），
-tests/registry.yaml 为验收唯一来源（S/A/R/O/X + release_line，D01–D14 映射自建并回填）。
+tests/registry.yaml 为验收唯一来源（S/R/A/B/O/P/M/X + release_line，D01–D14 映射自建并回填）。
 `cargo xtask check --registry` 与 `cargo xtask check --profile portable` 可执行；17 个主规格、15 项归档校验通过。
 决策日志 decision_log（R07 前置）与值守租约（600ms 短期限）为下一轮；播放 ACK 段保持 Draft，不冒充完整 R07。
 详见 docs/adr/0015-v36-baseline-and-admission-registry.md、docs/reports/2026-10-08-d15-admission-registry.md 与 tests/registry.yaml。
@@ -367,7 +367,7 @@ authored）；`audit_report` 对上报值做纯函数，五条稳定标记全部
 W31 黄金集载荷载体与就位门禁已实现/实测（ADR 0033）：给「100 题黄金集从哪里来」一个**机器可寻**的答案，并修正 B01 的验收口径。
 **口径修正**：§655 的 B01 验收原文是「知识质量：**100 题集达到**第 6 章门槛」＝**实测达标**；W30 标 `implemented` 的准确含义只是「判定机制
 就位」，题集不存在时达标不可能达成，故 registry B01 由 `implemented` **回调为 `blocked`**（已交付的判定机制与载荷载体在 notes 中完整保留）。
-**不新增 B01a/B01b 编号**——registry 的 id 正则 `^(S|R|A|B|O|P|X)[0-9]{2}$` 要求恰好两位数字，拆分会直接使 `check --registry` 失败，且等于
+**不新增 B01a/B01b 编号**——registry 的 id 正则 `^(S|R|A|B|O|P|M|X)[0-9]{2}$` 要求恰好两位数字，拆分会直接使 `check --registry` 失败，且等于
 改写规格口径（超出本仓库授权）。载体三件：**①一处位置**＝§30.1 指定的 `tests/rag-golden/*.json`（该目录此前不存在）；**②一份结构规范**＝
 `schemas/rag-golden/case-set.schema.json`（`case_set_schema` const 1、`scenario_version`、`cases`；`expectation` 五形
 evidence/high_risk_fact/must_clarify_or_escalate/must_not_act/must_cancel；`origin` 两形 authored/promoted+**非空 confirmer**；
@@ -717,3 +717,21 @@ Windows 上该 target 只跑 2 个测试）⇒「本机 Windows 跑 portable/ful
 故 `AGENTS.md` 上文 W42 段的「15 次」按**当时时点**理解，不回改。
 规格新增两条需求（摘要以信号为中心 / 采集不完整 MUST 明示），**workflow 未改**、registry **不改任何 `status`**。见
 docs/reports/2026-10-11-w44-ci-diagnose-signal-to-noise.md。
+
+W46 把注册表补全到「全部验收家族在册」：基线 §16 与汇总索引 §39.5 把开放平台与技能市场的 **M01–M18** 列为
+「唯一验收编号体系」的一部分（§37.5/§38.10 给出逐条用例；§1.4 明写 R1 含 `M01–M07、M13–M16、M18`、R2 含 `M08–M12、M17`），
+而 `tests/registry.yaml` 里 **M 一条都没有**（`grep -cE '\{id: "M[0-9]'` = 0）。这不是「未开始」的表达而是**登记缺失**——
+`pending` 才是在册未开始。缺口的后果是「以注册表为准」这条规则会把 V3.7 第三部分（§33–§38、W26–W40）从验收视野里抹掉；
+它长期不可见是因为 **`check --registry` 只校验已登记条目的合法性，不校验家族是否齐全**。
+本轮：登记 **M01–M18 共 18 条 `status: pending`**（title/release_line 取自两张表；`automation` 是**规划意图**并在 notes 写明，
+`contract` 仅在 §37.4 命名了契约时填，M10/M12 留空）；**扩 id 家族白名单到 `M`**
+（`scripts/contracts/registry.mjs` 的 `ID_RE` 与 `schemas/tests/registry.schema.json` 两处 pattern ⇒ `^(S|R|A|B|O|P|M|X)[0-9]{2}$`，
+按 §39.5 顺序；`B01a` 这类拆分仍被拒）；`tests/registry.test.mjs` 加**家族守卫**（M01–M18 必须全部在册，条目下限 44→66）。
+家族分布 **S12/R11/A11/B6/O5/P1/M18/X2 = 66**；既有 48 条 status **一字未动**（implemented 27 / tested 10 / blocked 5 / not_applicable 3），
+`pending` 由 3 升 21。**守卫做过两步自检**：删 M18 时测试失败但落在计数断言（65<66，被短路）；把 M18 改名 M19（计数仍 66）
+才真触发家族守卫 `baseline acceptance M18 is not registered` ⇒ **一次自检不够**，第二次才是有效证据。
+顺带订正活文档沿用的家族简写——`AGENTS.md`（含正则那处）、`docs/design.md`、`docs/development-plan.md`、`openspec/config.yaml`、
+`README.md` 都写「S/A/R/O/X」，而 **B 与 P 早已有条目**（B01–B06、P01），简写本身就不准 ⇒ 统一改为 `S/R/A/B/O/P/M/X`。
+规格（admission-registry）新增一条需求：注册表 SHALL 覆盖基线定义的全部验收家族，未开始 MUST 以 `pending` 在册、不得省略。
+**不做**：不实现 M01–M18 任何一条（W26–W40 未动工）；不把 M 并入 `check --profile portable`（未实现不应让工程门控变红）；
+不写通用的设计文档解析器（只对触发缺口的 M 家族落确定守卫）。见 docs/reports/2026-10-11-w46-register-m-series.md。

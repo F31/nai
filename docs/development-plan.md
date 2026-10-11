@@ -8,7 +8,7 @@
 已实现 **D01–D11**：工程/生成契约、存储/密钥、内核绑定、宿主/IPC、会话/媒体租约、有界调度与共享预算、API Provider 传输、
 知识完整链路（算法/发布/冻结/远端门控）、智能体/守门评估内核与媒体样本时轴内核。
 已补充 D12 模型包完整性前置检查、D13 平台事件准入逻辑；本轮 D14 本机控制/桌面客户端闭环实测通过。
-ADR 0015 已把基线升为 V3.6 并完成勘误（V3.6 后由 ADR 0042 升为 V3.7）：验收切换为 tests/registry.yaml（S/A/R/O/X + release_line），
+ADR 0015 已把基线升为 V3.6 并完成勘误（V3.6 后由 ADR 0042 升为 V3.7）：验收切换为 tests/registry.yaml（S/R/A/B/O/P/M/X + release_line），
 D01–D14 已回填映射（D12 标 blocked、D13 标 implemented、D14 标 tested，其余 D01–D11 均标 tested）。
 Linux/WSL 当前全 workspace 324 项 Rust 测试、生成无漂移通过。本轮 engine-broker-frame-delivery 以真实 broker+keeper+render-worker 完成单帧投递与有界监督/故障撤权；contracts suite 实际完成 Rust/TS/C++ 编译及十三类消息双向互通。
 `pnpm test:control-smoke` 实际启动自有控制进程并由桌面客户端读取状态、执行 mute/takeover，通过；不等于浏览器人工或声卡验收。
@@ -571,6 +571,10 @@ W38 的桌面审批面/UI 层、W39 的攻击者可控输入面随机测试、W4
 **O02/O05**（UI 验收，按既有惯例 `pending`）与阻塞项 **B01**（**判定机制、载荷载体、参考答案判据与评估执行体均已就位**；缺 100 题集内容与真实知识库内容，均为外部投入）、**B02/D12**（模型与目标机证据）、
 **O03**（M0b 定案与真机 S09）、**O04**（干净 Windows 安装、真实音频设备变更与真实回退；安装侧已由 `nai-upgrade-core` 覆盖）、
 **P01**（官方 SDK 与生产宿主；判定机制已由 W35 交付，D13）均需外部条件。
+（**W46 已补一处登记缺口**：基线把开放平台与技能市场的 M01–M18 列为「唯一验收编号体系」的一部分（§37.5/§38.10，且 §1.4 明写
+R1 含 `M01–M07、M13–M16、M18`、R2 含 `M08–M12、M17`），而注册表一条未列、id 家族白名单 `^(S|R|A|B|O|P|X)[0-9]{2}$` 也不含 `M`。
+现已登记 18 条 `pending`（在册未开始）并扩白名单、加家族守卫；**不改任何既有 status**。见
+[报告](reports/2026-10-11-w46-register-m-series.md)。）
 仓库内仍可控的剩余缺口：**S08**（workspace SBOM 未生成；插件/供应链其余部分已实现）；
 **ubuntu 侧 CI 的间歇性失败**（W42 登记事实、W43 补上观测通道；**W44 由该通道首次真实捕获**，失败已定位到**测试级**——
 `halt_during_media_drill_prewarm_never_commits_a_frame`，且该测试为 Linux-only，故「本机 Windows 从未复现」属**结构性必然**；

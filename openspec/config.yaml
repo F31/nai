@@ -2,7 +2,7 @@ schema: spec-driven
 context: |
   项目名称 nai，仓库 https://github.com/F31/nai。
   唯一产品/技术基线 docs/直播数字人 + 智能体系统技术方案 V3.7.md（ADR 0042 升基线；ADR 0015 勘误；V3.6/V3.5 降为历史参考）；遵守 AGENTS.md。
-  验收唯一来源 tests/registry.yaml（V3.7 S/A/R/O/X + release_line；D→新编号映射自建并回填）；按切片发布线（Slice-0/R1/R2/R3/实验）实施，每轮完成一个可验证变更。
+  验收唯一来源 tests/registry.yaml（V3.7 S/R/A/B/O/P/M/X + release_line；D→新编号映射自建并回填）；按切片发布线（Slice-0/R1/R2/R3/实验）实施，每轮完成一个可验证变更。
   Rust 统一内核，Tauri 2 + React/TypeScript 桌面；Windows 正式运行，portable 逻辑在 Linux 可测。
   Lite/Standard/Pro 是能力预设；Local/Hybrid/Distributed 是部署配置。
   LLM/TTS 使用 API；写实 Rust + ONNX，Python 仅离线导出。

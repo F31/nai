@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import YAML from 'yaml';
 
-const ID_RE = /^(S|R|A|B|O|P|X)[0-9]{2}$/;
+const ID_RE = /^(S|R|A|B|O|P|M|X)[0-9]{2}$/;
 const RELEASE_LINES = ['slice_0', 'r1', 'r2', 'r3', 'experimental'];
 const STATUSES = ['implemented', 'tested', 'blocked', 'not_applicable', 'pending'];
 

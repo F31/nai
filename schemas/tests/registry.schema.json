@@ -28,7 +28,7 @@
         "additionalProperties": false,
         "required": ["id", "release_line", "automation", "status"],
         "properties": {
-          "id": {"type": "string", "pattern": "^(S|R|A|B|O|P|X)[0-9]{2}$"},
+          "id": {"type": "string", "pattern": "^(S|R|A|B|O|P|M|X)[0-9]{2}$"},
           "title": {"type": "string", "minLength": 1},
           "release_line": {"type": "string", "enum": ["slice_0", "r1", "r2", "r3", "experimental"]},
           "contract": {"type": "string"},
@@ -57,7 +57,7 @@
               "required": ["status"],
               "properties": {
                 "status": {"type": "string", "enum": ["implemented", "tested", "blocked", "not_applicable", "pending"]},
-                "targets": {"type": "array", "items": {"type": "string", "pattern": "^(S|R|A|B|O|P|X)[0-9]{2}$"}},
+                "targets": {"type": "array", "items": {"type": "string", "pattern": "^(S|R|A|B|O|P|M|X)[0-9]{2}$"}},
                 "evidence": {"type": "string"},
                 "notes": {"type": "string"}
               }

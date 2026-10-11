@@ -20,5 +20,5 @@
 - 第 32 章：V3.5 审阅发现；第 33–38 章：开放平台（数据源与设备接入、技能规范、技能市场、场景与路线）；
   第 39 章：V3.7 版本说明与汇总索引。
 
-验收唯一来源为 [tests/registry.yaml](../tests/registry.yaml)（V3.7 S/A/R/O/X + release_line，ADR 0015 勘误落实），
+验收唯一来源为 [tests/registry.yaml](../tests/registry.yaml)（V3.7 S/R/A/B/O/P/M/X + release_line，ADR 0015 勘误落实），
 实施进度见 [开发任务跟踪](development-plan.md)，实测证据保存在 `docs/reports/`。
