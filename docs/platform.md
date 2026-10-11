@@ -1,5 +1,8 @@
 # 平台事件准入（D13 可移植范围）
 
+> 本文讲**平台事件**（抖音等平台的事件如何在可信宿主约束下进入内核）。
+> **操作系统平台**的能力状态见 [平台能力矩阵](platform-matrix.md)——两者都叫「平台」，但一个是业务概念、一个是运行环境。
+
 `nai-kernel::platform::PlatformLink` 固定 session、epoch、platform 和 app_scope。它消费生成的 PlatformCapabilities/PlatformEvent，不依赖官方 SDK、具体插件或网络。
 
 ## 可信宿主责任

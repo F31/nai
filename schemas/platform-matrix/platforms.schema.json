@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nai.dev/schemas/platform-matrix/platforms.schema.json",
+  "title": "Platform and capability matrix",
+  "description": "平台集合与能力 × 平台状态矩阵。登记「本仓库当前事实」，不裁决某平台能否被支持。**reason 刻意不在此写 enum**：合法理由码由校验从 crates/nai-plugin-sdk/src/connector.rs 的 UnavailableReason 源码派生，此处只约束为非空字符串，避免出现第二处定义。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "note", "platforms", "capabilities"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "note": {"type": "string", "minLength": 1},
+    "platforms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "target_triples", "release_lines", "status", "note"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9]*$"},
+          "label": {"type": "string", "minLength": 1},
+          "target_triples": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "pattern": "^[a-z0-9_]+-[a-z0-9_]+-[a-z0-9_]+(-[a-z0-9_]+)?$"}
+          },
+          "release_lines": {
+            "type": "array",
+            "items": {"enum": ["slice_0", "r1", "r2", "r3", "experimental"]}
+          },
+          "status": {"enum": ["supported", "partial", "planned", "not_started"]},
+          "note": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "basis", "source_files", "states", "note"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+          "label": {"type": "string", "minLength": 1},
+          "basis": {"enum": ["source", "baseline"]},
+          "bound_to": {
+            "description": "该能力的实现依赖某个原生平台。声明后，其它平台上 MUST NOT 标记为 supported——这把「抖音 SDK 是 Windows 原生目标」一类事实变成可判定断言，而不必在校验里硬编码能力 id。",
+            "enum": ["windows", "linux"]
+          },
+          "source_files": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1}
+          },
+          "note": {"type": "string", "minLength": 1},
+          "states": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["state"],
+                  "properties": {"state": {"const": "supported"}}
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["state", "reason"],
+                  "properties": {
+                    "state": {"const": "explicit-unavailable"},
+                    "reason": {"type": "string", "minLength": 1}
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["state"],
+                  "properties": {"state": {"const": "out-of-scope"}}
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

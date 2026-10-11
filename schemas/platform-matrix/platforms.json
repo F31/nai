@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "note": "平台与能力状态登记。记录的是**本仓库当前事实**，不是「某平台能不能做」的裁决。explicit-unavailable 是如实披露，不是缺陷；只有不实声明才是缺陷。理由码取自 nai-plugin-sdk 的 UnavailableReason（校验从源码派生，不在此另立常量表）。",
+  "platforms": [
+    {
+      "id": "windows",
+      "label": "Windows 10/11（首发桌面）",
+      "target_triples": ["x86_64-pc-windows-msvc"],
+      "release_lines": ["slice_0", "r1", "r2", "r3"],
+      "status": "supported",
+      "note": "首发平台。§687：Windows 原生是 SDK、音频与写实的正式运行目标。存在个别能力在此平台上尚未就位（见能力矩阵），不影响其整体支持状态。"
+    },
+    {
+      "id": "linux",
+      "label": "Linux（WSL 与轻云）",
+      "target_triples": ["x86_64-unknown-linux-gnu"],
+      "release_lines": [],
+      "status": "partial",
+      "note": "§687：WSL 可用于编辑、纯逻辑测试、离线模型制作与 Linux 轻云服务，不代替 Windows 安装与设备验收。本仓库的工程门控在 ubuntu 上执行。它不承载发布线。"
+    },
+    {
+      "id": "macos",
+      "label": "macOS（后续：Standard 与 Pro）",
+      "target_triples": ["aarch64-apple-darwin", "x86_64-apple-darwin"],
+      "release_lines": ["r2", "r3"],
+      "status": "planned",
+      "note": "新增需求：基线 V3.7 全文对 macOS 的命中数为 0。用户拍板 macOS 覆盖 R2（Standard）与 R3（Pro）。本项登记归属，不表示已开始实现；R2/R3 的内容在 macOS 上须与 Windows 档位表分别定义（§14.1 的 Standard 含抖音连接器，而抖音 SDK 是 Windows 原生目标）。"
+    },
+    {
+      "id": "ios",
+      "label": "iOS（实验：手机本地运行）",
+      "target_triples": ["aarch64-apple-ios"],
+      "release_lines": ["experimental"],
+      "status": "not_started",
+      "note": "§10.3 实验形态：手机本地运行需要原生壳（内核不能运行在 PWA 中），仅前台演练与录制，iOS 后台基本不可用；准入门槛在 M0b 前写定。§665 X02：iOS 只记录限制。"
+    },
+    {
+      "id": "android",
+      "label": "Android（实验：手机本地运行）",
+      "target_triples": ["aarch64-linux-android"],
+      "release_lines": ["experimental"],
+      "status": "not_started",
+      "note": "§10.3 实验形态；§665 X01/X02：中端 Android 前台 30 分钟、切后台或锁屏按策略降级或暂停。"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "shared-frame-slots",
+      "label": "进程间共享内存帧槽",
+      "basis": "source",
+      "bound_to": "linux",
+      "source_files": [
+        "crates/nai-media-core/src/frame_slots/broker.rs",
+        "crates/nai-media-core/src/frame_slots/consumer.rs",
+        "crates/nai-media-core/src/frame_slots/shared_ram.rs",
+        "crates/nai-media-core/src/bin/nai-shared-frame-drill.rs",
+        "crates/nai-media-core/tests/frame_slots.rs",
+        "crates/nai-media-core/Cargo.toml",
+        "apps/engine/src/lib.rs",
+        "apps/engine/tests/common/mod.rs",
+        "apps/engine/tests/engine.rs",
+        "apps/output-keeper/src/main.rs",
+        "apps/output-keeper/tests/faults.rs",
+        "apps/render-worker/src/main.rs"
+      ],
+      "note": "ADR 0017 已裁决：Linux 使用 /dev/shm 私有 tmpfs 文件、0600、继承 FD 的**工程演练后端**（名为 tmpfs-file-drill，有复制，不称为 mmap/零拷贝）；**Windows/非 Linux 后端明确 CapabilityNotReady**，且该 ADR 明文「不改变 Windows 正式共享内存目标」——Windows 映射、受保护句柄 broker 与命名管道身份是独立待做项。",
+      "states": {
+        "windows": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "linux": {"state": "supported"},
+        "macos": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "ios": {"state": "out-of-scope"},
+        "android": {"state": "out-of-scope"}
+      }
+    },
+    {
+      "id": "secret-protection",
+      "label": "系统密钥保护（凭据封装）",
+      "basis": "source",
+      "bound_to": "windows",
+      "source_files": [
+        "crates/nai-security/src/lib.rs",
+        "crates/nai-security/Cargo.toml"
+      ],
+      "note": "NativeVault 经 keyring 走系统密钥保护，且该依赖只在 Windows 目标下引入。非 Windows 的 store/load/delete 一律**显式**返回 CapabilityNotReady——是失败关闭，不是静默降级。§11.5：密钥由系统密钥保护机制封装。",
+      "states": {
+        "windows": {"state": "supported"},
+        "linux": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "macos": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "ios": {"state": "out-of-scope"},
+        "android": {"state": "out-of-scope"}
+      }
+    },
+    {
+      "id": "data-root",
+      "label": "数据根解析与访问控制",
+      "basis": "source",
+      "source_files": ["crates/nai-storage/src/paths.rs", "crates/nai-storage/src/tests.rs"],
+      "note": "§900：数据根由壳或操作系统路径 API 解析，安装目录只读。unix 家族（含 macOS）设 0700 与目录权限；Windows 额外拒绝 UNC 与重解析点。三个平台均有实现落点，加固方式按平台不同。",
+      "states": {
+        "windows": {"state": "supported"},
+        "linux": {"state": "supported"},
+        "macos": {"state": "supported"},
+        "ios": {"state": "out-of-scope"},
+        "android": {"state": "out-of-scope"}
+      }
+    },
+    {
+      "id": "path-containment",
+      "label": "路径包含与链接拒绝",
+      "basis": "source",
+      "source_files": ["crates/nai-plugin-hosts/src/boundary.rs"],
+      "note": "拒绝越出根目录的路径与链接。unix 家族以符号链接、Windows 以文件属性检测；两者都有落点。",
+      "states": {
+        "windows": {"state": "supported"},
+        "linux": {"state": "supported"},
+        "macos": {"state": "supported"},
+        "ios": {"state": "out-of-scope"},
+        "android": {"state": "out-of-scope"}
+      }
+    },
+    {
+      "id": "process-supervision",
+      "label": "子进程监督与退出状态",
+      "basis": "source",
+      "source_files": ["crates/nai-runtime/src/supervisor.rs"],
+      "note": "监督子进程并解释退出状态。unix 家族（含 macOS）读取信号退出，Windows 读取退出码——同一入口、两套平台分支。",
+      "states": {
+        "windows": {"state": "supported"},
+        "linux": {"state": "supported"},
+        "macos": {"state": "supported"},
+        "ios": {"state": "out-of-scope"},
+        "android": {"state": "out-of-scope"}
+      }
+    },
+    {
+      "id": "render-drill-backend",
+      "label": "2D 渲染演练后端",
+      "basis": "source",
+      "bound_to": "linux",
+      "source_files": ["plugins/avatar-2d/Cargo.toml", "plugins/avatar-2d/tests/render.rs"],
+      "note": "与帧槽演练配套的 2D 渲染验证只在 Linux 上执行（tempfile 依赖与用例均为 linux 条件）。这不表示 2D 形象本身是平台限定的——限定的是该演练路径。",
+      "states": {
+        "windows": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "linux": {"state": "supported"},
+        "macos": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "ios": {"state": "out-of-scope"},
+        "android": {"state": "out-of-scope"}
+      }
+    },
+    {
+      "id": "toolchain-target-assumptions",
+      "label": "工具链的目标平台假设",
+      "basis": "source",
+      "source_files": ["xtask/src/lib.rs", "xtask/src/schema.rs", "xtask/tests/cli.rs"],
+      "note": "工程工具链的目标假设：windows-local profile 只在原生 Windows 上可跑（其它平台具名拒绝）；可执行文件后缀按平台取 .exe；部分用例为平台条件。属工具性条目，不是产品能力。",
+      "states": {
+        "windows": {"state": "supported"},
+        "linux": {"state": "supported"},
+        "macos": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "ios": {"state": "out-of-scope"},
+        "android": {"state": "out-of-scope"}
+      }
+    },
+    {
+      "id": "platform-sdk",
+      "label": "平台 SDK 接入（抖音）",
+      "basis": "baseline",
+      "bound_to": "windows",
+      "source_files": [],
+      "note": "依据来自基线而非源码分支：§9.2 抖音是首发接入目标，§9.4「在核实官方接口前保留显式 Unavailable 实现，不宣称可上线」，§14.1 把「抖音连接器与事件治理」列为 Standard 的核心构件。**所有平台当前均为 explicit-unavailable**——本仓库无任何真实 SDK 接入（W53 只落了显式 Unavailable 替身）。平台差异在性质而非状态：Windows 是「等待接入」，而 §687 把 SDK 与音频列为 Windows 原生目标，故 macOS 侧不假定存在等价接入路径。",
+      "states": {
+        "windows": {"state": "explicit-unavailable", "reason": "no_official_interface"},
+        "linux": {"state": "explicit-unavailable", "reason": "no_official_interface"},
+        "macos": {"state": "explicit-unavailable", "reason": "no_official_interface"},
+        "ios": {"state": "out-of-scope"},
+        "android": {"state": "out-of-scope"}
+      }
+    }
+  ]
+}

@@ -8,6 +8,7 @@ const catalog = await readJson('schemas/catalog/capabilities.json');
 const provider = {schema_version:1,id:'tts-test',protocol:'http_stream',endpoint:'https://example.invalid/tts',model:'test',credential_ref:'credential:test',region:'test',data_policy_ref:'test',timeout_ms:1000,max_retries:1,max_concurrency:1,price_revision:'test'};
 const plugin = {manifest_schema:1,plugin_id:'test-only',plugin_version:'0.1.0',kernel_range:'>=0.1.0,<1.0.0',protocol_major:1,contracts:['avatar.render@1'],supported_hosts:['subprocess'],activation:'on_session_start',idle_policy:'keep_warm_during_session',requires:['audio.timeline@1'],os:['windows'],architectures:['x86_64'],artifact_hash:'a'.repeat(64),license_ref:'fixture-not-a-license',install_bytes:'100',config_schema_ref:'test',data_schema_ref:'test',health_operation:'health',migration_ref:'none',rollback_range:'0.1.x',price_policy_ref:'test',resources:{profile_id:'test',certification_ref:'candidate-not-certified'},permissions:{network:false,media_output:true,secrets:[]}};
 const model = {schema_version:1,model_id:'test-only',version:'1',license_ref:'fixture-not-a-license',graphs:[{id:'full-pipeline',file:{path:'pipeline.onnx',sha256:'b'.repeat(64),license_ref:'fixture'},external_weights:[],inputs:[{name:'audio',dtype:'float32',shape:[1,'samples']}],outputs:[{name:'frame',dtype:'float32',shape:[1,3,64,64]}],opset:17}],required_graph_ids:['full-pipeline'],preprocess_revision:'test',postprocess_revision:'test',sample_rate:16000,window_samples:640,hop_samples:640,lookahead_samples:0,padding:'zero',normalization:'test',frame_mapping:'test',fps_num:25,fps_den:1,runtime_matrix:[{os:'windows',arch:'x86_64',ort:'test',ort_crate:'test',ep:'cuda',precision:'fp32',driver:'test',cuda:'test',cudnn:'test',certification_ref:'candidate-not-certified'}],bom_ref:'test',golden_ref:'test'};
+const platforms = await readJson('schemas/platform-matrix/platforms.json');
 
 function valid(kind, value) {
   assert.equal(check[kind](value), true, JSON.stringify(check[kind].errors));
@@ -74,6 +75,23 @@ test('capability catalog declares a stage for every entry and no duplicate IDs',
   assert.throws(()=>validateSemantic('catalog',bad),/duplicate/);
   const half = structuredClone(catalog); half.capabilities.find(capability=>capability.stage==='draft').request='nai.v1.Handshake';
   assert.throws(()=>validateSemantic('catalog',half),/draft capability declares consumer messages/);
+});
+test('platform matrix states every capability on every platform under a closed state vocabulary', () => {
+  valid('platforms',platforms);
+  for (const capability of platforms.capabilities) assert.equal(typeof capability.note,'string',capability.id);
+  // A state outside the three-value vocabulary is not a state.
+  const unknown = structuredClone(platforms); unknown.capabilities[0].states.linux={state:'maybe'};
+  assert.equal(check.platforms(unknown),false);
+  // Unavailable is a state that carries a cause; a blank one is not registerable.
+  const reasonless = structuredClone(platforms); reasonless.capabilities[0].states.macos={state:'explicit-unavailable'};
+  assert.equal(check.platforms(reasonless),false);
+  // Supported is not a state that carries a cause.
+  const stray = structuredClone(platforms); stray.capabilities[0].states.linux={state:'supported',reason:'not_ported_to_target_os'};
+  assert.equal(check.platforms(stray),false);
+  // The schema deliberately does not enumerate reason codes: a plausible-looking
+  // string must pass here and be judged against the SDK enum elsewhere.
+  const plausible = structuredClone(platforms); plausible.capabilities[0].states.macos={state:'explicit-unavailable',reason:'not_a_real_reason'};
+  assert.equal(check.platforms(plausible),true);
 });
 test('avatar and UI schemas reject missing license fields or arbitrary HTML/script declarations', () => {
   const avatar = {schema_version:1,avatar_id:'test',version:'test',kind:'2d',license_ref:'fixture-only',assets:[{id:'body',path:'body.png',sha256:'a'.repeat(64),license_ref:'fixture-only'}],model_binding:'none-for-2d',resource_profile_ref:'candidate',supported_actions:['idle'],supported_emotions:['neutral'],voice_binding:'test',native_width:64,native_height:64,output_width:64,output_height:64,fps_num:25,fps_den:1,base_duration_samples:'48000',switch_points:['0'],personalization_refs:{}};

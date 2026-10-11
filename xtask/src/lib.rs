@@ -45,6 +45,11 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
     // CI 变红——W51 的 backup schema 版本漂移正是这样发生的。需要编译产物的校验
     // （`tests/contracts/descriptor.test.mjs`）不在此列，仍留在 contracts suite。
     schema::node(root, &["--test", "tests/contracts/schema.test.mjs"])?;
+    // 平台能力矩阵与源码平台分支互相约束：矩阵必须登记每一项能力在每一个平台上的状态，
+    // 且**全仓**含平台条件编译的文件必须是登记路径的子集。后者是本步存在的理由——
+    // 在此之前，新增一处 `cfg(target_os = ...)` 不会引起任何地方注意，平台假设只增不减。
+    // 同样是纯静态（读 JSON、扫源码、读 SDK 枚举标签），不需要 protoc 或编译产物。
+    schema::node(root, &["--test", "tests/platform/platform-matrix.test.mjs"])?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,

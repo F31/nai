@@ -5,7 +5,7 @@ import SwaggerParser from '@apidevtools/swagger-parser';
 export const readJson = async filename => JSON.parse(await readFile(filename, 'utf8'));
 export async function validators() {
   const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false });
-  const sources = {runtime:'config/runtime',provider:'config/provider',backup:'config/backup',binding:'config/binding-plan',avatar2d:'config/avatar-2d',plugin:'plugin/manifest',model:'plugin/model',catalog:'catalog/catalog',avatar:'plugin/avatar',ui:'plugin/ui'};
+  const sources = {runtime:'config/runtime',provider:'config/provider',backup:'config/backup',binding:'config/binding-plan',avatar2d:'config/avatar-2d',plugin:'plugin/manifest',model:'plugin/model',catalog:'catalog/catalog',avatar:'plugin/avatar',ui:'plugin/ui',platforms:'platform-matrix/platforms'};
   return Object.fromEntries(await Promise.all(Object.entries(sources).map(async ([key, source]) => [key, ajv.compile(await readJson(`schemas/${source}.schema.json`))])));
 }
 

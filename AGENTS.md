@@ -959,3 +959,44 @@ sidecar 拉起与监督），业务语义（会话·守门·审批·知识·媒�
 `tauri.conf.json` 的 `$schema` 指向官方 URL、**离线不可校验**（故校验自建、不依赖网络）。
 见 docs/adr/0046-desktop-shell-form-and-tauri-boundary.md、docs/reports/2026-10-11-w54-desktop-shell-boundary.md、
 docs/control.md、docs/ui.md。
+
+W55 把**平台**变成仓库的一等公民（用户五项决策的第 4 项：macOS 覆盖 Standard 与 Pro）。
+**缺口性质（本轮的核心判断，与前两项不同）**：W53（第 3 项）与 W54（第 1 项）都是「**基线有明文、仓库零落点**」，
+而这一项是**全新需求**——基线 V3.7 全文对 `macos`／`darwin`／`apple` 的命中数为 **0**（只有 Windows 首发、
+Linux 轻云与 WSL、iOS／Android 实验），`tests/registry.yaml` 亦无任何平台维度条目（全部验收按业务分系列，
+`release_line` 只表达 Slice-0／R1／R2／R3／实验）⇒ **无基线判据、无验收标准、无目标三元组、无签名与分发策略**。
+故按仓规「验收唯一来源为 `tests/registry.yaml`、新需求先立验收」先做**可判定的一步**，而不是凭想象写 macOS 实现。
+**侦察到的三处已存在却从未被登记的事实**（本轮最有价值的部分）：①全仓含平台条件编译的文件有 **23 个、116 处**
+（此前没人统计过，窄口径只看 `cfg(windows)` 会漏掉大半）；②`shared_ram.rs` 的文件头与 **ADR 0017** 都明文写着
+帧槽是 **Linux-only 的 tmpfs-file 工程演练后端**，且「**Windows/非 Linux 后端明确 `CapabilityNotReady`**，
+不改变 Windows 正式共享内存目标」——即首发平台 Windows 自身在这条能力上是**已裁决**的不可用，**不是缺陷**；
+③`data-root` 的 0700 权限、`path-containment` 的链接拒绝、`process-supervision` 的退出状态走 `#[cfg(unix)]`，
+而 **`unix` 同时覆盖 macOS** ⇒ macOS 在这些能力上**已有可复用落点**，并非空白。
+**核心判断**：缺口不是「缺判定」，而是「**缺登记**」——这 116 处没有一处需要改代码。所以本轮补的是登记与约束。
+**交付**：`schemas/platform-matrix/platforms.json` ＋ `platforms.schema.json`（形态）＋
+`scripts/platform/matrix.mjs`（校验逻辑）＋ `tests/platform/platform-matrix.test.mjs`（**22 项**，
+经 `engineering_checks` 自动进入 `portable` 与 `full`）＋ `docs/platform-matrix.md`。
+**三个设计要点**：①**理由码从源码派生**——矩阵的 `explicit-unavailable` 必带理由码，而合法集合从
+`crates/nai-plugin-sdk/src/connector.rs` 的 `UnavailableReason::label()` 的 match 臂解析得到，**不在校验里另立
+常量表**（否则改一侧忘另一侧时校验变成假的保证；Rust 新增变体无需改脚本，用了不存在的码立即失败），派生前先断言
+「该函数存在且解析非空」，形状变化时**具名失败**而非静默通过；②**核心门控是「文件子集」**——全仓含平台条件编译的
+文件 MUST 是矩阵登记路径的**子集**，新增一处 `cfg(target_os = ...)` 而不同步矩阵即失败并指名文件，这把「平台假设
+只增不减」变成可判定事实（同 W52 的「验收 `contract` 必须可解析」、A03/A04 的依赖方向检查是同一类断言：
+**让没被写下来的事实变成构建失败**）；③**`bound_to` 一般化判据**——声明某原生平台依赖的能力在其它平台上
+MUST NOT 是 `supported`，于是「抖音 SDK 是 Windows 原生目标」不必在校验里硬编码能力 id。
+**macOS 的两处硬约束（如实登记）**：①§14.1 把「抖音连接器与事件治理」列为 **Standard 的核心构件**，而 §9.2 抖音
+与 §687「Windows 原生是 SDK、音频与写实的正式运行目标」说明抖音 SDK 与 Windows 音频是 **Windows 原生目标**
+⇒ 平台 SDK 在 macOS 上登记为 `explicit-unavailable(no_official_interface)`，**不假定也不臆造 macOS 侧等价接入路径**；
+②§300 写实加速为「Windows NVIDIA CUDA 首发」、TensorRT 与 **DirectML（Windows 专属）** 单独认证 ⇒ macOS 侧
+需另定路径、**尚未裁决**。⇒ macOS 上的 Standard 与 Pro 内容 MUST 与 Windows 档位表**分别定义**，不得照搬。
+**用户拍板落为数据断言**：macOS 的 `release_lines` 必须同时含 `r2` 与 `r3`（文档会漂移，数据会被校验）。
+**非空洞守卫**：注入未声明平台键、缺平台、坏理由码、PascalCase 变体名、unavailable 无理由、supported 带理由、
+悬空 `source_files`、未登记的平台分支文件、macOS 丢 `r3`、Windows 绑定能力在 macOS 标 `supported`、`source` 类
+无证据、`baseline` 类登记文件、重复平台 id、非法发布线、坏三元组，各检查**分别抓到**；另有一条
+**「扫描非空且命中已知分支」守卫**——若扫描恒为空，「文件子集」这条核心门控会**恒真**，必须先把扫描本身钉住。
+**未升级**：新增 **A13「平台能力矩阵与源码一致」**（`r1`／`unit`／`implemented`）与 **A14「macOS 覆盖
+Standard 与 Pro」**（`r2`／`manual`／`pending`）；**零 Rust 业务改动**（仅在 `engineering_checks` 增一行命令）、
+**零新增依赖**、**workspace 仍 19 包**。**如实登记的缺口**：基线 §29.4 要求的
+`profiles/{editions, deployments, resources}` 目录**至今不存在**，本轮**不**创建（与本矩阵无重叠：
+本矩阵登记的是**操作系统平台**的能力，不是**档位**或**部署配置**）。
+见 docs/platform-matrix.md、docs/reports/2026-10-11-w55-platform-boundary-matrix.md、schemas/platform-matrix/。
