@@ -6,6 +6,7 @@
 //! the checks in a library the profile can test the harness without selecting —
 //! and therefore without linking — the `nai-xtask` binary target.
 pub mod deps;
+pub mod frontend;
 pub mod golden;
 pub mod registry;
 pub mod schema;
@@ -29,6 +30,42 @@ fn run(root: &Path, args: &[&str]) -> Result<(), String> {
     } else {
         Err(format!("cargo {} failed: {status}", args.join(" ")))
     }
+}
+
+/// 两种工程 profile 共用的基础检查。
+///
+/// `portable` 与 `full` 都从这里开始，因此「`full` 包含 `portable` 的全部步骤」是**代码结构
+/// 事实**，而不是一份需要手工同步、可能漂移的清单。
+fn engineering_checks(root: &Path) -> Result<(), String> {
+    deps::check(root)?;
+    registry::check(root)?;
+    run(root, &["fmt", "--all", "--check"])?;
+    run(
+        root,
+        &[
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--locked",
+            "--",
+            "-D",
+            "warnings",
+        ],
+    )?;
+    // A running executable cannot be relinked where the OS locks it, and
+    // this harness is a workspace member: a whole-workspace test run also
+    // names the harness binary target, which would relink the image that
+    // is executing right now. On Windows that is a hard linker failure
+    // (LNK1104) that says nothing about the workspace. Run every other
+    // package here, then cover the harness itself through its library,
+    // which never links the binary. The clippy step above already checks
+    // the harness's binary target, so nothing is left unverified.
+    run(
+        root,
+        &["test", "--workspace", "--locked", "--exclude", HARNESS],
+    )?;
+    run(root, &["test", "--locked", "--package", HARNESS, "--lib"])?;
+    Ok(())
 }
 
 pub fn execute(args: &[String], root: &Path) -> Result<(), String> {
@@ -139,42 +176,28 @@ pub fn execute(args: &[String], root: &Path) -> Result<(), String> {
             if *profile == "windows-local" && !cfg!(target_os = "windows") {
                 return Err("windows-local requires a native Windows environment".into());
             }
-            deps::check(root)?;
-            registry::check(root)?;
-            run(root, &["fmt", "--all", "--check"])?;
-            run(
-                root,
-                &[
-                    "clippy",
-                    "--workspace",
-                    "--all-targets",
-                    "--locked",
-                    "--",
-                    "-D",
-                    "warnings",
-                ],
-            )?;
-            // A running executable cannot be relinked where the OS locks it, and
-            // this harness is a workspace member: a whole-workspace test run also
-            // names the harness binary target, which would relink the image that
-            // is executing right now. On Windows that is a hard linker failure
-            // (LNK1104) that says nothing about the workspace. Run every other
-            // package here, then cover the harness itself through its library,
-            // which never links the binary. The clippy step above already checks
-            // the harness's binary target, so nothing is left unverified.
-            run(
-                root,
-                &["test", "--workspace", "--locked", "--exclude", HARNESS],
-            )?;
-            run(root, &["test", "--locked", "--package", HARNESS, "--lib"])?;
+            engineering_checks(root)?;
             println!(
                 "{profile}: engineering foundation checks passed; device/SDK/GPU/install certification not performed"
             );
             Ok(())
         }
+        // `full` 是「完整工程基础」：portable 的全部步骤，加上前端 workspace 的类型检查、
+        // 构建与测试。`portable` 刻意不带前端——它的名字承诺「只需 Rust 工具链就能跑」，
+        // 而前端步骤需要已安装的 node 依赖；把两者合并会让「刚 clone、尚未 install」的环境
+        // 变红，而那既不是 Rust 破了也不是前端破了。前端步骤的失败与前置缺失由
+        // `frontend::check` 具名报出，MUST NOT 被跳过或降级。
+        ["check", "--profile", "full"] => {
+            engineering_checks(root)?;
+            frontend::check(root)?;
+            println!(
+                "full: engineering foundation checks incl. the frontend gate passed; device/SDK/GPU/install certification not performed"
+            );
+            Ok(())
+        }
         ["help"] | ["--help"] | [] => {
             println!(
-                "Usage: cargo xtask check-deps | check --registry | check --golden [--dir <path>] | check --secrets | check --profile portable|windows-local | schema [--check] | test --suite contracts|storage|kernel|hosts|session|scheduler|provider|knowledge|upgrade\nOther suites, certify and package tasks are not available yet."
+                "Usage: cargo xtask check-deps | check --registry | check --golden [--dir <path>] | check --secrets | check --profile portable|windows-local|full | schema [--check] | test --suite contracts|storage|kernel|hosts|session|scheduler|provider|knowledge|upgrade\nOther suites, certify and package tasks are not available yet."
             );
             Ok(())
         }

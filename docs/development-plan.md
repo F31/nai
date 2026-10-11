@@ -517,13 +517,26 @@ W39 攻击者可控输入面的随机输入测试已实现/实测（S11 的「�
 到位后**零代码改动**即可出完整结论。零新增包（仍 18），真实接线仅 `[dev-dependencies]` 故 portable 覆盖与耗时不变。
 见 [报告](reports/2026-10-11-w40-golden-eval-runner.md)、[黄金集指南](golden-set.md) 与 [ADR 0040](adr/0040-golden-eval-runner-boundary.md)。
 
+本轮 `w41-frontend-gate-profile` 已实现/实测（[ADR 0041](adr/0041-engineering-profile-frontend-boundary.md)）：`engineering-foundation` 规格从 D01 起就要求
+「workspace 编译、测试和**前端检查**可执行」，但任务工具里没有这个入口——`check --profile portable` 六步全在 Rust 侧，前端一行都没有。
+前端检查一直存在（两个前端包各自的 `typecheck`/`build`、桌面包 `test`、根 `test:ui`），却**从未被门控覆盖**：历次记录都把它们与 portable
+**并列**写成人工结果，并列本身就说明「有人记得才有一次」。故缺口的准确性质是「前端检查**没有门控入口**」——portable 跑绿不能排除前端已破。
+新增 **`cargo xtask check --profile full` = `portable` 全部步骤 + 前端门控**；`portable` 语义与历史口径不变（它的名字承诺「只要 Rust 工具链就能跑」），
+两种 profile 共用 `engineering_checks`，故「full 包含 portable 全部步骤」是代码结构事实而非需同步的清单。`xtask/src/frontend.rs` 只管何时跑与失败怎么报；
+`scripts/frontend-gate.mjs` 是「前端怎么跑」的单一真源：命令取自各包 `package.json` 的 `scripts`，只把可执行名解析成真实入口（已知仅 `node`/`tsc`/`vite`），
+且一律经**当前 node** 运行其 JS 入口——npm 的 `.bin` 垫片是无扩展名的 POSIX 脚本，Windows 上不可执行。不认识的可执行与未实现的 shell 语法一律具名拒绝，
+glob 自行展开且**空匹配即失败**；无 `node`/依赖不可解析/某步非零分别以 `FRONTEND_TOOLCHAIN_MISSING`/`FRONTEND_DEPS_MISSING`/`FRONTEND_STEP_FAILED` 具名失败，**绝不静默跳过**。
+实测：`check --profile full` **EXIT=0**，前端六步全过（`vite v7.1.9` 30 modules、desktop `1..5`、`test:ui` `1..15`），Rust 侧 82 个测试目标、**695 passed / 0 failed**（较 W40 +1）。
+三条非空洞自检（注入类型错误 / 未知可执行 / 未实现 shell 语法）均按预期失败并随后还原。
+见 [报告](reports/2026-10-11-w41-frontend-gate-profile.md)。
+
 下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03、P01 的判定骨架与 O04 的设备侧、W36 的真实链路接入纪律、W37 的线上形状修正、
-W38 的桌面审批面/UI 层、W39 的攻击者可控输入面随机测试与 W40 的 B01 判据+执行体，S11 与 B01 的登记缺口均已补）；轨道二的自备资源**已有真实凭据落地**（文本／语音两条真实链路经本栈走通并产出真值证据，文本模型标准化为 `agnes-2.5-flash`）；剩余 **O01**（需演示包与约 10 分钟首句演练、约 30 分钟真实输出验证）、
+W38 的桌面审批面/UI 层、W39 的攻击者可控输入面随机测试、W40 的 B01 判据+执行体与 W41 的完整工程 profile（前端门控），S11 与 B01 的登记缺口均已补）；轨道二的自备资源**已有真实凭据落地**（文本／语音两条真实链路经本栈走通并产出真值证据，文本模型标准化为 `agnes-2.5-flash`）；剩余 **O01**（需演示包与约 10 分钟首句演练、约 30 分钟真实输出验证）、
 **O02/O05**（UI 验收，按既有惯例 `pending`）与阻塞项 **B01**（**判定机制、载荷载体、参考答案判据与评估执行体均已就位**；缺 100 题集内容与真实知识库内容，均为外部投入）、**B02/D12**（模型与目标机证据）、
 **O03**（M0b 定案与真机 S09）、**O04**（干净 Windows 安装、真实音频设备变更与真实回退；安装侧已由 `nai-upgrade-core` 覆盖）、
 **P01**（官方 SDK 与生产宿主；判定机制已由 W35 交付，D13）均需外部条件。
-仓库内仍可控的剩余缺口：**S08**（workspace SBOM 未生成；插件/供应链其余部分已实现）、**把前端 typecheck/build 纳入 xtask 门控**
-（目前为独立命令，未在 `check --profile portable` 内）。
+仓库内仍可控的剩余缺口：**S08**（workspace SBOM 未生成；插件/供应链其余部分已实现），以及
+**把前端纳入工程门控**——该项已由 W41 关闭（`check --profile full` 覆盖两包 typecheck/build、桌面包单测与 `tests/ui`）。
 
 ## 任务依赖与状态
 

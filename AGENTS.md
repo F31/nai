@@ -43,7 +43,7 @@
 
 D01–D11 已建立工程、生成契约、存储/密钥、内核绑定、宿主/IPC、会话/媒体租约、有界调度/共享预算、API Provider 传输、
 知识完整链路、智能体/守门评估和媒体样本时轴：cargo xtask check-deps、
-check --profile portable/windows-local、schema [--check]、test --suite contracts/storage/kernel/hosts/session/scheduler/provider/knowledge/upgrade
+check --profile portable/windows-local/full、schema [--check]、test --suite contracts/storage/kernel/hosts/session/scheduler/provider/knowledge/upgrade
 及前端 typecheck/build 可执行。契约工具要求 protoc 3.21.12，完整 C++ suite 另需同版
 libprotobuf；详见 docs/contracts/README.md、docs/hosts.md、docs/session.md、docs/scheduler.md、docs/provider.md、docs/knowledge.md、docs/upgrade.md、docs/deployment.md 与 docs/kernel.md。
 真实付费 Provider 生成受账户余额约束（冒烟显示无余额，Blocked）；真实音轨/媒体进程接线待设备里程碑。其他 suite/认证/打包命令仍待实现，
@@ -608,3 +608,30 @@ kernel `tests/golden.rs` **31 项**、xtask lib **39 项**全绿；portable **EX
 见 docs/golden-set.md、tests/rag-golden/README.md、docs/adr/0040-golden-eval-runner-boundary.md 与
 docs/reports/2026-10-11-w40-golden-eval-runner.md。未做边界：**行为侧执行**（守门/副作用/取消的观测接入）与**真实检索接入**未做，
 执行体目前只在生成侧产出结论。
+
+W41 完整工程 profile（前端门控）已实现/实测（ADR 0041）：`engineering-foundation` 规格从 D01 起就要求
+「workspace 编译、测试和**前端检查**可执行」，但任务工具里**没有这个入口**——`check --profile portable` 只做六件事
+（`check-deps`/`check --registry`/`fmt`/`clippy`/全 workspace 测试/harness 库测试），前端一行都没有。前端检查**一直存在**
+（`@nai/contracts` 与 `@nai/desktop` 各自的 `typecheck`/`build`、桌面包 `test`、根 `test:ui`），但**从未被门控覆盖**：
+历次记录都把它们与 portable **并列**写成人工结果，并列本身就说明「有人记得才有一次」。故缺口的准确性质不是
+「前端没有检查」，而是「前端检查**没有门控入口**」——portable 跑绿不能排除前端已破。本轮落
+**`cargo xtask check --profile full` = portable 全部步骤 + 前端门控**（`portable` 语义与历史口径**不变**，它的名字承诺
+「只要 Rust 工具链就能跑」）；`xtask/src/lib.rs` 把六步抽成 `engineering_checks` 供两种 profile 共用，
+「full 包含 portable 全部步骤」因此是**代码结构事实**而非需同步的清单。`xtask/src/frontend.rs` 只决定**何时跑**
+（`NODE` 覆盖、缺省 `node`）与**失败怎么报**；`scripts/frontend-gate.mjs` 是「前端怎么跑」的单一真源——命令取自各包
+`package.json` 的 `scripts`，只把可执行名解析成真实入口（已知仅 `node`/`tsc`/`vite`），且一律经**当前 node** 运行其 JS 入口
+（`typescript/lib/tsc.js`、`vite/bin/vite.js`），因为 npm 的 `.bin` 垫片是无扩展名的 POSIX 脚本、Windows 上不可执行；
+不认识的可执行与 `|`/`>`/`||` 等未实现的 shell 语法一律**具名拒绝**，glob 由脚本自行展开且**空匹配即失败**
+（「0 个测试文件被跑到」不得读成通过）。缺前置三条硬规则：无 `node` ⇒ `FRONTEND_TOOLCHAIN_MISSING`、
+依赖不可解析 ⇒ `FRONTEND_DEPS_MISSING`、某步非零 ⇒ `FRONTEND_STEP_FAILED`（指名包与 script），**绝不静默跳过**。
+实测：`check --profile full` **EXIT=0**（2m59s），前端六步——两包 typecheck、两包 build（`vite v7.1.9` 30 modules / 3.32s）、
+desktop `1..5`、`test:ui` `1..15`；Rust 侧 **82 个测试目标**（65 `Running` + 17 `Doc-tests`）、**695 passed / 0 failed**
+（W40 基线 694，+1 即 `frontend.rs` 新单测）。**三条非空洞自检**（均随后还原、`git diff` 无残留）：注入类型错误 ⇒
+`FRONTEND_STEP_FAILED` 且后续步骤停止；注入 `eslint .` ⇒ `FRONTEND_SCRIPT_UNSUPPORTED`；注入 `tsc --noEmit | cat` ⇒
+同标记并指名 token。**主机关联事实**（不是仓库内容）：本机 `apps/desktop/node_modules/{vite,typescript,react}` 是
+Windows 不可解析的符号链接（`realpathSync` 报 `EACCES`），前端依赖因此退化到根层手工副本，而后者的
+`@rollup/rollup-win32-x64-msvc` 与 `@esbuild/win32-x64` 缺失，已按既有做法从 `.pnpm` 补齐；重装后可能需重补。
+registry **不改任何 `status`**（本轮是覆盖面扩展不是达标），D01 notes 只补记事实。见
+docs/adr/0041-engineering-profile-frontend-boundary.md、docs/reports/2026-10-11-w41-frontend-gate-profile.md。
+未做边界：**不配 CI**（是否在流水线调 `full` 另行决定）、**不测渲染**（仍不引入 DOM 库）、**不代跑 `install`**；
+前端门控通过只说明工程基础可执行，MUST NOT 读成浏览器/人工 UI 或任何 `O` 系列验收达标。
