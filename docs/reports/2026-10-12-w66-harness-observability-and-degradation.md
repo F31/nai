@@ -134,7 +134,18 @@ kernel 侧是纯逻辑、无 I/O，两者之间还没有线。
 `cargo xtask schema --check` 在本机**跑不了**（`EBUSY`，主机限制）。本轮**未改动任何生成器输入**
 （`schemas/catalog/capabilities.json`、`schemas/{config,plugin}/*.schema.json`）与 `crates/`、`packages/` 之外的
 契约来源 ⇒ 结构性理由成立；并由 CI 的独立步骤（「Check generated contracts without modifying consumers」）兜底，
-推送后核对。
+推送后核对 —— 见下。
+
+### 6.5 CI 复核（匿名观测 `api.github.com`，无需 runner、无需凭据）
+
+推送后 `on: push` 自动触发；两个平台（`ubuntu-24.04` / `windows-latest`）**跑同一条 `check --profile full`**：
+
+| run | head | 结论 | 关键步骤 |
+|---|---|---|---|
+| 38186785631 | `ffa237c` | **success**（00:07:02Z → 00:18:39Z） | 两 job **全绿**（`foundation (ubuntu-24.04)` 与 `foundation (windows-latest)` 均 `completed success`）⇒ job 内全部步骤含第 9 步 `Check generated contracts without modifying consumers` 通过 |
+
+⇒ **本机跑不了的 `schema --check` 由 CI 兜底且已实测通过**：「契约零漂移」是**直接证据**，不再是推理。
+（观测纪律：单轮控制在个位数请求；匿名额度 60 次/小时按 IP 计，密集轮询会打满。）
 
 ## 七、未做与遗留
 
