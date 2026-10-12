@@ -126,3 +126,13 @@ mapping:
     D12: {status: blocked, targets: ["B02", "S08"], evidence: "reports/2026-10-08-d12-model-admission.md", notes: "仅前置完整性检查；缺完整合法模型/G0–G3；G0–G3 判定骨架已落 kernel（W32，见 reports/2026-10-10-w32-realistic-gate-verdict.md），真实模型与目标机证据仍缺"}
     D13: {status: implemented, targets: ["S09", "A03", "P01"], evidence: "reports/2026-10-08-d13-platform-ingress.md", notes: "准入逻辑通过；官方 SDK/网关 blocked"}
     D14: {status: tested, targets: ["S09", "R01", "A01"], evidence: "reports/2026-10-08-d14-local-control.md", notes: "loopback 控制闭环通过；审批/预检/配置未建"}
+
+# 冻结基线（docs/ 里版本号最大的那份技术方案）的 §48.5 家族索引与 §57.3 发布线正本，
+# 与下面 acceptance 实测分布的**已登记偏差**。规则是「在册 == 基线声明 ∪ 本台账」。
+#
+# 台账不是豁免：每条 MUST 具名（id + 登记轮次 + 理由），且 MUST 对应一处**真实**差异——
+# 基线收录之后不清空，门控会按「陈旧条目」失败。⇒「已登记但尚未收录进基线」是一个
+# 可判定的状态，而不是一句在几份文档里各写一遍的说法（W68 新增 B07 就是这么漂移了两轮）。
+#
+# 门控：scripts/contracts/baseline.mjs + tests/registry.test.mjs。
+baseline_deviations: []

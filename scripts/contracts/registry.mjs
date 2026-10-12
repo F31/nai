@@ -2,7 +2,9 @@ import { readFile } from 'node:fs/promises';
 import YAML from 'yaml';
 
 const ID_RE = /^(S|R|A|B|O|P|M|H|X)[0-9]{2}$/;
-const RELEASE_LINES = ['slice_0', 'r1', 'r2', 'r3', 'experimental', 'capability_pack'];
+/// 导出给 `baseline.mjs` 使用：基线 §57.3 的发布线正本与注册表的 `release_lines`
+/// 必须是同一组键，否则「对账」本身就是对着两张不同的表。
+export const RELEASE_LINES = ['slice_0', 'r1', 'r2', 'r3', 'experimental', 'capability_pack'];
 const STATUSES = ['implemented', 'tested', 'blocked', 'not_applicable', 'pending'];
 
 /// Families whose baseline definition is a *complete* id range, with the count
