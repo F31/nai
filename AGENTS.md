@@ -1756,3 +1756,49 @@ F3 §57.3 表删 / F4 §51.2 被加表 / F5 §57.5 被加表 / F6 `###` 层级�
 见 [W79 报告](docs/reports/2026-10-12-w79-section-boundary.md)、
 [ADR 0057](docs/adr/0057-section-boundary.md)、
 `openspec/changes/archive/2026-10-12-w79-section-boundary/`。
+
+### W80 待裁定台账的引用完整性（扫描域 MUST 覆盖所有承载 `§NNN` 的字段）
+
+**问题**：W76 的台账校验器立了正确的一条断言——「条目里引用的每个 `§NNN` MUST 真实存在于当前基线」
+——但它的**覆盖有两个同形的洞**，病因都是**一份会漂移的手写清单**。
+
+**洞一（字段级）**：扫描域被手写成三个 `sectionRefs(...)` 调用（`basis`／`introduced_in`／`also_in`），
+而 `REQUIRED_FIELD` 里**另外三个同样承载 `§NNN` 的字段**（`recommendation`／`closure`／`note`）
+**一条都没扫**。**实测**：`recommendation` 4 条、`closure` 9 条、`note` 4 条——共 **17 条引用无人核**；
+把 `PD-24.recommendation` 的 `§40.4` 改成 `§99.9` ⇒ **返回空错误**。
+既有测试的注释预见了这个形状（「`basis` 之外的引用同样受检，否则**复述处可以随便编**」），
+只是把「之外」当成了那两个字段。
+
+**洞二（表级）**：`const field = REQUIRED_FIELD.get(entry.disposition); if (field) {…}`
+——某处置若漏在 `REQUIRED_FIELD` 里，`field` 是 `undefined`、整段跳过 ⇒ **它的条目没有必填字段**，
+校验对它**沉默**（实测：删掉一个必填字段项后，删掉对应条目的字段**不再报错**）。
+
+**裁定**（[ADR 0058](docs/adr/0058-ledger-citation-coverage.md)）：
+
+1. **扫描域取导出的单一清单** `CITATION_FIELDS`（`basis`／`introduced_in`／`also_in`／
+   `recommendation`／`closure`／`note`）+ `ID_LIST_FIELDS`（`precondition`，按 id 校验）；
+   引用扫描**遍历清单**，MUST NOT 手写。**`note` 必须在里面**——它不是 `out_of_scope` 的专属字段，
+   实测 5 条里有 4 条挂在别的处置上（注解）⇒ **按「字段是否存在」触发，不按处置触发**。
+2. **错误具名到字段**：`PD-24: recommendation references §99.9, …`（**条目 + 字段 + 章节号**三件齐，
+   否则同一个坏章节号出现在多个字段时无法定位）。
+3. **`shapeErrors()`**（导出，无条件并入 `validatePendingDecisions`）：`REQUIRED_FIELD` 键集 MUST ==
+   `DISPOSITIONS`；两清单 MUST 不相交；每个必填字段 MUST ∈ 两清单之一
+   ⇒ **新增处置的字段不可能在两个检查之间落空**。
+4. 判据 MUST **在每个字段上开火**（三个此前未扫的字段各一次）**并逐字钉清单内容**
+   ——只钉「关系」不够：三者一起被拿掉时，字段集同步变窄、关系断言仍全绿。
+
+**注入 F0 + F1–F3（字段级）+ F4–F5（表级）+ F5b（证明洞是真的）逐项开火且具名**：
+F4 把清单换回旧三字段 ⇒ `required field note for out_of_scope is covered by no check`；
+F5 删掉一个必填字段项 ⇒ `disposition decidable_in_repo has no required field`；
+**F5b 在 F5 前提下删掉某条 `recommendation`，`requires a non-empty recommendation` 不出现**
+——**证明洞二真实存在**，F5 不是在一段没被证明有意义的分支上打转。
+表级注入用**临时模块副本**（该文件无 import ⇒ 可独立 import），动手前先断言锚点**恰好出现一次**。
+
+**门控**：`cargo xtask check --profile full` **EXIT=0**，测试目标 **91（73 `Running` + 18 `Doc-tests`）**、
+**860 passed / 0 failed**；零 Rust 改动 ⇒ `passed` 与 W71–W79 逐项相同。
+`tests/registry.test.mjs` **27 → 28**（随 `engineering_checks` 既有条目自动进 `portable`／`full`，接线零改动）。
+**台账数据一字未改**（实测 17 条引用**全部已可解析** ⇒ 基线保持全绿）。
+**不改基线正文、不改 `tests/registry.yaml`、不改任何 Rust、不新增依赖边。**
+见 [W80 报告](docs/reports/2026-10-13-w80-ledger-citation-coverage.md)、
+[ADR 0058](docs/adr/0058-ledger-citation-coverage.md)、
+`openspec/changes/archive/2026-10-13-w80-ledger-citation-coverage/`。

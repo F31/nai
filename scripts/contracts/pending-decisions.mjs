@@ -27,6 +27,72 @@ export const REQUIRED_FIELD = new Map([
   ['out_of_scope', 'note'],
 ]);
 
+/// **会承载 `§NNN` 引用、因而其引用必须可解析的全部字段。**
+///
+/// 这是扫描域的**单一来源**。W76 立这条断言时把域手写成了三个 `sectionRefs(...)` 调用，
+/// 于是 `recommendation`／`closure`／`note` 被**整片漏扫**——实测 17 条引用无人核
+/// （把 `PD-24.recommendation` 的 `§40.4` 改成 `§99.9`，校验返回空错误）。
+/// ⇒ 域 MUST 由清单派生，MUST NOT 在循环里手写：手写的那一份会漂移。
+///
+/// `note` 也在其中：它不是 `out_of_scope` 的专属字段，实测 5 条里有 4 条挂在别的处置上（注解）。
+/// 扫描按「字段是否存在」触发，不按处置触发——否则注解型的 `note` 会被漏掉。
+export const CITATION_FIELDS = [
+  'basis',
+  'introduced_in',
+  'also_in',
+  'recommendation',
+  'closure',
+  'note',
+];
+
+/// 必填字段里**承载登记 id 而非 `§NNN`** 的那一个（它按 id 校验，不走引用扫描）。
+/// 它与 `CITATION_FIELDS` 一起，必须**恰好覆盖** `REQUIRED_FIELD` 的全部取值。
+export const ID_LIST_FIELDS = ['precondition'];
+
+/// 校验器自身两张常量表的一致性。**这不是「自检的装饰」**——它挡的是**未来某次合法编辑**
+/// （加一个处置）导致的**静默失去覆盖**：
+/// - 若某处置进了 `DISPOSITIONS` 却漏在 `REQUIRED_FIELD` 里，`REQUIRED_FIELD.get` 返回 `undefined`、
+///   `if (field)` 短路 ⇒ 该处置的条目**没有必填字段**，校验对它沉默；
+/// - 若某处置的必填文本字段不在 `CITATION_FIELDS` 里，它的引用**永不被解析**。
+///
+/// 两种都是**危险方向的瞎**：断言还在，覆盖没了，且没有任何信号（W73 假契约、W66「删字段照样绿」同族）。
+export function shapeErrors() {
+  const errors = [];
+  const dispositions = new Set(DISPOSITIONS);
+  const requiredFor = new Set(REQUIRED_FIELD.keys());
+
+  for (const disposition of dispositions) {
+    if (!requiredFor.has(disposition)) {
+      errors.push(
+        `disposition ${disposition} has no required field — the ledger would accept it silently`,
+      );
+    }
+  }
+  for (const disposition of requiredFor) {
+    if (!dispositions.has(disposition)) {
+      errors.push(`a required field is defined for ${disposition}, which is not a disposition`);
+    }
+  }
+
+  const cited = new Set(CITATION_FIELDS);
+  const idList = new Set(ID_LIST_FIELDS);
+  for (const field of cited) {
+    if (idList.has(field)) {
+      errors.push(`field ${field} is listed as both a citation field and an id-list field`);
+    }
+  }
+  // 每个必填字段都必须被**某**检查覆盖：要么扫 §NNN 引用、要么按 id 校验。
+  // 这条正是 W80 想要的不变式——把 `CITATION_FIELDS` 换回旧的三个字段，`note` 就会在这里被点名。
+  for (const [disposition, field] of REQUIRED_FIELD) {
+    if (!cited.has(field) && !idList.has(field)) {
+      errors.push(
+        `required field ${field} for ${disposition} is covered by no check — it would be unchecked`,
+      );
+    }
+  }
+  return errors;
+}
+
 /// 基线四章的**新增**条数（累积链去重后，每条只记在首次出现的那一章）。
 /// 这是照抄基线事实的一张表，因此**必须另有** `DISPOSITION_COUNTS` 把分布也写死——
 /// 只校验总数对「内容被改小／被改类别」是瞎的（W66 教训）。
@@ -91,6 +157,9 @@ export function validatePendingDecisions(ledger, deps = {}) {
     return ['pending-decisions ledger must be a mapping'];
   }
   if (ledger.schema_version !== 1) errors.push('schema_version must be 1');
+
+  // 校验器自身的常量表先自洽——否则下面的逐条检查可能在「危险方向」上已经瞎了而不自知。
+  errors.push(...shapeErrors());
 
   // 台账必须声明它是对着哪个基线写的。升基线后若忘了更新，这里会红——这正是想要的：
   // 一份对着旧基线写的台账，其「§NNN 存在」的结论对新基线不成立。
@@ -161,14 +230,22 @@ export function validatePendingDecisions(ledger, deps = {}) {
 
     // 台账里出现的**每一个** §NNN 都必须真实存在于当前基线。这条把「凭印象编一个章节号」排除掉；
     // 语义上是否真的回答了该问题由 ADR 与报告承载，不由脚本假装判定。
-    const refs = [
-      ...sectionRefs(entry.basis),
-      ...sectionRefs(entry.introduced_in),
-      ...(Array.isArray(entry.also_in) ? entry.also_in.flatMap(sectionRefs) : []),
-    ];
-    for (const ref of refs) {
-      if (sections.size > 0 && !sections.has(ref)) {
-        errors.push(`${id}: references §${ref}, which does not exist in the baseline`);
+    //
+    // 扫描域取自 `CITATION_FIELDS`（**包括** `recommendation`／`closure`／`note`）——
+    // W80 之前只用三个 `sectionRefs(...)` 手写，那三个字段整片漏扫、17 条引用无人核。
+    // 错误措辞 MUST 是「条目 + 字段 + 章节号」三件齐：同一个坏章节号可能同时出现在多个字段里，
+    // 只说条目无法定位（W79：错误的措辞会把定位引向错误的方向）。
+    for (const field of CITATION_FIELDS) {
+      const value = entry[field];
+      const values = Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
+      for (const text of values) {
+        for (const ref of sectionRefs(text)) {
+          if (sections.size > 0 && !sections.has(ref)) {
+            errors.push(
+              `${id}: ${field} references §${ref}, which does not exist in the baseline`,
+            );
+          }
+        }
       }
     }
 

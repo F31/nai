@@ -26,6 +26,11 @@ import {
   validatePendingDecisions,
   baselineSections,
   baselineWorkItems,
+  shapeErrors,
+  CITATION_FIELDS,
+  ID_LIST_FIELDS,
+  DISPOSITIONS,
+  REQUIRED_FIELD,
 } from '../scripts/contracts/pending-decisions.mjs';
 
 /// 基线文档只读一次：后面的注入用例都在同一份文本上做「最小改动」。
@@ -698,6 +703,27 @@ test('a pending decision cannot cite a section the baseline does not have', asyn
     'a stray reference outside basis must be reported too',
   );
 
+  // W80：`recommendation`／`closure`／`note` 同样承载 §NNN（实测 17 条），此前**整片漏扫**。
+  // 三个字段各注入一次，且 MUST 指名是哪一个字段——同一个坏章节号若同时出现在多个字段里，
+  // 只说条目无法定位（W79：错误的措辞会把定位引向错误的方向）。
+  for (const [field, disposition] of [
+    ['recommendation', 'decidable_in_repo'],
+    ['closure', 'needs_external'],
+    ['note', 'out_of_scope'],
+  ]) {
+    const stray = structuredClone(pendingLedger);
+    const item = stray.entries.find(entry => entry.disposition === disposition);
+    assert.ok(item, `${disposition} must be represented in the ledger`);
+    item[field] = `${item[field]} §99.9`;
+    assert.ok(
+      ledgerErrors(stray).some(
+        error =>
+          error.includes(item.id) && error.includes(field) && error.includes('§99.9'),
+      ),
+      `a stray reference in ${field} must be reported and must name the field`,
+    );
+  }
+
   // 一条 answered 条目若连章节号都不给，「有依据」就是空的。
   const bare = structuredClone(pendingLedger);
   const other = bare.entries.find(item => item.disposition === 'answered_by_baseline');
@@ -708,6 +734,33 @@ test('a pending decision cannot cite a section the baseline does not have', asyn
     ),
     'an answered item that cites no section must be reported',
   );
+});
+
+test('the ledger checker cannot lose coverage through its own tables', async () => {
+  // 校验器自身的常量表先自洽——表若分家，断言看起来还在、覆盖已经没了。
+  assert.deepEqual(shapeErrors(), [], 'the checker tables must be consistent as committed');
+
+  // 处置枚举与必填字段表 MUST 是同一集合：少了会「无必填字段」，多了会为一个不存在的处置定义字段。
+  assert.deepEqual(
+    [...REQUIRED_FIELD.keys()].sort(),
+    [...DISPOSITIONS].sort(),
+    'every disposition needs exactly one required field, and every required field needs a disposition',
+  );
+
+  // 每个处置的必填字段都必须被**某**检查覆盖：要么扫 §NNN 引用、要么按 id 校验。
+  for (const [disposition, field] of REQUIRED_FIELD) {
+    assert.ok(
+      CITATION_FIELDS.includes(field) || ID_LIST_FIELDS.includes(field),
+      `${disposition}'s required field ${field} must be covered by some check`,
+    );
+  }
+
+  // 直接钉内容：`CITATION_FIELDS` MUST 逐字含这三个此前漏扫的字段（W80 的核心）。
+  // 只钉「关系」不够——三者一起被拿掉时，字段集同步变窄、上面的关系断言仍会全绿。
+  for (const field of ['recommendation', 'closure', 'note']) {
+    assert.ok(CITATION_FIELDS.includes(field), `${field} must be scanned for §NNN references`);
+    assert.ok(!ID_LIST_FIELDS.includes(field), `${field} is a citation field, not an id list`);
+  }
 });
 
 test('each disposition has to pay for itself with its own required field', async () => {
