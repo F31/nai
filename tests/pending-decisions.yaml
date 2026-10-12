@@ -1,0 +1,258 @@
+schema_version: 1
+# 本台账登记基线的**待决策与待确认项**。
+#
+# 四章是一条**累积链**：§39.7 沿用 §18.2 全部，§48.7 沿用 §39.7 全部，§57.5 沿用 §48.7 全部。
+# 故本台账登记的是**去重后的唯一集合**：`introduced_in` 记首次出现处，`also_in` 记复述处。
+# 分章的新增条数与总数由 CHAPTER_COUNTS 逐章写死（覆盖性 MUST NOT 靠台账自证）。
+#
+# 处置是**封闭枚举**，每态对应一个必填字段：`answered_by_baseline`→`basis`、
+# `decidable_in_repo`→`recommendation`、`needs_precondition`→`precondition`、
+# `needs_external`→`closure`、`out_of_scope`→`note`。
+baseline: V3.10
+
+entries:
+  # ---- §18.2 首次出现（10 条）----
+  - id: PD-01
+    question: "数字人用途准入与现行规则"
+    introduced_in: "§18.2"
+    also_in: ["§39.7", "§52.1"]
+    disposition: needs_external
+    closure: "平台出具**可留存**的书面答复，确认该账号与该类目的数字人自动互动被允许（§52.1 命题一的硬门槛）"
+
+  - id: PD-02
+    question: "exe 与小程序产物类型能否并存及审核要求"
+    introduced_in: "§18.2"
+    also_in: ["§39.7"]
+    disposition: needs_external
+    closure: "平台对两类产物的并存性与各自审核要求给出书面口径"
+
+  - id: PD-03
+    question: "开放数据权限的申请条件与费用"
+    introduced_in: "§18.2"
+    also_in: ["§39.7"]
+    disposition: needs_external
+    closure: "开放数据权限的申请条件、批复方式与计费口径"
+
+  - id: PD-04
+    question: "手机端接入直播画面的官方途径"
+    introduced_in: "§18.2"
+    also_in: ["§39.7", "§52.1"]
+    disposition: needs_external
+    closure: "确认官方入口**存在**（§52.1 命题三）；未确认前只做演练与录制，MUST NOT 宣称可进直播画面"
+
+  - id: PD-05
+    question: "各 API 供应商的数据留存与流式能力"
+    introduced_in: "§18.2"
+    also_in: []
+    disposition: needs_external
+    closure: "逐个在用供应商（LLM／TTS）的留存政策与流式支持声明；W36 已实测 OpenAI 兼容网关一条链路，其余仍缺"
+
+  - id: PD-06
+    question: "2D 与 3D 引擎及角色素材的商用授权"
+    introduced_in: "§18.2"
+    also_in: []
+    disposition: needs_external
+    closure: "引擎与素材的商用许可文本（Live2D 发布许可等），逐项可归档"
+
+  - id: PD-07
+    question: "伴侣版本与素材约束"
+    introduced_in: "§18.2"
+    also_in: []
+    disposition: needs_external
+    closure: "官方伴侣的版本清单与随版本变化的素材使用约束"
+
+  - id: PD-08
+    question: "Tauri 2 移动端成熟度与应用分发方式"
+    introduced_in: "§18.2"
+    also_in: ["§39.7"]
+    disposition: needs_external
+    closure: "Tauri 2 移动端可用性结论与目标平台分发路径；未成立时手机侧走 §10.2 的路线 A"
+
+  - id: PD-09
+    question: "静态数据加密所用的系统密钥保护机制"
+    introduced_in: "§18.2"
+    also_in: ["§39.7"]
+    disposition: decidable_in_repo
+    recommendation: "按目标平台各用**系统密钥库**（Windows 原生凭据为首发实现），缺该后端的平台如实登记 explicit-unavailable（沿用 W55 的平台维度处置），MUST NOT 自造一套跨平台密钥库"
+
+  - id: PD-10
+    question: "wasm 组件模型的异步与流式能力"
+    introduced_in: "§18.2"
+    also_in: ["§39.7"]
+    disposition: needs_external
+    closure: "wasm 组件模型对 async／stream 的正式支持结论；未成立则该形态在仓库只留契约不留实现（W04 的既有处置）"
+
+  # ---- §39.7 新增（11 条）----
+  - id: PD-11
+    question: "市场项目：Open API v1 接口清单"
+    introduced_in: "§39.7"
+    also_in: []
+    disposition: needs_external
+    closure: "与市场项目**书面约定**的 v1 接口清单（§38.8 的约定事项）"
+
+  - id: PD-12
+    question: "市场项目：根密钥与轮换"
+    introduced_in: "§39.7"
+    also_in: []
+    disposition: needs_external
+    closure: "根密钥形态与轮换周期约定"
+
+  - id: PD-13
+    question: "市场项目：审核标准与撤销时限"
+    introduced_in: "§39.7"
+    also_in: []
+    disposition: needs_external
+    closure: "上架审核标准与撤销生效时限约定（§38.4 的失效保护依赖它）"
+
+  - id: PD-14
+    question: "市场项目：授权令牌格式"
+    introduced_in: "§39.7"
+    also_in: []
+    disposition: needs_external
+    closure: "授权令牌的格式与校验规则约定"
+
+  - id: PD-15
+    question: "市场项目：区域合规"
+    introduced_in: "§39.7"
+    also_in: []
+    disposition: needs_external
+    closure: "目标区域适用的合规要求清单"
+
+  - id: PD-16
+    question: "市场项目：可用性目标"
+    introduced_in: "§39.7"
+    also_in: []
+    disposition: needs_external
+    closure: "市场服务的可用性目标（SLO）约定"
+
+  - id: PD-17
+    question: "手机监控采用中继加 PWA 还是原生壳加局域网直连"
+    introduced_in: "§39.7"
+    also_in: ["§10.2"]
+    disposition: needs_external
+    closure: "M0b PoC 跑通并按 §10.2 的路线前置逐条判定后定案（登记为 O03）"
+
+  - id: PD-18
+    question: "写实形象：合法完整的模型来源与授权"
+    introduced_in: "§39.7"
+    also_in: ["§8.2"]
+    disposition: needs_external
+    closure: "权重、代码、训练素材、肖像、声音**五类权利**依据齐全（§8.2 的 G0）——对应 B02"
+
+  - id: PD-19
+    question: "写实 Gate G0–G3 结论"
+    introduced_in: "§39.7"
+    also_in: ["§8.2"]
+    disposition: needs_external
+    closure: "在 Windows／CUDA 目标机上执行四门并出具结论（G2 真值来自目标机实测）——对应 B02"
+
+  - id: PD-20
+    question: "技能的定价、分成与结算方式"
+    introduced_in: "§39.7"
+    also_in: []
+    disposition: out_of_scope
+    note: "基线自述「不在本方案范围内」；本台账同样不裁，且 MUST NOT 被读作遗漏"
+
+  - id: PD-21
+    question: "MCP 适配的协议版本与认证方式"
+    introduced_in: "§39.7"
+    also_in: ["§48.7", "§35.2", "§46.2"]
+    disposition: needs_external
+    closure: "MCP 规范对协议版本与认证方式的正式规定；§46.2 已明写「本方案不臆造具体协议版本」，故 MUST NOT 以选定版本号的方式「闭合」它"
+
+  # ---- §48.7 新增（10 条）----
+  - id: PD-22
+    question: "A2A：入站入口是否对第三方开放"
+    introduced_in: "§48.7"
+    also_in: ["§46.3"]
+    disposition: decidable_in_repo
+    recommendation: "首版**默认不对第三方开放**，只响应本机与本地信任配置中已登记的受信对端；开放第三方入站 MUST 作为一次**显式的版本决策**（INV-31 与 T-24 的威胁面：对端自报无任何效力）"
+
+  - id: PD-23
+    question: "A2A：对端身份与信任配置的分发方式"
+    introduced_in: "§48.7"
+    also_in: ["§46.3"]
+    disposition: needs_precondition
+    precondition: ["H13", "H14"]
+    note: "§46.3 已裁定「对端身份由**本地信任配置**派生、MUST NOT 取自请求自报」；未决的是**分发**，而分发形状依赖 A2A 协议（PD-21），故挂在前置上而不是现在就裁"
+
+  - id: PD-24
+    question: "A2A：委派深度上限是否可配置"
+    introduced_in: "§48.7"
+    also_in: ["§46.3"]
+    disposition: decidable_in_repo
+    recommendation: "首版**固定为常量 1、不提供配置面**；配置化 MUST 推迟到 A2A 协议验证之后，且引入时必须同时给出上限校验与「越界具名终止」（§40.4 的「有界」纪律）"
+
+  - id: PD-25
+    question: "MCP：sampling 是否存在可接受的启用场景"
+    introduced_in: "§48.7"
+    also_in: ["§46.2"]
+    disposition: answered_by_baseline
+    basis: "§46.2：sampling **默认禁用**；启用需本机管理员授权、计入预算、逐次记决策日志——即「场景存在，条件四项，默认不变」"
+
+  - id: PD-26
+    question: "意图置信度阈值"
+    introduced_in: "§48.7"
+    also_in: ["§43.4"]
+    disposition: needs_precondition
+    precondition: ["H05", "H06", "H16"]
+    note: "§43.4 要求「阈值待 §47.2 实测，MUST NOT 直接采用外部观察值」；裁定前必须先有意图判定面与黄金集回放"
+
+  - id: PD-27
+    question: "语义缓存相似度阈值"
+    introduced_in: "§48.7"
+    also_in: ["§45.2"]
+    disposition: needs_precondition
+    precondition: ["H07", "H08", "H16"]
+    note: "裁定 MUST 与 §45.3 的禁用域**正交**：价格／库存／优惠／承诺不因阈值调低而进入缓存"
+
+  - id: PD-28
+    question: "上下文利用率观测线"
+    introduced_in: "§48.7"
+    also_in: ["§41.4"]
+    disposition: answered_by_baseline
+    basis: "§41.4：利用率 MUST 作为观测项登记，但**本轮不设告警阈值**；外部公开的比例 MUST NOT 被外推为本系统门限"
+
+  - id: PD-29
+    question: "契约：a2a 相关契约名是否设立"
+    introduced_in: "§48.7"
+    also_in: ["§46.5"]
+    disposition: answered_by_baseline
+    basis: "§46.5：**不新增** `mcp.tool@1`／`a2a.*` 之类的契约名（三条理由）；A2A 契约待协议验证后随 W62 入目录，H13／H14 的 `contract` 留空"
+
+  - id: PD-30
+    question: "契约：data.query@1 的冻结时机与一致性套件范围"
+    introduced_in: "§48.7"
+    also_in: ["§46.5"]
+    disposition: needs_precondition
+    precondition: ["W61"]
+    note: "现为 Draft；冻结 MUST 晚于出现**真实消费者**（W73 的教训：无人消费的契约会变成假契约）"
+
+  - id: PD-31
+    question: "记忆：观众长期记忆的字段集与保留期"
+    introduced_in: "§48.7"
+    also_in: ["§5.5"]
+    disposition: decidable_in_repo
+    recommendation: "R1 内判为「**空集 + 默认关闭**」——§5.5 的默认关闭使字段集没有对象；字段集与保留期作为 **R3 跨会话能力**的入档前置，默认关闭时 MUST NOT 被读取"
+
+  # ---- §57.5 新增（3 条）----
+  - id: PD-32
+    question: "能力包的打包粒度（市场客户端、MCP/A2A 是否各自独立成包）"
+    introduced_in: "§57.5"
+    also_in: ["§51.3"]
+    disposition: answered_by_baseline
+    basis: "§51.3：能力包清单已是**逐行独立**的——市场客户端 = M01–M18、MCP 适配 = H11／H12、A2A = H13／H14；该问题已被回答"
+
+  - id: PD-33
+    question: "平台准入的书面确认形态"
+    introduced_in: "§57.5"
+    also_in: ["§52.1"]
+    disposition: needs_external
+    closure: "平台给出**可留存的书面答复**，使 §52.1 的硬门槛可归档为证据；口头或非正式答复不构成闭合"
+
+  - id: PD-34
+    question: "用户画像的验证方式"
+    introduced_in: "§57.5"
+    also_in: ["§54.2"]
+    disposition: decidable_in_repo
+    recommendation: "三个画像各做**真实使用者访谈**并产出「画像-档位映射已验证」记录，作为 §14.1 档位表生效的前置；**验证完成前 §54.2 MUST NOT 被用作「Lite 该多 Lite」的论据**"

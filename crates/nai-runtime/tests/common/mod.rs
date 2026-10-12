@@ -91,18 +91,37 @@ pub fn runtime_profile(workspace: &str) -> Value {
     })
 }
 
+/// The budget for the fixture's **bring-up**: opening the store on a fresh data
+/// root runs the whole schema migration chain, and the workspace/grants/profile
+/// writes that follow belong to the same one-shot setup.
+///
+/// `nai_runtime` re-exports one definition of this budget (`BRINGUP_OPERATION`)
+/// and spells out why it is not the per-call budget. The fixture used to hold
+/// its own 5s copy — a second, drifting definition — and that copy described the
+/// wrong work: under the default parallel test run several data roots are
+/// created at once, so a migration that loses the disk race surfaced as a
+/// random `DeadlineExceeded` in the fixture rather than a statement about the
+/// system under test. Reusing the constant is the "one budget, one definition"
+/// rule (ADR 0027) applied to the fixture.
+fn bringup() -> Operation {
+    Operation::new(nai_runtime::BRINGUP_OPERATION).unwrap()
+}
+
+/// The budget for a **per-call** store access made from a test: reading rows the
+/// fixture has already set up. Bring-up work MUST NOT use this one -- `open_store`
+/// and `provision` take `bringup()`.
 fn operation() -> Operation {
     Operation::new(Duration::from_secs(5)).unwrap()
 }
 
 pub fn open_store(root: &Path) -> Store {
-    Store::open(DataPaths::at(root).unwrap(), &operation()).unwrap()
+    Store::open(DataPaths::at(root).unwrap(), &bringup()).unwrap()
 }
 
 /// Creates a workspace, grants the runtime permissions and stores the profile.
 /// Drops the store so the single owner lock is released for the composition.
 pub fn provision(root: &Path, workspace: &str, actor: &str, profile: &str, config: &Value) {
-    let operation = operation();
+    let operation = bringup();
     let mut store = open_store(root);
     store
         .create_workspace(&operation, workspace, workspace)

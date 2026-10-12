@@ -17,6 +17,12 @@ import {
   pointerErrors,
   declaredBaselineName,
 } from '../scripts/contracts/baseline.mjs';
+import YAML from 'yaml';
+import {
+  validatePendingDecisions,
+  baselineSections,
+  baselineWorkItems,
+} from '../scripts/contracts/pending-decisions.mjs';
 
 /// 基线文档只读一次：后面的注入用例都在同一份文本上做「最小改动」。
 const baseline = await readBaseline();
@@ -629,5 +635,160 @@ test("the registry's shape layer and semantic layer agree, constant by constant"
   assert.ok(
     invented.every(error => error.includes('status enumeration drifts')) && invented.length === 2,
     'adding a status on one side must be reported in both places it appears',
+  );
+});
+
+/// 待裁定台账（`tests/pending-decisions.yaml`）与它的校验器。
+///
+/// 入参**显式注入**（与 `baseline.mjs` 的 `normalizeDeviations` 同一条纪律）：缺任一项即报错，
+/// 不做「缺了就跳过对应检查」的降级——一条会被削弱的断言若保持沉默，比没有断言更坏。
+const pendingLedger = YAML.parse(await readFile('tests/pending-decisions.yaml', 'utf8'));
+const ledgerDeps = {
+  baselineVersion: baseline.version,
+  baselineText: baseline.text,
+  acceptanceIds: new Set((await readRegistry()).acceptance.map(item => item.id)),
+  workItemIds: baselineWorkItems(baseline.text),
+};
+const ledgerErrors = ledger => validatePendingDecisions(ledger, ledgerDeps);
+
+test('the pending-decision ledger classifies every item and every reference resolves', async () => {
+  assert.deepEqual(ledgerErrors(pendingLedger), [], 'the ledger must be clean as committed');
+
+  // 非空洞自检：底座的抽取若恒空，后面的「引用可解析」与「逐章计数」都会恒真。
+  assert.ok(
+    baselineWorkItems(baseline.text).size > 20,
+    'work-item extraction must actually find the baseline tables',
+  );
+  assert.ok(
+    baselineSections(baseline.text).size > 50,
+    'section extraction must actually find the baseline headings',
+  );
+
+  // 缺输入必须**报错**，而不是静默跳过对应的检查。
+  for (const key of ['baselineVersion', 'baselineText', 'acceptanceIds', 'workItemIds']) {
+    const partial = {...ledgerDeps};
+    delete partial[key];
+    assert.ok(
+      validatePendingDecisions(pendingLedger, partial).some(
+        error => error.includes('inputs are required') && error.includes(key),
+      ),
+      `omitting ${key} must be reported, not silently skipped`,
+    );
+  }
+});
+
+test('a pending decision cannot cite a section the baseline does not have', async () => {
+  const answered = structuredClone(pendingLedger);
+  const entry = answered.entries.find(item => item.disposition === 'answered_by_baseline');
+  entry.basis = '§99：一个基线里并不存在的章节';
+  assert.ok(
+    ledgerErrors(answered).some(error => error.includes(entry.id) && error.includes('§99')),
+    'a basis pointing at a non-existent section must be reported',
+  );
+
+  // `basis` 之外的引用同样受检（`introduced_in` / `also_in`），否则「复述处」可以随便编。
+  const strayed = structuredClone(pendingLedger);
+  strayed.entries[0].also_in = ['§77'];
+  assert.ok(
+    ledgerErrors(strayed).some(error => error.includes('§77')),
+    'a stray reference outside basis must be reported too',
+  );
+
+  // 一条 answered 条目若连章节号都不给，「有依据」就是空的。
+  const bare = structuredClone(pendingLedger);
+  const other = bare.entries.find(item => item.disposition === 'answered_by_baseline');
+  other.basis = '基线已经回答过了';
+  assert.ok(
+    ledgerErrors(bare).some(
+      error => error.includes(other.id) && error.includes('at least one §NNN'),
+    ),
+    'an answered item that cites no section must be reported',
+  );
+});
+
+test('each disposition has to pay for itself with its own required field', async () => {
+  const cases = [
+    ['answered_by_baseline', 'basis'],
+    ['decidable_in_repo', 'recommendation'],
+    ['needs_precondition', 'precondition'],
+    ['needs_external', 'closure'],
+    ['out_of_scope', 'note'],
+  ];
+  for (const [disposition, field] of cases) {
+    const ledger = structuredClone(pendingLedger);
+    const entry = ledger.entries.find(item => item.disposition === disposition);
+    assert.ok(entry, `${disposition} must be represented in the ledger`);
+    if (Array.isArray(entry[field])) entry[field] = [];
+    else delete entry[field];
+    assert.ok(
+      ledgerErrors(ledger).some(error => error.includes(entry.id) && error.includes(field)),
+      `${disposition} without ${field} must be reported`,
+    );
+  }
+
+  const outside = structuredClone(pendingLedger);
+  outside.entries[0].disposition = 'to_be_decided_later';
+  assert.ok(
+    ledgerErrors(outside).some(error => error.includes('invalid disposition')),
+    'a disposition outside the closed enumeration must be reported',
+  );
+});
+
+test('a precondition must name something that exists', async () => {
+  const ghostAcceptance = structuredClone(pendingLedger);
+  const pick = ledger => ledger.entries.find(item => item.disposition === 'needs_precondition');
+  pick(ghostAcceptance).precondition = ['H99'];
+  assert.ok(
+    ledgerErrors(ghostAcceptance).some(
+      error => error.includes('H99') && error.includes('not a registry acceptance id'),
+    ),
+    'a precondition naming a non-existent acceptance id must be reported',
+  );
+
+  const ghostWorkItem = structuredClone(pendingLedger);
+  pick(ghostWorkItem).precondition = ['W99'];
+  assert.ok(
+    ledgerErrors(ghostWorkItem).some(error => error.includes('W99')),
+    'a precondition naming a work item the baseline does not have must be reported',
+  );
+
+  const nonsense = structuredClone(pendingLedger);
+  pick(nonsense).precondition = ['以后再说'];
+  assert.ok(
+    ledgerErrors(nonsense).some(error => error.includes('neither a registry acceptance id')),
+    'a precondition that names nothing checkable must be reported',
+  );
+});
+
+test('the ledger cannot shrink, be reclassified, or address a stale baseline', async () => {
+  const shrunk = structuredClone(pendingLedger);
+  const lost = shrunk.entries.pop();
+  assert.ok(
+    ledgerErrors(shrunk).some(error => error.includes(`${shrunk.entries.length} entries`)),
+    `dropping ${lost.id} must be reported by count`,
+  );
+
+  // 总数不变但**类别被改**：只校验总数的实现看不见它。
+  const reclassified = structuredClone(pendingLedger);
+  const moved = reclassified.entries.find(item => item.disposition === 'answered_by_baseline');
+  moved.disposition = 'needs_external';
+  moved.closure = '外部确认';
+  assert.ok(
+    ledgerErrors(reclassified).some(error => error.includes('answered_by_baseline covers')),
+    'moving an answered item out of its class must be reported even when the total still matches',
+  );
+
+  const stale = structuredClone(pendingLedger);
+  stale.baseline = 'V3.9';
+  assert.ok(
+    ledgerErrors(stale).some(error => error.includes('declares baseline')),
+    'a ledger written against an older baseline must be reported',
+  );
+
+  const duplicated = structuredClone(pendingLedger);
+  duplicated.entries[1].id = duplicated.entries[0].id;
+  assert.ok(
+    ledgerErrors(duplicated).some(error => error.includes('duplicate entry id')),
+    'duplicate ids must be reported',
   );
 });

@@ -1572,3 +1572,40 @@ openspec/changes/archive/2026-10-12-w74-consumption-guard-integrity/。
 见 [ADR 0053](docs/adr/0053-repository-scoped-evidence.md)、
 [W75 报告](docs/reports/2026-10-12-w75-repository-scoped-evidence.md)、
 `openspec/changes/archive/2026-10-12-w75-repository-scoped-evidence/`。
+
+### W76 待裁定项的登记与寿命（悬空的问题也要有寿命）
+
+出发点是一个盘点问题——**「离方案设计和规划任务还有哪些未执行」**。全仓核实后，主干线未达标项（18 条）
+与外部阻塞项（5 条）都已登记在案，**唯一一类「有载体而无台账」的是基线四章「待决策与待确认」**
+（§18.2、§39.7、§48.7、§57.5，一条**累积链**：后一章沿用前一章全部）。去重后 **34 条**，
+分章新增数 **10/11/10/3**。
+
+**核实先行——四条已被基线自身回答**（故正确处置是「已答性核实并关闭」，不是「新裁定」）：
+MCP `sampling` 可接受场景 → §46.2「默认禁用 + 三条件」；上下文利用率观测线 → §41.4「本轮**不设**告警阈值」；
+`a2a` 契约名是否设立 → §46.5「**不新增** + 三条理由」；能力包打包粒度 → §51.3 已是**三行独立包**。
+这与 W67 把「『通过 §47.2 的回归』是全六类还是相关类」核实为**不是偏差**同型。
+
+**裁定与交付**（[ADR 0054](docs/adr/0054-pending-decisions-ledger.md)）：
+
+1. **五态封闭枚举，每态一个必填字段**：`answered_by_baseline`→`basis`、`decidable_in_repo`→`recommendation`、
+   `needs_precondition`→`precondition`、`needs_external`→`closure`、`out_of_scope`→`note`。
+   把「这条有没有人管」换成可判定的「**那个字段在不在**」——一条没有 `closure` 的外部项与空注释没有区别。
+2. **依据 MUST 指回真实存在的章节**：台账里每一个 `§NNN`（含 `introduced_in`／`also_in`）MUST 在基线
+   章节标题集合里 ⇒ 写 `§99` 立刻失败。**脚本只证「章节存在」，不证「该章节真的回答了该问题」**——
+   后一半刻意留给人读，写在 ADR 决策 2 里。
+3. **外部条件写成「取到什么算闭合」**：§52.1 的硬门槛就是「**可留存**的书面答复」——
+   「待平台确认」与空注释没有区别。
+4. **前置 MUST 真实存在**（registry 验收 id 或基线工作项 `WNN`）——挂在不存在的东西上等于挂在空气上。
+5. **覆盖性与分布逐章、逐类写死**（`CHAPTER_COUNTS` 10/11/10/3、`DISPOSITION_COUNTS` 4/5/4/20/1、总数 34）。
+   只校验总数对「内容被改小／**被改类别**」是瞎的（W66 教训）。
+6. **与 `baseline_deviations` 不合并**：那是「已发生的偏离」，本台账是「未决的问题」，维度不同。
+
+**验证**：`node --test tests/registry.test.mjs` **19/19**（14 → 19）；**文件级注入三组逐项开火并还原**
+（F1 依据指向不存在的 `§99` ⇒ 报 `PD-25: references §99, which does not exist in the baseline`；
+F2 首次出现章被改 ⇒ **两侧**章计数都报；F3 处置越出封闭枚举 ⇒ 越界 id 与分布两条都报），
+测试内另覆盖五态必填字段缺失、前置不存在、删条目、id 重复、陈旧基线五类。
+**门控路径不变**（断言**并入既有测试文件** ⇒ `engineering_checks` 零改动）；**不改基线正文**
+（§48.7／§57.5 属 §56.2 情形③的版本专属陈述）、**不改 `acceptance`、不改 schema、不改 Rust**。
+见 [ADR 0054](docs/adr/0054-pending-decisions-ledger.md)、
+[W76 报告](docs/reports/2026-10-12-w76-pending-decisions-ledger.md)、
+`openspec/changes/archive/2026-10-12-w76-pending-decisions-ledger/`。
