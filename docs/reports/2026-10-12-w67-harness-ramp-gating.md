@@ -149,7 +149,7 @@
 
 | run | commit | 结论 | 备注 |
 | --- | --- | --- | --- |
-<!--CI-->
+| 38191443234 | `394992d` | **success**（两 job `completed success`：ubuntu-24.04 与 windows-latest） | 本轮实质提交（判定面 + 测试 + 登记 + 文档） |
 
 ## 五、验收侧：为什么 H18 仍是 `pending`
 
