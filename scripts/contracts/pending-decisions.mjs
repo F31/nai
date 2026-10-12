@@ -36,6 +36,10 @@ export const REQUIRED_FIELD = new Map([
 ///
 /// `note` 也在其中：它不是 `out_of_scope` 的专属字段，实测 5 条里有 4 条挂在别的处置上（注解）。
 /// 扫描按「字段是否存在」触发，不按处置触发——否则注解型的 `note` 会被漏掉。
+///
+/// `question`（W81 补入）同样是**复述字段**——它复述基线各章的提问。它此前只有「非空」检查、
+/// **不扫引用**，而「复述处可以随便编」这条推理对它最直接适用。实测当前 0 条含 `§` ⇒ 纳入扫描
+/// 不引入红；方向为安全侧（将来某条引用了不存在的章节会被抓，而不是放行）。
 export const CITATION_FIELDS = [
   'basis',
   'introduced_in',
@@ -43,11 +47,41 @@ export const CITATION_FIELDS = [
   'recommendation',
   'closure',
   'note',
+  'question',
 ];
 
 /// 必填字段里**承载登记 id 而非 `§NNN`** 的那一个（它按 id 校验，不走引用扫描）。
 /// 它与 `CITATION_FIELDS` 一起，必须**恰好覆盖** `REQUIRED_FIELD` 的全部取值。
 export const ID_LIST_FIELDS = ['precondition'];
+
+/// **结构字段**：由各自的专属检查判定、且**不可能**承载 `§NNN` 的字段——
+/// `id` 由 `^PD-\d{2}$` 判、`disposition` 由 `DISPOSITIONS` 枚举判，两者的字符集里根本没有 `§`。
+/// （`question` **不在**这里：它有专属的「非空」检查，但**同时**承载 `§NNN` ⇒ 归 `CITATION_FIELDS`。
+/// 一个字段可以「既被扫、又有专属检查」——分类判的是「`§NNN` 由谁负责」。）
+export const STRUCTURAL_FIELDS = ['id', 'disposition'];
+
+/// 台账里**允许出现**的全部字段。这是**闭世界**断言的基准：出现在条目里、却不在此集合中的字段
+/// ⇒ **具名失败**（`validatePendingDecisions`）。
+///
+/// **逐字写死，MUST NOT 由三类派生**：派生出的「三类别之并 == `LEDGER_FIELDS`」是**恒真**的，
+/// 一个字都没说。它必须是**独立的一份**声明，`shapeErrors()` 的「并集 == 它」才是**内容断言**
+/// （W80 §九结论 5：只钉「关系」不够，要**逐字钉内容**）。
+///
+/// 为什么需要闭世界：**「按清单扫」的守卫，其盲区恰好是清单的补集**——`CITATION_FIELDS` 挡得住
+/// 「清单上的字段被编造」，挡不住**新增字段**。实测给某条加 `rationale: "见 §99.9"` ⇒ 校验返回
+/// **空错误**（W81 探针）。⇒ 只要还有「清单之外的字段不受检」这个状态，W80 修掉的那个洞就还在。
+export const LEDGER_FIELDS = [
+  'id',
+  'question',
+  'introduced_in',
+  'also_in',
+  'disposition',
+  'basis',
+  'recommendation',
+  'precondition',
+  'closure',
+  'note',
+];
 
 /// 校验器自身两张常量表的一致性。**这不是「自检的装饰」**——它挡的是**未来某次合法编辑**
 /// （加一个处置）导致的**静默失去覆盖**：
@@ -76,17 +110,53 @@ export function shapeErrors() {
 
   const cited = new Set(CITATION_FIELDS);
   const idList = new Set(ID_LIST_FIELDS);
-  for (const field of cited) {
-    if (idList.has(field)) {
-      errors.push(`field ${field} is listed as both a citation field and an id-list field`);
+  const structural = new Set(STRUCTURAL_FIELDS);
+
+  // 三类 MUST **两两不相交**：一个字段不能「由两个检查同时负责」——否则「谁在管它」不再是单一回答。
+  const categories = [
+    ['citation', cited],
+    ['id-list', idList],
+    ['structural', structural],
+  ];
+  for (let i = 0; i < categories.length; i += 1) {
+    for (let j = i + 1; j < categories.length; j += 1) {
+      const [leftName, left] = categories[i];
+      const [rightName, right] = categories[j];
+      for (const field of left) {
+        if (right.has(field)) {
+          errors.push(`field ${field} is claimed by two check categories (${leftName}, ${rightName})`);
+        }
+      }
     }
   }
+
   // 每个必填字段都必须被**某**检查覆盖：要么扫 §NNN 引用、要么按 id 校验。
   // 这条正是 W80 想要的不变式——把 `CITATION_FIELDS` 换回旧的三个字段，`note` 就会在这里被点名。
   for (const [disposition, field] of REQUIRED_FIELD) {
     if (!cited.has(field) && !idList.has(field)) {
       errors.push(
         `required field ${field} for ${disposition} is covered by no check — it would be unchecked`,
+      );
+    }
+  }
+
+  // **闭世界**：三类别之并 MUST **恰等于** `LEDGER_FIELDS`（这份表是**独立写死**的，
+  // 所以这不是恒真式）。两个方向都被点名：
+  // ① 某字段进了 `LEDGER_FIELDS` 却没被任何一类认领 ⇒ 数据允许它出现、却无人负责它；
+  // ② 某字段被分类了却不在 `LEDGER_FIELDS` 里 ⇒ 那份分类永远打不到东西（闭世界断言会先拒掉数据）。
+  const allowed = new Set(LEDGER_FIELDS);
+  const classified = new Set([...cited, ...idList, ...structural]);
+  for (const field of allowed) {
+    if (!classified.has(field)) {
+      errors.push(
+        `field ${field} is allowed by LEDGER_FIELDS but no check category claims it — it would be unchecked`,
+      );
+    }
+  }
+  for (const field of classified) {
+    if (!allowed.has(field)) {
+      errors.push(
+        `field ${field} is classified but not listed in LEDGER_FIELDS — the closed-world check would reject it`,
       );
     }
   }
@@ -183,6 +253,7 @@ export function validatePendingDecisions(ledger, deps = {}) {
   const seen = new Set();
   const byChapter = new Map([...CHAPTER_COUNTS.keys()].map(key => [key, 0]));
   const byDisposition = new Map(DISPOSITIONS.map(key => [key, 0]));
+  const allowedFields = new Set(LEDGER_FIELDS);
 
   for (const entry of entries) {
     const id = entry?.id;
@@ -193,6 +264,18 @@ export function validatePendingDecisions(ledger, deps = {}) {
     }
     if (seen.has(id)) errors.push(`duplicate entry id: ${id}`);
     seen.add(id);
+
+    // **闭世界**：条目里出现的每个键 MUST ∈ `LEDGER_FIELDS`。
+    // 只看**字段名**、**不看值**——若写成「未知字段**且**其值含 `§NNN`」才报，那么一个含引用的字段
+    // 会在将来某次被扫到时**无声通过**。判据的输入 MUST 等于被断言的对象（这里断言的是「字段集封闭」，
+    // 不是「这条引用坏不坏」）。⇒ 值干净的未知字段同样必须失败。
+    for (const field of Object.keys(entry)) {
+      if (!allowedFields.has(field)) {
+        errors.push(
+          `${id}: unknown field ${field} — a field the checker does not know can carry §NNN unchecked`,
+        );
+      }
+    }
 
     if (!nonEmptyText(entry.question)) errors.push(`${id}: question must be non-empty`);
 

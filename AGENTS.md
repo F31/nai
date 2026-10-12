@@ -1802,3 +1802,46 @@ F5 删掉一个必填字段项 ⇒ `disposition decidable_in_repo has no require
 见 [W80 报告](docs/reports/2026-10-13-w80-ledger-citation-coverage.md)、
 [ADR 0058](docs/adr/0058-ledger-citation-coverage.md)、
 `openspec/changes/archive/2026-10-13-w80-ledger-citation-coverage/`。
+
+### W81 台账字段集的封闭性（扫描清单之外 MUST 为空）
+
+**问题**：W80 把扫描域收成一份**导出的单一清单** `CITATION_FIELDS` 并**遍历它**——修掉了「清单内字段
+整片漏扫」。但遍历一份清单的守卫是**开世界扫描**：**清单的补集就是盲区**。清单挡得住「清单上的字段
+被编造」，挡不住**不在清单上的字段被新增**。
+
+**洞三（数据级）**：清单之外的键**既不被扫、也不被拒**。**探针实测**：给 `PD-01` 加
+`rationale: "见 §99.9"` ⇒ `validatePendingDecisions` 返回**空错误**；改成值干净的 `"见 §40.4"`
+**同样返回空错误**。⇒ **给台账加一个字段，它的引用就永久不受检。**
+
+**洞四（同形）**：`question`（**34 条全部**都带）**只有「非空」检查、不扫引用**——它是**字面意义上的
+复述字段**（复述基线的提问），W80 的推理「复述处可以随便编」对它最直接适用，而 W80 的清单**唯独漏了它**。
+
+**裁定**（[ADR 0059](docs/adr/0059-ledger-field-closure.md)）：
+
+1. **新增并导出** `LEDGER_FIELDS`（台账**允许出现**的全部字段，**逐字写死**——派生写法会让
+   「三类别之并 == 它」成为**恒真式**）与 `STRUCTURAL_FIELDS`（`id`／`disposition`，由格式与枚举判）。
+2. **闭世界**：`validatePendingDecisions` 断言条目里出现的每个键 MUST ∈ `LEDGER_FIELDS`，
+   否则报 `PD-01: unknown field rationale …`（**条目 + 字段名**）。
+   **只看名字、不看值**——若写成「未知字段**且**其值含 `§NNN`」才报，一个含引用的字段会在将来某次
+   被扫到时**无声通过**（判据的输入 MUST 等于被断言的对象）。
+3. **`question` 进 `CITATION_FIELDS`**（实测 0 命中 ⇒ 不引入红；方向为安全侧——
+   选「禁含 `§`」会**禁止**一个合法引用，那是假阳性方向）。
+4. **三类 MUST 两两不相交**；`shapeErrors()` 的「并集 == `LEDGER_FIELDS`」是**内容断言**（双向具名）。
+
+**注入 F0 + F1–F4（数据级）+ F5–F8（表级）逐项开火且具名**：
+**F2 是值干净的未知字段 ⇒ 同样失败**（证明挡的是**字段**，不是它的内容）；
+**F4 是反向注入**（`question` 里放**合法** `§` ⇒ **不红**，证边界没被收得过紧）；
+F5 把 `question` 移出清单 ⇒ `field question is allowed by LEDGER_FIELDS but no check category claims it`；
+F6 把 `note` 移出 `LEDGER_FIELDS` ⇒ `field note is classified but not listed in LEDGER_FIELDS`；
+F7 把 `id` 也塞进引用清单 ⇒ `field id is claimed by two check categories (citation, structural)`；
+F8 掺一个幽灵字段 ⇒ 同 F5 的措辞。表级注入用**临时模块副本**（该文件无 import ⇒ 可独立 import），
+动手前先断言锚点**恰好出现一次**（注意 `  'question',` 在两个清单里**各出现一次**，锚点必须取三行块）。
+
+**门控**：`cargo xtask check --profile full` **EXIT=0**，测试目标 **91（73 `Running` + 18 `Doc-tests`）**、
+**860 passed / 0 failed**；零 Rust 改动 ⇒ `passed` 与 W71–W80 逐项相同。
+`tests/registry.test.mjs` **28 → 30**（随 `engineering_checks` 既有条目自动进 `portable`／`full`，接线零改动）。
+**台账数据一字未改**（实测当前字段集**恰好**等于 `LEDGER_FIELDS`、`question` **0 命中** `§` ⇒ 基线保持全绿）。
+**不改基线正文、不改 `tests/registry.yaml`、不改任何 Rust、不新增依赖边。**
+见 [W81 报告](docs/reports/2026-10-13-w81-ledger-field-closure.md)、
+[ADR 0059](docs/adr/0059-ledger-field-closure.md)、
+`openspec/changes/archive/2026-10-13-w81-ledger-field-closure/`。

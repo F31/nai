@@ -29,6 +29,8 @@ import {
   shapeErrors,
   CITATION_FIELDS,
   ID_LIST_FIELDS,
+  STRUCTURAL_FIELDS,
+  LEDGER_FIELDS,
   DISPOSITIONS,
   REQUIRED_FIELD,
 } from '../scripts/contracts/pending-decisions.mjs';
@@ -760,6 +762,87 @@ test('the ledger checker cannot lose coverage through its own tables', async () 
   for (const field of ['recommendation', 'closure', 'note']) {
     assert.ok(CITATION_FIELDS.includes(field), `${field} must be scanned for §NNN references`);
     assert.ok(!ID_LIST_FIELDS.includes(field), `${field} is a citation field, not an id list`);
+  }
+});
+
+test('an entry field the checker does not know cannot hide from the scan', async () => {
+  // W81：`CITATION_FIELDS` 是一份清单，而**清单的补集是盲区**——「按清单扫」挡得住清单上的字段
+  // 被编造，挡不住**新增字段**。实测（W81 探针，改前）：给 PD-01 加 `rationale: "见 §99.9"`
+  // ⇒ `validatePendingDecisions` 返回**空错误**。
+  const unknown = structuredClone(pendingLedger);
+  unknown.entries[0].rationale = '见 §99.9 的说明';
+  assert.ok(
+    ledgerErrors(unknown).some(
+      error => error.includes(unknown.entries[0].id) && error.includes('rationale'),
+    ),
+    'a field outside the declared set must be reported, naming the entry and the field',
+  );
+
+  // **值干净也 MUST 失败**：判据断言的是「字段集封闭」，不是「这条引用坏不坏」。
+  // 若只在未知字段的值含坏 `§` 时才报，一个含引用的字段会在将来某次被扫到时**无声通过**。
+  const clean = structuredClone(pendingLedger);
+  clean.entries[0].rationale = '见 §40.4 的说明';
+  assert.ok(
+    ledgerErrors(clean).some(error => error.includes('rationale')),
+    'the field is rejected on its name alone — a clean value must not buy it a pass',
+  );
+
+  // `question` 是**复述字段**（它复述基线的提问），W80 的推理「复述处可以随便编」对它最直接适用，
+  // 而它此前**只做非空检查、不扫引用**。加入扫描是安全侧：只有该引用不可解析时才失败。
+  const asked = structuredClone(pendingLedger);
+  const item = asked.entries.find(entry => entry.disposition === 'answered_by_baseline');
+  item.question = `${item.question}（见 §99.9）`;
+  assert.ok(
+    ledgerErrors(asked).some(
+      error => error.includes(item.id) && error.includes('question') && error.includes('§99.9'),
+    ),
+    'a restatement field must be scanned: a stray §NNN in question must be reported',
+  );
+});
+
+test('the ledger field set is closed and every field has exactly one owner', async () => {
+  // 逐字钉内容：`LEDGER_FIELDS` 是**独立写死**的一份声明（不是三类派生出来的），
+  // 所以「三类之并 == 它」是一条**内容断言**，不是恒真式（W80：只钉关系不够，要逐字钉）。
+  assert.deepEqual(
+    [...LEDGER_FIELDS].sort(),
+    [
+      'also_in',
+      'basis',
+      'closure',
+      'disposition',
+      'id',
+      'introduced_in',
+      'note',
+      'precondition',
+      'question',
+      'recommendation',
+    ],
+    'the allowed field set must be exactly the ten declared fields',
+  );
+
+  // 三类**两两不相交**，且其并集**恰等于** `LEDGER_FIELDS`。
+  const categories = [CITATION_FIELDS, ID_LIST_FIELDS, STRUCTURAL_FIELDS];
+  assert.equal(
+    new Set(categories.flat()).size,
+    categories.flat().length,
+    'no field may be claimed by two check categories',
+  );
+  assert.deepEqual(
+    [...new Set(categories.flat())].sort(),
+    [...LEDGER_FIELDS].sort(),
+    'the three categories must partition the allowed field set',
+  );
+  assert.deepEqual(shapeErrors(), [], 'the partition must be internally consistent as committed');
+
+  // **非空洞**：声明的每个字段都真的在台账里出现过。少了这条，`LEDGER_FIELDS` 可以掺进
+  // 永远打不到数据的幽灵字段，而闭世界断言对它**恒真**。
+  const present = new Set(pendingLedger.entries.flatMap(entry => Object.keys(entry)));
+  for (const field of LEDGER_FIELDS) {
+    assert.ok(present.has(field), `${field} is declared but appears in no entry — a phantom field`);
+  }
+  // 数据侧闭世界的**直接**形式（`ledgerErrors(pendingLedger) === []` 已隐含，这里明写）。
+  for (const field of present) {
+    assert.ok(LEDGER_FIELDS.includes(field), `${field} appears in the ledger but is undeclared`);
   }
 });
 
