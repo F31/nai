@@ -250,44 +250,46 @@ cargo 判定「源未变更」而**复用上一次注入的二进制**。
 
 #### 实测结论（push 后低频单查询）
 
-提交 `a9f9aea` 触发的 `foundation` 工作流 run **`38200252090`** 总体结论为 **failure**，
-两个 job **结论相反**：
+本轮观察了**两次** run，两者**都红，但红在不同的平台与不同的测试上**——
+而被观察的两个提交之间**只差一个 `.md` 文件**（`87dce31` 仅改本报告）：
 
-| job | 结论 | 失败步骤 |
-| --- | --- | --- |
-| foundation (ubuntu-24.04) | **failure** | 步骤 10「Complete engineering foundation（portable steps + frontend workspace）」 |
-| foundation (windows-latest) | completed success | — |
+| run | 提交 | ubuntu-24.04 | windows-latest | 失败内容 |
+| --- | --- | --- | --- | --- |
+| `38200252090` | `a9f9aea`（内容提交） | **failure** | success | `apps/engine/tests/engine.rs::killed_keeper_is_halted_by_the_engine_and_the_chain_survives`（`engine.rs:289`，5 passed / 1 failed） |
+| `38201171920` | `87dce31`（CI 回填，**仅改 `.md`**） | success | **failure** | `apps/engine/tests/pipeline.rs` **4 项**（`a_second_process_reproduces_the_same_log_digest`、`a_render_closure_that_cannot_be_admitted_fails_the_run_not_an_event`、`a_speech_injection_without_a_render_closure_is_refused`、`a_playback_that_did_not_complete_never_logs_an_acknowledgement`），报 `provisioning failed: nai-engine: provisioning store unavailable: storage: DEADLINE_EXCEEDED (operation stopped)` |
 
-**定位路径**（匿名可读）：`GET /repos/F31/nai/actions/runs/38200252090/jobs` 看到步级结论
-→ `GET /repos/F31/nai/commits/a9f9aea/check-runs` 拿到 check-run id `114651849160`
-→ `GET /repos/F31/nai/check-runs/114651849160/annotations` 读到失败内容。
+**定位路径**（全部匿名可读）：`GET /repos/F31/nai/actions/runs/{id}/jobs` → 步级结论；
+`GET /repos/F31/nai/commits/{sha}/check-runs` → check-run id（`114651849160` / `114654705114`）；
+`GET /repos/F31/nai/check-runs/{id}/annotations` → 失败文本。
 
-ubuntu 上唯一失败的是 **`apps/engine/tests/engine.rs` 的
-`killed_keeper_is_halted_by_the_engine_and_the_chain_survives`**
-（`engine.rs:289`，`test result: FAILED. 5 passed; 1 failed`）：
-`assert!(revoked, "a killed keeper must revoke output authority")` 超时——该测试 `kill -9` 掉 keeper 后，
-用 **10 秒**窗口轮询引擎是否把 `generation_epoch` 由 `"0"` 置为 `"1"`（`engine.rs:273–289`）。
+两次失败都是**超时/期限**类：一次是 `kill -9` 掉 keeper 后在 **10 秒**窗口内未观察到
+`generation_epoch` 由 `"0"` 变 `"1"`（`engine.rs:273–289`）；一次是 storage 预置超时
+（`DEADLINE_EXCEEDED`）连带 4 个 pipeline 用例失败。
 
-**为什么判定它**不是**本轮引入**（四条独立证据）：
+**为什么判定两族都**不是**本轮引入**（四条独立证据）：
 
-1. `git diff --name-only a9f9aea~1 a9f9aea -- apps/` **无输出**——本轮 14 个改动文件全在
-   `crates/nai-kernel/`、`openspec/`、`tests/registry.yaml` 与文档，**没有一行落在 `apps/`**；
-2. **同一提交**在 `windows-latest` 上 **completed success**（含 `apps/engine` 的全部测试）；
-3. 本机（Windows）`check --profile full` **EXIT=0**，该测试也在其中运行并通过；
-4. 失败的是**时序断言**（10 秒窗口内等异步撤权），与「装配判定面」无因果关系。
+1. `git diff --name-only a9f9aea~1 a9f9aea -- apps/` **无输出**，且 `87dce31` **只改了一个 `.md` 文件**
+   —— 本轮 15 个改动文件全在 `crates/nai-kernel/`、`openspec/`、`tests/registry.yaml` 与文档，
+   **没有一行落在 `apps/`**；一个纯文档提交在物理上不可能改变测试结论；
+2. a9f9aea 在 windows-latest **全绿**（含 `apps/engine` 全部测试）、在 ubuntu 红；
+   87dce31 恰好相反（ubuntu 绿、windows 红）⇒ **同一棵树在两个平台上结论互换**；
+3. 本机（Windows）`check --profile full` **EXIT=0**，`engine.rs` 与 `pipeline.rs` 的用例均在其中通过；
+4. 失败都是**时序/期限断言**，与「上下文装配判定面」无因果关系——后者是 `nai-kernel` 里不碰 I/O 的纯函数。
 
-⇒ 这是**既已登记的 ubuntu 间歇失败族**（`docs/reports/` 记录 W48 修过 halt/drill 竞态）的又一次出现，
-不是本轮回归。**但本报告不宣称「CI 已绿」**——`a9f9aea` 的 CI **确实红了**，
-本机门控绿不等于 CI 绿（这是本轮第二次被这条纪律救到）。
+⇒ 这是**既已登记的 ubuntu 间歇失败族**（`docs/reports/` 记录 W48 修过 halt/drill 竞态）的**扩展**：
+**间歇性不止在 ubuntu，也不止在 `engine.rs`**。**但本报告不宣称「CI 已绿」**——
+本轮两次 push 的 `foundation` 都**确实红了**，只是红的落点不同；
+本机门控绿**不等于** CI 绿，这条纪律本轮再次生效。
 
-- **待办（本轮新登记，不在 W69 范围内）**：`killed_keeper_is_halted_by_the_engine_and_the_chain_survives`
-  在 ubuntu runner 上可超时（10 秒撤权窗口）⇒ W48 的修复**未完全**消除该类竞态。
-  下一次触及时应按 W48 铁律「**构造使顺序成立**」加固，而不是放宽断言。
-  本轮**不改 `apps/engine`**（超出 H01/H02 范围）。
+- **待办（本轮新登记，不在 W69 范围内）**：①`engine.rs` 的 keeper 撤权 10 秒窗口可超时；
+  ②`pipeline.rs` 的 storage 预置可 `DEADLINE_EXCEEDED`（一次带崩 4 个用例）。
+  两族都应由「**构造使顺序成立**」（W48 铁律）加固，**不放宽断言、不加重试掩盖**。
+  本轮**不改 `apps/engine`**（超出 H01/H02 范围）⇒ 建议**开一个专门的「CI 间歇失败」轮次**，
+  因为它已两次让不同平台变红，属「影响交付可信度但不属任何功能线」的一类。
 
-**观测纪律**：取结论用了 2 次低频查询（`run` + `jobs`，各带唯一 `cb` 与 `Cache-Control: no-cache`，
-回读 `head_sha` = `a9f9aea` 与本次推送一致）；随后为诊断又用 2 次（`check-runs` + `annotations`），
-全程 **4 次请求**（匿名配额 60/小时）。
+**观测纪律**：共 **7 次** API 请求（两次 `runs` 定位、两次 `run`、两次 `jobs`、两次 `check-runs`、
+两次 `annotations`，各带唯一 `cb` 与 `Cache-Control: no-cache`；回读 `head_sha` 分别为
+`a9f9aea` 与 `87dce31`，与各自推送一致）。匿名配额 60/小时，未触限。
 
 **观测轮终止约定**（照 W57 先例）：本条「回填 CI 结论」的提交**其自身 run 不再写入本报告**，
 否则无限递推；其 run 只做一次核对，结果记入当日工作日志。
@@ -312,10 +314,12 @@ ubuntu 上唯一失败的是 **`apps/engine/tests/engine.rs` 的
    B01／O03／O04（需 100 题集、真机、干净 Windows 安装等外部投入）、M 系列与 H05–H14／H16（能力包）。
 4. **未改基线文本**、**未改任何既有 `status`**、未改 `docs/直播数字人 + 智能体系统技术方案 V3.9.md`、
    **未改 `apps/` 下任何文件**。
-5. **CI 侧新登记一项间歇失败**：`apps/engine/tests/engine.rs` 的
-   `killed_keeper_is_halted_by_the_engine_and_the_chain_survives` 在 ubuntu runner 上可超时
-   （详见 §4.3 的实测结论）。**本轮只登记、不修**（超出 H01/H02 范围），
-   列入下一轮候选；处置原则仍按 W48 铁律「构造使顺序成立」，**不放宽断言**。
+5. **CI 侧新登记两族间歇失败**（详见 §4.3 的实测结论）：
+   ①`apps/engine/tests/engine.rs` 的 `killed_keeper_is_halted_by_the_engine_and_the_chain_survives`
+   撤权 10 秒窗口可超时；②`apps/engine/tests/pipeline.rs` 的 storage 预置可
+   `DEADLINE_EXCEEDED`（一次带崩 4 个用例）。两次观察中**平台与落点互换**，而两提交只差一个 `.md` 文件。
+   **本轮只登记、不修**（超出 H01/H02 范围）⇒ 建议单开一轮「CI 间歇失败」；
+   处置原则按 W48 铁律「构造使顺序成立」，**不放宽断言、不加睡眠掩盖**。
 6. **W67 的两项待确认仍在**：影子模式在 R1 无落点；「通过 §47.2 的回归」是全六类还是相关类。
 
 ## 七、方法论教训
@@ -335,3 +339,13 @@ ubuntu 上唯一失败的是 **`apps/engine/tests/engine.rs` 的
 5. **不要复用属于另一个维度的既有物**（§3.7）。不复用 `harness::FailureLayer`、
    不新建第二张凭据标记表、不并入 `selling` ——三次「不合并」都写进了模块头注释，
    这样下一个人（包括我自己）在扩展时能看见理由。
+6. **「本机门控绿」不是「CI 绿」，而且「CI 红」也不一定是自己的问题**（§4.3）。
+   本轮本机 `full` **EXIT=0**，但 push 后两次 `foundation` **都红**。
+   如果就此收工，会把一处**已存在的间歇失败**当成合格；如果就此回滚代码，则会**改错地方**。
+   正确做法是把「红的落点」查清：`jobs` → `check-runs` → `annotations`，
+   再用**「同一棵树在两个平台的结论互换」**与**「纯文档提交也红」**两条证据把因果切断。
+   — **判定「不是我造成的」需要证据，不是自信。**
+7. **间歇性缺陷也会「跟着你走」**（§4.3）。第一次红在 ubuntu 的 `engine.rs`，
+   第二次红在 windows 的 `pipeline.rs`——**同一族间歇失败换了个平台与落点重新出现**。
+   若只修「看到的那一个」而不问「它属于哪一族」，下一次仍会被同一个不确定性绊住。
+   ⇒ 遇到时序失败要先问：**这是孤立事件，还是一个族的一次采样？**
