@@ -177,7 +177,11 @@ F2 的自然解法是「取仓库文件集」。实测**不可行**：本机 nod
 
 | run | head_sha | 结论 |
 |---|---|---|
-| 待回填 | 待回填 | 待回填 |
+| [`38233465696`](https://github.com/F31/nai/actions/runs/38233465696) | `7ad11c9`（与本轮推送 SHA 一致） | **双平台双绿**：`foundation (ubuntu-24.04)` **success**（**5m33s**）、`foundation (windows-latest)` **success**（**10m29s**）；run 总状态 **Success**，09:59:41Z → 10:10:15Z（**10m34s**）；两个 job 各 26 步 |
+
+**顺带确认**：CI 的 job 步骤含 `pnpm exec openspec validate --archived --no-interactive`
+（`.github/workflows/foundation.yml` 第 84 行）⇒ **已归档口径在 CI 上也跑**——W74 的 `tasks.md`
+若留着那 6 个未勾项，CI 会与本机一样以 `N incomplete tasks` 失败；这条修正对 CI 是必需的，不是本机才需要。
 
 ## 八、未做与遗留（如实登记）
 
