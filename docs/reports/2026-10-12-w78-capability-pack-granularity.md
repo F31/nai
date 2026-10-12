@@ -155,7 +155,17 @@ openspec validate --all --strict --archived   →  75 passed / 0 failed
 
 ## 七、CI 复核
 
-`<待回填>`
+**run `38268273569`（`head_sha = c06a8d9`，与本轮推送 SHA 一致）= `success`**（双平台绿）。
+
+观测方式沿用既有纪律：**单次低频查询**（不轮询），每次带**唯一查询参数**破坏代理缓存、
+`Cache-Control: no-cache`，并**回读 `head_sha` 与本次推送比对**。
+本轮两次查询：`in_progress`（15:17）→ `success`（15:22，约 12 分钟）。
+
+**顺带证实**：W77 的 CI 回填提交 `8cabeca` 的 run `38263987555` = `success`
+⇒ 上一轮「顺带证实 W75 flaky 判定」的那条链继续成立。
+近五次推送的 run 全部 `success`（`5f1e12c` / `935f304` / `d32a7fc` / `8cabeca` / `c06a8d9`）。
+
+**按观测轮终止约定**：本条回填提交会触发一个新的 run，**该 run 不再回填**——否则无限递推。
 
 ## 八、遗留
 
