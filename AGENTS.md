@@ -1107,3 +1107,27 @@ W66 落 **W63**——V3.9 收缩后 R1 harness 轨道上**唯一完全未开始*
 故报告 MUST NOT 出现「已进决策日志」。
 见 docs/kernel.md（W66 段）、docs/reports/2026-10-12-w66-harness-observability-and-degradation.md、
 openspec/changes/archive/2026-10-12-w66-harness-observability-and-degradation/。
+
+### W67 harness 爬坡门控（V3.9 §5.9、§47.2、§47.3；验收 H18）
+
+W67 落 **W64 的 R1 那一半**。V3.9 §51.3 把 R1 保留的 harness 基础纪律定为 H01–H04、H15、H17、H18；
+前六条已各有判定面（W56/W57/W66），**H18 是最后一条完全未开始的**。新增
+`crates/nai-kernel/src/evaluate/ramp.rs`（**不**并入 `evaluate::harness`：§47.1/§47.4 判一次调用、
+§47.3 判一个机制×一个阶段，维度不同；也不复用 `session::change_mode`——那是会话维度的值守租约）：
+
+- 四段爬坡中**受监督自动是唯一被门控的阶段**（`DEFAULT_ENABLED_STAGES` 照抄 §47.3）；
+- 晋升须过两条：**声明受影响类别且全部通过、并绑定当前 harness 修订**（§47.2 的「才生效」⇒ 修订变化判 `regression_stale`），
+  以及启用记录**指名同一机制与目标阶段、值内无凭据**。
+- `touched` 为空判 `regression_scope_undeclared`——否则一段空声明即可绕过门控。
+
+**照实登记的发现**：§5.9／§47.3 是**四段**，但契约 `SessionMode` 只有**三个**取值、**无 `Shadow`**，
+而 §1.4／§17.3 把「影子模式」列在 **R2** ⇒ **H18 的默认启用集合里有一个阶段在 R1 内没有落点**。
+`RampStage::session_mode()` 对影子返回 `None`（不伪造映射），并由
+`every_stage_but_shadow_has_a_session_mode` 钉死。**本轮不改基线文本**（改基线是升基线轮次的事，
+且 MUST 是 1:1 行替换），作为待确认项交下一轮裁定。
+
+**明确不做**：不按阶段真正启用机制（runtime 接线）、不把启用记录追加进 `nai-storage` 的哈希链、
+**不实现六类回归的执行体**（那是能力包 H16）、**不新增契约名**、不改任何 `status`、不实现 H05–H14/H16。
+**边界（如实）**：H18 **保持 `pending`**；本轮只判「回归是否已记录为通过」，**不**跑任何黄金集用例。
+见 docs/kernel.md（W67 段）、docs/reports/2026-10-12-w67-harness-ramp-gating.md、
+openspec/changes/archive/2026-10-12-w67-harness-ramp-gating/。

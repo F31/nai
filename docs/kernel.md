@@ -130,3 +130,31 @@ Pro 跨会话）未建；本轮交付的是判定面。§42.5 的跨会话边界
 把记录真正追加进 `nai-storage` 的哈希链、以及把 `DegradeVerdict` 渲染进 `CapabilityView` 与界面，
 都属 runtime 与呈现层接线；故报告 MUST NOT 出现「已进决策日志」的措辞。
 
+## W67 harness 爬坡门控（V3.9 §5.9、§47.2、§47.3；验收 H18）
+
+落在 `evaluate::ramp`（**不是**并入 `evaluate::harness`）：§47.1/§47.4 判的是**一次调用**，
+§47.3 判的是**一个机制 × 一个阶段**，两个维度不同；合并会让「这次拒绝属于哪一类」重新不可判定
+（与 W66 不复用 `bridge::Degradation` 同一条理由）。也**不**复用 `session::change_mode`：
+那是**会话维度**（值守租约、二次确认，且已实现 `AutoSupervised → Assisted` 回落），本模块是**机制维度**
+——同一会话里不同 harness 机制可以处于不同爬坡阶段。
+
+- **四段爬坡（§5.9）**：`RampStage` = 演练 → 影子 → 人工辅助 → 受监督自动。
+  `DEFAULT_ENABLED_STAGES` 照抄 §47.3 的「默认只在演练、影子与人工辅助启用」⇒ **受监督自动是唯一被门控的阶段**。
+- **六类回归（§47.2）**：`RegressionCategory` = 装配回归／意图拒识／工具失败恢复／缓存误命中／
+  MCP 描述漂移／A2A 越权委派。晋升须**声明受影响类别**（`touched`）且 `passed ⊇ touched`；
+  **`touched` 为空**判 `regression_scope_undeclared`——否则一段空声明即可绕过门控。
+- **回归失效**：§47.2 的「通过相关回归**才生效**」⇒ 回归结论绑定 harness 修订，
+  修订变化判 `regression_stale`，不认「曾经通过过」。
+- **启用记录（§47.3）**：必须存在、指名同一机制与目标阶段、值内无明文凭据（INV-11，
+  复用 `harness::CREDENTIAL_MARKERS`）；允许时给出 `record_to_append`。
+  **不**校验「是否真的已追加进哈希链」——那是 `nai-storage` 的只追加写入。
+- `RampRejection` 收录 **8** 个具名拒绝；`tests/ramp.rs`（**13 项**）含五组**能区分两种实现**的守卫。
+
+**照实登记的发现**：§5.9／§47.3 是**四段**，但契约 `SessionMode` 只有**三个**取值、**没有 `Shadow`**，
+且 §1.4／§17.3 把「影子模式」列在 **R2** ⇒ **H18 的默认启用集合里有一个阶段在 R1 内没有落点**。
+`RampStage::session_mode()` 对 `Shadow` 返回 `None`（不伪造映射），并由
+`every_stage_but_shadow_has_a_session_mode` 钉死。本轮**不改基线文本**，作为待确认项交下一轮裁定。
+
+**边界（如实）**：H18 **保持 `pending`**——按阶段真正启用/停用机制属 runtime 接线；
+六类回归的执行体是 **H16（能力包）**，本轮只判「是否已记录为通过」，**不**跑用例。
+

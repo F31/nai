@@ -6,6 +6,7 @@ pub mod agent;
 pub mod guard;
 pub mod harness;
 pub mod memory;
+pub mod ramp;
 pub mod show;
 pub mod skill;
 
