@@ -189,12 +189,24 @@ W54/W55 新增 A12/A13/A14 时，**活索引 §48.5 还不存在**（§48 是 V3
 
 | run | head | 结论 |
 |---|---|---|
-| 待回填 | 待回填 | 待回填 |
+| [`38227339344`](https://github.com/F31/nai/actions/runs/38227339344) | `a219fb2`（与本轮推送 SHA 一致） | **双平台双绿**：`foundation (ubuntu-24.04)` **success**（**5m49s**）、`foundation (windows-latest)` **success**（**11m17s**）；run 总状态 **Success**、总时长 **11m22s**（两 job 计费时长合计 17m6s）。唯一非绿信号是两 job 各一条 Node.js 20 弃用 warning（`actions/checkout@v4` 等被强制跑在 Node 24 上，**非阻断**，与 W70–W72 同形） |
+
+**观测方式与配额账**：推送后先读列表页确认 run 已注册（此刻 **In progress**），再等其跑完
+（上次同类 run 耗时 13m0s ⇒ 挂后台等待而非轮询）。本机匿名配额此时**已打满**
+（`/rate_limit`：`remaining 0`、`reset 09:31:20Z`，而观测时刻 **09:17Z**）⇒ 三次观测**全部**改走
+WebFetch 读服务端页面（**不吃本机配额**），并按 15 分钟同 URL 缓存的性质**换查询串**
+（`?w73backfill=1` → `?j=windows1` → `?u=1`）。三次回读的 `head_sha` 均为 `a219fb2…`，
+与本次推送**一致** ⇒ 结论不是过期缓存的旧 run。
+
+**一个顺带确认的事实**：CI 的 windows job 步骤里有
+`Run pnpm exec openspec validate --archived --no-interactive` ⇒ 本轮归档后的**已归档变更口径**在 CI 上也被跑到，
+不只是本机跑过一次。
 
 **这次绿说明什么、不说明什么**：它证明本轮的 `full` 门控在两平台都通过——
-特别是**新增的 Node 守卫在 Linux 侧也绿**（消费守卫要扫全仓 `.rs`，这条路径只在 CI 上被非 Windows 环境完整跑到）。
+特别是**新增的 Node 守卫在 Linux 侧也绿**（消费守卫要扫全仓 `.rs`/`.mjs`，这条路径只在 CI 上被非 Windows 环境完整跑到；
+`tests/registry.test.mjs` 14 例、`tests/contracts/schema.test.mjs` 13 例在两个 job 里都跑到）。
 它**不**说明此后不会出现间歇失败；本轮零 Rust／零测试目标改动，与那种红本就无关；
-本轮立论**不依赖**这次绿，而依赖可复现的本机证据（两个测试文件的用例数 + 27 组注入 + 消费报告）。
+本轮立论**不依赖**这次绿，而依赖可复现的本机证据（两个测试文件的用例数 + 27 组注入 + 消费报告 + 两条 validate 口径）。
 
 （按观测轮终止约定，**回填 CI 结论的那次提交其自身 run 不再回填**。）
 
