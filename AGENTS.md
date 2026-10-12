@@ -1509,7 +1509,7 @@ schema 路径字面量），一个真孤儿立刻被洗绿（`13/13 pass`）。�
 **F5（宿主约束，并订正一处归因）**：本机 node 对 `git`（裸名与绝对路径）、`process.execPath`、`cmd.exe`、
 `sh` **一律 `EBUSY`** ⇒ **宿主禁止 node 派生任何子进程**（原先把 `schema --check` 的 `EBUSY` 归因为
 「node 自旋 node」，本轮订正：AGENTS.md 就地订正、五份历史报告追加勘误段）。
-⇒「用 `git ls-files` 取仓库文件集」这条路**不可行**，F2 只能靠**结构性收敛**处理。
+⇒「用 `git ls-files` 取仓库文件集」这条路**不可行**；**W75 订正**：不可行的只是「**在 node 里派生 `git`**」——`.git/index`（DIRC）可直接**纯 JS 解析**，F2 已按 [ADR 0053](docs/adr/0053-repository-scoped-evidence.md) **根除**。
 
 **裁定与交付**（[ADR 0052](docs/adr/0052-consumption-guard-boundaries.md)）：
 
@@ -1533,3 +1533,42 @@ schema 路径字面量），一个真孤儿立刻被洗绿（`13/13 pass`）。�
 **不改基线正文、不改任何 schema 文件、不改任何 `acceptance`、不改 Rust 行为**，生成物**零漂移**。见
 docs/adr/0052-consumption-guard-boundaries.md、docs/reports/2026-10-12-w74-consumption-guard-integrity.md、
 openspec/changes/archive/2026-10-12-w74-consumption-guard-integrity/。
+
+### W75 仓库受限的消费证据（判据的输入必须等于它断言的对象；并订正 W74 的「不可行」陈述）
+
+出发点写的是 **W74 §八遗留 1**（「彻底消除需要『仓库文件集』这个输入，而取它需要派生 `git` 子进程」），
+**核实把这条陈述拆成两半**：①「node 派生 `git` 会 `EBUSY`」**成立**（W74 实测，本轮不动）；
+②「**因此取仓库文件集不可行**」**不成立**——`.git/index` 是 Git 的 DIRC 格式，**纯 JS 可读**：
+实测 `magic=DIRC version=2 entries=922`、**完整解析 922/922**。探针同时钉住三者关系：工作区扫描集 **282**、
+索引里代码文件 **283**、【A】工作区扫描到但不在索引 = **0**、【B】在索引但不在扫描集 = **1**（dot 目录的
+`.github/workflows/foundation.yml`）、【C】工作区 ∩ 索引 = **282** = 扫描集。
+另牵出 **F6**：`codeFiles()` 的 `dir.replace(/^\.\//, '')` 对初始 `dir === '.'` 不生效 ⇒ **根目录文件路径带 `./`**、
+子目录不带；当前无可观测影响，但**任何「与仓库路径集比较」的判据都会因此假阴性**——而本轮正是要做这个比较。
+
+**裁定与交付**（[ADR 0053](docs/adr/0053-repository-scoped-evidence.md)）：
+
+1. **仓库文件集 = `.git/index` 的路径集**：新增 `scripts/contracts/git-index.mjs`（纯 JS，DIRC v2/v3/v4；
+   `.git` 为文件时读 `gitdir:` 指针）。**为什么是「已跟踪」而不是「git 会发布的内容」**：
+   `git ls-files --cached --others --exclude-standard` **含未跟踪文件** ⇒ 那个伪造消费者也在集合里，
+   **修不了 F2**；守卫跑在**提交前**，「未跟踪」正是「尚未承诺为仓库内容」。
+2. **消费证据的来源 MUST ⊆ 已跟踪路径集**（`repositoryErrors`）——F2 的**精确**修复。
+   **约束「证据来源」而不是「扫描集」**：后者会让任何一个尚未 `git add` 的代码文件把门控**假红**
+   （闭环在提交时才 `git add`），而攻击面恰在证据来源上，故精确打击零假阳性。
+3. **扫描集路径是 POSIX 相对路径**（修 F6）＋「MUST NOT 有 `./` 前缀」断言。
+4. **索引不可解析 MUST 失败**且**说得清是哪一类**（`missing`/`bad-magic`/`unsupported-version`/
+   `truncated`/`corrupt`）——「判据的输入等于被断言的对象」是这条守卫的前提，前提缺失不得静默退化。
+
+**实测的一条更重要结论**：W74 之后 F2 **难以洗绿**，但挡住它的是一条**形状**断言
+（`exclusiveTo(RUST)` 的具名钉死——孤儿的加入让独有集合多一员），**不是**关于**来源**的断言 ⇒
+**那是副作用，不是设计**：任何人**合法地**让一份新 schema 只被 Rust 消费，都会让那条钉死变红，
+而最顺手的处置就是**把它改松**。实测（V1c）放宽形状断言后 `repositoryErrors` **独立兜住**；
+两条都停用（V1b）则 **17/17 全绿**（洗绿成立）。⇒ **「碰巧挡住」不能算挡住。**
+
+**验证**：`node --test tests/contracts/schema.test.mjs` **17/17**（15 → 17）；**注入逐项开火并还原**
+（V1a/V1b/V1c、V2a 索引缺失、V2b magic 不符、V3 路径前缀），外加解析器字节流单测
+（v2/v3/v4 ＋ 四类失败 ＋ 空索引）。**门控路径不变**（解析器**不是**测试文件 ⇒ `engineering_checks`
+零改动）；**不改基线正文、不改任何 schema 文件、不改任何 `acceptance`、不改 Rust**，生成物**零漂移**。
+**订正既有陈述**：`AGENTS.md` 就地 1:1 订正；`docs/adr/0052`（两处）与 W74 报告 §八遗留 1 追加勘误段。
+见 [ADR 0053](docs/adr/0053-repository-scoped-evidence.md)、
+[W75 报告](docs/reports/2026-10-12-w75-repository-scoped-evidence.md)、
+`openspec/changes/archive/2026-10-12-w75-repository-scoped-evidence/`。

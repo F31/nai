@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir, writeFile, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { validators, readJson, validateSemantic, apiDocument, AJV_SOURCES, TS_GENERATED_SOURCES } from '../../scripts/contracts/validation.mjs';
+import { parseIndex, readTrackedPaths, describeFailure } from '../../scripts/contracts/git-index.mjs';
 
 const check = await validators();
 const runtime = await readJson('tests/fixtures/contracts/runtime.json');
@@ -188,7 +189,11 @@ async function codeFiles(dir = '.', extensions = CODE_EXTENSIONS, skipDotDirs = 
       if (EXCLUDED_DIRS.includes(entry.name)) continue;
       await codeFiles(`${dir}/${entry.name}`, extensions, skipDotDirs, out);
     } else if (extensions.some(extension => entry.name.endsWith(extension))) {
-      out.push(`${dir.replace(/^\.\//, '')}/${entry.name}`);
+      // 路径 MUST 是 POSIX 相对路径（`apps/engine/src/lib.rs`）。初始目录是 `'.'` 时若直接
+      // 用 `${dir}/${name}` 会得到 `./apps/...`——那个前缀让扫描集与索引里的路径**不可比**，
+      // 于是「证据来源在不在仓库里」这条断言会对根目录文件**静默假阴性**。
+      const prefix = dir === '.' ? '' : `${dir.replace(/^\.\//, '')}/`;
+      out.push(`${prefix}${entry.name}`);
     }
   }
   return out;
@@ -222,6 +227,9 @@ const RUST_INCLUDE = /include_str!\(\s*"(?:\.\.\/)*schemas\/([A-Za-z0-9_./-]+\.s
 
 async function consumptionOf(files) {
   const consumed = new Map();
+  /// **提供了消费证据的文件**。判据要断言它们都在仓库里（见 `repositoryErrors`），
+  /// 所以来源不能只是「哪条规则找到的」——还得知道「是哪个文件找到的」。
+  const evidenceSources = new Set();
   const add = (schema, why) => {
     if (!consumed.has(schema)) consumed.set(schema, []);
     if (!consumed.get(schema).includes(why)) consumed.get(schema).push(why);
@@ -234,9 +242,11 @@ async function consumptionOf(files) {
     if (file === SELF) continue;
     const text = stripCommentLines(await readFile(file, 'utf8'), CODE_LANGUAGES.get(path.extname(file)));
     RUST_INCLUDE.lastIndex = 0;
-    for (const match of text.matchAll(RUST_INCLUDE)) add(`schemas/${match[1]}`, RUST_SOURCE_LABEL);
+    const hits = [...text.matchAll(RUST_INCLUDE)];
+    for (const match of hits) add(`schemas/${match[1]}`, RUST_SOURCE_LABEL);
+    if (hits.length > 0) evidenceSources.add(file);
   }
-  return consumed;
+  return { consumed, evidenceSources };
 }
 
 /// 只有某条来源能找到的 schema。空集 ⇒ 这条来源对判据**零贡献**：
@@ -253,6 +263,25 @@ function sourceErrors(consumed, labels) {
   return labels
     .filter(label => exclusiveTo(consumed, label).length === 0)
     .map(label => `${label} finds no schema that no other source finds; a source with no exclusive hit changes no verdict — remove it or merge it`);
+}
+
+/// 提供消费证据的文件 MUST 是**仓库里已跟踪的文件**。
+///
+/// 这是 F2 的**精确**修复。W74 的守卫把「扫描工作区」当成「扫描仓库」：一个未跟踪的
+/// `.tmp-fake-consumer.mjs`（内含一句 schema 路径）就能把一个**真孤儿**洗绿——而「有一份 schema
+/// 没人读」正是本守卫唯一要抓的东西。W74 只能靠**结构性收敛**缩小这个缺口，并把残余风险
+/// 登记为「CI 上不存在」。**缺口本身可以关掉**：`.git/index`（DIRC）是纯 JS 可读的，
+/// 它给出的路径集就是「已跟踪文件集」，而「未跟踪」正是那个入口。
+///
+/// 约束的是**证据来源**而不是**整个扫描集**：若要求「扫描集 ⊆ 索引」，那么任何尚未 `git add`
+/// 的代码文件都会让门控红——而本程序的闭环顺序是「门控 → … → 提交时才 add」，
+/// 新变更目录里的 `.yaml` 就会让门控**假红**。证据来源恒为已提交的老文件，零假阳性，
+/// 而攻击面恰好就在证据来源上。
+function repositoryErrors(evidenceSources, tracked) {
+  return [...evidenceSources]
+    .filter(file => !tracked.has(file))
+    .sort()
+    .map(file => `${file} provides consumption evidence but version control does not track it — only a file the repository has actually taken in can vouch for a schema, otherwise a stray file left in the working tree silently covers for a schema nobody reads`);
 }
 
 /// 去掉**整行**注释后再扫描。注释语言由扩展名在 `CODE_LANGUAGES` 里的条目给出——
@@ -335,9 +364,27 @@ function generatorErrors(sources, validated, generated) {
 test('every schema under schemas/ is enforced by an execution path or named with a reason', async () => {
   const all = await schemasOnDisk();
   const files = await codeFiles();
-  const consumed = await consumptionOf(files);
+  const { consumed, evidenceSources } = await consumptionOf(files);
   assert.deepEqual(coverageErrors(all, consumed, NAMED_EXCEPTIONS), []);
   assert.deepEqual(sourceErrors(consumed, [AJV_SOURCE_LABEL, RUST_SOURCE_LABEL]), []);
+  // 判据的输入 MUST 等于它断言的对象：要断言「**仓库**里没有孤儿」，就必须读**仓库**。
+  const repository = await readTrackedPaths();
+  assert.ok(repository.ok, repository.ok ? '' : describeFailure(repository));
+  assert.deepEqual(repositoryErrors(evidenceSources, repository.paths), []);
+  // 非空洞：证据来源 MUST 非空，否则「来源 ⊆ 索引」对空集恒真。
+  assert.ok(evidenceSources.size > 0, 'the scan must reach at least one file that reads a schema');
+  // 注入：把一个**未跟踪**的文件也算作证据来源 ⇒ 立刻被指名（F2 的全部内容就是这个形态）。
+  assert.ok(
+    repositoryErrors([...evidenceSources, 'scripts/w75-stray-consumer.mjs'], repository.paths).some(
+      error => error.includes('scripts/w75-stray-consumer.mjs') && error.includes('does not track it'),
+    ),
+    'an untracked file that reads a schema must be reported',
+  );
+  // 非空洞：那个**未跟踪但未被忽略**的位置必须真的不在索引里，否则上面的注入是空转。
+  assert.ok(
+    !repository.paths.has('scripts/w75-stray-consumer.mjs'),
+    'the injected stray path must not exist in the index',
+  );
   // 非空洞：扫描必须真的走完了全部来源与全部可扫描扩展名，而不是「什么都没找到所以没有孤儿」。
   assert.ok(all.length > 1, `expected more than one schema on disk, found ${all.length}`);
   assert.ok(
@@ -450,19 +497,29 @@ test('the scan set is structural, paid for, and closed over the extensions it re
   //    这就是排除理由的可执行形式——若某个 dot 目录里藏着真消费，两侧立刻不等。
   const withoutDot = await codeFiles('.', CODE_EXTENSIONS, true);
   const withDot = await codeFiles('.', CODE_EXTENSIONS, false);
-  assert.deepEqual([...await consumptionOf(withDot)], [...await consumptionOf(withoutDot)]);
+  assert.deepEqual([...(await consumptionOf(withDot)).consumed], [...(await consumptionOf(withoutDot)).consumed]);
+  // 路径 MUST 是 POSIX 相对路径：`./` 前缀会让扫描集与索引里的路径**不可比**，
+  // 于是「证据来源在不在仓库里」那条断言会对根目录文件静默假阴性（F6）。
+  assert.ok(
+    withoutDot.every(file => !file.startsWith('./')),
+    'the scan set must not carry a "./" prefix — it is compared against the index, which never has one',
+  );
+  assert.ok(
+    withoutDot.some(file => !file.includes('/')),
+    'a root-level file must be reachable without a "./" prefix',
+  );
   // 非空洞：这个「相等」必须对输入**敏感**。加一个含 `include_str!` 的文件，集合必须变化
   // （探针写进 `dist/`，它本身是被排除的目录，不会污染别的断言）。
-  const probe = 'dist/.w74-scan-probe.rs';
+  const probe = 'dist/.w75-scan-probe.rs';
   await mkdir('dist', { recursive: true });
-  await writeFile(probe, 'const S: &str = include_str!("../schemas/config/w74-probe.schema.json");');
+  await writeFile(probe, 'const S: &str = include_str!("../schemas/config/w75-probe.schema.json");');
   try {
-    const perturbed = await consumptionOf([...withoutDot, probe]);
+    const perturbed = (await consumptionOf([...withoutDot, probe])).consumed;
     assert.ok(
-      perturbed.has('schemas/config/w74-probe.schema.json'),
+      perturbed.has('schemas/config/w75-probe.schema.json'),
       'a file that includes a schema must register as a consumer',
     );
-    assert.notDeepEqual([...perturbed], [...await consumptionOf(withoutDot)]);
+    assert.notDeepEqual([...perturbed], [...(await consumptionOf(withoutDot)).consumed]);
   } finally {
     await rm(probe, { force: true });
   }
@@ -531,3 +588,103 @@ test('the generator and the validator read one list of schemas', async () => {
     'two schemas writing the same generated file must fail',
   );
 });
+
+/// ── 仓库文件集的读取器（`.git/index`，DIRC）────────────────────────────────────
+///
+/// 这个读取器**替掉了** W74 的「结构性收敛 + 登记残余风险」：它让「判据的输入 == 仓库」
+/// 从一句理想变成一条**可判定的前提**。所以它自己 MUST 被钉死——包括**失败也说得清是哪一类**：
+/// 「索引读不了」与「索引是空的」是两件完全不同的事，后者会让判据对一切 schema 恒真。
+function encodeVarint(value) {
+  const bytes = [value & 0x7f];
+  let rest = value >> 7;
+  while (rest > 0) {
+    rest -= 1;
+    bytes.unshift(0x80 | (rest & 0x7f));
+    rest >>= 7;
+  }
+  return Buffer.from(bytes);
+}
+
+function v2Entry(name, { extended = false } = {}) {
+  const header = Buffer.alloc(62);
+  header.writeUInt16BE(extended ? 0x4000 : 0, 60);
+  const tail = Buffer.concat([extended ? Buffer.alloc(2) : Buffer.alloc(0), Buffer.from(`${name}\0`, 'utf8')]);
+  const consumed = 62 + tail.length;
+  return Buffer.concat([header, tail, Buffer.alloc(Math.ceil(consumed / 8) * 8 - consumed)]);
+}
+
+function v4Entry(name, previous) {
+  let common = 0;
+  while (common < previous.length && common < name.length && previous[common] === name[common]) common += 1;
+  return Buffer.concat([Buffer.alloc(62), encodeVarint(common), Buffer.from(`${name.slice(common)}\0`, 'utf8')]);
+}
+
+function indexBuffer(version, entries) {
+  const head = Buffer.alloc(12);
+  head.write('DIRC', 0, 'ascii');
+  head.writeUInt32BE(version, 4);
+  head.writeUInt32BE(entries.length, 8);
+  return Buffer.concat([head, ...entries]);
+}
+
+test('the tracked-path reader parses DIRC v2/v3/v4 and names the way it failed', () => {
+  // v2：名字长度不是 8 的倍数时也要正确走过补齐（短名与长名混排最容易暴露补齐全错）。
+  const mixed = indexBuffer(2, [
+    v2Entry('a'),
+    v2Entry('packages/nai-contracts/src/validation.rs'),
+    v2Entry('b'),
+  ]);
+  assert.deepEqual(parseIndex(mixed), {
+    ok: true,
+    version: 2,
+    paths: ['a', 'packages/nai-contracts/src/validation.rs', 'b'],
+  });
+  // v3：扩展 flags 置位 ⇒ 条目多 2 字节，仍按 8 字节对齐。
+  assert.deepEqual(parseIndex(indexBuffer(3, [v2Entry('a.rs', { extended: true }), v2Entry('bb.rs')])), {
+    ok: true,
+    version: 3,
+    paths: ['a.rs', 'bb.rs'],
+  });
+  // v4：名字前缀压缩，且条目不补齐。
+  assert.deepEqual(
+    parseIndex(
+      indexBuffer(4, [
+        v4Entry('apps/engine/src/lib.rs', ''),
+        v4Entry('apps/engine/src/main.rs', 'apps/engine/src/lib.rs'),
+        v4Entry('xtask/src/lib.rs', 'apps/engine/src/main.rs'),
+        v4Entry('xtask/src/main.rs', 'xtask/src/lib.rs'),
+      ]),
+    ),
+    {
+      ok: true,
+      version: 4,
+      paths: ['apps/engine/src/lib.rs', 'apps/engine/src/main.rs', 'xtask/src/lib.rs', 'xtask/src/main.rs'],
+    },
+  );
+  // 四类失败各自可辨——「读不了」MUST NOT 与「是空的」混为一谈。
+  assert.equal(parseIndex(Buffer.concat([Buffer.from('NOPE'), Buffer.alloc(8)])).reason, 'bad-magic');
+  assert.equal(parseIndex(indexBuffer(5, [])).reason, 'unsupported-version');
+  assert.equal(parseIndex(indexBuffer(2, [v2Entry('a.rs')]).subarray(0, 40)).reason, 'truncated');
+  assert.equal(parseIndex(indexBuffer(2, [v2Entry('a.rs')]).subarray(0, 4)).reason, 'truncated');
+  // 名字里的首字节是控制字符 ⇒ 那是「把别的东西当成了路径」（例如按 SHA-1 的 20 字节去读
+  // 一个 SHA-256 的索引）⇒ MUST 报告为 corrupt，而不是把一个假的路径集当成真的。
+  const corrupted = indexBuffer(2, [v2Entry('a'.repeat(40))]);
+  corrupted.writeUInt8(1, 74); // 12 字节头 + 62 字节条目头 = 名字首字节
+  assert.equal(parseIndex(corrupted).reason, 'corrupt');
+  // 空索引是合法的（空仓库）：返回空集，而不是失败。
+  assert.deepEqual(parseIndex(indexBuffer(2, [])), { ok: true, version: 2, paths: [] });
+});
+
+test('the tracked-path reader agrees with the repository it is asked about', async () => {
+  const repository = await readTrackedPaths();
+  assert.ok(repository.ok, repository.ok ? '' : describeFailure(repository));
+  assert.ok([2, 3, 4].includes(repository.version), `unexpected DIRC version ${repository.version}`);
+  // 真实索引 MUST 含这些具名文件——否则「解析成功」可能只是解出了一个空集或别的东西。
+  for (const known of ['package.json', 'tests/registry.yaml', 'schemas/tests/registry.schema.json', 'xtask/src/lib.rs']) {
+    assert.ok(repository.paths.has(known), `${known} must be in the tracked-path set`);
+  }
+  // 被忽略的目录 MUST NOT 在索引里（它们不是仓库内容）。
+  assert.ok(![...repository.paths].some(file => file.startsWith('dist/')), 'ignored directories are not tracked');
+  assert.ok(repository.paths.size > 100, `the tracked-path set looks too small: ${repository.paths.size}`);
+});
+

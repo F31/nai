@@ -87,8 +87,8 @@ draft 也算已声明），要么命中**具名的非能力契约白名单**。�
 `schemas/` 下的每个 `*.schema.json` SHALL 要么被**执行体消费**，要么出现在**具名的例外清单**里，
 且每条例外 MUST 附非空理由。**消费关系 MUST 派生**（扫描源码：Ajv 校验器清单、Rust 的
 `include_str!`），MUST NOT 写成一份会过期的清单；扫描 MUST 只认代码文件，MUST NOT 把数据文件或
-文档里提到某个路径算作消费。判据 MUST 只依赖**仓库内容**。⇒「有一份 schema」MUST NOT 被当作
-「有一份契约」。
+文档里提到某个路径算作消费。提供消费证据的文件 MUST 是**仓库里已跟踪的文件**——判据的输入
+MUST 等于它断言的对象。⇒「有一份 schema」MUST NOT 被当作「有一份契约」。
 
 #### Scenario: A schema nobody reads
 
@@ -109,16 +109,18 @@ draft 也算已声明），要么命中**具名的非能力契约白名单**。�
 
 - **WHEN** 一个**未被版本控制**的文件出现在工作区，内容里带有某 schema 的路径，而那份 schema
   没有任何真实的执行体在读它
-- **THEN** 它 MUST NOT 因此被判为已消费——判据 MUST 只在**仓库内容**上成立。本机宿主禁止派生
-  子进程（无法取「仓库文件集」），所以这条靠**结构性收敛**成立：扫描集 MUST 由结构规则与具名
-  排除定义，MUST NOT 是「工作区里所有匹配扩展名的文件」
+- **THEN** 它 MUST NOT 因此被判为已消费——判据 MUST 只在**仓库内容**上成立：已跟踪文件集 MUST
+  从版本控制的**索引**派生（纯静态读取，不派生任何子进程），MUST NOT 写成一份靠人维护的清单。
+  索引不可解析时校验 MUST **失败**并区分原因（不存在／格式不符／版本不支持／条目截断），
+  MUST NOT 静默退化成「工作区即仓库」
 
 #### Scenario: The scan set is structural and every exclusion pays for itself
 
-- **WHEN** 判据决定跳过哪些目录
+- **WHEN** 判据决定跳过哪些目录，或把扫描到的路径拿去与索引比较
 - **THEN** 跳过规则 MUST 是**结构性的**（跳过所有以 `.` 开头的目录）再叠加一份**具名排除**；
   每条形如「某目录名」的排除 MUST 被 `.gitignore` 忽略——**「它不是仓库的一部分」就是那条理由**。
-  排除 MUST NOT 是一张靠人维护的目录名清单
+  排除 MUST NOT 是一张靠人维护的目录名清单；扫描集里的路径 MUST 是 POSIX 相对路径（MUST NOT
+  带 `./` 前缀），否则它与索引路径不可比
 
 #### Scenario: One side of an extension pair is forgotten
 
