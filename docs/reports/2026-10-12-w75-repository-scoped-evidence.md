@@ -122,18 +122,55 @@ v4（前缀压缩 + 不补齐）、坏 magic、版本 5、两种截断、corrupt
 ## 六、验证
 
 - **消费守卫单测**：`node --test tests/contracts/schema.test.mjs` ⇒ **17 / 17 通过**（15 → 17）。
-- **门控 full**：见 §六补（门控结论）。
-- **两条 `openspec validate`**：见 §六补（归档后）。
+- **门控 full**：`cargo xtask check --profile full` ⇒ **EXIT=0**；测试目标 **91（73 `Running` + 18 `Doc-tests`）**、
+  **858 passed / 0 failed**（与 W73/W74 逐项相同——本轮零 Rust 测试改动）。
+  门控日志中可见新增的两项：`ok 16 - the tracked-path reader parses DIRC v2/v3/v4 …`、
+  `ok 17 - the tracked-path reader agrees with the repository it is asked about`
+  ⇒ **新断言确实在门控里执行**，不是只在本机单跑时成立。
+- **两条 `openspec validate`**：`--all --strict` = **43**；`--all --strict --archived` = **73**（W74 为 43 / 72）。
 
 ## 七、CI 复核（匿名观测）
 
 | run | head_sha | 结论 |
 |---|---|---|
-| 待回填 | 待回填 | 待回填 |
+| [`38237572621`](https://github.com/F31/nai/actions/runs/38237572621) | `638de56`（与本轮推送 SHA 一致） | **ubuntu-24.04 `success`**（含第 10 步「Complete engineering foundation」＝ portable 步骤 + 前端门控）；**windows-latest `failure`**（同一第 10 步）⇒ **run 总状态 Failure** |
 
-**本轮特别要核对的一条假设**：**CI 上 `.git/index` 可解析**。结构性理由：`.github/workflows/foundation.yml`
-第 21 行是 `actions/checkout@v4`，无 `fetch-depth` 与 `index.version` 配置 ⇒ Git 默认 v2。
-若这条假设在 CI 上不成立，失败消息会**直接点名**五类原因之一（这正是决策 4 的目的）。
+### 7.1 本轮要核对的那条假设：**已证实**
+
+`.git/index` 在 CI 上可解析。判据是 **ubuntu job 的第 10 步 success**——那一步包含
+`schema::node(… "tests/contracts/schema.test.mjs")`，即本轮新增的「证据来源 MUST ⊆ 已跟踪路径集」
+与解析器断言**在 CI 上真的跑过且通过**。⇒ 决策 4 的「索引不可解析必须失败」在 CI 上**没有**被触发，
+说明 `actions/checkout@v4`（无 `fetch-depth` / `index.version` 配置）产出的确实是可解析的 v2 索引。
+
+### 7.2 windows 失败的根因（**如实登记：本轮 CI 红**）
+
+失败点全部在 **`crates/nai-control-api/src/tests.rs:364`** 的**测试准备阶段**：
+
+```
+called `Result::unwrap()` on an `Err` value: StorageError { code: DeadlineExceeded, reason: "operation stopped", position: None }
+```
+
+四个 approval 相关测试因此 FAILED（`approval_busy_backend_and_full_ledger_fail_bounded`、
+`approval_approve_retry_conflict_and_reject_are_scoped`、`approval_list_and_real_reject_workflow_over_loopback`、
+`approval_invalid_schema_epoch_revision_hash_and_expired_ttl_do_not_execute`）。
+
+**判定：windows runner 上的时序 flaky，不是本轮引入。** 四条判据：
+
+1. **本轮零 `.rs` 改动**（`git show --name-only 638de56` 里没有任何 `.rs`）；
+2. **ubuntu job success**（同一份代码、同一个第 10 步）；
+3. **本机 `check --profile full` EXIT=0**（含这 4 个测试）；
+4. 失败在**准备阶段**的 `set_permission(&op, …).unwrap()`，不是被测逻辑的断言失败 ⇒ 与环境速度相关
+   （windows runner 一贯更慢：W74 的 windows 10m29s vs ubuntu 5m33s）。
+
+**它顺带暴露一个真实的可判定缺陷（登记，未在本轮处理）**：`DeadlineExceeded` 被 `unwrap()`
+变成 panic，而不是**具名的诊断**——这正是「宿主瞬态条件 MUST NOT 改变被测系统的结论」的一个反例
+（W70 已对 keeper 演练做过同类修正：把主机限制改为主机限制的**可命名**诊断）。本轮范围是消费守卫，
+不改 Rust ⇒ 留给后续轮次。
+
+**后续**：本条回填提交会触发一个新的 run；按观测轮终止约定，**该 run 不再回填**。
+若它绿，则上面的 flaky 判定被证实；若它红在**同一处**，则需要开一轮专门处理
+「deadline → panic」的诊断化（而不是继续归因于环境）。
+
 
 ## 八、未做与遗留（如实登记）
 
@@ -151,6 +188,10 @@ v4（前缀压缩 + 不补齐）、坏 magic、版本 5、两种截断、corrupt
 7. **`§56.2` 自身两处张力、`§57.5`/`§48.7` 待决策项**：沿用 W71–W74 的登记，未动。
 8. **`schema --check` 仍在本机跑不了**（宿主禁止 node 派生子进程）：取零漂移仍靠结构性理由 +
    CI 独立步骤；**不得把「跑不了」写成「已通过」**。
+9. **windows runner 上 `nai-control-api` 的 deadline 超时被 `unwrap()` 变成 panic**（见 §7.2）。
+   本轮判为**环境 flaky**（四条判据），但「宿主瞬态条件 MUST NOT 改变被测系统的结论」这条铁律
+   在这里**没有落地**——超时应当是**具名诊断**（W70 对 keeper 演练做过同类修正），而不是 panic。
+   **登记为后续轮次的候选**（需要改 Rust）。
 
 ## 九、方法论教训
 
