@@ -1,11 +1,15 @@
 import { readFile } from 'node:fs/promises';
 import YAML from 'yaml';
 
-const ID_RE = /^(S|R|A|B|O|P|M|H|X)[0-9]{2}$/;
+/// 导出给形状层的一致性断言使用：它与 `schemas/tests/registry.schema.json` 里
+/// `acceptance.id.pattern` 及映射段 targets 的 pattern 重叠，三处 MUST 逐字相同（ADR 0051 决策 1）。
+export const ID_RE = /^(S|R|A|B|O|P|M|H|X)[0-9]{2}$/;
 /// 导出给 `baseline.mjs` 使用：基线 §57.3 的发布线正本与注册表的 `release_lines`
 /// 必须是同一组键，否则「对账」本身就是对着两张不同的表。
 export const RELEASE_LINES = ['slice_0', 'r1', 'r2', 'r3', 'experimental', 'capability_pack'];
-const STATUSES = ['implemented', 'tested', 'blocked', 'not_applicable', 'pending'];
+/// 导出给形状层的一致性断言使用：状态枚举在 schema 与脚本里各有一处，
+/// 「重叠的每一处 MUST 逐字一致」是 ADR 0051 决策 1 的可判定形式。
+export const STATUSES = ['implemented', 'tested', 'blocked', 'not_applicable', 'pending'];
 
 /// Families whose baseline definition is a *complete* id range, with the count
 /// the baseline fixes. "Defined but absent", and "present with a hole", are the

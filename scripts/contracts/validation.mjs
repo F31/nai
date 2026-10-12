@@ -3,10 +3,21 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import SwaggerParser from '@apidevtools/swagger-parser';
 
 export const readJson = async filename => JSON.parse(await readFile(filename, 'utf8'));
+
+/// Every JSON Schema this repository validates against, keyed by the name the
+/// tests use. It is exported so that "which schemas are consumed" is a single
+/// readable list — the guard in `tests/contracts/schema.test.mjs` derives the
+/// consumed set from it instead of keeping a second list that would go stale
+/// (ADR 0051 decision 3).
+///
+/// `registry` is the *production* data file rather than a fixture: it lives in
+/// `tests/registry.yaml` and is parsed as YAML, so its validator is exercised by
+/// `tests/registry.test.mjs`, not by the JSON fixture loop below.
+export const AJV_SOURCES = {runtime:'config/runtime',provider:'config/provider',backup:'config/backup',binding:'config/binding-plan',avatar2d:'config/avatar-2d',plugin:'plugin/manifest',model:'plugin/model',catalog:'catalog/catalog',avatar:'plugin/avatar',ui:'plugin/ui',platforms:'platform-matrix/platforms',registry:'tests/registry'};
+
 export async function validators() {
   const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false });
-  const sources = {runtime:'config/runtime',provider:'config/provider',backup:'config/backup',binding:'config/binding-plan',avatar2d:'config/avatar-2d',plugin:'plugin/manifest',model:'plugin/model',catalog:'catalog/catalog',avatar:'plugin/avatar',ui:'plugin/ui',platforms:'platform-matrix/platforms'};
-  return Object.fromEntries(await Promise.all(Object.entries(sources).map(async ([key, source]) => [key, ajv.compile(await readJson(`schemas/${source}.schema.json`))])));
+  return Object.fromEntries(await Promise.all(Object.entries(AJV_SOURCES).map(async ([key, source]) => [key, ajv.compile(await readJson(`schemas/${source}.schema.json`))])));
 }
 
 export function validateSemantic(kind, value) {

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validators, readJson, validateSemantic, apiDocument } from '../../scripts/contracts/validation.mjs';
+import { readFile, readdir } from 'node:fs/promises';
+import { validators, readJson, validateSemantic, apiDocument, AJV_SOURCES } from '../../scripts/contracts/validation.mjs';
 
 const check = await validators();
 const runtime = await readJson('tests/fixtures/contracts/runtime.json');
@@ -139,4 +140,185 @@ test('OpenAPI preserves permissions, session revision/epoch, actual ACK and defe
   assert.ok(api.paths['/knowledge/import'].post.responses['202']);
   assert.equal(api.components.schemas.CommandAck.properties.executed.type,'boolean');
   assert.equal(api.security[0].bearerAuth.length,0);
+});
+
+/// ── 每份 schema 要么被执行体消费，要么被具名声明（ADR 0051 决策 3）──────────────
+///
+/// 「有一份 schema」MUST NOT 被当作「有一份契约」：`schemas/tests/registry.schema.json`
+/// 与 `schemas/rag-golden/case-set.schema.json` 都曾在**无人读取**的状态下存在。
+/// 判据必须是**派生**的（扫源码），否则守卫会变成一张会过期的清单。
+
+const SKIP_DIRS = new Set(['node_modules', '.git', 'target', 'graphify-out', 'dist', 'build', '.venv']);
+const CODE_EXTENSIONS = ['.rs', '.mjs', '.ts', '.tsx', '.yml'];
+
+async function codeFiles(dir = '.', out = []) {
+  for (const entry of await readdir(dir, {withFileTypes: true})) {
+    if (entry.isDirectory()) {
+      if (SKIP_DIRS.has(entry.name)) continue;
+      await codeFiles(`${dir}/${entry.name}`, out);
+    } else if (CODE_EXTENSIONS.some(extension => entry.name.endsWith(extension))) {
+      out.push(`${dir.replace(/^\.\//, '')}/${entry.name}`);
+    }
+  }
+  return out;
+}
+
+/// 磁盘上的全部 schema（`schemas/**/*.schema.json`）。
+async function schemasOnDisk(dir = 'schemas', out = []) {
+  for (const entry of await readdir(dir, {withFileTypes: true})) {
+    const next = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) await schemasOnDisk(next, out);
+    else if (entry.name.endsWith('.schema.json')) out.push(next);
+  }
+  return out.sort();
+}
+
+/// 被消费的 schema ⇒ 它的消费来源。三条派生口径，MUST NOT 写死清单。
+///
+/// **本文件自己被排除在扫描之外**：它**按设计**要逐个写出 schema 路径（声明例外、构造注入），
+/// 若把这些字面量算作「消费」，判据就会**自我满足**——`NAMED_EXCEPTIONS` 里的那份会被判成
+/// 「既被消费又是例外」，而 `runtime` 之类的注入样本也会凭空获得一个假的消费者。
+/// 排除之后，`upgrade-package` 只能由 Rust 的 `include_str!` 找到、其余由校验器清单与
+/// 真正的加载点找到 ⇒ 三条来源**各自都被行使**。
+const SELF = 'tests/contracts/schema.test.mjs';
+
+async function consumedSchemas() {
+  const consumed = new Map();
+  const add = (schema, why) => {
+    if (!consumed.has(schema)) consumed.set(schema, []);
+    consumed.get(schema).push(why);
+  };
+  // ① 校验器清单（`schemas/<值>.schema.json`）——注意它不含 `.schema.json` 后缀，
+  //    所以文本扫描抓不到它，必须由导出清单派生。
+  for (const source of Object.values(AJV_SOURCES)) add(`schemas/${source}.schema.json`, 'the Ajv validator list');
+  // ② Rust 侧 `include_str!`。`config/upgrade-package` 只在这里被消费。
+  const rust = /include_str!\(\s*"(?:\.\.\/)*schemas\/([A-Za-z0-9_./-]+\.schema\.json)"/g;
+  // ③ 脚本/工作流里的路径字面量。
+  const literal = /['"`]schemas\/([A-Za-z0-9_./-]+\.schema\.json)['"`]/g;
+  for (const file of await codeFiles()) {
+    if (file === SELF) continue;
+    const text = stripCommentLines(await readFile(file, 'utf8'), file.endsWith('.yml'));
+    for (const pattern of [rust, literal]) {
+      pattern.lastIndex = 0;
+      for (const match of text.matchAll(pattern)) add(`schemas/${match[1]}`, file);
+    }
+  }
+  return consumed;
+}
+
+/// 去掉**整行**注释后再扫描。
+///
+/// 不这么做，守卫会在**危险的方向**上变瞎：注释里提一句 schema 路径就会被算成「有消费者」，
+/// 于是删掉真正的加载点、只留一句注释，孤儿照样判不出来——而「没人读的契约」正是本守卫
+/// 唯一要抓的东西。整行口径是**成比例**的取舍：它挡住最常见的形态（文档注释/块注释引用路径），
+/// 不去冒险解析行尾注释与字符串里的 `//`（`https://` 会因此被误切）。行尾注释仍算消费，
+/// 这个假阳性方向是安全的：它只会让孤儿**更难**被漏掉，不会凭空造出消费者。
+function stripCommentLines(text, hashComments) {
+  const marker = hashComments ? /^\s*(\/\/|\*|\/\*|#)/ : /^\s*(\/\/|\*|\/\*)/;
+  return text
+    .split('\n')
+    .filter(line => !marker.test(line))
+    .join('\n');
+}
+
+/// 具名例外：**为什么这份 schema 不接线**。每条 MUST 有非空理由——
+/// 具名例外的全部价值就是那条理由，缺了它例外就退化成豁免。
+const NAMED_EXCEPTIONS = new Map([
+  [
+    'schemas/rag-golden/case-set.schema.json',
+    '载荷格式的**文档陈述**（供题集产出方按结构手写 *.json）。执行体是 xtask/src/golden.rs 的 parse_case_set：' +
+      '它对每类缺陷产出稳定 token（unknown_field / field_missing / case_set_schema_unsupported…），调用方据此定位。' +
+      '再接一份 JSON Schema 会形成同一形状的第二处判定，而两份判定的失败措辞不同 ⇒ 只会让「为什么被拒」有两个答案。',
+  ],
+]);
+
+function coverageErrors(all, consumed, exceptions) {
+  const errors = [];
+  for (const schema of all) {
+    const reasons = consumed.get(schema);
+    const exception = exceptions.get(schema);
+    if (reasons && exception) {
+      errors.push(`${schema} is both consumed (${reasons.join(', ')}) and named as an exception; drop the exception`);
+    } else if (!reasons && !exception) {
+      errors.push(`${schema} is consumed by no execution path and is not named as an exception — a schema nobody reads is not a contract`);
+    } else if (exception !== undefined && exception.trim() === '') {
+      errors.push(`${schema} is named as an exception without a reason; a named exception is exactly its reason`);
+    }
+  }
+  for (const schema of exceptions.keys()) {
+    if (!all.includes(schema)) errors.push(`the exception list names ${schema}, which is not on disk`);
+  }
+  return errors;
+}
+
+test('every schema under schemas/ is enforced by an execution path or named with a reason', async () => {
+  const all = await schemasOnDisk();
+  const consumed = await consumedSchemas();
+  assert.deepEqual(coverageErrors(all, consumed, NAMED_EXCEPTIONS), []);
+  // 非空洞：扫描必须真的走完了三条来源，而不是「什么都没找到所以没有孤儿」。
+  assert.ok(all.length > 1, `expected more than one schema on disk, found ${all.length}`);
+  assert.ok(
+    consumed.has('schemas/config/upgrade-package.schema.json'),
+    'the Rust-side consumption (include_str!) must be found — otherwise the scan only covers Node',
+  );
+  assert.ok(
+    consumed.has('schemas/platform-matrix/platforms.schema.json') &&
+      consumed.has('schemas/tests/registry.schema.json'),
+    'the literal scan and the validator list must both contribute',
+  );
+  assert.ok(
+    NAMED_EXCEPTIONS.size > 0 && all.includes([...NAMED_EXCEPTIONS.keys()][0]),
+    'the named exception must name a schema that actually exists',
+  );
+  // 注入一：某份被消费的 schema 从消费集合里消失 ⇒ 立刻变成孤儿。
+  const dropped = new Map(consumed);
+  dropped.delete('schemas/config/runtime.schema.json');
+  assert.ok(
+    coverageErrors(all, dropped, NAMED_EXCEPTIONS).some(
+      error => error.includes('schemas/config/runtime.schema.json') && error.includes('nobody reads'),
+    ),
+    'a schema that drops out of the validator list must be reported as an orphan',
+  );
+  // 注入二：给一份**已被消费**的 schema 也加例外 ⇒ 报「既是消费又是例外」。
+  const overlapping = new Map(NAMED_EXCEPTIONS);
+  overlapping.set('schemas/config/runtime.schema.json', '想给它开个口子');
+  assert.ok(
+    coverageErrors(all, consumed, overlapping).some(
+      error => error.includes('both consumed') && error.includes('drop the exception'),
+    ),
+    'an exception that shadows a real consumer must be reported',
+  );
+  // 注入三：例外缺理由 ⇒ 失败（理由就是例外的全部价值）。
+  assert.ok(
+    coverageErrors(all, consumed, new Map([[ 'schemas/rag-golden/case-set.schema.json', '   ' ]])).some(error =>
+      error.includes('without a reason'),
+    ),
+    'an exception without a reason must fail',
+  );
+  // 注入四：例外指向一份不存在的 schema ⇒ 陈旧例外也要报。
+  assert.ok(
+    coverageErrors(all, consumed, new Map([['schemas/rag-golden/gone.schema.json', '陈旧']])).some(error =>
+      error.includes('not on disk'),
+    ),
+    'an exception naming a schema that does not exist must fail',
+  );
+  // 注入五：注释里的路径 MUST NOT 被算作消费——否则「删掉真正的加载点、只留一句注释」就能骗过守卫，
+  // 而这正是本守卫唯一要抓的东西（没人读的契约）。同时确认代码里的路径仍然算数。
+  const pathLike = /schemas\/[A-Za-z0-9_./-]+\.schema\.json/;
+  assert.ok(
+    !pathLike.test(stripCommentLines('// schemas/rag-golden/case-set.schema.json', false)),
+    'a path mentioned in a whole-line comment must not count as a consumer',
+  );
+  assert.ok(
+    !pathLike.test(stripCommentLines(' * see schemas/rag-golden/case-set.schema.json', false)),
+    'a path mentioned in a block-comment continuation must not count either',
+  );
+  assert.ok(
+    !pathLike.test(stripCommentLines('# schemas/rag-golden/case-set.schema.json', true)),
+    'a path mentioned in a workflow comment must not count either',
+  );
+  assert.ok(
+    pathLike.test(stripCommentLines("await readFile('schemas/catalog/catalog.schema.json', 'utf8')", false)),
+    'a path used in code must still count as a consumer',
+  );
 });

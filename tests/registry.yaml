@@ -134,5 +134,15 @@ mapping:
 # 基线收录之后不清空，门控会按「陈旧条目」失败。⇒「已登记但尚未收录进基线」是一个
 # 可判定的状态，而不是一句在几份文档里各写一遍的说法（W68 新增 B07 就是这么漂移了两轮）。
 #
-# 门控：scripts/contracts/baseline.mjs + tests/registry.test.mjs。
+# W73 起台账还有**寿命**：条目形状是
+#   {id, since_baseline, registered, carried_at?, reason}
+# 其中 `since_baseline` MUST 等于**当前基线版本**。缺了它，「紧接着订正」在实现轮次里
+# 没有落点（基线不可变 + 就地订正 MUST 1:1 行替换 ⇒ 改 §57.3 只能发生在一次升基线轮次里），
+# 于是它被读作「不晚于下一次基线修订轮次」。⇒ 升基线时每条 MUST 被处置：
+#   · 收录  ⇒ 删掉条目（上面的「陈旧条目」判据本来就会要求这样做）；
+#   · 结转  ⇒ 把 `since_baseline` 改成新版本，并记下 `carried_at`（结转轮次）与非空理由。
+# 「这一版故意不收它」因此从**沉默**变成**记录**。见 ADR 0051 决策 2。
+#
+# 门控：scripts/contracts/baseline.mjs + tests/registry.test.mjs（形状由
+# schemas/tests/registry.schema.json 校验，ADR 0051 决策 1）。
 baseline_deviations: []

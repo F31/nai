@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nai.dev/schemas/tests/registry.schema.json",
   "title": "Admission registry",
-  "description": "Machine-readable acceptance registry (V3.10 §16 + §48.5 + §51.1 + §57.3 + ADR 0015 errata). release_line is a separate field from acceptance IDs so R01..R11 and R1/R2/R3 never collide. `capability_pack` (V3.9) marks designed-but-not-committed scope: enabling it is when it accrues run, acceptance and maintenance cost.",
+  "description": "Machine-readable acceptance registry (V3.10 §16 + §48.5 + §51.1 + §57.3 + ADR 0015 errata; `baseline_deviations` from ADR 0050/0051). release_line is a separate field from acceptance IDs so R01..R11 and R1/R2/R3 never collide. `capability_pack` (V3.9) marks designed-but-not-committed scope: enabling it is when it accrues run, acceptance and maintenance cost. This schema is enforced by tests/registry.test.mjs (ADR 0051 decision 1) — it is not documentation.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "release_lines", "acceptance", "mapping"],
+  "required": ["schema_version", "release_lines", "acceptance", "mapping", "baseline_deviations"],
   "properties": {
     "schema_version": {"const": 1},
     "release_lines": {
@@ -64,6 +64,22 @@
               }
             }
           }
+        }
+      }
+    },
+    "baseline_deviations": {
+      "type": "array",
+      "description": "已登记但尚未被冻结基线收录的偏差。条目不是豁免：`since_baseline` 记该偏差相对于哪一份基线成立，MUST 等于当前基线版本——跨版只有两种处置，收录（删条目）或显式结转（改 since_baseline + 记 carried_at + 非空 reason）。见 ADR 0050 决策 2、ADR 0051 决策 2。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "since_baseline", "registered", "reason"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^(S|R|A|B|O|P|M|H|X)[0-9]{2}$"},
+          "since_baseline": {"type": "string", "pattern": "^V[0-9]+\\.[0-9]+$"},
+          "registered": {"type": "string", "pattern": "^W[0-9]+$"},
+          "carried_at": {"type": "string", "pattern": "^W[0-9]+$"},
+          "reason": {"type": "string", "minLength": 1}
         }
       }
     }

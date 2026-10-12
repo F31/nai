@@ -1,7 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { readRegistry, readCatalogIds, validateRegistry } from '../scripts/contracts/registry.mjs';
+import {
+  readRegistry,
+  readCatalogIds,
+  validateRegistry,
+  ID_RE,
+  RELEASE_LINES,
+  STATUSES,
+} from '../scripts/contracts/registry.mjs';
+import { validators } from '../scripts/contracts/validation.mjs';
 import {
   readBaseline,
   parseBaseline,
@@ -28,6 +36,10 @@ const replaceOnce = (text, from, to) => {
   return text.replace(from, to);
 };
 const mutated = (from, to) => parseBaseline(replaceOnce(baseline.text, from, to));
+
+/// 对账的第三个入参是**当前基线版本**（ADR 0051 决策 2 的台账跨版判据必需）。
+/// 用例统一经这里传入，`reconcile` 本身在缺版本时**具名报错**——它 MUST NOT 静默跳过。
+const against = (registry, parsed) => reconcile(registry, parsed, baseline.version);
 
 test('registry.yaml is machine-readable and internally consistent', async () => {
   const registry = await readRegistry();
@@ -179,7 +191,7 @@ test('the frozen baseline and the registry agree id by id', async () => {
   assert.equal(declaredBaselineName(configText), baseline.name);
 
   // ② 两侧声明必须逐 id 一致。这不是「配置正确」的同义反复：它读的是基线正文的两张表。
-  assert.deepEqual(reconcile(registry, parsed), []);
+  assert.deepEqual(against(registry, parsed), []);
 
   // ③ 解析器的形状钉死。少了这一层，「对账」可能因为**解析出空集**而恒真：
   // 解析出空集时全部 id 会被算成 extra，所以对账其实很吵——但把两张表的内容逐项写下来
@@ -219,10 +231,10 @@ test('a section that was renumbered fails loudly instead of passing vacuously', 
       '### 57.3 发布线汇总（措辞微调）',
     ),
   );
-  assert.deepEqual(reconcile(registry, renamedTitle), []);
+  assert.deepEqual(against(registry, renamedTitle), []);
 
   const renumbered = mutated('### 57.3 发布线汇总（收缩后，正本）', '### 59.3 发布线汇总（收缩后，正本）');
-  const renumberedErrors = reconcile(registry, renumbered);
+  const renumberedErrors = against(registry, renumbered);
   assert.ok(
     renumberedErrors.some(error => error.includes('§57.3 heading not found')),
     'a renumbered §57.3 must be reported as a parse failure',
@@ -236,7 +248,7 @@ test('a section that was renumbered fails loudly instead of passing vacuously', 
     '### 48.5 验收总表索引（含 H 系列）',
     '### 48.9 验收总表索引（含 H 系列）',
   );
-  assert.deepEqual(reconcile(registry, renumberedFamily), ['§48.5 heading not found']);
+  assert.deepEqual(against(registry, renumberedFamily), ['§48.5 heading not found']);
 });
 
 test('§57.3 cannot disagree with itself between its table and its count line', async () => {
@@ -246,25 +258,25 @@ test('§57.3 cannot disagree with itself between its table and its count line', 
   // 不带前缀会命中两处、改错地方。
   const countOff = mutated('计数：`slice_0` 10 + `r1` **37**', '计数：`slice_0` 10 + `r1` **36**');
   assert.ok(
-    reconcile(registry, countOff).some(
+    against(registry, countOff).some(
       error => error.includes('§57.3 is self-inconsistent') && error.includes('`r1`') && error.includes('36'),
     ),
     'a count that disagrees with its own row must be reported',
   );
   const totalOff = mutated('+ `experimental` 2 = **88**', '+ `experimental` 2 = **87**');
   assert.ok(
-    reconcile(registry, totalOff).some(error => error.includes('total 87')),
+    against(registry, totalOff).some(error => error.includes('total 87')),
     'a total that disagrees with the sum of its rows must be reported',
   );
   // 漏掉一条线、或凭空多出一条线，都不是「数字对得上」能盖住的。
   const omitted = mutated('+ `experimental` 2 = **88**', ' = **88**');
   assert.ok(
-    reconcile(registry, omitted).some(error => error.includes('count line omits `experimental`')),
+    against(registry, omitted).some(error => error.includes('count line omits `experimental`')),
     'a release line missing from the count line must be reported',
   );
   const invented = mutated('+ `experimental` 2 = **88**', '+ `experimental` 2 + `r4` 0 = **88**');
   assert.ok(
-    reconcile(registry, invented).some(error => error.includes('unknown release line: r4')),
+    against(registry, invented).some(error => error.includes('unknown release line: r4')),
     'a release line that does not exist must be reported',
   );
 });
@@ -276,7 +288,7 @@ test('release-line placement drift is reported by id, from either side', async (
   // 注册表侧：把 B07 从 r1 挪到 r2，基线（冻结）仍写 r1。
   const moved = structuredClone(registry);
   moved.acceptance.find(item => item.id === 'B07').release_line = 'r2';
-  const movedErrors = reconcile(moved, parsed);
+  const movedErrors = against(moved, parsed);
   assert.ok(
     movedErrors.some(
       error => error.includes('B07 is registered on r2') && error.includes('declares it on r1'),
@@ -287,7 +299,7 @@ test('release-line placement drift is reported by id, from either side', async (
   // 注册表侧：新增一条基线未声明的 id —— 这正是 W68 新增 B07 的形状。
   const added = structuredClone(registry);
   added.acceptance.push({...added.acceptance[0], id: 'S13', release_line: 'r1'});
-  const addedErrors = reconcile(added, parsed);
+  const addedErrors = against(added, parsed);
   assert.ok(
     addedErrors.some(error => error.includes('S13 is registered on r1') && error.includes('absent from §57.3')),
     'an unregistered-by-the-baseline id must be reported',
@@ -300,7 +312,7 @@ test('release-line placement drift is reported by id, from either side', async (
   // 反方向：基线声明了、注册表没有 —— ADR 0042 记的正是这一类（家族整体缺席）。
   const removed = structuredClone(registry);
   removed.acceptance = removed.acceptance.filter(item => item.id !== 'S01');
-  const removedErrors = reconcile(removed, parsed);
+  const removedErrors = against(removed, parsed);
   assert.ok(
     removedErrors.some(error => error.includes('S01 is declared on §57.3\'s slice_0') && error.includes('not registered')),
     'an id the baseline declares must be required to exist in the registry',
@@ -316,7 +328,7 @@ test('release-line placement drift is reported by id, from either side', async (
     replaceOnce(baseline.text, r1Row, r1Row.replace('B01、B03、B05、B06、B07；', 'B01、B03、B05、B06；')),
   );
   assert.ok(
-    reconcile(registry, lagging).some(error => error.includes('B07 is registered on r1') && error.includes('absent from §57.3')),
+    against(registry, lagging).some(error => error.includes('B07 is registered on r1') && error.includes('absent from §57.3')),
     'the baseline lagging behind the registry must be reported for the id that drifted',
   );
 });
@@ -325,7 +337,7 @@ test('§48.5 is the source of truth for family completeness, for every family it
   const registry = await readRegistry();
   // 缩回一个家族 ⇒ 报「停在了在册项之前」；这正是 W68（B07 未收录）的形状。
   const shrunk = mutated('| B | B01–B07 | 第 16 章、53 |', '| B | B01–B06 | 第 16 章、53 |');
-  const shrunkErrors = reconcile(registry, shrunk);
+  const shrunkErrors = against(registry, shrunk);
   assert.ok(
     shrunkErrors.some(error => error.includes('§48.5 family B stops short of registered ids: B07')),
     'a family range that excludes a registered id must be reported by id',
@@ -333,7 +345,7 @@ test('§48.5 is the source of truth for family completeness, for every family it
   // 扩到不存在的 id ⇒ 报「声明了未在册的 id」。
   const widened = mutated('| B | B01–B07 | 第 16 章、53 |', '| B | B01–B08 | 第 16 章、53 |');
   assert.ok(
-    reconcile(registry, widened).some(
+    against(registry, widened).some(
       error => error.includes('§48.5 family B declares ids that are not registered: B08'),
     ),
     'a family range that invents an id must be reported',
@@ -349,6 +361,13 @@ test('§48.5 is the source of truth for family completeness, for every family it
 test('baseline_deviations names each pending deviation and cannot be a blanket exemption', async () => {
   const registry = await readRegistry();
   const parsed = parseBaseline(baseline.text);
+  const entry = (over = {}) => ({
+    id: 'S02',
+    since_baseline: baseline.version,
+    registered: 'W68',
+    reason: '登记一个具名理由',
+    ...over,
+  });
   const withLedger = entries => {
     const next = structuredClone(registry);
     next.baseline_deviations = entries;
@@ -356,38 +375,32 @@ test('baseline_deviations names each pending deviation and cannot be a blanket e
   };
   // 没有差异却登记了一条 ⇒ 陈旧条目 MUST 失败，否则台账只会越积越长、再也不被清理。
   assert.ok(
-    reconcile(withLedger([{id: 'S01', registered: 'W99', reason: '陈旧'}]), parsed).some(
+    against(withLedger([entry({id: 'S01', registered: 'W99'})]), parsed).some(
       error => error.includes('baseline_deviations lists S01') && error.includes('clear the entry'),
     ),
     'a stale ledger entry must fail',
   );
   // 条目本身要具名：id 合法、登记轮次可读、理由非空。
-  const malformed = reconcile(
-    withLedger([{id: 'ZZ9', registered: 'round-1', reason: ''}]),
-    parsed,
-  );
+  const malformed = against(withLedger([entry({id: 'ZZ9', registered: 'round-1', reason: ''})]), parsed);
   assert.ok(malformed.some(error => error.includes('invalid id')), 'a bad id must be reported');
   assert.ok(
-    reconcile(withLedger([{id: 'S02', registered: 'round-1', reason: 'x'}]), parsed).some(
-      error => error.includes('must name the registering round'),
+    against(withLedger([entry({registered: 'round-1'})]), parsed).some(error =>
+      error.includes('must name the registering round'),
     ),
     'the registering round must be named',
   );
   assert.ok(
-    reconcile(withLedger([{id: 'S02', registered: 'W68', reason: '   '}]), parsed).some(
-      error => error.includes('must carry a non-empty reason'),
+    against(withLedger([entry({reason: '   '})]), parsed).some(error =>
+      error.includes('must carry a non-empty reason'),
     ),
     'the reason must be non-empty',
   );
   assert.ok(
-    reconcile(withLedger({id: 'S01'}), parsed).some(error => error.includes('must be a list')),
+    against(withLedger({id: 'S01'}), parsed).some(error => error.includes('must be a list')),
     'the ledger must be a list',
   );
   assert.ok(
-    reconcile(
-      withLedger([{id: 'S02', registered: 'W68', reason: 'a'}, {id: 'S02', registered: 'W68', reason: 'b'}]),
-      parsed,
-    ).some(error => error.includes('declares S02 twice')),
+    against(withLedger([entry(), entry()]), parsed).some(error => error.includes('declares S02 twice')),
     'a duplicate entry must be reported',
   );
   // 逃生通道确实可用：真实差异 + 相称条目 ⇒ 一致。否则实现轮次会被门控锁死
@@ -395,15 +408,18 @@ test('baseline_deviations names each pending deviation and cannot be a blanket e
   const realDeviation = structuredClone(registry);
   realDeviation.acceptance.find(item => item.id === 'B07').release_line = 'r2';
   realDeviation.baseline_deviations = [
-    {id: 'B07', registered: 'W68', reason: '场景回放需要更完整的讲品证据，归属待下一轮升基线收录'},
+    {
+      id: 'B07',
+      since_baseline: baseline.version,
+      registered: 'W68',
+      reason: '场景回放需要更完整的讲品证据，归属待下一轮升基线收录',
+    },
   ];
-  assert.deepEqual(reconcile(realDeviation, parsed), []);
+  assert.deepEqual(against(realDeviation, parsed), []);
   // 但条目 MUST 与差异相称：差异是 B07、条目却写 S02 ⇒ 两条都要报。
   const mismatched = structuredClone(realDeviation);
-  mismatched.baseline_deviations = [
-    {id: 'S02', registered: 'W68', reason: '张冠李戴'},
-  ];
-  const mismatchedErrors = reconcile(mismatched, parsed);
+  mismatched.baseline_deviations = [entry({reason: '张冠李戴'})];
+  const mismatchedErrors = against(mismatched, parsed);
   assert.ok(
     mismatchedErrors.some(error => error.includes('B07 is registered on r2')),
     'the real difference must still be reported when the ledger names something else',
@@ -411,6 +427,70 @@ test('baseline_deviations names each pending deviation and cannot be a blanket e
   assert.ok(
     mismatchedErrors.some(error => error.includes('baseline_deviations lists S02')),
     'and the mismatched entry must be reported as stale',
+  );
+});
+
+test('a registered deviation does not outlive a baseline version', async () => {
+  const registry = await readRegistry();
+  const parsed = parseBaseline(baseline.text);
+  const deviation = over => {
+    const next = structuredClone(registry);
+    // 造一处**真实**差异，使条目相称——否则用例会因为别的原因失败，证不到寿命这一条。
+    next.acceptance.find(item => item.id === 'B07').release_line = 'r2';
+    next.baseline_deviations = [
+      {id: 'B07', since_baseline: baseline.version, registered: 'W68', reason: '待下一轮升基线收录', ...over},
+    ];
+    return next;
+  };
+  // 基线换版而条目未处置 ⇒ 必须失败，且两侧版本都要给出。这正是「紧接着」的可判定形式。
+  assert.deepEqual(against(deviation({}), parsed), [], 'the escape hatch must stay usable');
+  const survivor = against(deviation({since_baseline: 'V3.9'}), parsed);
+  assert.ok(
+    survivor.some(
+      error =>
+        error.includes('B07 was registered against V3.9') && error.includes(`current baseline is ${baseline.version}`),
+    ),
+    'an entry that survived a baseline upgrade must be reported with both versions',
+  );
+  assert.ok(
+    survivor.every(error => !error.includes('not a difference')),
+    'the surviving entry is still a faithful description of a real difference — only its lifetime is wrong',
+  );
+  // 显式结转：改版本 + 记结转轮次 + 非空理由 ⇒ 一致。结转 MUST 留下轮次，否则「故意不收」是沉默的。
+  assert.deepEqual(
+    against(deviation({since_baseline: baseline.version, carried_at: 'W73'}), parsed),
+    [],
+    'an explicitly carried-forward entry must reconcile',
+  );
+  // 结转轮次必须晚于登记轮次，否则它不是结转。
+  assert.ok(
+    against(deviation({carried_at: 'W68'}), parsed).some(error =>
+      error.includes('carried_at (W68) must be later than its registering round (W68)'),
+    ),
+    'a carry-forward round must be later than the registering round',
+  );
+  assert.ok(
+    against(deviation({carried_at: 'later'}), parsed).some(error =>
+      error.includes('carried_at must be a round'),
+    ),
+    'the carry-forward round must be readable',
+  );
+  // 条目 MUST 声明它相对于哪一份基线成立。
+  assert.ok(
+    against(deviation({since_baseline: undefined}), parsed).some(error =>
+      error.includes('must name the baseline it deviates from'),
+    ),
+    'the entry must name the baseline it deviates from',
+  );
+  // 缺版本入参 ⇒ 具名报错。一条会因为入参缺失而恒真的断言比没有断言更坏。
+  const noVersion = reconcile(registry, parsed, undefined);
+  assert.ok(
+    noVersion.some(error => error.includes('needs the current baseline version')),
+    'a missing baseline version must be reported, never skipped',
+  );
+  assert.ok(
+    reconcile(registry, parsed, 'v3.10').some(error => error.includes('needs the current baseline version')),
+    'a malformed baseline version must be reported too',
   );
 });
 
@@ -433,4 +513,121 @@ test('the baseline pointer in openspec/config.yaml resolves to the newest baseli
   );
   // 「版本号最大者胜」只有在确实有多份候选时才算被行使过——只有一份时选择是平凡的。
   assert.ok(baseline.knownNames.length >= 2, 'expected more than one baseline document in docs/');
+});
+
+/// 注册表形状层（JSON Schema）与语义层（`scripts/contracts/*.mjs`）的一致性判据。
+///
+/// 两个函数都接受**注入后**的入参，这样「一致性断言真的会开火」可以在同一处被验证，
+/// 而不必去改磁盘上的源码（改了就可能忘了改回来）。
+function driftErrors(schema, {idSource, lines, statuses}) {
+  const errors = [];
+  const id = schema.properties.acceptance.items.properties.id.pattern;
+  const targets = schema.properties.mapping.properties.d01_to_d14.patternProperties['^D[0-9]{2}$'].properties.targets.items.pattern;
+  if (id !== idSource) errors.push(`id family pattern drifts between schema (${id}) and the scripts (${idSource})`);
+  if (targets !== idSource) {
+    errors.push(`id family pattern drifts between the mapping targets (${targets}) and the scripts (${idSource})`);
+  }
+  const lineKeys = Object.keys(schema.properties.release_lines.properties).sort();
+  const enumLines = [...schema.properties.acceptance.items.properties.release_line.enum].sort();
+  const scriptLines = [...lines].sort();
+  if (JSON.stringify(lineKeys) !== JSON.stringify(scriptLines)) {
+    errors.push(`release-line enumeration drifts: release_lines keys ${lineKeys.join(',')} vs scripts ${scriptLines.join(',')}`);
+  }
+  if (JSON.stringify(enumLines) !== JSON.stringify(scriptLines)) {
+    errors.push(`release-line enumeration drifts: release_line.enum ${enumLines.join(',')} vs scripts ${scriptLines.join(',')}`);
+  }
+  const statusEnum = [...schema.properties.acceptance.items.properties.status.enum].sort();
+  const mappedStatus = [
+    ...schema.properties.mapping.properties.d01_to_d14.patternProperties['^D[0-9]{2}$'].properties.status.enum,
+  ].sort();
+  const scriptStatuses = [...statuses].sort();
+  for (const [where, values] of [['status.enum', statusEnum], ['mapping status enum', mappedStatus]]) {
+    if (JSON.stringify(values) !== JSON.stringify(scriptStatuses)) {
+      errors.push(`status enumeration drifts: ${where} ${values.join(',')} vs scripts ${scriptStatuses.join(',')}`);
+    }
+  }
+  return errors;
+}
+
+test('tests/registry.yaml conforms to its JSON Schema, and unknown keys are rejected', async () => {
+  const {registry: validate} = await validators();
+  const registry = await readRegistry();
+  // 这条断言存在的原因写在 ADR 0051 决策 1：形状契约 MUST 真的被执行。
+  // W72 的 `baseline_deviations` 就是在这个契约无人执行的情况下进去的。
+  assert.equal(validate(registry), true, JSON.stringify(validate.errors));
+
+  const rejection = (label, mutate) => {
+    const bad = structuredClone(registry);
+    mutate(bad);
+    assert.equal(validate(bad), false, `the schema must reject ${label}`);
+    return validate.errors ?? [];
+  };
+  const hits = (errors, path, keyword) => errors.some(error => error.instancePath === path && error.keyword === keyword);
+
+  // 未知顶层键（W72 的形状）与未知条目字段：手工解析会**静默忽略**，只有 schema 拒绝它们。
+  let errors = rejection('an unknown top-level key', next => {
+    next.bogus_top = 1;
+  });
+  assert.ok(
+    hits(errors, '', 'additionalProperties') &&
+      errors.some(error => error.params?.additionalProperty === 'bogus_top'),
+    'an unknown top-level key must be rejected by name',
+  );
+  errors = rejection('an unknown acceptance field', next => {
+    next.acceptance[0].bogus_field = 1;
+  });
+  assert.ok(
+    hits(errors, '/acceptance/0', 'additionalProperties') &&
+      errors.some(error => error.params?.additionalProperty === 'bogus_field'),
+    'an unknown acceptance field must be rejected by name',
+  );
+  // 值域：id / 发布线 / 状态，各报在自己那条路径上。
+  assert.ok(
+    hits(rejection('a malformed id', next => { next.acceptance[0].id = 'B1'; }), '/acceptance/0/id', 'pattern'),
+    'a malformed id must be rejected at its own path',
+  );
+  assert.ok(
+    hits(rejection('an unknown release line', next => { next.acceptance[0].release_line = 'r4'; }), '/acceptance/0/release_line', 'enum'),
+    'an unknown release line must be rejected',
+  );
+  assert.ok(
+    hits(rejection('an unknown status', next => { next.acceptance[0].status = 'done'; }), '/acceptance/0/status', 'enum'),
+    'an unknown status must be rejected',
+  );
+  assert.ok(
+    hits(rejection('an empty acceptance list', next => { next.acceptance = []; }), '/acceptance', 'minItems'),
+    'an empty acceptance list must be rejected',
+  );
+  // 映射段：D01–D14 缺一不可。手写检查若只遍历实际存在的键，缺号是查不出来的。
+  assert.ok(
+    hits(rejection('a missing D key', next => { delete next.mapping.d01_to_d14.D09; }), '/mapping/d01_to_d14', 'required'),
+    'a missing D key must be rejected',
+  );
+  // 台账是必需的：缺键与空台账读起来不是一回事，而「空台账」本身就是一条断言。
+  assert.ok(
+    hits(rejection('a missing ledger', next => { delete next.baseline_deviations; }), '', 'required'),
+    'the ledger key itself must be required',
+  );
+});
+
+test("the registry's shape layer and semantic layer agree, constant by constant", async () => {
+  const schema = JSON.parse(await readFile('schemas/tests/registry.schema.json', 'utf8'));
+  const healthy = {idSource: ID_RE.source, lines: RELEASE_LINES, statuses: STATUSES};
+  assert.deepEqual(driftErrors(schema, healthy), [], 'the two layers must agree today');
+
+  const shrunken = driftErrors(schema, {...healthy, idSource: '^(S|R)[0-9]{2}$'});
+  assert.ok(
+    shrunken.some(error => error.includes('id family pattern drifts')),
+    'narrowing the script-side family whitelist must be reported',
+  );
+  const dropped = driftErrors(schema, {...healthy, lines: RELEASE_LINES.filter(line => line !== 'r3')});
+  assert.ok(
+    dropped.some(error => error.includes('release-line enumeration drifts')),
+    'dropping a release line on one side must be reported',
+  );
+  const invented = driftErrors(schema, {...healthy, statuses: [...STATUSES, 'done']});
+  assert.ok(
+    invented.every(error => error.includes('status enumeration drifts')) && invented.length === 2,
+    'adding a status on one side must be reported in both places it appears',
+  );
 });

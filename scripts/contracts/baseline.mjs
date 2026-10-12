@@ -15,10 +15,16 @@ import { RELEASE_LINES } from './registry.mjs';
 /// 每条必须在 `tests/registry.yaml` 的 `baseline_deviations` 里具名登记（id + 登记轮次 + 理由），
 /// 且**必须对应一处真实差异**——基线收录后不清空台账，门控会因「陈旧条目」失败。
 /// ⇒「已登记但尚未收录」从一个说法变成一个**可判定**的状态。
+///
+/// **W73 补上寿命**：对账只保证「差异必被解释」，不保证「解释不会永远留着」。
+/// 故台账条目还带 `since_baseline`，且**任一条目 MUST 等于当前基线版本**——
+/// 升基线时每条必须被处置（收录或显式结转）。理由与「为什么锚事件而不锚轮数」见 ADR 0051。
 
 const BASELINE_NAME_RE = /^直播数字人 \+ 智能体系统技术方案 V(\d+)\.(\d+)\.md$/;
 const ID_TOKEN = /([SRABOPMHX])(\d{2})/g;
 const ID_RANGE = /([SRABOPMHX])(\d{2})\s*[–—-]\s*([SRABOPMHX])(\d{2})/g;
+/// 基线版本串的形状（`readBaseline()` 产出 `V3.10` 这种形式）。台账的跨版判据按它比较。
+const VERSION_RE = /^V[0-9]+\.[0-9]+$/;
 
 /// §57.3 表格的「线」列标签 ⇒ `release_lines` 键。
 ///
@@ -219,14 +225,25 @@ export function declaredBaselineName(configText) {
   return match ? match[1] : null;
 }
 
-/// 偏差台账的规范化与自检。条目形状：`{id, registered, reason}`。
-export function normalizeDeviations(raw, errors) {
+/// 偏差台账的规范化与自检。条目形状：
+/// `{id, since_baseline, registered, carried_at?, reason}`。
+///
+/// **跨版不变式（ADR 0051 决策 2）**：`since_baseline` MUST 等于当前基线版本。
+/// 「紧接着订正」在实现轮次内没有可执行落点（基线被 ADR 批准后不可变，就地订正有 MUST 1:1
+/// 行替换的硬约束 ⇒ 改 §57.3 只能发生在一次专门的升基线轮次里），故它被读作「不晚于下一次
+/// 基线修订轮次」；可判定形式就是这一条——跨版只有两种处置：收录（删条目），或显式结转
+/// （改 `since_baseline` + 记 `carried_at` + 非空理由）。
+///
+/// `version` 是**必需**入参而不是可选：缺了它这条判据恒真，而一条会因为入参缺失而恒真的断言
+/// 比没有断言更坏。缺失时由 `reconcile` 具名报出。
+export function normalizeDeviations(raw, errors, version) {
   const out = [];
   if (raw === undefined) return out;
   if (!Array.isArray(raw)) {
     errors.push('baseline_deviations must be a list');
     return out;
   }
+  const knownVersion = VERSION_RE.test(String(version ?? ''));
   const seen = new Set();
   for (const entry of raw) {
     if (!entry || typeof entry !== 'object') {
@@ -248,7 +265,36 @@ export function normalizeDeviations(raw, errors) {
     if (typeof entry.reason !== 'string' || entry.reason.trim() === '') {
       errors.push(`baseline_deviations ${entry.id} must carry a non-empty reason`);
     }
-    out.push({id: entry.id, registered: entry.registered, reason: entry.reason});
+    // 条目 MUST 声明它相对于哪一份基线成立；与当前基线不一致 = 跨版存活。
+    if (!VERSION_RE.test(String(entry.since_baseline ?? ''))) {
+      errors.push(
+        `baseline_deviations ${entry.id} must name the baseline it deviates from (since_baseline: V<major>.<minor>)`,
+      );
+    } else if (knownVersion && entry.since_baseline !== version) {
+      errors.push(
+        `baseline_deviations ${entry.id} was registered against ${entry.since_baseline}, but the current baseline is ${version}` +
+          `; collect it at this baseline round, or carry it forward explicitly (update since_baseline, add carried_at and a reason)`,
+      );
+    }
+    if (entry.carried_at !== undefined) {
+      if (!/^W[0-9]+$/.test(String(entry.carried_at ?? ''))) {
+        errors.push(`baseline_deviations ${entry.id} carried_at must be a round (W<number>)`);
+      } else if (
+        /^W[0-9]+$/.test(String(entry.registered ?? '')) &&
+        Number(String(entry.carried_at).slice(1)) <= Number(String(entry.registered).slice(1))
+      ) {
+        errors.push(
+          `baseline_deviations ${entry.id} carried_at (${entry.carried_at}) must be later than its registering round (${entry.registered})`,
+        );
+      }
+    }
+    out.push({
+      id: entry.id,
+      since_baseline: entry.since_baseline,
+      registered: entry.registered,
+      carried_at: entry.carried_at,
+      reason: entry.reason,
+    });
   }
   return out;
 }
@@ -264,9 +310,18 @@ function lineOfIds(registry) {
 }
 
 /// 基线声明与注册表实测的对账。返回具名错误列表；空列表 = 一致。
-export function reconcile(registry, parsed) {
+///
+/// `version` 是**当前基线版本**（`readBaseline()` 的 `version`），必需：
+/// 台账的跨版判据没有它就不可判定，而「不可判定」MUST 失败，MUST NOT 静默通过。
+export function reconcile(registry, parsed, version) {
   const errors = [];
-  const deviations = normalizeDeviations(registry.baseline_deviations, errors);
+  if (!VERSION_RE.test(String(version ?? ''))) {
+    errors.push(
+      `reconcile needs the current baseline version (got ${JSON.stringify(version ?? null)}); ` +
+        'the ledger\'s cross-version rule cannot be decided without it',
+    );
+  }
+  const deviations = normalizeDeviations(registry.baseline_deviations, errors, version);
   const registeredIds = new Set(deviations.map(deviation => deviation.id));
 
   const declaredLines = parsed.releaseLines.lines;

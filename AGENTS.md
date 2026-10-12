@@ -1416,3 +1416,69 @@ W72 **不改基线正文**（`… V3.10.md` 零改动）、**不改任何 `accep
 残余风险的证据就是本轮本身：**规格里的矛盾是靠人读发现的**。见
 docs/adr/0050-baseline-registry-reconciliation.md、docs/reports/2026-10-12-w72-baseline-reconciliation-gate.md、
 openspec/changes/archive/2026-10-12-w72-baseline-reconciliation-gate/。
+
+### W73 注册表形状契约接电与台账存活期（并订正 W72 对 A12–A14 的表述）
+
+W73 从 W72 遗留第 2 条（§56.2「紧接着」vs「跨轮次收录」**未裁定**）出发，**核实之后改了计划**：
+核实发现的问题比那条遗留更靠前——**规格里写着「schema 校验 SHALL …」，而那句校验根本没跑。**
+
+**核实一（本轮的核心发现）**：`schemas/tests/registry.schema.json` **不被任何执行体消费**——
+不在 `scripts/contracts/validation.mjs` 的 `sources`（11 份）、全仓无 `include_str!`、无任何 `*.mjs` 读它。
+`tests/registry.yaml` 的形状一直只由 `registry.mjs` 的**手工检查**把关，而手工解析**对未知键静默忽略**。
+实测把注册表喂给该 schema：**只报一处错**——**W72 新增的 `baseline_deviations` 未被声明**；
+其余 88 条、六条发布线、映射段**全部通过**。⇒ 该 schema **不是文档残留**（它随 W65/W71 同步更新过 `description`），
+它只是**从未接电**；**一次合法的往前推进一步，就把一个无人检查的契约变成了假契约**。
+这也意味着 `admission-registry` 里「schema 校验 SHALL 拒绝重复编号、未知 release_line/status…」与
+「MUST NOT 出现『注册表写得进去、schema 认不出来』的状态」两条要求，此前都是**靠手工检查代偿**的。
+
+**核实二**：`schemas/**/*.schema.json` 逐个查消费点，孤儿**不止一个**（`tests/registry`、`rag-golden/case-set`），
+而「有没有人读这份 schema」**当前没有任何守卫**——它能默默发生两次，就会发生第三次。
+（`config/upgrade-package` 是**只在 Rust 侧**被消费的实例：`nai-upgrade-core/src/manifest.rs` 的 `include_str!`
+——故消费口径 MUST 含 Rust 扫描，只扫 Node 会把它误判成孤儿。）
+
+**核实三（裁定「紧接着」的证据）**：把三种历史实例的「偏差出现 → 基线收录」逐条读出来，
+**三条全部在下一次升基线轮次被收录，零跳过**（爬坡 W67→W71；B07 W68→W71）。
+**并订正 W72 报告的一处表述**：A12–A14 **不是**「跨轮次收录」，而是——W54/W55 新增 A12/A13/A14 时
+**活索引 §48.5 还不存在**（§48 是 V3.8 的新章），当时存在的 `§39.5` 是 **V3.7 的版本专属章节**（§56.2 情形③），
+它的落后是**设计**；偏差是**在 W56 出现的**（那份活的跨版本索引**诞生时就落后于注册表**），
+直到 W65 被收录，中间**九轮**没有任何记录说「这里不一致」⇒ 它属于**静默漂移**，
+正是 W72 的对账门控今天会当场抓住的形状。
+
+**裁定与交付**（[ADR 0051](docs/adr/0051-registry-schema-wiring-and-ledger-lifetime.md)）：
+
+1. **注册表接电**：schema 补 `baseline_deviations` 定义（并列入 `required`——「缺键」与「空台账」不是一回事）；
+   `validation.mjs` 导出 `AJV_SOURCES` 并把注册表纳入；`tests/registry.test.mjs` 断言注册表满足其 schema。
+   **只改 `description` 不算修复**，**删掉 schema 也不算**：三条既有规格要求以它为前提。
+2. **形状层与语义层只有一份定义**：两者在 **id 家族 pattern / 发布线枚举 / 状态枚举**三处重叠，
+   每处 MUST 逐字一致，不一致时**指名是哪一处**。⇒ 重叠允许，漂移不允许（不是「同一检查第二处定义」——
+   重叠的三处加了一致性断言，而在此之前它们**已经**是三处，只是无人比对）。
+3. **台账的寿命**：条目扩为 `{id, since_baseline, registered, carried_at?, reason}`，
+   **不变式：任一条目的 `since_baseline` MUST 等于当前基线版本**。跨版只有两种处置：
+   **收录**（删条目）或**显式结转**（改 `since_baseline` + 记 `carried_at` + 非空理由）。
+   ⇒ 把台账的**长度**换成**寿命**：长度可以靠沉默增长，寿命不能。
+   **为什么锚「下一次基线修订轮次」而不锚「N 轮」**：字面「同一轮内」**不可行**
+   （基线被 ADR 批准后不可变 + 就地订正 MUST 1:1 行替换 ⇒ 改 §57.3 只能发生在一次专门的升基线轮次里）；
+   而轮数是**外部观察值**（§48.7 的同一纪律），取 3／9／11 都无依据。
+4. **`schemas/` 消费守卫**：每份 `*.schema.json` MUST 要么被**执行体消费**、要么在**具名例外清单**里附非空理由；
+   消费关系 **MUST 派生**（校验器清单 / Rust 的 `include_str!` / 代码里的路径字面量），MUST NOT 写死。
+   本轮具名例外**恰一条**：`rag-golden/case-set`（执行体是 `golden.rs` 的 `parse_case_set`，产出稳定 token；
+   再接一份 schema 会形成同一形状的第二处判定，两份判定的失败措辞不同）。
+   **扫描只认代码文件、且去掉整行注释**——不这么做，注释里提一句路径就会被算成「有消费者」，
+  守卫会在**危险的方向**上变瞎（删掉真正的加载点、只留注释，孤儿照样判不出来）。
+
+**非空洞**：新增注入 **27 组**——schema 形状 **8** 组（未知顶层键／未知条目字段／坏 id／坏线／坏状态／
+空 `acceptance`／少一个 D 键／缺台账键）、一致性断言 **3** 组（改小 `ID_RE`／删一条发布线／加一个状态）、
+台账寿命 **8** 组（跨版存活／`carried_at` 不晚于登记轮次／坏 `carried_at`／缺 `since_baseline`／
+缺版本入参／坏版本串 ⇒ 全部期望失败；**合法结转**与**相称条目** ⇒ 期望通过）、
+`schemas/` 消费守卫 **8** 组（删一项消费／给已消费的加例外／例外缺理由／例外指向不存在的文件 ⇒ 期望失败；
+注释里的路径不算消费 ×3、代码里的仍算数 ⇒ 期望通过）。
+**各组都被对应守卫抓住**；并保留「扫描非空且命中 Rust 侧消费」的守卫，防守卫因扫描恒空而恒真。
+W72 的 **21 组**注入继续有效（同一文件）。实测消费报告：**14 份 schema / 13 份被消费 / 1 份具名例外**，
+扫描 **240** 个代码文件。
+
+**门控**：新守卫经 `engineering_checks` 自动进入 `portable` 与 `full`（`tests/registry.test.mjs` 与
+`tests/contracts/schema.test.mjs` 都已在其中）⇒ **不需要新的 xtask 步骤**；
+**不改基线正文、不改任何 `acceptance` 条目（88 条、六条发布线、全部 `status` 原样）、不改 Rust 行为**，
+台账**仍为空**（W71 已把三处偏差全部收录）。见
+docs/adr/0051-registry-schema-wiring-and-ledger-lifetime.md、docs/reports/2026-10-12-w73-registry-schema-and-ledger-lifetime.md、
+openspec/changes/archive/2026-10-12-w73-registry-schema-and-ledger-lifetime/。
