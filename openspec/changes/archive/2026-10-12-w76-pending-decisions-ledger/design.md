@@ -132,3 +132,22 @@ CARGO_TARGET_DIR=E:/nai-build-target CARGO_INCREMENTAL=0 \
 
 **判定**：默认 test-threads 连跑 3 轮 `cargo test -p nai-runtime --test composition` → **3× 12/12 绿**
 （各 38–39 s）。**不改任何产品代码。**
+
+---
+
+## 勘误（W76 CI 回填轮追加）
+
+**本文档 §0 与 §3 的分章数写错。**
+
+- §0 原文：「分章的新增数为 §18.2 **10** / §39.7 新增 **10** / §48.7 新增 **11** / §57.5 新增 **3**」；
+- §3 原文：`CHAPTER_COUNTS = [['§18.2', 10], ['§39.7', 10], ['§48.7', 11], ['§57.5', 3]]   // 新增数`。
+
+**实测真值**（`tests/pending-decisions.yaml` 逐条 `introduced_in` 统计，共 34 条）：
+**§18.2 = 10 / §39.7 = 11 / §48.7 = 10 / §57.5 = 3** ⇒ 即 **§39.7 与 §48.7 两处的数字被互换**。
+
+**旁证**：`scripts/contracts/pending-decisions.mjs` 的 `CHAPTER_COUNTS` 与
+`docs/adr/0054-pending-decisions-ledger.md` 正文写的都是真值 10/11/10/3（两者一致，且门控绿）。
+⇒ **错的只是本文档的这两处转述**；设计决策（§3「逐章写死，不靠台账自证」）本身不受影响。
+
+**处置**：本文档位于 `openspec/changes/archive/`，按 §56.2 属**历史记录** ⇒ **原文保留 + 追加本段**，
+不就地改写。相关登记见 `docs/reports/2026-10-12-w76-pending-decisions-ledger.md` §九第 6 条。

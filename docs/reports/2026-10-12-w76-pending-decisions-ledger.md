@@ -166,7 +166,25 @@ cargo xtask check --profile full   →  EXIT=0
 
 ## 七、CI 复核
 
-（待本轮 run 回填。）
+### 7.1 W75 回填提交的 run 已被证实为绿
+
+本轮筛查 run 列表时顺带看到：**`d89da43`（W75 的 CI 回填提交）的 run `38238332385` = `success`**。
+
+⇒ W75 报告 §7.2 写的那句条件判据——「**若它绿，则上面的 flaky 判定被证实**」——**已经被证实**：
+windows 侧当时的 `DeadlineExceeded` 确属**时序性**，不是那一轮引入的缺陷。
+**这条观测同时印证了本轮附带修复的方向**：那族在 windows runner 上同样是「**预算与工作量不匹配**」。
+
+### 7.2 本轮 run
+
+`38251222058`（`head_sha = 5f1e12c`，与本轮推送 SHA 一致）⇒ **`status = completed`、`conclusion = success`**
+（双平台绿）。
+
+回读三件齐：唯一查询参数（`cb`）＋ `Cache-Control: no-cache` ＋ `head_sha` 等于本次推送 SHA。
+
+⇒ **本轮「附带修复 3×12/12」在 CI 上同样成立**：windows runner 侧未再出现 `DeadlineExceeded`。
+这与 §7.1 合起来是个完整闭环——**W75 那次失败是时序性的（本轮已证实），而它的方向正是本轮修的那族预算**。
+
+**按观测轮终止约定**：本条回填提交会触发一个新的 run，**该 run 不再回填**——否则无限递推。
 
 ## 八、遗留
 
@@ -186,6 +204,13 @@ cargo xtask check --profile full   →  EXIT=0
    升基线轮次 MUST 一并复核（它们是「照抄基线某张表」的常量，W66 教训要求逐项写死，见 ADR 决策 4）。
 7. **`§58.6` 登记的「需专门一轮」两处属偏差门控，已由 W72 关闭**；本报告不重复处理，
    也 MUST NOT 被读作把它们重新打开。
+8. **`nai-control-api` 有同一族的第二处**：`crates/nai-control-api/src/tests.rs::seed_approval_store`
+   同样「自造预算 + 做 setup 工作量」（`Operation::new(Duration::from_secs(10))`），
+   而 **W75 在 CI 上的失败正落在它**（该文件 `:364`）。本轮**未改它**，理由两条：
+   ① 它**本机未复现**（本机红的只有 `nai-runtime`）；② 它是 `src/tests.rs`（`use super::*;`），
+   **跨 crate 引用不到** `nai_runtime::BRINGUP_OPERATION` ⇒ 要修必须先定一个可复用的定义位置
+   （或改 `Cargo.toml` 的 dev-dependencies，那会动依赖边）。⇒ **登记为后续轮**。
+   同文件 `:617`／`:736` 的两处 5 s 是测试体内的**逐次调用**，暂不动，并入同一条登记。
 
 ## 九、方法论教训
 
@@ -199,3 +224,11 @@ cargo xtask check --profile full   →  EXIT=0
    ——这正是 W66 教训的第二次适用，故 `DISPOSITION_COUNTS` 必须与 `CHAPTER_COUNTS` 并存。
 5. **断言写错时先问「是我的期望错了，还是实现错了」。** 本轮 `H99` 那处是**实现**的诊断太粗
    （把「形状是 id 但不存在」混进「不是 id」），修实现而不是放宽断言。
+6. **同一轮产出的「转述句」不因作者是同一轮的我而豁免。** 收尾复核时发现：归档变更的 `design.md`
+   把分章数写成 §18.2 **10** / §39.7 **10** / §48.7 **11** / §57.5 **3**，而**真值是
+   §18.2 10 / §39.7 11 / §48.7 10 / §57.5 3**（`tests/pending-decisions.yaml` 逐条 `introduced_in`
+   实测；`scripts/contracts/pending-decisions.mjs` 的 `CHAPTER_COUNTS` 与 ADR 0054 都写的是真值）
+   ——即 **§39.7 与 §48.7 两个数字互换**，是纯粹的转述笔误。
+   ⇒ 处置按 §56.2：`openspec/changes/archive/` 属**历史记录**，**原文保留 + 追加勘误段**
+   （已在本轮回填提交中追加到该 `design.md` 末尾），**不就地改写**、**不改任何决策**。
+   **教训**：「引用代码常量的散文句」与代码之间要有一条交叉核对，**归档前的最后一读**正是做这件事的时机。
