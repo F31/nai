@@ -3,6 +3,7 @@
 //! derived from controlled rules, never from model self-report, and zero
 //! values never mean pass, granted permission or authorization.
 pub mod agent;
+pub mod assembly;
 pub mod guard;
 pub mod harness;
 pub mod memory;
