@@ -96,21 +96,69 @@ function isSeparator(cells) {
   return cells.every(cell => /^:?-{2,}:?$/.test(cell));
 }
 
-/// 从 `lines` 的 `heading` 处向后取第一张表（遇到第一个空行即止），再取表后的首个非空行。
-function sectionTable(lines, headingPredicate) {
+/// ATX 标题的层级；非标题返回 0。
+///
+/// `\s*\S` 同时接受 `### 57.3 …` 与 `###57.3 …`（本模块的章节谓词写的是 `^#+\s*NN\b`，
+/// 两者都要认），而拒绝只有井号、后面什么都没有的行。
+function headingLevel(line) {
+  const match = /^(#{1,6})\s*\S/.exec(line);
+  return match ? match[1].length : 0;
+}
+
+/// 从 `headingPredicate` 命中的标题处，在**该节自己的范围内**取第一张表，再取表后的首个非空行。
+///
+/// **搜索域必须封闭**（W79）：朴素写法「向后找第一张表」在**表不在本节内**时（被删、被挪、
+/// 或被一个更浅的标题挡开）会取到**别人**的表，而且返回值形状与成功时一模一样。实测：一段
+/// 「§57.3 标题在、本节内无表、后面跟着 §57.9 的一张表」的文本会让 `parseReleaseLines`
+/// 返回 `found = true`、`errors = []`，并把 §57.9 的行当成 §57.3 自己的行。
+///
+/// 边界按**标题层级**定：`[标题行, 下一个层级 ≤ 该标题的行)`。层级更深的标题（`####`）**不**截断
+/// 本节——写成「遇到任何标题就停」会把子标题误当节界，于是本节里明明有表却报「本节内无表」，
+/// 那是**假阳性**方向。（V3.10 当前无 `####`，故这半条语义由合成存根验证。）
+///
+/// 三种情形**必须分开**，因为它们的错因不同、修法也不同：
+/// - `{found: false}`：该节标题不存在（章节号被改指）；
+/// - `{found: true, hasTable: false}`：章节在，但**本节内没有表**；
+/// - `{found: true, hasTable: true, rows, after}`：解析成功。
+/// 把后两者合成一个（「解析出的表为空」）会让上层**用错误的措辞定位**：§57.3 会去报「计数行为空」，
+/// §51.3 会去报「declares 0 capability packs」。
+///
+/// **谓词命中行 MUST 是标题**（否则 `level` 为 0、搜索域退化）。三个调用点都写 `^#+\s*NN\b`，
+/// 该前提由 `tests/registry.test.mjs` 对真实正文的断言兜底（`level === 3` 且 `tableStart` 落在域内）。
+export function sectionTable(lines, headingPredicate) {
   const start = lines.findIndex(headingPredicate);
   if (start === -1) return {found: false};
+  const level = headingLevel(lines[start]);
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    const next = headingLevel(lines[index]);
+    if (next !== 0 && next <= level) {
+      end = index;
+      break;
+    }
+  }
   let index = start + 1;
-  while (index < lines.length && !isTableLine(lines[index])) index += 1;
+  while (index < end && !isTableLine(lines[index])) index += 1;
+  if (index >= end) return {found: true, hasTable: false, level, start, end};
+  const tableStart = index;
   const rows = [];
-  while (index < lines.length && isTableLine(lines[index])) {
+  while (index < end && isTableLine(lines[index])) {
     const cells = cellsOf(lines[index]);
     if (cells && !isSeparator(cells)) rows.push(cells);
     index += 1;
   }
   // 表头行（第一行）保留在结果里，由调用方跳过。
-  while (index < lines.length && lines[index].trim() === '') index += 1;
-  return {found: true, rows, after: index < lines.length ? lines[index].trim() : ''};
+  while (index < end && lines[index].trim() === '') index += 1;
+  return {
+    found: true,
+    hasTable: true,
+    rows,
+    after: index < end ? lines[index].trim() : '',
+    level,
+    start,
+    end,
+    tableStart,
+  };
 }
 
 /// 解析 §48.5 的家族索引表：`| 系列 | 范围 | 位置 |`。
@@ -121,6 +169,14 @@ export function parseFamilyIndex(text) {
   const table = sectionTable(lines, line => /^#+\s*48\.5\b/.test(line));
   if (!table.found) {
     return {found: false, families: new Map(), familiesInOrder: [], errors: ['§48.5 heading not found']};
+  }
+  if (!table.hasTable) {
+    return {
+      found: false,
+      families: new Map(),
+      familiesInOrder: [],
+      errors: ['§48.5 has no table inside its section'],
+    };
   }
   const families = new Map();
   const familiesInOrder = [];
@@ -159,6 +215,17 @@ export function parseReleaseLines(text) {
       labelsSeen: [],
       rowLabels: [],
       errors: ['§57.3 heading not found'],
+    };
+  }
+  if (!table.hasTable) {
+    return {
+      found: false,
+      lines: new Map(),
+      counts: new Map(),
+      total: null,
+      labelsSeen: [],
+      rowLabels: [],
+      errors: ['§57.3 has no table inside its section'],
     };
   }
   const errors = [];
@@ -208,8 +275,9 @@ export function parseReleaseLines(text) {
 /// （它是「为什么可以后置」的那句话，是给人读的）。表的**后一段**给出互补的一半：
 /// 一个编号要么是被后置的能力包，要么是调用 LLM 的前提。两者相交即分界判据被破坏。
 ///
-/// **不读 §51.2**：§51.2 是散文、没有表格，而 `sectionTable` 取的是「标题之后第一张表」
-/// ——对无表章节调用它会静默取到 §51.3 的表。故分界判据的 R1 那一侧取自 §51.3 自己的尾段。
+/// **不读 §51.2**：§51.2 是散文、没有表格。自 W79 起 `sectionTable` 的搜索域被封闭在本节内，
+/// 故对 §51.2 取表得到的是 `hasTable: false`（而不是**静默取到 §51.3 的表**——那正是 W79 修掉的
+/// 行为）。分界判据的 R1 那一侧因此取自 §51.3 自己的尾段，不取自 §51.2。
 export function parseCapabilityPacks(text) {
   const lines = text.split('\n');
   const table = sectionTable(lines, line => /^#+\s*51\.3\b/.test(line));
@@ -221,6 +289,16 @@ export function parseCapabilityPacks(text) {
       overlaps: [],
       retained: new Set(),
       errors: ['§51.3 heading not found'],
+    };
+  }
+  if (!table.hasTable) {
+    return {
+      found: false,
+      rows: [],
+      union: new Set(),
+      overlaps: [],
+      retained: new Set(),
+      errors: ['§51.3 has no table inside its section'],
     };
   }
   const errors = [];

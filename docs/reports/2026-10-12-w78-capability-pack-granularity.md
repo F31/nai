@@ -138,6 +138,13 @@ cargo xtask check --profile full   →  EXIT=0   （首次即绿，4m18s）
 `ok 22 - §51.3 parses to a partition …`、`ok 23 - a pack row that shrinks …`、
 `ok 24 - the boundary between packs and R1-retained discipline …`。
 
+> **勘误段（W79 追加）**：上面的「92 = 74 `Running` + 18 `Doc-tests`」**多算了一个**——
+> `74` 里含 cargo 的包装行 `     Running \`…nai-xtask.exe check --profile full\``，它不是测试目标。
+> W79 以完整门控日志复核（`^test result:` **91** 行；`^     Running ` 74 行 = **1 包装行 + 73 目标**）
+> ⇒ 正确值是 **91 = 73 + 18**，与 W71 当时记的 91（73 + 18）一致；
+> **`860 passed / 0 failed` 不变**，「数字不变」这条旁证因此**依然成立**（它本来靠 `passed`，不靠目标数）。
+> 原文保留（§56.2 历史记录 = 原文 + 勘误段）。
+
 与 W77 对比**门控这次一次就过**（W77 跑了七次）。差别不在运气：本轮**没有任何 Rust 改动**，
 `E:/nai-build-target` 是**热的**，`cargo test` 无需再链接任何测试二进制
 ——上一次那些红（`LNK1104`、`E0463`、`rlib format`）全部发生在**需要链接**的路径上。
@@ -174,6 +181,11 @@ openspec validate --all --strict --archived   →  75 passed / 0 failed
 2. **§51.2 刻意未读**：§51.2 是散文、没有表格，而 `sectionTable` 取的是「标题之后第一张表」
    ⇒ 对 §51.2 调用它会**静默取到 §51.3 的表**。分界判据的 R1 那一侧因此取自 §51.3 自己的尾段。
    这条限制写进 ADR 0056 遗留 2 与 AGENTS.md，**不靠记性绕开**。
+
+   > **勘误段（W79 / ADR 0057 追加）**：本条描述的「静默取到邻节的表」是 **W78 当时的实际行为**
+   > ——当时它**只靠文档维持**。**W79 已把 `sectionTable` 的搜索域封闭在本节内**：三态分开具名，
+   > MUST NOT 回落到邻节的表；且「§51.2 本节内无表」这条**前提**已由 `tests/registry.test.mjs`
+   > **断言**。本条的判断（刻意不读 §51.2）**不变**，理由从记性变成了判据。原文保留。
 3. **`CAPABILITY_PACK_IDS` 仍是手写数组**（未改为从正文生成）：生成方向反了会引入依赖环，
    且「断言 ≠ 生成」——本轮的判据正是拿它与正文比对。若要真正生成，**MUST** 先解决
    `registry.mjs` ↔ `baseline.mjs` 的依赖方向（ADR 0056 遗留 4）。

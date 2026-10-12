@@ -15,6 +15,8 @@ import {
   readBaseline,
   parseBaseline,
   parseCapabilityPacks,
+  parseReleaseLines,
+  sectionTable,
   reconcile,
   pointerErrors,
   declaredBaselineName,
@@ -1001,5 +1003,105 @@ test('the boundary between packs and R1-retained discipline is asserted from bot
     ),
     'a pack whose reason is unwritten must be named even when the table has the wrong shape',
   );
+});
+
+// ── W79 · 节界：按章节号取表的搜索域 MUST 封闭在本节内 ─────────────────────
+//
+// `sectionTable` 是三个解析器（§48.5／§51.3／§57.3）共同的地基。朴素写法「向后找第一张表」
+// 在**表不在本节内**时（被删、被挪、或被一个更浅的标题挡开）取到的是**别人**的表，而且返回值
+// 形状与成功时一模一样。实测：一段「§57.3 标题在、本节内无表、后面跟着 §57.9 的一张表」的文本
+// 会让 `parseReleaseLines` 返回 `found = true`、`errors = []`，把 §57.9 的行当成 §57.3 自己的行。
+// ⇒ W78 那句「§51.2 刻意未读（它是散文、无表）」因此**只靠文档与记性**维持，不是一条判据。
+
+/// 三张被解析的表：节号 → 生产代码里用的那个章节谓词。
+const PARSED_TABLES = [
+  ['48.5', /^#+\s*48\.5\b/],
+  ['51.3', /^#+\s*51\.3\b/],
+  ['57.3', /^#+\s*57\.3\b/],
+];
+
+test('a section is searched inside its own bounds, never in a neighbour’s table', () => {
+  // ① 真实正文：三张表都落在**本节边界内**，且谓词命中的确实是标题（`level` 非 0）。
+  // 边界若被收得过紧（例如把标题行本身当成节界），下面三条会**同时**报「本节内无表」
+  // ——这就是这条判据的非空洞性。
+  const lines = baseline.text.split('\n');
+  for (const [number, predicate] of PARSED_TABLES) {
+    const table = sectionTable(lines, line => predicate.test(line));
+    assert.equal(table.found, true, `§${number} heading must be found`);
+    assert.equal(table.hasTable, true, `§${number} must hold its table inside its own bounds`);
+    assert.equal(table.level, 3, `§${number} is a level-3 heading in V3.10`);
+    assert.ok(
+      table.tableStart > table.start && table.tableStart < table.end,
+      `§${number}'s table must lie strictly inside [${table.start}, ${table.end})`,
+    );
+  }
+
+  // ② 合成：本节无表、下一节有表 ⇒ MUST 具名报「本节内无表」，MUST NOT 借用下一节的表。
+  const borrow = [
+    '### 57.3 发布线汇总（收缩后，正本）',
+    '',
+    '本节刻意没有表格（模拟表被删、或被一个更浅的标题挡开）。',
+    '',
+    '### 57.9 另一节',
+    '',
+    '| 线 | 验收 |',
+    '| --- | --- |',
+    '| Slice-0 | S01–S04 |',
+    '',
+    '计数：`slice_0` 4 = **4**',
+    '',
+  ].join('\n');
+  const borrowed = parseReleaseLines(borrow);
+  assert.equal(borrowed.found, false, 'a section without a table of its own must not read as parsed');
+  assert.equal(borrowed.lines.size, 0, "a neighbour's table MUST NOT be adopted");
+  assert.deepEqual(borrowed.errors, ['§57.3 has no table inside its section']);
+});
+
+test('a deeper heading inside a section does not cut it short', () => {
+  // 边界按**层级**定：`####` 不截断本节。写成「遇到任何标题就停」时第一条立刻红
+  // ——本节里明明有表，却报「本节内无表」，那是**假阳性**方向。
+  const deeper = [
+    '### 57.3 发布线汇总（收缩后，正本）',
+    '',
+    '#### 57.3.1 细节',
+    '',
+    '| 线 | 验收 |',
+    '| --- | --- |',
+    '| Slice-0 | S01–S04 |',
+    '',
+    '计数：`slice_0` 4 = **4**',
+    '',
+  ].join('\n');
+  const parsed = parseReleaseLines(deeper);
+  assert.equal(parsed.found, true, 'a deeper heading must not end the section');
+  assert.deepEqual([...parsed.lines.get('slice_0')], ['S01', 'S02', 'S03', 'S04']);
+  assert.deepEqual(parsed.errors, [], 'the count line after the table must still be read');
+
+  // 而**同级**的标题确实截断：同一张表落到 `###` 之后就取不到了。
+  const sibling = parseReleaseLines(deeper.replace('#### 57.3.1 细节', '### 57.9 另一节'));
+  assert.equal(sibling.found, false);
+  assert.deepEqual(sibling.errors, ['§57.3 has no table inside its section']);
+});
+
+test('a prose section has no table of its own, and that premise is asserted', () => {
+  // W78 的规格**刻意不读 §51.2**，理由是「它是散文、没有表格」。本轮把这条理由从**记性**
+  // 变成**会被检查的前提**：给 §51.2 加一张表，这条断言就红——那正是应该回去重读
+  // ADR 0056 遗留 2 的时刻。（§57.5 选它作第二个样本，是因为它的下一节 `## 58` 恰好带着两张表，
+  // 正是「邻节有表」这种最容易借错的形状。）
+  const lines = baseline.text.split('\n');
+  const prose = [
+    ['51.2', sectionTable(lines, line => /^#+\s*51\.2\b/.test(line))],
+    ['57.5', sectionTable(lines, line => /^#+\s*57\.5\b/.test(line))],
+  ];
+  for (const [number, table] of prose) {
+    assert.equal(table.found, true, `§${number} heading must exist`);
+    assert.equal(
+      table.hasTable,
+      false,
+      `§${number} is prose: a table added there must fail this, and the neighbour's table must not be adopted`,
+    );
+  }
+  // 前提的另一半：§51.3 的表**确实**被读到了，否则上一条可能只是「什么都没解析出来」。
+  assert.equal(parseCapabilityPacks(baseline.text).rows.length, 8);
 });
 
