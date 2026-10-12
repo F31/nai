@@ -1,7 +1,7 @@
 # admission-registry Specification
 
 ## Purpose
-建立唯一的机器可读验收注册表，作为 V3.9 发布线（Slice-0/R1/R2/R3/实验/能力包）的单一事实源；自建 D01–D14 到新验收编号的映射与回填规则，落实 ADR 0015 对基线文本内部矛盾的勘误裁决，保证后续任务卡、认证与报告使用同一套编号且旧编号不再新增。
+建立唯一的机器可读验收注册表，作为**当前基线**发布线（Slice-0/R1/R2/R3/实验/能力包）的单一事实源；自建 D01–D14 到新验收编号的映射与回填规则，落实 ADR 0015 对基线文本内部矛盾的勘误裁决，保证后续任务卡、认证与报告使用同一套编号且旧编号不再新增。
 
 ## Requirements
 
@@ -14,7 +14,7 @@
 - **THEN** 注册表校验失败，不进入后续切片任务
 
 #### Scenario: Missing release line
-- **WHEN** 某验收项缺少合法 release_line 或线号与 V3.9 §16 裁决不符
+- **WHEN** 某验收项缺少合法 release_line 或线号与 V3.10 §16 裁决不符
 - **THEN** 校验失败并给出可读原因
 
 ### Requirement: Honest backfill mapping with traceable evidence
@@ -39,7 +39,8 @@
 
 ### Requirement: Registry covers every baseline acceptance family
 
-注册表 SHALL 覆盖基线（V3.7 §16 与 §39.5、V3.9 §48.5、V3.9 §51.3 与 §57.3）定义的**全部**验收家族——`S`/`R`/`A`/`B`/`O`/`P`/`M`/**`H`**/`X`。
+注册表 SHALL 覆盖基线（`§16` 与 `§39.5`、`§48.5`、`§51.3` 与 `§57.3`；`§` 引用按**当前基线**解析——
+版本号只在 `docs/design.md` 与最新基线 ADR 处声明）定义的**全部**验收家族——`S`/`R`/`A`/`B`/`O`/`P`/`M`/**`H`**/`X`。
 基线把某编号体系段列为验收时，其条目 MUST 全部登记在 `tests/registry.yaml`；
 **「尚未开始」MUST 以 `pending` 表达，MUST NOT 以之为由省略条目**——在册与测得是两个不同的陈述。
 校验 SHALL 拒绝不属这些家族的编号（例如从既有条目拆分出的 `B01a`），
@@ -49,8 +50,8 @@
 
 #### Scenario: A baseline family is entirely absent
 
-- **WHEN** 基线把某家族定义为验收编号体系的一部分（如开放平台与技能市场的 M01–M18，见 V3.7 §37.5/§38.10；
-  或智能体 Harness 与开放互操作的 H01–H18，见 V3.9 §48.5），而 `tests/registry.yaml` 未登记其中任何条目
+- **WHEN** 基线把某家族定义为验收编号体系的一部分（如开放平台与技能市场的 M01–M18，见 §37.5/§38.10；
+  或智能体 Harness 与开放互操作的 H01–H18，见 §48.5），而 `tests/registry.yaml` 未登记其中任何条目
 - **THEN** 注册表视为不完整，`cargo xtask check --registry` MUST 失败并指出缺失的编号
 
 #### Scenario: A gap inside a registered family
@@ -72,8 +73,8 @@
 
 ### Requirement: Release lines are declared, and the capability pack is never a first-release gate
 
-发布线 SHALL 为 `slice_0`/`r1`/`r2`/`r3`/`experimental`/**`capability_pack`** 六条（V3.9 §51.1）。
-`capability_pack` 的条目集合 MUST **恰为** **M01–M18 与 H05–H14、H16**（共 **29** 条，V3.9 §51.3、§57.3）。
+发布线 SHALL 为 `slice_0`/`r1`/`r2`/`r3`/`experimental`/**`capability_pack`** 六条（V3.10 §51.1）。
+`capability_pack` 的条目集合 MUST **恰为** **M01–M18 与 H05–H14、H16**（共 **29** 条，V3.10 §51.3、§57.3）。
 首版门槛（`slice_0`/`r1`/`r2`）与 `capability_pack` MUST **互不相交**——即 **INV-33**：
 默认组合不依赖能力包，首版门槛内的每一条验收 MUST 在**未安装任何能力包**时可判定。
 集合缺一条、混入归属外的编号，或任一能力包 id 落在首版门槛线上，校验 MUST 失败并**同时给出 id 与当前所在线**。

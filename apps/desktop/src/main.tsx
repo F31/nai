@@ -129,7 +129,7 @@ function App() {
       </section>
       <p>本界面不提供开播、恢复自动或模式切换。桌面壳的形态与边界已裁决（Tauri 2；ADR 0046），
         但<strong>壳体尚未构建</strong>：受保护 IPC 未接线，真实设备与平台 SDK 未接。</p>
-      <p>设计基线：V3.9 · 统一内核 · 按需插件 · LLM / TTS API</p>
+      <p>设计基线：V3.10 · 统一内核 · 按需插件 · LLM / TTS API</p>
     </main>
   );
 }

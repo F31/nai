@@ -7,7 +7,7 @@ test('registry.yaml is machine-readable and internally consistent', async () => 
   const catalogIds = await readCatalogIds();
   const errors = validateRegistry(registry, catalogIds);
   assert.deepEqual(errors, []);
-  // Cover V3.9 §16 + §30.4 + §48.5 + §51.3 + §57.3 acceptance families and
+  // Cover V3.10 §16 + §30.4 + §48.5 + §51.3 + §57.3 acceptance families and
   // release lines.
   assert.ok(registry.acceptance.length >= 87, 'expected >=87 acceptance items');
   assert.ok(registry.mapping.d01_to_d14.D14, 'expected D14 mapping');
@@ -17,7 +17,7 @@ test('registry.yaml is machine-readable and internally consistent', async () => 
   // Every family the baseline defines as a complete range must be registered in
   // full. The extension/marketplace family M (§37.5, §38.10) is not optional —
   // ADR 0042 decision 4 left it unregistered once and the omission was recorded
-  // as a defect. The harness family H (V3.9 §40-§47, §48.5) starts from that
+  // as a defect. The harness family H (V3.10 §40-§47, §48.5) starts from that
   // lesson rather than repeating it: "not started" reads as `pending`, never as
   // a missing row.
   const byId = new Map(registry.acceptance.map(a => [a.id, a]));
@@ -26,11 +26,11 @@ test('registry.yaml is machine-readable and internally consistent', async () => 
       assert.ok(byId.has(n), `baseline acceptance ${n} is not registered`);
     }
   }
-  // The V3.9 scope split has to be readable, not just asserted in prose: the
+  // The V3.10 scope split has to be readable, not just asserted in prose: the
   // pack line holds exactly the §51.3 set, and none of those ids sits on a
   // first-release line (INV-33).
   const packLine = registry.acceptance.filter(a => a.release_line === 'capability_pack').map(a => a.id);
-  assert.equal(packLine.length, 29, 'expected the V3.9 §51.3 capability-pack set');
+  assert.equal(packLine.length, 29, 'expected the V3.10 §51.3 capability-pack set');
   for (const id of ['M01', 'M18', 'H05', 'H14', 'H16']) {
     assert.ok(packLine.includes(id), `${id} must be on the capability_pack line`);
   }
@@ -80,7 +80,7 @@ test('the capability-pack split cannot be emptied, promoted, or filled with stra
   const registry = await readRegistry();
   const catalogIds = await readCatalogIds();
   // Promoting a pack id back onto a first-release line is exactly the drift
-  // V3.9 closed: before this round M01-M18 were counted as R1 acceptance, which
+  // V3.10 closed: before this round M01-M18 were counted as R1 acceptance, which
   // is where the "first release is too wide" reading came from.
   const promoted = structuredClone(registry);
   promoted.acceptance.find(item => item.id === 'M01').release_line = 'r1';
@@ -96,7 +96,7 @@ test('the capability-pack split cannot be emptied, promoted, or filled with stra
   demoted.acceptance.find(item => item.id === 'H17').release_line = 'capability_pack';
   assert.ok(
     validateRegistry(demoted, catalogIds).some(
-      error => error.includes('outside the V3.9 §51.3 set') && error.includes('H17'),
+      error => error.includes('outside the V3.10 §51.3 set') && error.includes('H17'),
     ),
     'a non-pack id on the capability_pack line must be reported',
   );

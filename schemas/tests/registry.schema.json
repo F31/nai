@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nai.dev/schemas/tests/registry.schema.json",
   "title": "Admission registry",
-  "description": "Machine-readable acceptance registry (V3.9 §16 + §48.5 + §51.1 + §57.3 + ADR 0015 errata). release_line is a separate field from acceptance IDs so R01..R11 and R1/R2/R3 never collide. `capability_pack` (V3.9) marks designed-but-not-committed scope: enabling it is when it accrues run, acceptance and maintenance cost.",
+  "description": "Machine-readable acceptance registry (V3.10 §16 + §48.5 + §51.1 + §57.3 + ADR 0015 errata). release_line is a separate field from acceptance IDs so R01..R11 and R1/R2/R3 never collide. `capability_pack` (V3.9) marks designed-but-not-committed scope: enabling it is when it accrues run, acceptance and maintenance cost.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "release_lines", "acceptance", "mapping"],

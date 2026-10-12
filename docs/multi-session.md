@@ -1,6 +1,6 @@
 # 多会话隔离与容量准入
 
-本页说明 A11（V3.9 §30.4，§12.3）在代码里的落点：**Pro 多会话时每会话状态如何互不可见**，以及**资源不足时如何拒绝新会话而不伤在跑的**。实现位于 `crates/nai-kernel/src/multiplex.rs`（kernel 层，只依赖 contracts）。
+本页说明 A11（V3.10 §30.4，§12.3）在代码里的落点：**Pro 多会话时每会话状态如何互不可见**，以及**资源不足时如何拒绝新会话而不伤在跑的**。实现位于 `crates/nai-kernel/src/multiplex.rs`（kernel 层，只依赖 contracts）。
 
 ```bash
 cargo xtask test --suite kernel

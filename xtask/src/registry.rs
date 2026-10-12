@@ -3,6 +3,6 @@ use std::path::Path;
 
 pub fn check(root: &Path) -> Result<(), String> {
     node(root, &["--test", "tests/registry.test.mjs"])?;
-    println!("admission registry check passed (V3.9 acceptance + D01-D14 mapping)");
+    println!("admission registry check passed (V3.10 acceptance + D01-D14 mapping)");
     Ok(())
 }
