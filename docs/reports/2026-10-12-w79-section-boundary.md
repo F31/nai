@@ -159,7 +159,14 @@ openspec validate --all --strict --archived   →  77 passed / 0 failed
 
 ## 七、CI 复核
 
-（待回填）
+**run `38274211352`（`head_sha = 0c1c674`，与本轮推送 SHA 一致）= `success`**（run_number **88**，双平台绿）。
+
+观测方式沿用既有纪律：**单次低频查询**（不轮询），每次带**唯一查询参数**破坏代理缓存、
+`Cache-Control: no-cache`，并**回读 `head_sha` 与本次推送比对**；`curl` 带 `--tlsv1.2 --tls-max 1.2`
+（schannel 与 TLS 1.3 握手失败，W77 实测）。本轮共 4 次查询：`in_progress`（15:59）→ `in_progress`（16:10）
+→ `success`（16:11 更新，16:15 读到）。
+
+**按观测轮终止约定**：本条回填提交会触发一个新的 run，**该 run 不再回填**——否则无限递推。
 
 ## 八、遗留
 
