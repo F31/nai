@@ -263,3 +263,10 @@ created, so it cannot replace this one」。补写后两条口径均为 0 failed
 5. **同一轮里能同时用上前面几轮的教训，是因为它们被写进了 design 而不是只有报告**
    （§3.5 的样本设计直接引 W67 的教训，§3.2 的内容守卫直接引 W66 的）。
    **教训落在 design 里才在下一次开工时生效。**
+
+---
+
+> **勘误（W74 / ADR 0052）**：本报告把 `cargo xtask schema --check` 在本机报 `EBUSY` 归因为
+> 「主机对**node 自旋 node**」的限制。W74 实测本机 node 对 `git`、`process.execPath`、`cmd.exe`、
+> `sh` **一律**报 `EBUSY` ⇒ 正确表述是「**宿主禁止 node 派生任何子进程**」。**结论与处置不变**。
+> 原文按历史记录保留。

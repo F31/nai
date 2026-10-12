@@ -6,7 +6,7 @@ import descriptors from 'ts-proto-descriptors';
 import { compileFromFile } from 'json-schema-to-typescript';
 import openapiTS, { astToString } from 'openapi-typescript';
 import SwaggerParser from '@apidevtools/swagger-parser';
-import { validators, readJson, validateSemantic } from './validation.mjs';
+import { validators, readJson, validateSemantic, TS_GENERATED_SOURCES } from './validation.mjs';
 
 const require = createRequire(import.meta.url);
 const stage = process.argv[2];
@@ -35,8 +35,11 @@ for (const file of response.file) {
   const names = [...descriptor.enumType, ...descriptor.messageType].map(type => type.name).sort();
   exports.push(`export { ${names.join(', ')} } from './${file.name.replace(/\.ts$/, '.js')}';`);
 }
-const jsonSources = ['catalog/catalog', 'config/runtime', 'config/provider', 'config/backup', 'config/binding-plan', 'config/avatar-2d', 'plugin/manifest', 'plugin/model', 'plugin/avatar', 'plugin/ui'];
-for (const source of jsonSources) {
+// The list of schemas that get a TypeScript counterpart lives in
+// `validation.mjs`, next to the list of schemas that get validated. A second
+// copy here would be a list that can disagree with the first one in silence;
+// the guard in `tests/contracts/schema.test.mjs` pins both ends (ADR 0052).
+for (const source of TS_GENERATED_SOURCES) {
   const output = `config/${path.basename(source)}.ts`;
   await mkdir(path.join(ts, 'config'), { recursive: true });
   await writeFile(path.join(ts, output), await compileFromFile(`schemas/${source}.schema.json`, {

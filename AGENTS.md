@@ -1073,7 +1073,7 @@ W65 做的是**范围重排与升基线**，不是加能力。产出 `docs/直�
 **761 passed / 0 failed**（**与 W57 完全相同**——本轮零 Rust 测试改动，数字不变即「未误改代码」的旁证）；
 `check-deps` **19 包**；注册表输出串已为 **V3.9**。**本机限制（如实登记）**：`cargo xtask schema --check` 在本机
 **跑不了**——`generate.mjs` 内部的 `spawnSync(process.execPath, …)` 报 **`EBUSY`**（managed 与 system node 均复现，
-属**主机/沙箱**对「node 自旋 node」的限制，非仓库缺陷）；契约零漂移改以**结构性理由**取证
+属**主机/沙箱**对「**node 派生任何子进程**」的限制（W74 实测 `git`/`cmd.exe`/`sh` 同样 `EBUSY`），非仓库缺陷）；契约零漂移改以**结构性理由**取证
 （生成器输入仅 `schemas/catalog/capabilities.json` 与 `schemas/{config,plugin}/*.schema.json`，实测均未改动，
 `crates/`、`packages/` 亦无改动），并由 **CI 的独立步骤**兜底。
 见 docs/adr/0048-design-baseline-v39.md、docs/直播数字人 + 智能体系统技术方案 V3.9.md、
@@ -1482,3 +1482,54 @@ W72 的 **21 组**注入继续有效（同一文件）。实测消费报告：**
 台账**仍为空**（W71 已把三处偏差全部收录）。见
 docs/adr/0051-registry-schema-wiring-and-ledger-lifetime.md、docs/reports/2026-10-12-w73-registry-schema-and-ledger-lifetime.md、
 openspec/changes/archive/2026-10-12-w73-registry-schema-and-ledger-lifetime/。
+
+### W74 消费守卫的边界（扫描集、语言闭包、来源自负其责与单一生成清单）
+
+W74 从 W73 遗留第 2 条（`generate.mjs` 用**模板路径**消费 10 份 schema、其清单是 `AJV_SOURCES` 的子集）出发，
+**核实之后改了计划**：核实把 W73 消费守卫的**三条声称里的两条证伪了**，并牵出另外两条缺陷与一条宿主约束。
+
+**F1（非空洞断言自我满足）**：守卫写着「三条派生来源各自都被行使」，判据是「`platforms` 与 `registry`
+都在消费集合里」——而这两份**都在 `AJV_SOURCES` 里**，所以那句话**只由 Ajv 清单独自满足**。
+实测把 `for (const pattern of [rust, literal])` 改成 `[rust]`：**照旧 13/13 绿**
+⇒ 整条路径字面量来源可以被删除，而**没有任何断言变红**。
+
+**F2（扫描的是工作区，不是仓库；最严重）**：放一个**未跟踪**的 `.tmp-fake-consumer.mjs`（内含一句
+schema 路径字面量），一个真孤儿立刻被洗绿（`13/13 pass`）。「有一份 schema 没人读」是本守卫**唯一**
+要抓的东西，而一句临时脚本就能让它失效。
+
+**F3（两个缺陷互相掩盖）**：`CODE_EXTENSIONS` 缺 `.yaml`/`.js`，而
+`stripCommentLines(text, file.endsWith('.yml'))` 只对 `.yml` 用 `#` 注释语法。**唯一暴露该缺陷的文件**
+（`tests/registry.yaml`，正是 W73 写下「注释里的路径不算消费」那句注释的地方）**因为扩展名叫 `.yaml`
+而根本不在扫描集内**——两个缺陷各自躲在对方的盲区里。
+
+**F4（第二处清单）**：`validation.mjs` 的 `AJV_SOURCES`（12 条）与 `generate.mjs` 的 `jsonSources`（10 条）
+**互不校验**；生成物 `packages/contracts-ts/src/generated/config/*.ts` **已入库**
+⇒「生成面 ⊆ 校验面」这条**可以判定却无人判**。
+
+**F5（宿主约束，并订正一处归因）**：本机 node 对 `git`（裸名与绝对路径）、`process.execPath`、`cmd.exe`、
+`sh` **一律 `EBUSY`** ⇒ **宿主禁止 node 派生任何子进程**（原先把 `schema --check` 的 `EBUSY` 归因为
+「node 自旋 node」，本轮订正：AGENTS.md 就地订正、五份历史报告追加勘误段）。
+⇒「用 `git ls-files` 取仓库文件集」这条路**不可行**，F2 只能靠**结构性收敛**处理。
+
+**裁定与交付**（[ADR 0052](docs/adr/0052-consumption-guard-boundaries.md)）：
+
+1. **扫描集是结构性的**：从仓库根递归、**跳过所有以 `.` 开头的目录**，再叠加**具名排除**（恰 4 条：
+   `node_modules`/`target`/`graphify-out`/`dist`），且**每条 MUST 被 `.gitignore` 忽略**——
+   「它不是仓库的一部分」就是那条理由，`.gitignore` 就是证据。**无害性断言**：跳 dot 段与不跳 dot 段的
+   **消费集合 MUST 相同**（实测唯一差异是 `.github/workflows/foundation.yml`，其非注释行不含任何 schema 路径）。
+2. **语言闭包**：`CODE_LANGUAGES`（扩展名 → 注释语言）**派生** `CODE_EXTENSIONS` ⇒「新增可扫描扩展名」与
+   「声明它的注释语言」是**同一件事**；`.yml` 与 `.yaml` MUST 一起覆盖。
+3. **来源自负其责**：来源收为**两条**（Ajv 清单、Rust `include_str!`），判据从「各自都被行使」换成
+   **独有覆盖**——Ajv 独有 **5 份**（含 `tests/registry`、`platform-matrix/platforms`）、
+   Rust 独有**恰 1 份**（`config/upgrade-package`）。**路径字面量来源被移除**：它零独有覆盖，
+   且是唯一会读任意扩展名文件的来源（F2 的**全部入口**）；按「假阳性与假阴性不对称，永远选安全方向」取舍。
+4. **生成面与校验面共用一份清单**：`validation.mjs` 导出 `TS_GENERATED_SOURCES`，`generate.mjs` **删除**
+   硬编码 `jsonSources` 改为导入；断言 **生成面 ⊆ 校验面 + basename 互异 + 生成目录与清单双向相等**
+   ＋防回退（生成器源码 MUST 引用该清单）。这**闭合了 ADR 0051 遗留 2** 自己提出的修正方向。
+
+**验证**：`node --test tests/contracts/schema.test.mjs` **15/15**（13 → 15）；**六组注入逐项开火并还原**，
+外加重现 W73 的洗绿攻击：**真孤儿 + 未跟踪的伪造消费者 ⇒ 现在仍被抓**（W73 时被洗白）。
+**门控路径不变**（新断言写在既有测试文件里，已经在 `engineering_checks` 内）⇒ **不需要新的 xtask 步骤**；
+**不改基线正文、不改任何 schema 文件、不改任何 `acceptance`、不改 Rust 行为**，生成物**零漂移**。见
+docs/adr/0052-consumption-guard-boundaries.md、docs/reports/2026-10-12-w74-consumption-guard-integrity.md、
+openspec/changes/archive/2026-10-12-w74-consumption-guard-integrity/。

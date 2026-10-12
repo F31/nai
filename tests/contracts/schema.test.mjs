@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
-import { validators, readJson, validateSemantic, apiDocument, AJV_SOURCES } from '../../scripts/contracts/validation.mjs';
+import { readFile, readdir, writeFile, mkdir, rm } from 'node:fs/promises';
+import path from 'node:path';
+import { validators, readJson, validateSemantic, apiDocument, AJV_SOURCES, TS_GENERATED_SOURCES } from '../../scripts/contracts/validation.mjs';
 
 const check = await validators();
 const runtime = await readJson('tests/fixtures/contracts/runtime.json');
@@ -142,21 +143,51 @@ test('OpenAPI preserves permissions, session revision/epoch, actual ACK and defe
   assert.equal(api.security[0].bearerAuth.length,0);
 });
 
-/// ── 每份 schema 要么被执行体消费，要么被具名声明（ADR 0051 决策 3）──────────────
+/// ── 每份 schema 要么被执行体消费，要么被具名声明（ADR 0051 决策 3 / ADR 0052）────────
 ///
 /// 「有一份 schema」MUST NOT 被当作「有一份契约」：`schemas/tests/registry.schema.json`
 /// 与 `schemas/rag-golden/case-set.schema.json` 都曾在**无人读取**的状态下存在。
 /// 判据必须是**派生**的（扫源码），否则守卫会变成一张会过期的清单。
+///
+/// w74 修了三处边界，每一处原先都是一个洞：
+/// ① **扫描集的形状**——从仓库根递归，**跳过所有以 `.` 开头的目录**（结构性规则），
+///    再叠加一份**具名排除**（每条 MUST 被 `.gitignore` 忽略）。原先枚举 `SKIP_DIRS`
+///    字符串，那是第二张会过期的清单（`build`/`.venv` 两条既不在 `.gitignore` 也不在磁盘上）。
+/// ② **语言闭包**——`CODE_EXTENSIONS` 由 `CODE_LANGUAGES` **派生**，于是「新增一个可扫描
+///    扩展名」与「声明它的注释语言」是**同一件事**。原先两者分居两处，`.yaml` 与 `.yml`
+///    各漏一半，而**唯一暴露这点的那份文件**恰好因为扩展名叫 `.yaml` 而不在扫描集里。
+/// ③ **每条来源自负其责**——判据从「三条来源各自都被行使」换成**独有覆盖**。原先那句断言
+///    只由 Ajv 清单满足，删掉整条路径字面量来源，守卫照旧全绿 ⇒ 它不是守卫，是装饰。
 
-const SKIP_DIRS = new Set(['node_modules', '.git', 'target', 'graphify-out', 'dist', 'build', '.venv']);
-const CODE_EXTENSIONS = ['.rs', '.mjs', '.ts', '.tsx', '.yml'];
+/// 可扫描扩展名 → 注释语言。**扫描集从这张表派生**，所以「扫了某个扩展名却没声明它的
+/// 注释语言」在结构上不存在。`.yml` 与 `.yaml` 是同一种语言，MUST 一起出现。
+const CODE_LANGUAGES = new Map([
+  ['.rs', 'slash'],
+  ['.mjs', 'slash'],
+  ['.js', 'slash'],
+  ['.ts', 'slash'],
+  ['.tsx', 'slash'],
+  ['.yml', 'hash'],
+  ['.yaml', 'hash'],
+  ['.sh', 'hash'],
+]);
+const CODE_EXTENSIONS = [...CODE_LANGUAGES.keys()];
 
-async function codeFiles(dir = '.', out = []) {
+/// 具名排除：**为什么这个目录不算仓库内容**。证据就是 `.gitignore`——一个目录被声明为
+/// 「不是仓库的一部分」，把它排除掉就不可能藏起仓库内容。⇒ 排除不是豁免，是有证据的陈述。
+const EXCLUDED_DIRS = ['node_modules', 'target', 'graphify-out', 'dist'];
+
+async function codeFiles(dir = '.', extensions = CODE_EXTENSIONS, skipDotDirs = true, out = []) {
   for (const entry of await readdir(dir, {withFileTypes: true})) {
     if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(entry.name)) continue;
-      await codeFiles(`${dir}/${entry.name}`, out);
-    } else if (CODE_EXTENSIONS.some(extension => entry.name.endsWith(extension))) {
+      // 结构性规则：`.` 开头的目录一视同仁跳过（含 `.git`——版本控制内部目录，
+      // 不是工作区内容）。不跳的那一半只额外放行 `.git` 之外的 dot 目录，好让
+      // 「排除无害」那条断言有个可以对比的参照。
+      if (skipDotDirs && entry.name.startsWith('.')) continue;
+      if (!skipDotDirs && entry.name === '.git') continue;
+      if (EXCLUDED_DIRS.includes(entry.name)) continue;
+      await codeFiles(`${dir}/${entry.name}`, extensions, skipDotDirs, out);
+    } else if (extensions.some(extension => entry.name.endsWith(extension))) {
       out.push(`${dir.replace(/^\.\//, '')}/${entry.name}`);
     }
   }
@@ -173,48 +204,71 @@ async function schemasOnDisk(dir = 'schemas', out = []) {
   return out.sort();
 }
 
-/// 被消费的 schema ⇒ 它的消费来源。三条派生口径，MUST NOT 写死清单。
+/// 被消费的 schema ⇒ 它的消费来源。来源是**具名的两条**，MUST NOT 写死清单。
 ///
 /// **本文件自己被排除在扫描之外**：它**按设计**要逐个写出 schema 路径（声明例外、构造注入），
-/// 若把这些字面量算作「消费」，判据就会**自我满足**——`NAMED_EXCEPTIONS` 里的那份会被判成
-/// 「既被消费又是例外」，而 `runtime` 之类的注入样本也会凭空获得一个假的消费者。
-/// 排除之后，`upgrade-package` 只能由 Rust 的 `include_str!` 找到、其余由校验器清单与
-/// 真正的加载点找到 ⇒ 三条来源**各自都被行使**。
+/// 若把这些线索算作「消费」，判据就会**自我满足**——`NAMED_EXCEPTIONS` 里的那份会被判成
+/// 「既被消费又是例外」，而注入样本也会凭空获得一个假的消费者。
+///
+/// w74 移除了原先的第三条来源（脚本/工作流里的**路径字面量**）。实测它**零独有覆盖**：它找到的
+/// 每一份也都在 Ajv 清单里，删掉它没有任何断言变红。而它是**唯一**会读任意扩展名文件的来源
+/// ⇒ 一个未跟踪的临时脚本就能凭空造出消费者，把一个真孤儿洗绿。按「假阳性与假阴性不对称，
+/// 永远选安全方向」，这条来源被移除：将来若真有 schema 只被某个脚本加载，它会被报成孤儿
+/// （假阳性，安全），加进 `AJV_SOURCES` 即可。
 const SELF = 'tests/contracts/schema.test.mjs';
+const AJV_SOURCE_LABEL = 'the Ajv validator list';
+const RUST_SOURCE_LABEL = 'the Rust-side include_str!';
+const RUST_INCLUDE = /include_str!\(\s*"(?:\.\.\/)*schemas\/([A-Za-z0-9_./-]+\.schema\.json)"/g;
 
-async function consumedSchemas() {
+async function consumptionOf(files) {
   const consumed = new Map();
   const add = (schema, why) => {
     if (!consumed.has(schema)) consumed.set(schema, []);
-    consumed.get(schema).push(why);
+    if (!consumed.get(schema).includes(why)) consumed.get(schema).push(why);
   };
   // ① 校验器清单（`schemas/<值>.schema.json`）——注意它不含 `.schema.json` 后缀，
   //    所以文本扫描抓不到它，必须由导出清单派生。
-  for (const source of Object.values(AJV_SOURCES)) add(`schemas/${source}.schema.json`, 'the Ajv validator list');
+  for (const source of Object.values(AJV_SOURCES)) add(`schemas/${source}.schema.json`, AJV_SOURCE_LABEL);
   // ② Rust 侧 `include_str!`。`config/upgrade-package` 只在这里被消费。
-  const rust = /include_str!\(\s*"(?:\.\.\/)*schemas\/([A-Za-z0-9_./-]+\.schema\.json)"/g;
-  // ③ 脚本/工作流里的路径字面量。
-  const literal = /['"`]schemas\/([A-Za-z0-9_./-]+\.schema\.json)['"`]/g;
-  for (const file of await codeFiles()) {
+  for (const file of files) {
     if (file === SELF) continue;
-    const text = stripCommentLines(await readFile(file, 'utf8'), file.endsWith('.yml'));
-    for (const pattern of [rust, literal]) {
-      pattern.lastIndex = 0;
-      for (const match of text.matchAll(pattern)) add(`schemas/${match[1]}`, file);
-    }
+    const text = stripCommentLines(await readFile(file, 'utf8'), CODE_LANGUAGES.get(path.extname(file)));
+    RUST_INCLUDE.lastIndex = 0;
+    for (const match of text.matchAll(RUST_INCLUDE)) add(`schemas/${match[1]}`, RUST_SOURCE_LABEL);
   }
   return consumed;
 }
 
-/// 去掉**整行**注释后再扫描。
+/// 只有某条来源能找到的 schema。空集 ⇒ 这条来源对判据**零贡献**：
+/// 删掉它不会有任何断言变红，那它就不是守卫，是装饰。
+function exclusiveTo(consumed, label) {
+  return [...consumed]
+    .filter(([, reasons]) => reasons.length === 1 && reasons[0] === label)
+    .map(([schema]) => schema)
+    .sort();
+}
+
+/// 每条来源 MUST 自负其责：至少找到一份**只有它能找到**的 schema。
+function sourceErrors(consumed, labels) {
+  return labels
+    .filter(label => exclusiveTo(consumed, label).length === 0)
+    .map(label => `${label} finds no schema that no other source finds; a source with no exclusive hit changes no verdict — remove it or merge it`);
+}
+
+/// 去掉**整行**注释后再扫描。注释语言由扩展名在 `CODE_LANGUAGES` 里的条目给出——
+/// 按**语言**判断，不是按「这一份文件的扩展名是不是恰好叫 `.yml`」。
 ///
-/// 不这么做，守卫会在**危险的方向**上变瞎：注释里提一句 schema 路径就会被算成「有消费者」，
+/// 原先那个写法让 `.yaml` 落到「没有 `#` 注释语法」一侧；而 `tests/registry.yaml` 那份文件
+/// 又恰好因为扩展名不在扫描集里，连「被误判」都轮不上——两个缺陷就这样互相掩盖，
+/// 而它正是 W73 写下「注释里的路径不算消费」那句注释的地方。
+///
+/// 不这么做的后果是守卫在**危险的方向**上变瞎：注释里提一句 schema 路径就会被算成「有消费者」，
 /// 于是删掉真正的加载点、只留一句注释，孤儿照样判不出来——而「没人读的契约」正是本守卫
 /// 唯一要抓的东西。整行口径是**成比例**的取舍：它挡住最常见的形态（文档注释/块注释引用路径），
 /// 不去冒险解析行尾注释与字符串里的 `//`（`https://` 会因此被误切）。行尾注释仍算消费，
 /// 这个假阳性方向是安全的：它只会让孤儿**更难**被漏掉，不会凭空造出消费者。
-function stripCommentLines(text, hashComments) {
-  const marker = hashComments ? /^\s*(\/\/|\*|\/\*|#)/ : /^\s*(\/\/|\*|\/\*)/;
+function stripCommentLines(text, language) {
+  const marker = language === 'hash' ? /^\s*(\/\/|\*|\/\*|#)/ : /^\s*(\/\/|\*|\/\*)/;
   return text
     .split('\n')
     .filter(line => !marker.test(line))
@@ -251,20 +305,55 @@ function coverageErrors(all, consumed, exceptions) {
   return errors;
 }
 
+/// 具名排除 MUST 付得起理由：**证据是 `.gitignore`**——一个目录被声明为「不是仓库的
+/// 一部分」，把它排除掉就不可能藏起仓库内容。缺了这条证据，排除就退化成豁免。
+function exclusionErrors(dirs, ignoreLines) {
+  const ignored = ignoreLines.map(line => line.trim().replace(/^\//, '').replace(/\/$/, ''));
+  return dirs
+    .filter(dir => !ignored.includes(dir))
+    .map(dir => `${dir} is excluded from the scan but .gitignore does not ignore it — an exclusion must say why it cannot hide repository content`);
+}
+
+/// 生成面与校验面 MUST 读同一份清单：生成面 ⊆ 校验面、basename 互异、生成目录与清单**双向相等**。
+function generatorErrors(sources, validated, generated) {
+  const errors = [];
+  for (const source of sources) {
+    if (!validated.includes(source)) errors.push(`${source} is generated into TypeScript but is not in the validator list`);
+  }
+  const basenames = sources.map(source => path.posix.basename(source));
+  if (new Set(basenames).size !== basenames.length) errors.push('two schemas would write the same generated file');
+  const expected = [...new Set(basenames)].sort();
+  for (const name of expected) {
+    if (!generated.includes(name)) errors.push(`the list declares ${name} but the generated directory has no ${name}.ts`);
+  }
+  for (const name of generated) {
+    if (!expected.includes(name)) errors.push(`the generated directory has ${name}.ts but the list does not declare it`);
+  }
+  return errors;
+}
+
 test('every schema under schemas/ is enforced by an execution path or named with a reason', async () => {
   const all = await schemasOnDisk();
-  const consumed = await consumedSchemas();
+  const files = await codeFiles();
+  const consumed = await consumptionOf(files);
   assert.deepEqual(coverageErrors(all, consumed, NAMED_EXCEPTIONS), []);
-  // 非空洞：扫描必须真的走完了三条来源，而不是「什么都没找到所以没有孤儿」。
+  assert.deepEqual(sourceErrors(consumed, [AJV_SOURCE_LABEL, RUST_SOURCE_LABEL]), []);
+  // 非空洞：扫描必须真的走完了全部来源与全部可扫描扩展名，而不是「什么都没找到所以没有孤儿」。
   assert.ok(all.length > 1, `expected more than one schema on disk, found ${all.length}`);
   assert.ok(
-    consumed.has('schemas/config/upgrade-package.schema.json'),
-    'the Rust-side consumption (include_str!) must be found — otherwise the scan only covers Node',
+    files.includes('tests/registry.yaml'),
+    'the scan must reach .yaml, not just .yml — the two are one language',
+  );
+  // 每条来源的自负其责，**逐条钉死成员**（不是「非空就行」——那正是原先那句空洞断言的形式）。
+  assert.deepEqual(
+    exclusiveTo(consumed, RUST_SOURCE_LABEL),
+    ['schemas/config/upgrade-package.schema.json'],
+    'the Rust-side include_str! must be the only source that finds upgrade-package',
   );
   assert.ok(
-    consumed.has('schemas/platform-matrix/platforms.schema.json') &&
-      consumed.has('schemas/tests/registry.schema.json'),
-    'the literal scan and the validator list must both contribute',
+    exclusiveTo(consumed, AJV_SOURCE_LABEL).includes('schemas/tests/registry.schema.json') &&
+      exclusiveTo(consumed, AJV_SOURCE_LABEL).includes('schemas/platform-matrix/platforms.schema.json'),
+    'the Ajv validator list must be the only source for the registry and platform-matrix schemas',
   );
   assert.ok(
     NAMED_EXCEPTIONS.size > 0 && all.includes([...NAMED_EXCEPTIONS.keys()][0]),
@@ -302,23 +391,143 @@ test('every schema under schemas/ is enforced by an execution path or named with
     ),
     'an exception naming a schema that does not exist must fail',
   );
-  // 注入五：注释里的路径 MUST NOT 被算作消费——否则「删掉真正的加载点、只留一句注释」就能骗过守卫，
+  // 注入五：**来源自负其责**。把 Ajv 清单整条抽掉 ⇒ 两侧同时开火：它自己变成「零独有覆盖」，
+  // 且那 5 份只有它能找到的 schema 立刻变成孤儿。
+  const noAjv = new Map(
+    [...consumed]
+      .map(([schema, reasons]) => [schema, reasons.filter(reason => reason !== AJV_SOURCE_LABEL)])
+      .filter(([, reasons]) => reasons.length > 0),
+  );
+  assert.ok(
+    sourceErrors(noAjv, [AJV_SOURCE_LABEL, RUST_SOURCE_LABEL]).some(error => error.includes(AJV_SOURCE_LABEL)),
+    'a source with no exclusive hit must be named',
+  );
+  assert.ok(
+    coverageErrors(all, noAjv, NAMED_EXCEPTIONS).some(
+      error => error.includes('schemas/tests/registry.schema.json') && error.includes('nobody reads'),
+    ),
+    'the schemas only the Ajv list finds must become orphans when it is dropped',
+  );
+  // 注入六：把 Rust 来源整条抽掉 ⇒ `upgrade-package` 变成孤儿（它只由 Rust 找到）。
+  const noRust = new Map(
+    [...consumed]
+      .map(([schema, reasons]) => [schema, reasons.filter(reason => reason !== RUST_SOURCE_LABEL)])
+      .filter(([, reasons]) => reasons.length > 0),
+  );
+  assert.ok(
+    coverageErrors(all, noRust, NAMED_EXCEPTIONS).some(
+      error => error.includes('schemas/config/upgrade-package.schema.json') && error.includes('nobody reads'),
+    ),
+    'dropping the Rust source must leave upgrade-package an orphan',
+  );
+  // 注入七：注释里的路径 MUST NOT 被算作消费——否则「删掉真正的加载点、只留一句注释」就能骗过守卫，
   // 而这正是本守卫唯一要抓的东西（没人读的契约）。同时确认代码里的路径仍然算数。
   const pathLike = /schemas\/[A-Za-z0-9_./-]+\.schema\.json/;
   assert.ok(
-    !pathLike.test(stripCommentLines('// schemas/rag-golden/case-set.schema.json', false)),
+    !pathLike.test(stripCommentLines('// schemas/rag-golden/case-set.schema.json', 'slash')),
     'a path mentioned in a whole-line comment must not count as a consumer',
   );
   assert.ok(
-    !pathLike.test(stripCommentLines(' * see schemas/rag-golden/case-set.schema.json', false)),
+    !pathLike.test(stripCommentLines(' * see schemas/rag-golden/case-set.schema.json', 'slash')),
     'a path mentioned in a block-comment continuation must not count either',
   );
   assert.ok(
-    !pathLike.test(stripCommentLines('# schemas/rag-golden/case-set.schema.json', true)),
+    !pathLike.test(stripCommentLines('# schemas/rag-golden/case-set.schema.json', 'hash')),
     'a path mentioned in a workflow comment must not count either',
   );
   assert.ok(
-    pathLike.test(stripCommentLines("await readFile('schemas/catalog/catalog.schema.json', 'utf8')", false)),
+    !pathLike.test(stripCommentLines('# schemas/rag-golden/case-set.schema.json', CODE_LANGUAGES.get('.yaml'))),
+    'the .yaml extension must resolve to the hash comment language through the table',
+  );
+  assert.ok(
+    pathLike.test(stripCommentLines("await readFile('schemas/catalog/catalog.schema.json', 'utf8')", 'slash')),
     'a path used in code must still count as a consumer',
+  );
+});
+
+test('the scan set is structural, paid for, and closed over the extensions it reads', async () => {
+  // ① 结构性规则 ＋ 具名排除是**无害**的：跳 dot 段与不跳 dot 段的消费集合 MUST 相同。
+  //    这就是排除理由的可执行形式——若某个 dot 目录里藏着真消费，两侧立刻不等。
+  const withoutDot = await codeFiles('.', CODE_EXTENSIONS, true);
+  const withDot = await codeFiles('.', CODE_EXTENSIONS, false);
+  assert.deepEqual([...await consumptionOf(withDot)], [...await consumptionOf(withoutDot)]);
+  // 非空洞：这个「相等」必须对输入**敏感**。加一个含 `include_str!` 的文件，集合必须变化
+  // （探针写进 `dist/`，它本身是被排除的目录，不会污染别的断言）。
+  const probe = 'dist/.w74-scan-probe.rs';
+  await mkdir('dist', { recursive: true });
+  await writeFile(probe, 'const S: &str = include_str!("../schemas/config/w74-probe.schema.json");');
+  try {
+    const perturbed = await consumptionOf([...withoutDot, probe]);
+    assert.ok(
+      perturbed.has('schemas/config/w74-probe.schema.json'),
+      'a file that includes a schema must register as a consumer',
+    );
+    assert.notDeepEqual([...perturbed], [...await consumptionOf(withoutDot)]);
+  } finally {
+    await rm(probe, { force: true });
+  }
+  // ② 具名排除 MUST 付得起理由：`.gitignore` 声明「这个目录不是仓库的一部分」。
+  const ignoreLines = (await readFile('.gitignore', 'utf8')).split('\n');
+  assert.deepEqual(exclusionErrors(EXCLUDED_DIRS, ignoreLines), []);
+  // 注入：加一条不在 `.gitignore` 里的排除 ⇒ 立刻被指名（否则「排除」退化成豁免）。
+  assert.ok(
+    exclusionErrors([...EXCLUDED_DIRS, 'vendor'], ignoreLines).some(error => error.includes('vendor')),
+    'an exclusion that .gitignore does not account for must fail',
+  );
+  // ③ 语言闭包：扫描集**由语言表派生** ⇒「新增扩展名」与「声明它的注释语言」是同一件事。
+  for (const extension of CODE_EXTENSIONS) {
+    assert.ok(CODE_LANGUAGES.has(extension), `${extension} is scanned without a declared comment language`);
+  }
+  assert.equal(CODE_LANGUAGES.get('.yml'), CODE_LANGUAGES.get('.yaml'), '.yml and .yaml are one language');
+  // 注入：把 `.yaml` 从语言表里删掉 ⇒ 扫描集不再收录 `tests/registry.yaml`——
+  // 原实现里唯一暴露扩展名缺口的地方，正是这份文件。
+  const withoutYaml = CODE_EXTENSIONS.filter(extension => extension !== '.yaml');
+  assert.ok(
+    !(await codeFiles('.', withoutYaml, true)).includes('tests/registry.yaml'),
+    'dropping .yaml from the language table must drop tests/registry.yaml from the scan',
+  );
+});
+
+test('the generator and the validator read one list of schemas', async () => {
+  const validated = Object.values(AJV_SOURCES);
+  const generated = (await readdir('packages/contracts-ts/src/generated/config'))
+    .filter(name => name.endsWith('.ts'))
+    .map(name => name.slice(0, -3))
+    .sort();
+  assert.deepEqual(generatorErrors(TS_GENERATED_SOURCES, validated, generated), []);
+  // 非空洞：清单与生成目录都必须真的非空，否则上面那句会退化成「两边都是空的」。
+  assert.ok(TS_GENERATED_SOURCES.length > 0, 'the generator list must not be empty');
+  assert.ok(generated.length > 0, 'the generated directory must not be empty');
+  // 防回退：生成器 MUST 从这份清单派生，而不是自己再抄一份。
+  const generator = await readFile('scripts/contracts/generate.mjs', 'utf8');
+  assert.ok(generator.includes('TS_GENERATED_SOURCES'), 'the generator must derive its list from validation.mjs');
+  assert.ok(!/const\s+jsonSources\s*=/.test(generator), 'the generator must not keep a second copy of the list');
+  // 注入一：清单里有、生成目录里没有 ⇒ 双向对齐开火。
+  assert.ok(
+    generatorErrors([...TS_GENERATED_SOURCES, 'config/w74-probe'], validated, generated).some(
+      error => error.includes('declares w74-probe') && error.includes('no w74-probe.ts'),
+    ),
+    'a schema in the list with no generated file must fail',
+  );
+  // 注入二：生成目录里有、清单里没有 ⇒ 另一个方向开火。
+  assert.ok(
+    generatorErrors(TS_GENERATED_SOURCES, validated, [...generated, 'w74-probe']).some(
+      error => error.includes('w74-probe.ts') && error.includes('does not declare it'),
+    ),
+    'a generated file the list does not declare must fail',
+  );
+  // 注入三：某份 schema 只生成不校验 ⇒「生成面 ⊆ 校验面」开火。
+  assert.ok(
+    generatorErrors([...TS_GENERATED_SOURCES, 'config/w74-probe'], validated, [...generated, 'w74-probe']).some(
+      error => error.includes('config/w74-probe') && error.includes('not in the validator list'),
+    ),
+    'a schema generated but never validated must fail',
+  );
+  // 注入四：两条 schema 撞 basename ⇒ 生成物会互相覆盖，必须失败。
+  assert.ok(
+    generatorErrors([...TS_GENERATED_SOURCES, 'other/runtime'], validated, generated).some(error =>
+      error.includes('same generated file'),
+    ),
+    'two schemas writing the same generated file must fail',
   );
 });
