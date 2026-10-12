@@ -250,7 +250,47 @@ cargo 判定「源未变更」而**复用上一次注入的二进制**。
 
 #### 实测结论（push 后低频单查询）
 
-<!--CI-->
+提交 `a9f9aea` 触发的 `foundation` 工作流 run **`38200252090`** 总体结论为 **failure**，
+两个 job **结论相反**：
+
+| job | 结论 | 失败步骤 |
+| --- | --- | --- |
+| foundation (ubuntu-24.04) | **failure** | 步骤 10「Complete engineering foundation（portable steps + frontend workspace）」 |
+| foundation (windows-latest) | completed success | — |
+
+**定位路径**（匿名可读）：`GET /repos/F31/nai/actions/runs/38200252090/jobs` 看到步级结论
+→ `GET /repos/F31/nai/commits/a9f9aea/check-runs` 拿到 check-run id `114651849160`
+→ `GET /repos/F31/nai/check-runs/114651849160/annotations` 读到失败内容。
+
+ubuntu 上唯一失败的是 **`apps/engine/tests/engine.rs` 的
+`killed_keeper_is_halted_by_the_engine_and_the_chain_survives`**
+（`engine.rs:289`，`test result: FAILED. 5 passed; 1 failed`）：
+`assert!(revoked, "a killed keeper must revoke output authority")` 超时——该测试 `kill -9` 掉 keeper 后，
+用 **10 秒**窗口轮询引擎是否把 `generation_epoch` 由 `"0"` 置为 `"1"`（`engine.rs:273–289`）。
+
+**为什么判定它**不是**本轮引入**（四条独立证据）：
+
+1. `git diff --name-only a9f9aea~1 a9f9aea -- apps/` **无输出**——本轮 14 个改动文件全在
+   `crates/nai-kernel/`、`openspec/`、`tests/registry.yaml` 与文档，**没有一行落在 `apps/`**；
+2. **同一提交**在 `windows-latest` 上 **completed success**（含 `apps/engine` 的全部测试）；
+3. 本机（Windows）`check --profile full` **EXIT=0**，该测试也在其中运行并通过；
+4. 失败的是**时序断言**（10 秒窗口内等异步撤权），与「装配判定面」无因果关系。
+
+⇒ 这是**既已登记的 ubuntu 间歇失败族**（`docs/reports/` 记录 W48 修过 halt/drill 竞态）的又一次出现，
+不是本轮回归。**但本报告不宣称「CI 已绿」**——`a9f9aea` 的 CI **确实红了**，
+本机门控绿不等于 CI 绿（这是本轮第二次被这条纪律救到）。
+
+- **待办（本轮新登记，不在 W69 范围内）**：`killed_keeper_is_halted_by_the_engine_and_the_chain_survives`
+  在 ubuntu runner 上可超时（10 秒撤权窗口）⇒ W48 的修复**未完全**消除该类竞态。
+  下一次触及时应按 W48 铁律「**构造使顺序成立**」加固，而不是放宽断言。
+  本轮**不改 `apps/engine`**（超出 H01/H02 范围）。
+
+**观测纪律**：取结论用了 2 次低频查询（`run` + `jobs`，各带唯一 `cb` 与 `Cache-Control: no-cache`，
+回读 `head_sha` = `a9f9aea` 与本次推送一致）；随后为诊断又用 2 次（`check-runs` + `annotations`），
+全程 **4 次请求**（匿名配额 60/小时）。
+
+**观测轮终止约定**（照 W57 先例）：本条「回填 CI 结论」的提交**其自身 run 不再写入本报告**，
+否则无限递推；其 run 只做一次核对，结果记入当日工作日志。
 
 ## 五、验收侧：为什么 H01/H02 是 `pending` 而不是 `implemented`
 
@@ -270,8 +310,13 @@ cargo 判定「源未变更」而**复用上一次注入的二进制**。
 2. **运行时接线**：把预算初值回放调优成定值并写 ADR；把装配记录追加进哈希链；把 §47.2 六类回归接进 H16。
 3. **未触碰**：A12（卡外部投入）、O01／O02／O05（需真实候选来源与生产接线）、
    B01／O03／O04（需 100 题集、真机、干净 Windows 安装等外部投入）、M 系列与 H05–H14／H16（能力包）。
-4. **未改基线文本**、**未改任何既有 `status`**、未改 `docs/直播数字人 + 智能体系统技术方案 V3.9.md`。
-5. **W67 的两项待确认仍在**：影子模式在 R1 无落点；「通过 §47.2 的回归」是全六类还是相关类。
+4. **未改基线文本**、**未改任何既有 `status`**、未改 `docs/直播数字人 + 智能体系统技术方案 V3.9.md`、
+   **未改 `apps/` 下任何文件**。
+5. **CI 侧新登记一项间歇失败**：`apps/engine/tests/engine.rs` 的
+   `killed_keeper_is_halted_by_the_engine_and_the_chain_survives` 在 ubuntu runner 上可超时
+   （详见 §4.3 的实测结论）。**本轮只登记、不修**（超出 H01/H02 范围），
+   列入下一轮候选；处置原则仍按 W48 铁律「构造使顺序成立」，**不放宽断言**。
+6. **W67 的两项待确认仍在**：影子模式在 R1 无落点；「通过 §47.2 的回归」是全六类还是相关类。
 
 ## 七、方法论教训
 
