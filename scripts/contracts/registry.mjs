@@ -36,7 +36,13 @@ const COMPLETE_FAMILIES = new Map([
 /// split is asserted here rather than described in prose. Three distinct
 /// failures are caught: a pack id sitting on a first-release line, a pack id
 /// left off the pack line, and a non-pack id parked on the pack line.
-const CAPABILITY_PACK_IDS = [
+///
+/// This list is a **hand-carried mirror of §51.3's table**, so on its own it can
+/// drift from the baseline it claims to quote — change §51.3 and nothing here
+/// notices. W78 closed that by having `baseline.mjs` parse the table and assert
+/// this constant equals the parsed union; the list is exported for exactly that
+/// check (ADR 0056).
+export const CAPABILITY_PACK_IDS = [
   ...Array.from({length: 18}, (_, index) => `M${String(index + 1).padStart(2, '0')}`),
   ...['H05', 'H06', 'H07', 'H08', 'H09', 'H10', 'H11', 'H12', 'H13', 'H14', 'H16'],
 ];

@@ -1,6 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { RELEASE_LINES } from './registry.mjs';
+import { RELEASE_LINES, CAPABILITY_PACK_IDS } from './registry.mjs';
 
 /// 冻结基线与在册状态的对账。
 ///
@@ -38,6 +38,25 @@ const RELEASE_LINE_LABELS = new Map([
   ['实验', 'experimental'],
   ['能力包', 'capability_pack'],
 ]);
+
+/// §51.3「能力包清单」表的形状，**照抄基线**（ADR 0056）。
+///
+/// 只钉「有几行」对**内容被改小**是瞎的：把 `M01–M12` 改成 `M01–M02` 而行的数量不变时，
+/// 只数行的断言照样通过（W66 的「钉条数还是钉内容」教训）。所以这里把**每行的标签与它声明的
+/// 编号**都写下来，解析结果 MUST 逐项相等。
+///
+/// 它**不是**「谁属于哪条发布线」的第二个副本——`tests/registry.yaml` 记的是发布线，
+/// 而「属于哪一个能力包」只存在于 §51.3 这一处；这张表是那份唯一事实的**断言**而非**镜像**。
+const CAPABILITY_PACK_ROWS = [
+  ['扩展与技能（含声明式技能）', 'M01–M12'],
+  ['市场客户端', 'M13–M18'],
+  ['意图识别', 'H05、H06'],
+  ['语义缓存', 'H07、H08'],
+  ['多步工具循环', 'H09、H10'],
+  ['MCP 适配', 'H11、H12'],
+  ['A2A', 'H13、H14'],
+  ['harness 黄金集', 'H16'],
+];
 
 /// 展开一格里的 id 记号：`R08–R10` ⇒ R08、R09、R10；`A12–A14` 同理；单点照收。
 ///
@@ -182,11 +201,62 @@ export function parseReleaseLines(text) {
   return {found: true, lines: declared, counts, total, labelsSeen, rowLabels, errors};
 }
 
+/// 解析 §51.3 的「能力包清单」：`| 能力包 | 验收 | 依据 |`，以及表后那段
+/// 「**保留在 R1 的基础纪律**」列出的编号（ADR 0056）。
+///
+/// **只读这三列里的前两列**：第二列是「这个包声明了哪些编号」；第三列只判非空
+/// （它是「为什么可以后置」的那句话，是给人读的）。表的**后一段**给出互补的一半：
+/// 一个编号要么是被后置的能力包，要么是调用 LLM 的前提。两者相交即分界判据被破坏。
+///
+/// **不读 §51.2**：§51.2 是散文、没有表格，而 `sectionTable` 取的是「标题之后第一张表」
+/// ——对无表章节调用它会静默取到 §51.3 的表。故分界判据的 R1 那一侧取自 §51.3 自己的尾段。
+export function parseCapabilityPacks(text) {
+  const lines = text.split('\n');
+  const table = sectionTable(lines, line => /^#+\s*51\.3\b/.test(line));
+  if (!table.found) {
+    return {
+      found: false,
+      rows: [],
+      union: new Set(),
+      overlaps: [],
+      retained: new Set(),
+      errors: ['§51.3 heading not found'],
+    };
+  }
+  const errors = [];
+  const rows = [];
+  for (const cells of table.rows.slice(1)) {
+    const label = cells[0].replace(/\*/g, '').trim();
+    const ids = expandIds(cells[1] ?? '');
+    if (ids.size === 0) {
+      errors.push(`§51.3 row ${label || '(unlabelled)'} declares no acceptance ids`);
+      continue;
+    }
+    rows.push({label, ids, basis: (cells[2] ?? '').replace(/\*/g, '').trim()});
+  }
+  // 划分：一个编号恰属一个能力包。并集对「同属两包」是瞎的（ADR 0056 决策 2）。
+  const seenAt = new Map();
+  const overlaps = [];
+  const union = new Set();
+  for (const row of rows) {
+    for (const id of row.ids) {
+      union.add(id);
+      if (seenAt.has(id)) overlaps.push({id, first: seenAt.get(id), second: row.label});
+      else seenAt.set(id, row.label);
+    }
+  }
+  // 表后那段「保留在 R1 的基础纪律」。它是**互补**的一侧，故非空性本身也是一条判据：
+  // 解析恒为空会让「互不相交」恒真——一条恒真的断言比没有断言更坏。
+  const retained = expandIds(table.after);
+  return {found: true, rows, union, overlaps, retained, errors};
+}
+
 /// 解析整份基线文档中与验收口径有关的两张表。
 export function parseBaseline(text) {
   const familyIndex = parseFamilyIndex(text);
   const releaseLines = parseReleaseLines(text);
-  return {familyIndex, releaseLines};
+  const capabilityPacks = parseCapabilityPacks(text);
+  return {familyIndex, releaseLines, capabilityPacks};
 }
 
 export async function readBaseline(root = '.') {
@@ -445,6 +515,79 @@ export function reconcile(registry, parsed, version) {
     }
     if (declaredFamilies.size === 0) {
       errors.push('§48.5 parsed to no families at all');
+    }
+  }
+  // ── ④ §51.3 能力包清单：划分（打包粒度）与三向集合一致 ────────────────
+  // 前三块都只到**集合**层：§57.3 声明「这些编号属于能力包线」，registry 与门控常量各记一份集合。
+  // 可 §51.3 说的是**每一个编号属于哪一个包**——那是划分，而集合层对划分是瞎的（ADR 0056）。
+  const packs = parsed.capabilityPacks;
+  errors.push(...packs.errors);
+  if (packs.found) {
+    // 依据非空：**逐行判，与行数无关**。若把它塞进下面的「行数相符」分支，则行数不符时
+    // 这条判据被短路——两件事本来互不依赖，短路会让「未被检查」看起来像「已通过」。
+    for (const row of packs.rows) {
+      if (row.basis === '') {
+        errors.push(
+          `§51.3 row ${row.label} has no basis; a pack whose reason is unwritten is a pack nobody reviewed`,
+        );
+      }
+    }
+    // 表形状：行数**与逐行内容**。只钉行数对「内容被改小」是瞎的。
+    const expectedRows = CAPABILITY_PACK_ROWS.map(([label, cell]) => ({label, ids: expandIds(cell)}));
+    const render = ids => [...ids].sort().join(', ');
+    if (packs.rows.length !== expectedRows.length) {
+      errors.push(
+        `§51.3 declares ${packs.rows.length} capability packs, expected ${expectedRows.length}`,
+      );
+    } else {
+      for (let index = 0; index < expectedRows.length; index += 1) {
+        const actual = packs.rows[index];
+        const expected = expectedRows[index];
+        if (actual.label !== expected.label) {
+          errors.push(
+            `§51.3 row ${index + 1} is labelled ${JSON.stringify(actual.label)}, expected ${JSON.stringify(expected.label)}`,
+          );
+        }
+        if (render(actual.ids) !== render(expected.ids)) {
+          errors.push(
+            `§51.3 row ${expected.label} declares ${render(actual.ids) || '(nothing)'}, expected ${render(expected.ids)}`,
+          );
+        }
+      }
+    }
+    // 划分判据：任一编号 MUST NOT 同时属于两个包。
+    for (const overlap of packs.overlaps) {
+      errors.push(
+        `§51.3 puts ${overlap.id} in both ${overlap.first} and ${overlap.second}; the pack split is a partition, not a union`,
+      );
+    }
+    // 分界判据：R1 保留段 MUST 非空，且与能力包并集不相交。
+    if (packs.retained.size === 0) {
+      errors.push(
+        '§51.3 lists no R1-retained discipline ids after its pack table, so the boundary criterion cannot be checked against anything',
+      );
+    }
+    const bothSides = [...packs.retained].filter(id => packs.union.has(id)).sort();
+    if (bothSides.length > 0) {
+      errors.push(
+        `§51.3 lists ${bothSides.join(', ')} as both a capability pack and R1-retained discipline`,
+      );
+    }
+    // 三向一致：§51.3 的并集 == 在册的能力包线 == 门控常量。
+    const packLine = measuredLines.get('capability_pack') ?? new Set();
+    const constant = new Set(CAPABILITY_PACK_IDS);
+    for (const [side, other] of [
+      ['tests/registry.yaml', packLine],
+      ['registry.mjs CAPABILITY_PACK_IDS', constant],
+    ]) {
+      const onlyBaseline = [...packs.union].filter(id => !other.has(id)).sort();
+      const onlyOther = [...other].filter(id => !packs.union.has(id)).sort();
+      if (onlyBaseline.length > 0 || onlyOther.length > 0) {
+        errors.push(
+          `§51.3's pack union disagrees with ${side}: only in §51.3: ${onlyBaseline.join(', ') || '(none)'}` +
+            `; only in ${side}: ${onlyOther.join(', ') || '(none)'}`,
+        );
+      }
     }
   }
   return errors;

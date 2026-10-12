@@ -8,11 +8,13 @@ import {
   ID_RE,
   RELEASE_LINES,
   STATUSES,
+  CAPABILITY_PACK_IDS,
 } from '../scripts/contracts/registry.mjs';
 import { validators } from '../scripts/contracts/validation.mjs';
 import {
   readBaseline,
   parseBaseline,
+  parseCapabilityPacks,
   reconcile,
   pointerErrors,
   declaredBaselineName,
@@ -870,3 +872,134 @@ test('no Rust source hides a second copy of the operation ceiling', () => {
     'a private shadow of Operation::CEILING is exactly the "second, drifting copy" that must not exist',
   );
 });
+
+// ── W78 · §51.3 能力包清单的打包粒度 ─────────────────────────────────────
+// 对账的前三块都只到**集合**层：§57.3 的「能力包」行、registry 的 `capability_pack` 行、门控常量，
+// 各记一份集合。可 §51.3 的八行说的是**每一个编号属于哪一个包**——那是**划分**。
+// 划分对集合层的断言是瞎的：`M05–M08` 同时属于两个包时，并集一模一样（ADR 0056 决策 2）。
+
+/// §51.3 表后「保留在 R1 的基础纪律」列出的编号（V3.10 正文）。
+/// 写在这里，是为了把「解析为空」与「解析结果变了」分开——两者都该失败，但原因完全不同。
+const R1_RETAINED = ['H01', 'H02', 'H03', 'H04', 'H15', 'H17', 'H18'];
+
+/// 一张最小的 §51.3 存根：用于单测**解析器本身**（不依赖仓库里那份正文）。
+const packStub = (rows, after) =>
+  ['### 51.3 能力包清单（本轮）', '', '| 能力包 | 验收 | 依据 |', '| --- | --- | --- |', ...rows, '', after, ''].join('\n');
+
+test('§51.3 parses to a partition of the capability-pack line, with a disjoint R1 half', async () => {
+  const registry = await readRegistry();
+  const packs = parseBaseline(baseline.text).capabilityPacks;
+  assert.equal(packs.found, true, '§51.3 heading must be found');
+  assert.deepEqual(packs.errors, []);
+  assert.equal(packs.rows.length, 8, '§51.3 declares eight capability packs');
+  assert.equal(packs.union.size, 29, 'the eight rows cover twenty-nine ids');
+  // 划分：没有编号同时属于两个包。
+  assert.deepEqual(packs.overlaps, [], 'the pack split is a partition, not a union');
+  // 三向一致：§51.3 的并集 == 在册的能力包线 == 门控常量。
+  const onPackLine = [
+    ...new Set(
+      (registry.acceptance ?? [])
+        .filter(item => item.release_line === 'capability_pack')
+        .map(item => item.id),
+    ),
+  ].sort();
+  assert.deepEqual([...packs.union].sort(), onPackLine);
+  assert.deepEqual(
+    [...new Set(CAPABILITY_PACK_IDS)].sort(),
+    [...packs.union].sort(),
+    'the gate constant mirrors §51.3, so it must equal the parsed union',
+  );
+  // 分界判据的另一侧：非空、且与能力包不相交。
+  assert.deepEqual(
+    [...packs.retained].sort(),
+    R1_RETAINED,
+    "§51.3's other half is the R1-retained discipline",
+  );
+  assert.deepEqual(
+    [...packs.retained].filter(id => packs.union.has(id)),
+    [],
+    'an id cannot be both a capability pack and R1-retained discipline',
+  );
+});
+
+test('a pack row that shrinks, or an id in two packs, is reported by name', async () => {
+  const registry = await readRegistry();
+  // 行数不变、内容被改小 —— 只钉行数的断言在这里是瞎的（W66 教训的第二次适用）。
+  const shrunk = mutated(
+    '| 扩展与技能（含声明式技能） | M01–M12 |',
+    '| 扩展与技能（含声明式技能） | M01–M02 |',
+  );
+  const shrunkErrors = against(registry, shrunk);
+  assert.ok(
+    shrunkErrors.some(
+      error =>
+        error.includes('§51.3 row 扩展与技能（含声明式技能） declares') &&
+        error.includes('M01, M02, expected') &&
+        error.includes('M03'),
+    ),
+    'a row that quietly drops ids must name the row and both sides',
+  );
+  assert.ok(
+    shrunkErrors.some(error => error.includes("§51.3's pack union disagrees with tests/registry.yaml")),
+    'the set-level check must fire as well, not only the row-level one',
+  );
+
+  // 并集看起来仍然完整，而某个编号已经属于两个包。
+  const overlapped = mutated(
+    '| harness 黄金集 | H16 |',
+    '| harness 黄金集 | H16 |\n| 影子包 | H09、H10 | 注入用 |',
+  );
+  assert.ok(
+    against(registry, overlapped).some(
+      error =>
+        error.includes('puts H09 in both 多步工具循环 and 影子包') &&
+        error.includes('partition, not a union'),
+    ),
+    'an id claimed by two packs must be reported with both pack labels',
+  );
+});
+
+test('the boundary between packs and R1-retained discipline is asserted from both sides', async () => {
+  const registry = await readRegistry();
+  const parsed = parseBaseline(baseline.text);
+  // 把一个编号从「保留在 R1 的基础纪律」挪进包行：两侧同时越界。
+  const movedH18 = mutated('| harness 黄金集 | H16 |', '| harness 黄金集 | H16、H18 |');
+  assert.ok(
+    against(registry, movedH18).some(
+      error => error.includes('lists H18 as both a capability pack and R1-retained discipline'),
+    ),
+    'the boundary criterion must be checked from both sides, not only from the pack side',
+  );
+
+  // 解析器本身：R1 那一侧为空集时，「互不相交」会恒真 ⇒ MUST 具名失败而不是静默通过。
+  const emptyHalf = parseCapabilityPacks(
+    packStub(['| harness 黄金集 | H16 | 后置 |'], '**保留在 R1 的基础纪律**：没有列出编号。'),
+  );
+  assert.equal(emptyHalf.retained.size, 0);
+  assert.ok(
+    against(registry, {...parsed, capabilityPacks: emptyHalf}).some(error =>
+      error.includes('lists no R1-retained discipline ids'),
+    ),
+    'a criterion that holds because nothing was parsed is worse than no criterion',
+  );
+
+  // 解析器本身：章节号被改 ⇒ 解析失败，MUST NOT 因为并集为空而通过。
+  const renamed = parseCapabilityPacks(
+    '### 51.9 改名了\n\n| 能力包 | 验收 | 依据 |\n| --- | --- | --- |\n| a | H16 | b |\n',
+  );
+  assert.equal(renamed.found, false);
+  assert.ok(renamed.errors.some(error => error.includes('§51.3 heading not found')));
+
+  // 解析器本身：依据为空 ⇒ 具名失败（「为什么可以后置」无人复核）。
+  // 这条判据**逐行判、与行数无关**，故存根只有一行也必须被抓住。
+  const noBasis = parseCapabilityPacks(
+    packStub(['| harness 黄金集 | H16 |  |'], '**保留在 R1 的基础纪律**（H01、H02）。'),
+  );
+  assert.ok(
+    against(registry, {...parsed, capabilityPacks: noBasis}).some(error =>
+      error.includes('§51.3 row harness 黄金集 has no basis'),
+    ),
+    'a pack whose reason is unwritten must be named even when the table has the wrong shape',
+  );
+});
+
