@@ -1609,3 +1609,53 @@ F2 首次出现章被改 ⇒ **两侧**章计数都报；F3 处置越出封闭�
 见 [ADR 0054](docs/adr/0054-pending-decisions-ledger.md)、
 [W76 报告](docs/reports/2026-10-12-w76-pending-decisions-ledger.md)、
 `openspec/changes/archive/2026-10-12-w76-pending-decisions-ledger/`。
+
+### W77 bring-up 预算的单一归属点（「一个预算一份定义」在跨 crate 场景的落实）
+
+**问题**：`crates/nai-control-api/src/tests.rs::seed_approval_store` 自造
+`Operation::new(Duration::from_secs(10))` 去跑 `Store::open`（全新数据根 + 全链迁移）——
+**预算与工作量不匹配**，而 **W75 在 CI 上的失败正落在该文件 `:364`**。
+
+**核实否掉了最直觉的修法**：`nai-runtime` **依赖** `nai-control-api`（`nai-runtime/Cargo.toml:17`）
+⇒ 反向引用 `nai_runtime::BRINGUP_OPERATION` 构成**依赖环**。而 `nai-storage` 是双方的共同依赖。
+
+**裁定**（[ADR 0055](docs/adr/0055-bringup-budget-single-home.md)）：
+
+1. **定义点归属「工作类别的执行者」**：bring-up 的执行者是 `Store::open`（在 `nai-storage`）
+   ⇒ `BRINGUP_OPERATION` **下移**到 `nai-storage`；`nai-runtime` 改 **re-export**
+   （`nai_runtime::BRINGUP_OPERATION` 仍可用，`apps/engine` 零改动）。
+2. **提取 `Operation::CEILING`**：它既是公开常量、也是 `new()` 的拒绝阈值
+   ⇒「bring-up 取 ADR 0004 上界」从**注释里的默契**变成**可判定的等式**。
+3. **`SHORT_OPERATION` 不上移**：它**只有一个消费者**；为不存在的问题造公共定义就是假契约（W73）。
+4. **同值可以不同名，但每个语义只有一个定义**：bring-up 用 `BRINGUP_OPERATION`，
+   演练/冒烟「用满上界」用 `Operation::CEILING`。把「数值相同」与「语义相同」分开——
+   否则 upgrade 的演练夹具会被迫自称 bring-up，那是**语义错位**，比重复更坏。
+
+**11 个复制位点（落在 9 个文件里）、本轮共改 14 个文件**：其中只有 **1 个是错的数值**（10 s），
+其余是**正确的数值、错误的位置**
+——所以本轮修的是**结构**，不是数字。最强的证据是 `live_provider_smoke.rs` 与 `golden_eval.rs`
+各有一个**私有 `const OPERATION_CEILING`**：那正是 `composition.rs` 注释所禁止的
+*"a second, drifting copy"* 的**活标本** ⇒ **「复制数值」与「复制定义」是两种复制，只有后者会漂移**。
+
+**判据（7 组非空洞注入全部按预期开火）**：
+
+- `nai-security`：`CEILING == 30s` ＋ `new(CEILING)` 成功 ＋ `new(CEILING + 1ms)` 失败
+  （**第一条必须把 30 s 写死**——只断言 `new(CEILING).is_ok()` 是**自指**的：`CEILING` 改小后
+  拒绝阈值跟着变小，检查照样通过。外部锚点是 ADR 0004）；
+- `nai-storage`：`BRINGUP_OPERATION == Operation::CEILING`；
+- `tests/registry.test.mjs`（**并入既有文件 ⇒ `engineering_checks` 零改动**）：
+  ① `pub const BRINGUP_OPERATION` 全仓**恰 1 处**且在 `crates/nai-storage/src/lib.rs`；
+  ② 定义行 MUST 引用 `CEILING`；③ `Operation::new(Duration::from_secs(30))` 字面量**恰 0 处**；
+  ④ `const OPERATION_CEILING` 私有影子**恰 0 处**。
+  扫描**剔除整行注释**、**只扫 `.rs`（因此读不到自己）**。
+
+**门控注意**：`portable` 只跑 `cargo test --workspace` 与 `cargo test -p nai-xtask --lib`
+⇒ **examples 不在其中**；本轮改了三个 example，**必须自己点名**跑一次
+`cargo clippy -p nai-provider-core -p nai-xtask --all-targets -- -D warnings`。
+
+**判据的边界如实登记**：它挡的是**已知的两种复制方式**（具名字面量、具名影子常量），
+不是「一切复制」——若有人新起一个别的名字的 30 s 常量，扫描抓不到。**这是边界，不是缺陷。**
+
+**不改基线正文、不改任何数值、不改任何行为、不新增依赖边。**
+见 [W77 报告](docs/reports/2026-10-12-w77-bringup-budget-single-home.md)、
+`openspec/changes/archive/2026-10-12-w77-bringup-budget-single-home/`。

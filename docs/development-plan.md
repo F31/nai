@@ -1003,6 +1003,25 @@ W76 从**「离方案设计和规划任务还有哪些未执行」**这个盘点
 见 [W76 报告](reports/2026-10-12-w76-pending-decisions-ledger.md)、
 `openspec/changes/archive/2026-10-12-w76-pending-decisions-ledger/`。
 
+**W77 修的是「一份基础定义被放在了错误的位置」**：`crates/nai-control-api/src/tests.rs::seed_approval_store`
+自造 `Operation::new(Duration::from_secs(10))` 去跑 `Store::open`（全新数据根 + 全链迁移，即 bring-up 工作量），
+而 **W75 在 CI 上的失败正落在该文件 `:364`**。最直觉的修法（引 `nai_runtime::BRINGUP_OPERATION`）被
+**依赖方向否掉**——`nai-runtime` **依赖** `nai-control-api`（`nai-runtime/Cargo.toml:17`），反向引用是**环**。
+裁定（[ADR 0055](adr/0055-bringup-budget-single-home.md)）：定义点归属**工作类别的执行者**而非首个受害者 ⇒
+`BRINGUP_OPERATION` **下移**到 `nai-storage`（`nai-runtime` 改 re-export，API 不变、`apps/engine` 零改动），
+并提取 `Operation::CEILING` 使「取上界」从注释里的默契变成可判定的等式；`SHORT_OPERATION` 因**只有一个消费者**
+而**上移被否**（为不存在的问题造公共定义就是假契约）。
+**11 个复制位点（落在 9 个文件里）、本轮共改 14 个文件，其中只有 1 个是错的数值**，其余是「**正确的数值、错误的位置**」——
+最强的证据是 `live_provider_smoke.rs` 与 `golden_eval.rs` 各有一个**私有 `const OPERATION_CEILING`**：
+那正是 `composition.rs` 注释所禁止的 *"a second, drifting copy"* 的**活标本**。
+判据 **7 组非空洞注入全部按预期开火**（Node 侧 5 + Rust 侧 2）；`tests/registry.test.mjs` **19 → 21**；
+另注意 `portable` **不编译 examples** ⇒ 三个 example 的改动必须用
+`cargo clippy -p nai-provider-core -p nai-xtask --all-targets` 自己点名。
+**不改基线正文、不改任何数值与行为、不新增依赖边。**
+见 [W77 报告](reports/2026-10-12-w77-bringup-budget-single-home.md)、
+[ADR 0055](adr/0055-bringup-budget-single-home.md)、
+`openspec/changes/archive/2026-10-12-w77-bringup-budget-single-home/`。
+
 下一主线：能在 portable 落地的机制项已全部完成（含 B02、O03、P01 的判定骨架与 O04 的设备侧、W36 的真实链路接入纪律、W37 的线上形状修正、
 W38 的桌面审批面/UI 层、W39 的攻击者可控输入面随机测试、W40 的 B01 判据+执行体、W41 的完整工程 profile（前端门控）与 W42 的 CI 接线、W49 的 O01 判定机制与 O05 呈现层、W52 的开放契约册与契约解析门控、W53 的显式 Unavailable 连接器与 A03 落点、W54 的桌面壳形态与 Tauri 边界裁决、W55 的平台能力矩阵与平台边界登记，S11 与 B01 的登记缺口均已补；**W56 另开一条轨道**——智能体 Harness 与开放互操作（W56–W64，H01–H18 全部 `pending` 未达标），W56 只交付边界与登记，**W57 已落下该轨道的第一个判定面**（记忆读写与遗忘：H03/H04 机制已交付、状态仍 `pending`），**W65 已完成范围重排与升基线**（R1 收缩为 Slice-0 10 条 + 36 条，M01–M18、H05–H14、H16 共 29 条降为 `capability_pack`；基线与登记均已为 V3.9）），
 **W66 已落下第二个判定面**（harness 观测 H15 与逐层具名降级 H17；机制已交付、状态仍 `pending`），

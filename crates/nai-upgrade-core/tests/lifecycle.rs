@@ -5,10 +5,8 @@ use nai_upgrade_core::{
     CapabilityResidency, IdlePolicy, PRO_ADDITIONS, Residency, ResidencyLedger, ResourceClaim,
     ResourceKind, STANDARD_ADDITIONS, Tier, audit_residency, tier_plan,
 };
-use std::time::Duration;
-
 fn op() -> Operation {
-    Operation::new(Duration::from_secs(30)).unwrap()
+    Operation::new(Operation::CEILING).unwrap()
 }
 
 fn claim(kind: ResourceKind, name: &str, amount: u64) -> ResourceClaim {

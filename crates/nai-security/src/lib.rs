@@ -32,8 +32,19 @@ pub struct Operation {
     cancelled: Arc<AtomicBool>,
 }
 impl Operation {
+    /// The ADR 0004 ceiling: `new` rejects anything longer, so this value is both the
+    /// largest acceptable budget and the number a caller passes when it wants "the
+    /// whole ceiling" -- which is what a one-shot bring-up (a fresh data root plus the
+    /// full schema migration chain) and an upgrade rehearsal actually do.
+    ///
+    /// Published so a caller can **reference** the ceiling instead of repeating the
+    /// number: a second literal would let the two drift apart without anything
+    /// noticing. `new` reads this constant, so "the ceiling" and "the rejection
+    /// threshold" can never disagree.
+    pub const CEILING: Duration = Duration::from_secs(30);
+
     pub fn new(timeout: Duration) -> Result<Self, SecurityError> {
-        if timeout > Duration::from_secs(30) {
+        if timeout > Self::CEILING {
             return Err(err(ErrorCode::InvalidArgument));
         }
         Ok(Self {
@@ -271,6 +282,21 @@ mod tests {
     }
     fn op() -> Operation {
         Operation::new(Duration::from_secs(5)).unwrap()
+    }
+    /// The ceiling is an **external** fact (ADR 0004), so the number is written down
+    /// here on purpose. Asserting only `new(CEILING).is_ok()` would be
+    /// self-referential: shrink the constant and the rejection threshold shrinks with
+    /// it, so the check would still pass while the real bound had moved.
+    #[test]
+    fn ceiling_is_the_adr_0004_bound_and_the_rejection_threshold() {
+        assert_eq!(Operation::CEILING, Duration::from_secs(30));
+        assert!(Operation::new(Operation::CEILING).is_ok());
+        assert_eq!(
+            Operation::new(Operation::CEILING + Duration::from_millis(1))
+                .err()
+                .map(|error| error.code),
+            Some(ErrorCode::InvalidArgument)
+        );
     }
     #[test]
     fn references_and_debug_never_expose_secret() {

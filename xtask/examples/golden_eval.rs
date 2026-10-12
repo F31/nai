@@ -43,13 +43,8 @@ use nai_security::{Operation, Secret};
 use nai_xtask::golden::{PAYLOAD_DIR, case_set_files, read_case_set};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 const REQUIRED: [&str; 3] = ["NAI_LLM_BASE_URL", "NAI_LLM_API_KEY", "NAI_LLM_MODEL"];
-
-/// The security layer refuses any operation longer than thirty seconds, so the
-/// runner cannot simply allow itself a longer deadline.
-const OPERATION_CEILING: Duration = Duration::from_secs(30);
 
 /// Enough room for a reasoning-capable model to finish. Such a model streams its
 /// thinking first and only then the visible answer; a cap that fits only the
@@ -141,7 +136,7 @@ fn profile(base: &str, model: &str) -> ProviderProfile {
         model: model.into(),
         price_revision: "golden-eval-price".into(),
         currency: "CNY".into(),
-        timeout: OPERATION_CEILING,
+        timeout: Operation::CEILING,
         max_retries: 1,
         protocol: Protocol::OpenAiCompatible,
     }
@@ -240,7 +235,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .map_err(|error| format!("budget: {error:?}"))?;
     let client = profile.client(credential("NAI_LLM_API_KEY"))?;
     let llm = profile.llm(&client)?;
-    let op = Operation::new(OPERATION_CEILING).expect("the runner stays inside the ceiling");
+    let op = Operation::new(Operation::CEILING).expect("the runner stays inside the ceiling");
 
     // ---- 3. drive the real generation seam, question by question
     let mut runs: Vec<Value> = Vec::new();

@@ -28,7 +28,6 @@ use nai_provider_core::{InMemoryGateway, Protocol, ProviderProfile};
 use nai_security::{Operation, Secret};
 use serde_json::json;
 use std::path::Path;
-use std::time::Duration;
 
 const REQUIRED: [&str; 7] = [
     "NAI_LLM_BASE_URL",
@@ -98,17 +97,13 @@ fn profile(provider_ref: &str, base: &str, model: &str) -> ProviderProfile {
         model: model.into(),
         price_revision: "live-smoke-price".into(),
         currency: "CNY".into(),
-        timeout: OPERATION_CEILING,
+        // The transport timeout and the operation deadline are the same ceiling: a
+        // shorter transport timeout would cut a call that still had budget left.
+        timeout: Operation::CEILING,
         max_retries: 1,
         protocol: Protocol::OpenAiCompatible,
     }
 }
-
-/// The security layer refuses any operation longer than thirty seconds, so a
-/// smoke cannot simply allow itself a longer deadline. The request timeout and
-/// the operation deadline are kept equal here rather than having the transport
-/// silently cut the call short.
-const OPERATION_CEILING: Duration = Duration::from_secs(30);
 
 fn text_of(chunks: &[LlmChunk]) -> String {
     chunks
@@ -167,7 +162,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text_client = text_profile.client(credential("NAI_LLM_API_KEY"))?;
     let llm = text_profile.llm(&text_client)?;
     let op =
-        Operation::new(OPERATION_CEILING).expect("the smoke stays inside the security ceiling");
+        Operation::new(Operation::CEILING).expect("the smoke stays inside the security ceiling");
     let request = LlmRequest {
         permitted_context: "只回答两个字：收到".into(),
         // Enough room for a reasoning-capable model to finish. Such a model
@@ -226,7 +221,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let speech_client = speech_profile.client(credential("NAI_TTS_API_KEY"))?;
     let speech = speech_profile.speech(&speech_client)?;
     let op =
-        Operation::new(OPERATION_CEILING).expect("the smoke stays inside the security ceiling");
+        Operation::new(Operation::CEILING).expect("the smoke stays inside the security ceiling");
     let request = TtsRequest {
         context: Some(RequestContext {
             request_id: "live-tts".into(),

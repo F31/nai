@@ -348,7 +348,9 @@ fn approve_body(id: &str, seq: u64, epoch: u64, revision: u64, hash: &str) -> Va
 
 fn seed_approval_store() -> (tempfile::TempDir, nai_storage::Store, String) {
     let dir = tempfile::tempdir().unwrap();
-    let op = Operation::new(Duration::from_secs(10)).unwrap();
+    // `Store::open` on a fresh data root runs the whole schema migration chain --
+    // that is bring-up work, not a per-call read, so it uses the bring-up budget.
+    let op = Operation::new(nai_storage::BRINGUP_OPERATION).unwrap();
     let paths = nai_storage::DataPaths::at(dir.path()).unwrap();
     let mut store = nai_storage::Store::open(paths.clone(), &op).unwrap();
     store.create_workspace(&op, "w", "test only").unwrap();

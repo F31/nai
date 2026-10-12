@@ -176,11 +176,11 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::BRINGUP_OPERATION;
     use crate::DataPaths;
-    use std::time::Duration;
 
     fn op() -> Operation {
-        Operation::new(Duration::from_secs(30)).unwrap()
+        Operation::new(BRINGUP_OPERATION).unwrap()
     }
     fn store() -> (tempfile::TempDir, Store) {
         let dir = tempfile::tempdir().unwrap();

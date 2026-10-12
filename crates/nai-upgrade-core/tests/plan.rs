@@ -79,7 +79,7 @@ fn facts() -> HostFacts {
 }
 
 fn op() -> Operation {
-    Operation::new(Duration::from_secs(30)).unwrap()
+    Operation::new(Operation::CEILING).unwrap()
 }
 
 struct Fixture {

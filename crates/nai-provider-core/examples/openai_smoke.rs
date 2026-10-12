@@ -71,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut any_failed = false;
 
-    let op = Operation::new(Duration::from_secs(30)).unwrap();
+    let op = Operation::new(Operation::CEILING).unwrap();
     let embedding = EmbeddingRequest {
         permitted_texts: vec!["测试价格".into()],
         ..Default::default()
@@ -105,7 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let op = Operation::new(Duration::from_secs(30)).unwrap();
+    let op = Operation::new(Operation::CEILING).unwrap();
     let tts = TtsRequest {
         speech_text: "你好".into(),
         voice: Some(VoiceRef {

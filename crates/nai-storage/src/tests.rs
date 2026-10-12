@@ -7,7 +7,16 @@ mod decision_log;
 mod knowledge_publication;
 
 fn op() -> Operation {
-    Operation::new(Duration::from_secs(30)).unwrap()
+    Operation::new(BRINGUP_OPERATION).unwrap()
+}
+
+/// The bring-up budget **is** the ceiling -- not "happens to equal thirty seconds".
+/// The definition references `Operation::CEILING`, so this equality is a statement
+/// about the design rather than about two numbers that were written down separately.
+#[test]
+fn bringup_budget_is_the_operation_ceiling() {
+    assert_eq!(BRINGUP_OPERATION, Operation::CEILING);
+    assert!(Operation::new(BRINGUP_OPERATION).is_ok());
 }
 fn budget_limits() -> nai_budget_core::Limits {
     let ceiling = nai_budget_core::Ceiling {

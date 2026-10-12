@@ -22,13 +22,11 @@ use std::{
 /// runs the schema migration chain -- see `BRINGUP_OPERATION`.
 const SHORT_OPERATION: Duration = Duration::from_secs(5);
 /// The budget for a one-shot bring-up whose work **includes the schema migration
-/// chain**: `Store::open` runs every migration script (six `BEGIN IMMEDIATE` /
-/// `COMMIT` pairs) on a fresh data root, on a connection opened with
-/// `synchronous=FULL`. The per-call budget does not describe that work, so the
-/// bring-up is sized at the ADR 0004 ceiling (30s), which `Operation::new`
-/// enforces and which the storage and upgrade crates already use for the same
-/// work. Sized here once so the engine cannot hold a second, drifting copy.
-pub const BRINGUP_OPERATION: Duration = Duration::from_secs(30);
+/// chain** (`Store::open` on a fresh data root). The definition lives in
+/// `nai_storage::BRINGUP_OPERATION`, next to the `Store::open` that performs the work;
+/// it is re-exported here because the engine is a consumer, and the number is **not**
+/// repeated -- so the engine cannot hold a second, drifting copy.
+pub use nai_storage::BRINGUP_OPERATION;
 /// How long a **revocation** path waits for the shared session lock. A snapshot
 /// or a command holds it for microseconds; a bounded wait turns a transient
 /// contention into a short pause instead of a lost safety action. Exhausting the

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import {
   readRegistry,
   readCatalogIds,
@@ -790,5 +790,83 @@ test('the ledger cannot shrink, be reclassified, or address a stale baseline', a
   assert.ok(
     ledgerErrors(duplicated).some(error => error.includes('duplicate entry id')),
     'duplicate ids must be reported',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 一个预算一份定义（w77）
+//
+// 不变式：**每类有界工作只有一个预算定义点，且该定义紧挨着干这件事的人。**
+// 判据读 Rust 源码、不读自己（判据在 `.mjs`，被扫的是 `.rs`）—— W73 的消费守卫就是
+// 因为把自己文件里的字面量算成了「消费」而**自我满足**。
+//
+// 这里的遍历**故意不与 `tests/contracts/schema.test.mjs` 的 `codeFiles` 合并**：那个函数
+// 服务的是「可扫描扩展名闭包」，它的排除集与扩展名表是一组约束；本文件只要 `.rs` 与
+// 「预算定义」这两个概念。把两者绑在一起，任一方调整排除集都会牵动另一方
+// （W66「不合并不同维度」的同一条理由）。
+const RUST_SCAN_SKIP_DIRS = ['node_modules', 'target', 'graphify-out', 'dist'];
+
+async function rustSources(dir = '.', out = []) {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const path = dir === '.' ? entry.name : `${dir}/${entry.name}`;
+    if (entry.isDirectory()) {
+      if (entry.name.startsWith('.') || RUST_SCAN_SKIP_DIRS.includes(entry.name)) continue;
+      await rustSources(path, out);
+    } else if (entry.name.endsWith('.rs')) {
+      out.push(path);
+    }
+  }
+  return out.sort();
+}
+
+/// 整行注释不算命中：注释里提一句常量名，既不是**定义**它也不是**使用**它。
+/// 只识别 `//` 起首的行 —— 行尾注释仍算命中只是**多报**（方向安全），而误切会伤到
+/// `https://` 这类内容（W74 记下的理由）。
+const withoutLineComments = (text) =>
+  text.split('\n').filter((line) => !/^\s*\/\//.test(line)).join('\n');
+
+const rustTexts = new Map(
+  await Promise.all(
+    (await rustSources()).map(async (path) => [
+      path,
+      withoutLineComments(await readFile(path, 'utf8')),
+    ]),
+  ),
+);
+
+/// 返回 `path × count` 的清单（空数组＝全仓 0 处）。**清单的形状让断言能同时钉住
+/// 「有几处」与「在哪几处」**——只断言总数对「位置被换掉」是瞎的（W66 教训）。
+function rustHits(literal) {
+  const hits = [];
+  for (const [path, text] of rustTexts) {
+    const count = text.split(literal).length - 1;
+    if (count > 0) hits.push(`${path} × ${count}`);
+  }
+  return hits;
+}
+
+test('the bring-up budget is defined exactly once, in the crate that does the work', () => {
+  assert.deepEqual(
+    rustHits('pub const BRINGUP_OPERATION'),
+    ['crates/nai-storage/src/lib.rs × 1'],
+    'bring-up work is performed by Store::open in nai-storage, so the definition lives there and nowhere else',
+  );
+  assert.match(
+    rustTexts.get('crates/nai-storage/src/lib.rs'),
+    /pub const BRINGUP_OPERATION: Duration = Operation::CEILING;/,
+    'the bring-up budget MUST reference the ceiling constant rather than repeat the number',
+  );
+});
+
+test('no Rust source hides a second copy of the operation ceiling', () => {
+  assert.deepEqual(
+    rustHits('Operation::new(Duration::from_secs(30))'),
+    [],
+    'a caller that wants the ceiling MUST reference Operation::CEILING instead of the literal',
+  );
+  assert.deepEqual(
+    rustHits('const OPERATION_CEILING'),
+    [],
+    'a private shadow of Operation::CEILING is exactly the "second, drifting copy" that must not exist',
   );
 });

@@ -21,7 +21,20 @@ use nai_contracts::v1::ErrorCode;
 pub use nai_security::Operation;
 pub use paths::DataPaths;
 use std::fmt;
+use std::time::Duration;
 pub use store::{ConfigKind, PendingApproval, Store, candidate_hash};
+
+/// The budget for a one-shot **bring-up** whose work includes the schema migration
+/// chain: `Store::open` runs every migration script on a fresh data root, on a
+/// connection opened with `synchronous=FULL`. The per-call budget does not describe
+/// that work, so bring-up is sized at the [`Operation::CEILING`] that the ADR 0004
+/// ceiling defines.
+///
+/// Defined **here** because `Store::open` is what performs the work: a consumer that
+/// needs a bring-up budget references this constant instead of holding its own copy of
+/// the number. `nai-runtime` re-exports it for the engine; `nai-control-api` and
+/// `nai-upgrade-core` reference it directly.
+pub const BRINGUP_OPERATION: Duration = Operation::CEILING;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageError {

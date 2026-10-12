@@ -28,7 +28,7 @@ fn deadline() -> Instant {
 }
 
 fn op() -> Operation {
-    Operation::new(Duration::from_secs(30)).unwrap()
+    Operation::new(Operation::CEILING).unwrap()
 }
 
 fn open_revocations(now_ms: i64) -> RevocationList {
