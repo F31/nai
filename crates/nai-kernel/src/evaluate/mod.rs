@@ -7,6 +7,7 @@ pub mod guard;
 pub mod harness;
 pub mod memory;
 pub mod ramp;
+pub mod selling;
 pub mod show;
 pub mod skill;
 
