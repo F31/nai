@@ -1218,3 +1218,78 @@ W67 不复用 `session::change_mode` 同一条理由）：
 **本轮不新增条目 ⇒ 不产生新的基线偏差**（W68 登记的 B07 偏差仍未收录）。
 见 docs/kernel.md（W69 段）、docs/reports/2026-10-12-w69-context-assembly.md、
 openspec/changes/archive/2026-10-12-w69-context-assembly/。
+
+### W70 瞬态宿主条件（V3.9 §5.9、§12.2、§20.6、§46.3；runtime 装配根与会话共享）
+
+W70 **不是**一次「清 flaky CI」的运维动作。触发是 W69 收尾时登记的两族 CI 红
+（run `38200252090` @ `a9f9aea` 的 ubuntu 失败落在 `engine.rs::killed_keeper_is_halted_by_the_engine_and_the_chain_survives`；
+run `38201171920` @ `87dce31`——**只改一个 `.md`**——的 windows 失败落在 `pipeline.rs` 4 个用例的
+`provisioning store unavailable: storage: DEADLINE_EXCEEDED`）。核实后它们**不是同一类模糊的「不稳」，
+而是两个可机械证明的缺陷，其中一个**是安全缺陷**。W48 报告 §5 第 2 条早已把这件事留给单独一轮
+（原句：**「Windows 侧 `nai-runtime` 的时序脆弱未修…需单独一轮。」**），本轮就是那一轮。
+
+治理判据（写进规格，可判定）：**宿主的瞬态条件（锁竞争、慢盘）MUST NOT 改变被测系统的结论。**
+
+**缺口一（安全）**——共享 `Arc<Mutex<Session>>` 上的 `try_lock` 被当成故障：
+
+1. `ControlApi` 与装配根共享**同一个** `Arc<Mutex<Session>>`，两侧取锁都是 **fail-fast 的 `try_lock`**。
+2. `DrillGuard::tick` **每 5 ms** 调一次 `live_epoch()`（`DRILL_POLL`）。
+3. 旧 `live_epoch()` 以 **`?`** 上抛取锁错误 ⇒ 一次**微秒级、会自清除**的竞争被当成**故障**。
+4. `tick` 视其为致命 ⇒ 闭包返回 `Err` ⇒ **`supervise` 结束监督循环** ⇒ 此后 keeper 被杀
+   **再也不被检测、不被撤权**。
+5. `Session::revoke` 自身**只剩 `actor_allowed` 一个前置**（本场景恒 `true`）⇒「撤权被跳过」**只有取锁一条机械通道**
+   ⇒ 上述链条是**唯一可能的原因**，可以照它修。
+
+另有一处**巧合式的掩盖**：既有规格的「续租失败不得静默退出」只有**一次性补偿 `halt`**（在错误出口）满足，
+而那个出口**用的是同一条 fail-fast 取锁**⇒「到底撤没撤权」取决于**第二次**取锁运气。
+
+**修法 = 一个预算一份定义（ADR 0027）**：
+
+| 路径 | 预算 | 耗尽语义 |
+|---|---|---|
+| 撤权/故障处置（`observe`/`control`/`enforce_duty`） | `SESSION_REVOKE_BUDGET` = **250 ms**，有界重试 | **显式 `Conflict`**——撤权**要么落地、要么被报告**，**绝不静默跳过** |
+| epoch 存活轮询（`live_epoch`） | `SESSION_POLL_BUDGET` = **5 ms**（一个 tick） | **`Ok(None)`** = 「本 tick 未观测到」，**不是故障** |
+| bring-up（`prepare` 的 `Store::open`） | `BRINGUP_OPERATION` = **30 s** | 具名失败，**文案带已耗时** |
+| 逐次调用 | `SHORT_OPERATION` = **5 s**（**不变**） | 同上 |
+
+`live_epoch()` 签名变 `Result<Option<u64>>`：`Some` 正常／`None` 竞争／**`Err` 仅锁中毒**；
+`SessionLockMiss { Busy, Poisoned }` 就是为此存在——把「没看到」与「出错了」在**类型上**分开。
+
+**缺口二（预算与工作量不匹配）**——`Store::open` 在**全新数据根**上跑**全链迁移**
+（`migration.rs` 的 `VERSION = 6`，6 个脚本、每段 `BEGIN IMMEDIATE` + `COMMIT`），连接以 **`synchronous=FULL`** 打开，
+却曾用**逐次调用**的 `SHORT_OPERATION` = 5 s ⇒ 慢盘上 `DEADLINE_EXCEEDED`。
+ADR 0004 明确 **30 s 是上界**（`Operation::new` 对 `timeout > 30s` 直接返回 `InvalidArgument`），
+ADR 0038 称其为**安全层不变量**，同仓做**同类迁移工作**的既有取值一律 **30 s**
+⇒ 新增 `BRINGUP_OPERATION = 30 s`（`pub`，`apps/engine` 的 `--provision` **复用同一常量**，一处定义）。
+
+**被否决的三个替代**（写进 design、各给理由）：①把 `session_lock` 一律改成阻塞 `lock()`——
+把一次宿主竞争**换成一次无限等待**，控制面 `status` 会挂住，而且它「修」的是运气不是语义；
+②只在测试夹具里等——被修的是**产品代码对瞬态条件的处理**，不是调度假设，夹具等待会让缺陷在生产里原样保留；
+③`--test-threads=1`——把「并发下必须成立」的断言降级成「串行下成立」，是**放宽**而不是**修**。
+
+**刻意的不改**：`apps/engine/src/pipeline.rs` 的两处 5 s **保持原样**——它们在**已打开的 store** 上读、**不含迁移**
+⇒ 这是判据的**结果**，不是遗漏。
+
+测试全部落在**既有**目标内 ⇒ **不新增测试目标**（目标数不动，增量只能来自项数）：
+
+- 3 条行为测试（`crates/nai-runtime/tests/composition.rs`）：**持锁 20 ms 期间** `control(Mute)` **仍返回 `1`**；
+  持锁 30 ms 期间 `live_epoch()` 为 **`None` 而非 `Err`**；**正向前置**「撤权后 epoch 确实变化」
+  ——否则「恒报未观测到」也能让测试变绿。
+- 2 条策略钉死（`crates/nai-runtime/src/composition.rs`）：逐项钉死四个常量与三条不等式
+  （`BRINGUP > SHORT`、`POLL ≤ REVOKE`、`REVOKE ≤ BRINGUP`）；在**新建临时目录**上真调 `open_bringup_store`
+  并断言 `remaining() > SHORT_OPERATION`。
+- **持锁时序用 mpsc 握手**确保持锁**先于**被测调用——**不用 sleep 竞猜**。
+- **五组非空洞注入**各自被抓住、源文件按**内容哈希**复原为 `IDENTICAL`：去掉重试截止／把 `Ok(None)` 改回 `Err`／
+  `BRINGUP` 退回 5 s／`bringup()` 换 `SHORT_OPERATION`／`open_bringup_store` 内换 `short()`。
+  **第五组是发现「只钉常量对『常量对、调用点接错』是瞎的」之后补的**——把 `open_bringup_store` 提成
+  `prepare` **真正调用**的那个函数，再让它进测试。
+
+**明确不做**：不改断言、不放宽窗口、**不用 sleep 掩盖**、不改 CI workflow、不降 `--test-threads`、
+不改 `apps/engine/tests/*` 任何一行、**不新增契约名**、**不新增 registry 条目**、不改任何既有 `status`、不改基线文本。
+
+**边界（如实）**：`apps/engine/tests/engine.rs` 是 `#[cfg(target_os = "linux")]` ⇒
+**本机 Windows 门控不能证明 Linux 侧修复**，只能**以 CI 结论为准**；family 1 的链是**从源码读出的、
+不是从失败日志读出的** ⇒ **不主张**已复现当时失败，只主张「这条链存在且被消除」。
+**本轮不新增条目 ⇒ 不产生新的基线偏差**（W68 的 B07、W67 的「影子在 R1 无落点」仍待升基线轮次收录）。
+见 docs/kernel.md（W70 段）、docs/reports/2026-10-12-w70-transient-host-conditions.md、
+openspec/changes/archive/2026-10-12-w70-transient-host-conditions/。

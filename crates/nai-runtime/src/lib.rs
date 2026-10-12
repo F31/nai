@@ -9,7 +9,7 @@
 mod composition;
 pub mod supervisor;
 
-pub use composition::{Composition, ControlAction, DutyEvent, ObservedFault};
+pub use composition::{BRINGUP_OPERATION, Composition, ControlAction, DutyEvent, ObservedFault};
 pub use supervisor::{
     Binaries, FramePoolArgs, RenderWorkerSpec, StandbyReason, Supervisor, SupervisorFault,
 };

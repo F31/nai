@@ -254,3 +254,51 @@ H01/H02 是 W56 立的项目标（§47.6 的 W56 行写的正是「上下文装�
 
 **本轮不新增 registry 条目**（H01/H02 早已在册）⇒ **不产生新的基线偏差**；W68 登记的 B07 偏差仍未收录。
 
+## W70 瞬态宿主条件（V3.9 §5.9、§12.2、§20.6、§46.3；装配根与会话共享）
+
+本轮**不是**「清 flaky CI」的运维动作。触发是 W69 收尾时登记的两族 CI 红，核实后是**两个可机械证明的缺陷**，
+其中一个**是安全缺陷**。W48 报告 §5 第 2 条早把这件事留给单独一轮（原句：「Windows 侧 `nai-runtime` 的时序脆弱未修…需单独一轮」）。
+
+判据（写进规格，可判定）：**宿主的瞬态条件（锁竞争、慢盘）MUST NOT 改变被测系统的结论。**
+
+- **共享会话锁上的 `try_lock` 不得被当作故障**：`ControlApi` 与装配根共享同一个 `Arc<Mutex<Session>>`，
+  两侧都 fail-fast；`DrillGuard::tick` **每 5 ms** 调 `live_epoch()`，旧实现以 `?` 上抛取锁错误
+  ⇒ 一次**微秒级、会自清除**的竞争被当成故障 ⇒ 闭包返回 `Err` ⇒ **`supervise` 结束监督循环**
+  ⇒ 此后 keeper 被杀**再也不被检测与撤权**。`Session::revoke` 自身只剩 `actor_allowed`（本场景恒 `true`）
+  ⇒ 「撤权被跳过」**只有取锁一条机械通道**，链条因此是唯一可能的原因。
+  还有一处巧合式掩盖：既有规格的「续租失败不得静默退出」只有**一次性补偿 `halt`** 满足，
+  而那个出口用的是**同一条** fail-fast 取锁 ⇒「到底撤没撤权」取决于第二次取锁运气。
+- **修法 = 一个预算一份定义（ADR 0027）**：撤权/故障处置（`observe`/`control`/`enforce_duty`）用
+  `SESSION_REVOKE_BUDGET` = **250 ms** 有界重试，耗尽仍是**显式 `Conflict`**（撤权**要么落地、要么被报告**，
+  **绝不静默跳过**）；epoch 轮询用 `SESSION_POLL_BUDGET` = **5 ms**，耗尽返回 **`Ok(None)` = 「本 tick 未观测到」**，
+  **不是故障**。`live_epoch()` 签名变 `Result<Option<u64>>`：`Some` 正常／`None` 竞争／**`Err` 仅锁中毒**；
+  `SessionLockMiss { Busy, Poisoned }` 就是为此存在。
+- **bring-up 期限要按工作量标定**：`Store::open` 在**全新数据根**上跑**全链迁移**（`VERSION = 6`，6 个脚本，
+  每段 `BEGIN IMMEDIATE`+`COMMIT`），连接以 **`synchronous=FULL`** 打开，却曾用**逐次调用**的 `SHORT_OPERATION` = 5 s
+  ⇒ 慢盘上 `DEADLINE_EXCEEDED`。ADR 0004 的**上界是 30 s**（`Operation::new` 拒绝 `> 30s`），
+  同仓同类迁移工作一律 30 s ⇒ 新增 `BRINGUP_OPERATION` = **30 s**（`pub`，`apps/engine` 的 `--provision` 复用同一常量，
+  一处定义）；`SHORT_OPERATION` **保持 5 s**。失败文案**指名步骤 + 已耗时**（否则下一读者看不出哪一步慢）。
+- **刻意的不改**：`apps/engine/src/pipeline.rs` 的两处 5 s **保持原样**——它们在**已打开的 store** 上读、**不含迁移**
+  ⇒ 这是判据的**结果**，不是遗漏。
+
+**被否决的三个替代**（写进 design，各自给理由）：①把 `session_lock` 一律改阻塞 `lock()`——把宿主竞争换成无限等待、
+控制面 `status` 会挂住；②只在测试夹具里等——被修的是**产品代码对瞬态条件的处理**，不是调度假设；
+③`--test-threads=1`——把「并发下必须成立」降级成「串行下成立」，是**放宽**而非**修**。
+
+**明确不做**：不改断言、不放宽窗口、**不用 sleep 掩盖**、不改 CI workflow、不降 `--test-threads`、
+不改 `apps/engine/tests/*` 任何一行、**不新增契约名**、**不新增 registry 条目**、不改任何 `status`、不改基线文本。
+
+测试全部落在**既有**目标内（`crates/nai-runtime` 的 lib 单测 + `tests/composition.rs`）⇒ **不新增测试目标**：
+3 条行为测试（持锁 20 ms 期间 `control(Mute)` 仍返回 `1`；持锁 30 ms 期间 `live_epoch()` 为 **`None` 而非 `Err`**；
+**正向前置**「撤权后 epoch 确实变化」——否则「恒报未观测到」也能变绿）+ 2 条策略钉死（逐项钉死四个常量与三条不等式；
+在**新建临时目录**上真调 `open_bringup_store` 并断言 `remaining() > SHORT_OPERATION`）。
+**持锁时序用 mpsc 握手**确保持锁**先于**被测调用，**不用 sleep 竞猜**。五组非空洞注入各自被抓住、源文件按**内容哈希**复原为 `IDENTICAL`：
+去掉重试截止／把 `Ok(None)` 改回 `Err`／`BRINGUP` 退回 5 s／`bringup()` 换 `short()` 常量／
+`open_bringup_store` 内换 `short()`。**第五组是发现「只钉常量对『常量对、调用点接错』是瞎的」后补的**——
+把 `open_bringup_store` 提成 `prepare` 真正调用的函数再让它进测试。
+
+**边界（如实）**：`apps/engine/tests/engine.rs` 是 `#[cfg(target_os = "linux")]` ⇒ **本机 Windows 门控不能证明 Linux 侧修复**，
+只能**以 CI 结论为准**；family 1 的链是**从源码读出的、不是从失败日志读出的** ⇒ **不主张**已复现当时失败，
+只主张「链存在且被消除」；H 系与所有 `status` 一律不动。**本轮不新增条目 ⇒ 不产生新的基线偏差**
+（W68 的 B07、W67 的「影子在 R1 无落点」仍待升基线轮次收录）。
+

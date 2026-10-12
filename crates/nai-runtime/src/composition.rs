@@ -18,7 +18,34 @@ use std::{
 
 /// One short operation per call: `Operation` caps at 30s and has no long-lease
 /// expression, so every decision-log or store access is bounded and re-created.
+/// This is the budget for a call that touches rows, **not** for a bring-up that
+/// runs the schema migration chain -- see `BRINGUP_OPERATION`.
 const SHORT_OPERATION: Duration = Duration::from_secs(5);
+/// The budget for a one-shot bring-up whose work **includes the schema migration
+/// chain**: `Store::open` runs every migration script (six `BEGIN IMMEDIATE` /
+/// `COMMIT` pairs) on a fresh data root, on a connection opened with
+/// `synchronous=FULL`. The per-call budget does not describe that work, so the
+/// bring-up is sized at the ADR 0004 ceiling (30s), which `Operation::new`
+/// enforces and which the storage and upgrade crates already use for the same
+/// work. Sized here once so the engine cannot hold a second, drifting copy.
+pub const BRINGUP_OPERATION: Duration = Duration::from_secs(30);
+/// How long a **revocation** path waits for the shared session lock. A snapshot
+/// or a command holds it for microseconds; a bounded wait turns a transient
+/// contention into a short pause instead of a lost safety action. Exhausting the
+/// budget is still an explicit conflict -- the action is reported, never skipped.
+const SESSION_REVOKE_BUDGET: Duration = Duration::from_millis(250);
+/// How long the **periodic** liveness read waits. It runs once per watch tick
+/// (`DRILL_POLL`, 5ms) and must not stall lease renewal, so it waits at most a
+/// tick and then reports "not observed this tick" rather than a fault.
+const SESSION_POLL_BUDGET: Duration = Duration::from_millis(5);
+
+/// Why a non-blocking session-lock attempt produced no guard. The two are kept
+/// apart because they call for opposite responses: `Busy` is self-clearing and
+/// worth waiting for, `Poisoned` is a real fault that waiting cannot fix.
+enum SessionLockMiss {
+    Busy,
+    Poisoned,
+}
 /// Bounded media-gate queue (utterance/approval/fact references per scope).
 const GATE_CAPACITY: usize = 64;
 /// The media gate only accepts lease TTLs up to 600ms.
@@ -98,8 +125,7 @@ impl Composition {
         profile: &str,
         bootstrap: bool,
     ) -> Result<Self> {
-        let operation = short()?;
-        let mut store = Store::open(paths, &operation).map_err(RuntimeError::from)?;
+        let (mut store, operation) = open_bringup_store(paths)?;
         if bootstrap {
             bootstrap_owner(&mut store, &operation, workspace, actor, profile)?;
         }
@@ -193,10 +219,65 @@ impl Composition {
     pub fn session(&self) -> Arc<Mutex<Session>> {
         self.session.clone()
     }
+    /// A single non-blocking attempt. The composition shares this mutex with the
+    /// control surface, so a miss is expected occasionally and is not by itself
+    /// an error.
+    fn try_session(
+        &self,
+    ) -> std::result::Result<std::sync::MutexGuard<'_, Session>, SessionLockMiss> {
+        match self.session.try_lock() {
+            Ok(guard) => Ok(guard),
+            Err(std::sync::TryLockError::WouldBlock) => Err(SessionLockMiss::Busy),
+            Err(std::sync::TryLockError::Poisoned(_)) => Err(SessionLockMiss::Poisoned),
+        }
+    }
+    /// Fail-fast acquisition for queries and commands: the caller learns at once
+    /// that the session was busy and may retry at its own cadence.
     pub fn session_lock(&self) -> Result<std::sync::MutexGuard<'_, Session>> {
-        self.session
-            .try_lock()
+        self.try_session()
             .map_err(|_| err(ErrorCode::Conflict, "session state busy"))
+    }
+    /// Acquisition for a **revocation** path: waits up to `budget` for a
+    /// transient contention to clear. Exhausting the budget is still reported as
+    /// an explicit conflict, so a revoke is never silently skipped -- it is
+    /// either applied or reported.
+    fn session_lock_within(&self, budget: Duration) -> Result<std::sync::MutexGuard<'_, Session>> {
+        let deadline = Instant::now() + budget;
+        loop {
+            match self.try_session() {
+                Ok(guard) => return Ok(guard),
+                Err(SessionLockMiss::Poisoned) => {
+                    return Err(err(ErrorCode::Conflict, "session state poisoned"));
+                }
+                Err(SessionLockMiss::Busy) => {
+                    if Instant::now() >= deadline {
+                        return Err(err(
+                            ErrorCode::Conflict,
+                            "session state busy beyond the lock budget",
+                        ));
+                    }
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+            }
+        }
+    }
+    /// Reads the live generation epoch for a **periodic** reader. `Ok(None)` means
+    /// the lock stayed busy for the whole poll budget: "not observed this tick".
+    /// That is neither evidence of a change nor a fault, and a watch loop must
+    /// treat it as neither -- the next tick reads again. Only a poisoned lock is
+    /// an error, because waiting cannot repair it.
+    pub fn live_epoch(&self) -> Result<Option<u64>> {
+        let deadline = Instant::now() + SESSION_POLL_BUDGET;
+        loop {
+            match self.try_session() {
+                Ok(session) => return Ok(Some(session.snapshot().generation_epoch)),
+                Err(SessionLockMiss::Poisoned) => {
+                    return Err(err(ErrorCode::Internal, "session state poisoned"));
+                }
+                Err(SessionLockMiss::Busy) if Instant::now() >= deadline => return Ok(None),
+                Err(SessionLockMiss::Busy) => std::thread::sleep(Duration::from_millis(1)),
+            }
+        }
     }
     pub fn gate(&self) -> &MediaGate {
         &self.gate
@@ -262,7 +343,7 @@ impl Composition {
     pub fn control(&mut self, action: ControlAction) -> Result<u64> {
         self.gate.emergency().mute();
         let epoch = {
-            let mut session = self.session_lock()?;
+            let mut session = self.session_lock_within(SESSION_REVOKE_BUDGET)?;
             session.revoke(true).map_err(RuntimeError::from)?;
             session.snapshot().generation_epoch
         };
@@ -322,7 +403,7 @@ impl Composition {
         }
         self.gate.emergency().mute();
         let (enforcement, epoch) = {
-            let mut session = self.session_lock()?;
+            let mut session = self.session_lock_within(SESSION_REVOKE_BUDGET)?;
             let enforcement = session.enforce_duty(now);
             (enforcement, session.snapshot().generation_epoch)
         };
@@ -406,7 +487,7 @@ impl Composition {
         };
         self.gate.emergency().mute();
         let epoch = {
-            let mut session = self.session_lock()?;
+            let mut session = self.session_lock_within(SESSION_REVOKE_BUDGET)?;
             session.revoke(true).map_err(RuntimeError::from)?;
             session.snapshot().generation_epoch
         };
@@ -465,9 +546,75 @@ fn short() -> Result<Operation> {
         .map_err(|_| err(ErrorCode::Internal, "operation budget rejected"))
 }
 
+/// The bring-up budget, for work that includes the schema migration chain. The
+/// engine's `--provision` reuses this constant rather than holding its own copy.
+fn bringup() -> Result<Operation> {
+    Operation::new(BRINGUP_OPERATION)
+        .map_err(|_| err(ErrorCode::Internal, "bring-up budget rejected"))
+}
+
+/// Opens the store for a bring-up and hands back the operation that bounded it.
+/// The budget decision and the open live here together so a test can exercise the
+/// path `Composition::prepare` actually uses, instead of pinning only the
+/// constants and leaving a good constant wired to a wrong call site.
+fn open_bringup_store(paths: DataPaths) -> Result<(Store, Operation)> {
+    let operation = bringup()?;
+    let store = Store::open(paths, &operation).map_err(RuntimeError::from)?;
+    Ok((store, operation))
+}
+
 fn utc_ms() -> Result<u64> {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|time| time.as_millis().min(u64::MAX as u128) as u64)
         .map_err(|_| err(ErrorCode::Internal, "invalid UTC clock"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The budgets are a policy table, so every value **and** every relation is
+    /// written down. A later edit that quietly shrinks the bring-up budget back
+    /// to the per-call one, or grows it past the security ceiling, must fail here
+    /// instead of surfacing as an unexplained deadline on a loaded host.
+    #[test]
+    fn the_lock_and_operation_budgets_match_the_policy_table() {
+        assert_eq!(SHORT_OPERATION, Duration::from_secs(5));
+        assert_eq!(BRINGUP_OPERATION, Duration::from_secs(30));
+        assert_eq!(SESSION_REVOKE_BUDGET, Duration::from_millis(250));
+        assert_eq!(SESSION_POLL_BUDGET, Duration::from_millis(5));
+        // A bring-up that runs the migration chain must not be squeezed into the
+        // per-call budget; the poll must not outlive a watch tick; and neither
+        // may exceed the ADR 0004 ceiling.
+        assert!(BRINGUP_OPERATION > SHORT_OPERATION);
+        assert!(SESSION_POLL_BUDGET <= SESSION_REVOKE_BUDGET);
+        assert!(SESSION_REVOKE_BUDGET <= BRINGUP_OPERATION);
+        // `Operation::new` really does refuse more than the ceiling, so the bound
+        // above is the working limit and not a coincidence of this table.
+        assert!(Operation::new(Duration::from_secs(31)).is_err());
+        assert!(Operation::new(BRINGUP_OPERATION).is_ok());
+        // And the two constructors really do carry the two budgets, so a body
+        // swapped between them fails here even when the constants are untouched.
+        let bringup_left = bringup().unwrap().remaining();
+        let short_left = short().unwrap().remaining();
+        assert!(bringup_left > short_left);
+        assert!(bringup_left >= BRINGUP_OPERATION - Duration::from_secs(1));
+        assert!(short_left <= SHORT_OPERATION);
+    }
+
+    /// The table above cannot catch a correct constant wired to the wrong call
+    /// site, so the bring-up open is exercised through the very function
+    /// `Composition::prepare` calls and the operation it was given is measured.
+    /// A fresh data root means the full migration chain really runs here.
+    #[test]
+    fn the_bring_up_open_is_bounded_by_the_bring_up_budget() {
+        let dir = tempfile::tempdir().unwrap();
+        let (store, operation) = open_bringup_store(DataPaths::at(dir.path()).unwrap()).unwrap();
+        assert!(
+            operation.remaining() > SHORT_OPERATION,
+            "the migration chain must not be squeezed into the per-call budget"
+        );
+        drop(store);
+    }
 }

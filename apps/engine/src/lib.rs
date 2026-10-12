@@ -23,7 +23,9 @@ use nai_media_core::frame_slots::{
 };
 #[cfg(target_os = "linux")]
 use nai_runtime::RenderWorkerSpec;
-use nai_runtime::{Binaries, Composition, ControlAction, FramePoolArgs, Supervisor};
+use nai_runtime::{
+    BRINGUP_OPERATION, Binaries, Composition, ControlAction, FramePoolArgs, Supervisor,
+};
 use nai_storage::{DataPaths, DecisionKind};
 use prost::Message;
 use serde_json::{Value, json};
@@ -390,12 +392,22 @@ fn provision(config: &Config, profile_file: &Path) -> Result<(), String> {
         .map_err(|error| format!("runtime profile unreadable: {error}"))?;
     let profile: Value = serde_json::from_str(&raw)
         .map_err(|error| format!("runtime profile is not JSON: {error}"))?;
-    let operation = Operation::new(Duration::from_secs(5)).map_err(|error| error.to_string())?;
+    // Provisioning opens the store, which runs the whole migration chain on a
+    // fresh data root, so it takes the bring-up budget rather than the per-call
+    // one. The elapsed time is part of the failure text: a bare deadline tells
+    // the next reader nothing about which step was slow.
+    let started = Instant::now();
+    let operation = Operation::new(BRINGUP_OPERATION).map_err(|error| error.to_string())?;
     let mut store = nai_storage::Store::open(
         DataPaths::at(&config.data_root).map_err(|error| error.to_string())?,
         &operation,
     )
-    .map_err(|error| format!("provisioning store unavailable: {error}"))?;
+    .map_err(|error| {
+        format!(
+            "provisioning store open failed after {}ms: {error}",
+            started.elapsed().as_millis()
+        )
+    })?;
     store
         .create_workspace(&operation, &config.workspace, &config.workspace)
         .map_err(|error| format!("workspace creation failed: {error}"))?;
@@ -543,7 +555,7 @@ fn supervise(
     })();
     if let Err(error) = &result {
         emergency.mute();
-        let live = live_epoch(shared).unwrap_or(floor);
+        let live = live_epoch(shared).ok().flatten().unwrap_or(floor);
         if error != "HALT" && error != "REVOKED" && live == floor {
             halt(shared);
         }
@@ -558,10 +570,13 @@ fn supervise(
     }
 }
 
-fn live_epoch(shared: &Arc<Mutex<Composition>>) -> Result<u64, String> {
+/// Reads the live generation epoch through the composition. `Ok(None)` means the
+/// session lock stayed busy for the poll budget -- "not observed this tick" --
+/// which the watch must treat as neither a change nor a fault. The composition
+/// owns that distinction so the engine cannot drift from it.
+fn live_epoch(shared: &Arc<Mutex<Composition>>) -> Result<Option<u64>, String> {
     let root = shared.lock().map_err(|_| "composition lock poisoned")?;
-    let session = root.session_lock().map_err(|e| e.to_string())?;
-    Ok(session.snapshot().generation_epoch)
+    root.live_epoch().map_err(|error| error.to_string())
 }
 struct DrillGuard<'a> {
     shared: &'a Arc<Mutex<Composition>>,
@@ -579,8 +594,12 @@ impl DrillGuard<'_> {
         if self.stop.load(Ordering::Acquire) {
             return Err("HALT".into());
         }
-        let live = live_epoch(self.shared)?;
-        if live != self.floor {
+        // A transient session-lock contention must not end the watch. A busy lock
+        // reads as "not observed this tick" and the fault observe below still
+        // runs, so a killed keeper is handled even when the epoch was unreadable.
+        if let Some(live) = live_epoch(self.shared)?
+            && live != self.floor
+        {
             telemetry(
                 self.shared,
                 "renewal_halted_after_revoke",
@@ -589,15 +608,29 @@ impl DrillGuard<'_> {
             return Err("REVOKED".into());
         }
         if self.armed && Instant::now() >= self.next_renew {
-            if let Err(e) = supervisor.renew(
-                self.session,
-                rehearsal(self.shared, self.lease, self.epoch)?,
-            ) {
-                telemetry(
-                    self.shared,
-                    "renewal_failed",
-                    json!({"detail":e.to_string()}),
-                )?;
+            // Renewal is periodic by design, so an attempt that cannot be built or
+            // sent is reported and retried on the next interval. Ending the watch
+            // here would drop fault handling over a transient contention -- the one
+            // outcome the loop must never produce instead of a revoke.
+            match rehearsal(self.shared, self.lease, self.epoch) {
+                Ok(lease) => {
+                    if let Err(e) = supervisor.renew(self.session, lease)
+                        && let Err(log) = telemetry(
+                            self.shared,
+                            "renewal_failed",
+                            json!({"detail":e.to_string()}),
+                        )
+                    {
+                        eprintln!("nai-engine renewal log failed: {log}");
+                    }
+                }
+                Err(detail) => {
+                    if let Err(log) =
+                        telemetry(self.shared, "renewal_skipped", json!({"detail":detail}))
+                    {
+                        eprintln!("nai-engine skipped-renewal log failed: {log}");
+                    }
+                }
             }
             self.next_renew = Instant::now() + Duration::from_millis(self.renew_ms.max(1));
         }

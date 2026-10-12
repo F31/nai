@@ -7,8 +7,96 @@ use nai_kernel::duty::{DUTY_REVOKE_DELAY, DutyEnforcement};
 use nai_runtime::{Composition, ControlAction};
 use nai_storage::{ConfigKind, DataPaths, DecisionKind};
 use serde_json::json;
+use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use tempfile::tempdir;
+
+/// Holds the shared session lock for `hold`, signalling **after** it is held so
+/// the caller knows the contention is already in place before it calls into the
+/// composition. A sleep would race the scheduler; a handshake cannot.
+fn hold_session(
+    composition: &Composition,
+    hold: Duration,
+) -> (std::thread::JoinHandle<()>, mpsc::Receiver<()>) {
+    let session = composition.session();
+    let (held_tx, held_rx) = mpsc::channel();
+    let handle = std::thread::spawn(move || {
+        let _guard = session.lock().unwrap();
+        held_tx.send(()).unwrap();
+        std::thread::sleep(hold);
+    });
+    (handle, held_rx)
+}
+
+fn prepared(root: &std::path::Path) -> Composition {
+    provision(root, WORKSPACE, ACTOR, PROFILE, &runtime_profile(WORKSPACE));
+    Composition::prepare(
+        DataPaths::at(root).unwrap(),
+        WORKSPACE,
+        ACTOR,
+        PROFILE,
+        false,
+    )
+    .unwrap()
+}
+
+/// A status read holds the shared session lock for microseconds; a command holds
+/// it longer. Either is a transient contention, and neither may cost the revoke:
+/// the action is either applied or reported, never skipped because a reader won.
+#[test]
+fn a_transient_session_lock_race_does_not_steal_the_revoke() {
+    let dir = tempdir().unwrap();
+    let mut composition = prepared(dir.path());
+
+    let (holder, held) = hold_session(&composition, Duration::from_millis(20));
+    held.recv().unwrap();
+    let epoch = composition
+        .control(ControlAction::Mute)
+        .expect("a transient session-lock contention must not steal the revoke");
+    holder.join().unwrap();
+
+    assert_eq!(epoch, 1);
+    assert_eq!(composition.live_epoch().unwrap(), Some(1));
+    verify_chain(&composition);
+}
+
+/// The periodic liveness read runs once per watch tick and must not stall lease
+/// renewal, so a lock it cannot take reports "not observed" rather than a fault.
+/// Reporting an error here is what ends a supervision loop over contention.
+#[test]
+fn a_busy_session_lock_reads_as_not_observed_rather_than_a_fault() {
+    let dir = tempdir().unwrap();
+    let composition = prepared(dir.path());
+
+    assert_eq!(
+        composition.live_epoch().unwrap(),
+        Some(0),
+        "an uncontended read reports the epoch"
+    );
+
+    let (holder, held) = hold_session(&composition, Duration::from_millis(30));
+    held.recv().unwrap();
+    assert_eq!(
+        composition.live_epoch().unwrap(),
+        None,
+        "a lock held past the poll budget is 'not observed this tick', not a fault"
+    );
+    holder.join().unwrap();
+
+    // The miss was transient: the next read observes the epoch again, which is
+    // what lets a watch loop retry instead of ending.
+    assert_eq!(composition.live_epoch().unwrap(), Some(0));
+}
+
+/// `live_epoch` must not report "not observed" for a change it can see, or the
+/// two tests above would pass on an implementation that always returns `None`.
+#[test]
+fn a_revoked_session_is_observed_as_a_changed_epoch() {
+    let dir = tempdir().unwrap();
+    let mut composition = prepared(dir.path());
+    composition.control(ControlAction::Mute).unwrap();
+    assert_eq!(composition.live_epoch().unwrap(), Some(1));
+}
 
 #[test]
 fn second_storage_owner_is_rejected() {
