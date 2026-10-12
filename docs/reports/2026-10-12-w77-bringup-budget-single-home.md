@@ -155,25 +155,16 @@ cargo xtask check --profile full   →  EXIT=0
 - **`passed` 的 +2 与新增测试逐条对应**：`ceiling_is_the_adr_0004_bound_and_the_rejection_threshold`
   （`nai-security`）与 `bringup_budget_is_the_operation_ceiling`（`nai-storage`）各 +1。**这条对得上**。
 - **目标数的 +1 对不上任何新增测试目标**（本轮没有新增测试文件）。核实后归因于**计数口径**：
-  `portable` 是**两条**命令（`cargo test --workspace --exclude nai-xtask` 与
-  `cargo test -p nai-xtask --lib`）；本轮先跑出的半份日志（`--workspace` 那条，74→73）里
-  **少了 `nai-xtask --lib` 这一条 `Running`**。⇒ **以完整两命令的现测值为准：74**，
-  W76 记录的 73 是**时点值**。**这正是记忆里那条纪律的又一次适用**：
-  *计数类范围断言引用前必须现跑，MUST NOT 从旧记录抄*。
+  `portable` 是**两条** cargo 命令（`cargo test --workspace --exclude nai-xtask` 与
+  `cargo test -p nai-xtask --lib`）；本轮**第一次跑到的那份日志恰好就是 73**——它止于
+  **第二条命令的链接失败**，因此**少了 `nai-xtask --lib` 这一条 `Running`**。完整两命令的现测值是
+  **74** ⇒ **W76 记录里的 73 属同一形状的「缺一条」**。**这正是记忆里那条纪律的又一次适用**：
+  *计数类范围断言引用前必须现跑，MUST NOT 从旧记录抄。*
 
-### 6.4 两条 validate
+### 6.5 为什么门控跑了七次（环境事实，值得记下）
 
-`--all --strict` = **43 passed / 0 failed**；`--all --strict --archived` = **75 passed / 0 failed**
-（W76 = 74，每归档一个变更 +1）。
-
-## 七、CI 复核
-
-`<待回填>`
-
-## 七之二、本轮的门控为何跑了七次（环境事实，值得记下）
-
-门控第一次就红，且**错误形态一路在变**（`LNK1104` → `E0462`/`E0463` → `rlib format`
-→ `memcmp` 类），最后在日志里抓到了真正的第一因：
+门控第一次就红，且**错误形态一路在变**（`LNK1104` → `E0462`/`E0463` → `rlib format`），
+最后在日志里抓到了**真正的第一因**：
 
 ```
 memory allocation of 2097152 bytes failed
@@ -181,23 +172,52 @@ error: only metadata stub found for `dylib` dependency `std` …
 process didn't exit successfully: clippy-driver.exe … (exit code: 0xc0000409, STATUS_STACK_BUFFER_OVERRUN)
 ```
 
-**本机 `nproc = 24`** ⇒ cargo 默认开 **24 路**并发；而我为了让产物一致做了 `cargo clean -p`
-（删 1.4 GiB）⇒ 变成**全量冷重建**，24 个 `clippy-driver` 同时跑直接把内存打爆。
-**编译器进程 OOM 中途死亡会留下截断产物**（`.rmeta` 在、`.rlib` 缺），
-下游于是报出 `can't find crate` / `metadata stub` / `required to be available in rlib format`
-——**这些都是果，不是因**。若只看表面错误，会去怀疑代码或依赖，方向完全错。
+**本机 `nproc = 24`** ⇒ cargo 默认开 **24 路**并发；而我为了让产物一致先做了 `cargo clean -p`
+（删 1.4 GiB）⇒ 变成**全量冷重建**，多个 `clippy-driver` 同时跑直接把内存打爆。
+**编译器进程 OOM 中途死亡会留下截断产物**（`.rmeta` 在、`.rlib` 缺），下游于是报出
+`can't find crate` / `only metadata stub found` / `required to be available in rlib format`
+——**这些都是果，不是因**。只看表面错误会去怀疑代码或依赖，方向全错。
 
-第二因（独立）：**间歇性 `LNK1104`**。实测它**逐目标随机**（同一次链接，`nai_engine-*.exe` →
-`pipeline-*.exe` → `engine-*.exe` → `nai_xtask-*.exe` 轮着来），
-**串行（`CARGO_BUILD_JOBS=1`）也能复现**，且已排除：**磁盘未满**（E: 余 57 GB）、
-**目录可写**（同目录内新建/删除 `.exe` 均成功）、**无残留进程**（cargo/rustc/link/mspdbsrv 全无）、
-**目标文件不存在**（不是被占用）。⇒ 与记忆里已登记的「间歇性链接争用」同族，属**环境级**。
+第二因（独立）：**间歇性 `LNK1104`**。实测**逐目标随机**（`nai_engine-*.exe` → `pipeline-*.exe`
+→ `engine-*.exe` → `nai_xtask-*.exe` 轮着来），**串行（`CARGO_BUILD_JOBS=1`）也能复现**；
+已排除：**磁盘未满**（E: 余 57 GB）、**目录可写**（同目录内新建/删除 `.exe` 均成功）、
+**无残留进程**（cargo/rustc/link/mspdbsrv 全无）、**目标文件不存在**（不是被占用）
+⇒ 环境级，与记忆里已登记的「间歇性链接争用」同族。
 
 **所以处置不是改代码，而是改变编排**：先 `cargo test --workspace --exclude nai-xtask --no-run`
-与 `cargo test -p nai-xtask --lib --no-run` **把全部测试二进制预链接好**
-（各一次成功），再跑门控 —— 此时 `cargo test` 只剩**执行**、不再链接，命中 LNK1104 的机会消失。
-**判据**：`git diff` 只有 16 个文件、逐包定向 clippy 两次全绿、单个目标独立链接成功
-⇒ **不是代码缺陷**（与记忆里「逐包能过 ⇒ 不是代码缺陷」同一条判据）。
+**与** `cargo test -p nai-xtask --lib --no-run` **把全部测试二进制预链接好**（各一次成功），
+再跑门控 —— 此时 `cargo test` 只剩**执行**、不再链接 ⇒ 命中 LNK1104 的机会消失。
+⚠ **两条命令都要**：`--exclude nai-xtask` 会漏掉后者，本轮正因如此多跑了一次。
+**判据**：`git diff` 只动 16 个文件、逐包定向 clippy 两次全绿、单目标独立链接成功
+⇒ **不是代码缺陷**（与「逐包能过 ⇒ 不是代码缺陷」同一条判据）。
+
+### 6.6 门控里那处 `not ok 14` 的定性（非阻塞）
+
+第一次门控日志里 `tests/contracts/schema.test.mjs` 有一条 `not ok 14`，错误来自沙箱的
+**safe-delete shim**（把 `dist/.w75-scan-probe.rs` 移入回收站时报「系统找不到指定的文件」）。
+定性依据两条：① **单独跑该文件 17/17 通过**；② **xtask 侧并未报 node 失败**——日志里
+**唯一的 `xtask:` 失败行只有 clippy**，说明跑到 clippy 时 node 各步都已通过。
+成因是**并发重复调用同一文件**：该测试把探针写到**写死的** `dist/.w75-scan-probe.rs`，
+两个进程互相把对方的文件先删掉，而 shim **不认 `force: true`** ⇒ 把良性的清理竞态变成失败。
+⇒ **判为非阻塞**，并**如实登记**（登记，不改：它不是本轮引入的，且改它属于扩大范围）。
+
+## 七、CI 复核
+
+本轮 run **`38261845020`** —— `head_sha = d32a7fc`，**与本轮推送 SHA 一致**（`created_at = 2026-10-12T14:17:41Z`），
+结论 **`success`**（两次查询：先 `in_progress`，后 `completed / success`）。
+
+**三件齐**（唯一查询参数 `cb=$(date +%s%N)` ＋ `Cache-Control: no-cache` ＋ 回读 `head_sha` == 推送 SHA）
+⇒ 结论可信。**同一次查询顺带证实**：本轮之前的三轮 run 均为 `success`——
+W76 回填 `935f304` → `38253557675`、W76 主提交 `5f1e12c` → `38251222058`、
+W75 回填 `d89da43` → `38238332385`。
+
+**观测通道本轮新踩的一个坑（已写进记忆）**：`curl` 走代理报
+`schannel: failed to receive handshake, SSL/TLS connection failed`（`EXIT=35`）。
+排除出网问题的依据：同一代理端口**在听**、经它访问 **http** 得 **301**、**直连 https** 得 **200**
+⇒ **TLS 1.3 与 schannel 握手失败**。加 **`--tlsv1.2 --tls-max 1.2`** 后恢复正常（200）
+⇒ 以后凡 https 查询都带上这两个参数。
+
+**按观测轮终止约定**：本条的**回填提交**会触发一个新的 run，**该 run 不再回填**——否则无限递推。
 
 ## 八、遗留
 
@@ -214,6 +234,15 @@ process didn't exit successfully: clippy-driver.exe … (exit code: 0xc0000409, 
    **MUST** 走本 ADR 的同一条流程（先问「这份预算描述的是谁的工作」）。
 5. **`Operation::CEILING` 与 `BRINGUP_OPERATION` 的关系**由一条 Rust 等式钉住；
    但「为什么 bring-up 就该取上界」仍是**设计判断**，脚本证不了它（ADR 0055 决策 2）。
+6. **本轮环境两坑已登记**（细则见 §6.5 / §6.6，长期记录见 `.workbuddy/memory/KNOWLEDGE.md` §11）：
+   ① `nproc = 24` ⇒ 冷缓存下 `clippy --workspace --all-targets` **OOM**（截断产物会伪装成
+   「代码/依赖有错」）；② **间歇性 `LNK1104`** 的**预链接绕法**。
+   **它们不是本轮的产物，也不会因本轮结束而消失** ⇒ 下一轮若再见同类形态，**先按这两条判据走**。
+7. **`cargo xtask schema --check` 本机仍跑不了**（宿主对「node 自旋 node」的 `EBUSY`）⇒ 零漂移由
+   「**未改任何 schema 与生成器输入**」（结构性理由）＋ **CI 的独立步骤**兜底，
+   **MUST NOT 写成「已通过」**（本轮的 `openspec/specs/scheduling-and-budgets/spec.md` 改的是**规格正文**，
+   与 `schemas/` 下的机器可读契约无关）。
+8. **CI 回填的终止约定**：按 W57 先例，**回填本条 CI 结论的那次提交，其自身的 run 不再回填**。
 
 ## 九、方法论教训
 
@@ -233,3 +262,17 @@ process didn't exit successfully: clippy-driver.exe … (exit code: 0xc0000409, 
 5. **「不在门控步骤里的目标」要自己点名。**
    `portable` 只跑 `cargo test --workspace` 与 `cargo test -p nai-xtask --lib` ⇒ **examples 不被编译**。
    本轮改的三个 example 若不做一次 `--all-targets` 的定向 clippy，**门控绿而它们是坏的**。
+6. **错误形态一直在变，不等于原因一直在变。**
+   本轮门控的红一路上从 `LNK1104` 换到 `E0462`/`E0463`、`metadata stub`、`rlib format`，
+   看起来像「产物损坏在乱跑」；**真正的第一因只有一个**——`memory allocation … failed`（OOM）。
+   后面那一串**都是它留下的截断产物的回声**。⇒ **判据方向要往日志更前面找**：
+   先问「有没有进程死过」，再问「代码错在哪」。
+   我为此绕了四轮，而第一因其实一行就在日志里。
+7. **环境级的间歇失败，处置是「改编排」而不是「改代码」；而且要把绕法写进长期记录。**
+   `nproc = 24` 不是缺陷、LNK1104 也不是缺陷，但**不写下来，下一轮还会再花一轮去重新发现**。
+   本轮的收益是两条**可复用**的处置：**`CARGO_BUILD_JOBS=2~4`** 与
+   **「先把全部测试二进制预链接（两条命令，`--exclude nai-xtask` 会漏后者）再跑门控」**。
+8. **沙箱/宿主的报错要读到「宿主文件」那一行。** 门控里那条 `not ok 14` 的错误正文写的是
+   `[safe-delete] 操作失败 … trash 操作 … 系统找不到指定的文件`，栈里是
+   `node-safe-delete-shim.cjs`——**它一眼就是宿主行为**，不是仓库的断言逻辑。
+   同时别忘了**用 xtask 自己的失败行做交叉验证**（唯一的 `xtask:` 失败行只有 clippy ⇒ node 步是过的）。
