@@ -204,7 +204,23 @@ created, so it cannot replace this one」。补写后两条口径均为 0 failed
 2. **CI 独立步骤**：`.github/workflows/foundation.yml` 的
    「Check generated contracts without modifying consumers」在 Linux 与 Windows 上各跑一次，push 后核对。
 
-<!--CI-->
+#### 实测结论（push 后低频单查询）
+
+提交 `515d536` 触发的 `foundation` 工作流 run **`38194417431`** 于 `2026-10-12T02:16:59Z`
+**completed success**，两个 job 各自 **completed success**：
+
+| job | 结论 |
+| --- | --- |
+| foundation (ubuntu-24.04) | completed success |
+| foundation (windows-latest) | completed success |
+
+两点说明：
+
+1. **查询纪律**：本次取结论用了**两次低频单查询**——首次在 `02:16Z` 见 ubuntu 绿、windows 仍
+   `in_progress`；第二次在 `02:22Z` 见两者皆绿。每次 URL 均带唯一 `cb` 参数并加
+   `Cache-Control: no-cache`，回读 `head_sha` = `515d536`，与本次推送一致（三件齐，非缓存响应）。
+2. **观测轮终止约定**（照 W57 先例）：这条「回填 CI 结论」的提交**其自身 run 不再回填**本报告，
+   否则无限递推；其 run 只做一次核对。
 
 ## 五、验收侧：为什么 B07 是 `pending` 而不是 `implemented`
 
