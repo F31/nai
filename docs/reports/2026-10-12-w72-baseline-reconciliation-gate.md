@@ -136,7 +136,23 @@ W68 把 B07 加进 `tests/registry.yaml` 是**正确**的动作。错的是：**
 
 | run | head | 结论 |
 |---|---|---|
-| 待回填 | 待回填 | 待回填 |
+| [`38220201159`](https://github.com/F31/nai/actions/runs/38220201159) | `da4a7f3`（与本轮推送 SHA 一致） | **双平台双绿**：`foundation (ubuntu-24.04)` **success**（`07:52:33Z → 07:58:17Z`，5m44s）、`foundation (windows-latest)` **success**（12m18s）；run 总状态 **Success**、总时长 **12m22s** |
+
+唯一非绿信号是 **2 条 warning**（两个 job 各一条）：`actions/checkout@v4` 等 action 仍声明
+Node.js 20、被 runner 强制跑在 Node.js 24 上的弃用提示——**非阻断**，与本轮改动无关。
+
+**观测方式与配额账**：`ubuntu-24.04` 的结论先在配额内用匿名
+`GET /repos/F31/nai/actions/runs/38220201159/jobs` 直接读到；随后匿名配额打满
+（`/rate_limit` 报 `remaining 0`、`reset 08:30:43Z`，此刻 `08:08:42Z`，还差约 22 分钟）
+⇒ `windows-latest` 改用 **WebFetch 走服务端**读 run/job 页面（**不吃本机配额**，
+代价是**同 URL 有 15 分钟缓存**，故两次都换了查询串：`?w72backfill=1` / `?w72backfill=2`）。
+两条观测的 `head_sha` 均为 `da4a7f3…`，与本次推送一致 ⇒ 结论不是缓存里的旧 run。
+
+**这次绿说明什么、不说明什么**：它证明本次推送的 `full` 门控在**两平台都通过**——
+特别是**新增的 Node 用例（4 → 11）在 Linux 侧也绿**，这是本机 Windows 门控证明不了的那一半
+（新门控是纯 Node 脚本，**没有平台分支**，但「没有分支」是读出来的判断，CI 绿是**证据**）。
+它**不**说明此后不会出现间歇失败——本轮**零 Rust／零测试目标改动**，与那种红本就无关；
+本轮的立论**不依赖这次绿**，而依赖可复现的本机证据（契约三件套 + 两条 `validate` 口径 + 21 组注入）。
 
 （按观测轮终止约定，**回填 CI 结论的那次提交其自身 run 不再回填**。）
 
