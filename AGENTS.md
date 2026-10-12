@@ -1079,3 +1079,31 @@ W65 做的是**范围重排与升基线**，不是加能力。产出 `docs/直�
 见 docs/adr/0048-design-baseline-v39.md、docs/直播数字人 + 智能体系统技术方案 V3.9.md、
 docs/reports/2026-10-11-w65-v39-scope-and-baseline.md、docs/reports/2026-10-11-v38-review-adjudication.md、
 openspec/changes/archive/2026-10-11-w65-v39-scope-and-baseline/。
+
+### W66 harness 观测与逐层具名降级（V3.9 §47.1、§47.4；验收 H15/H17）
+
+W66 落 **W63**——V3.9 收缩后 R1 harness 轨道上**唯一完全未开始**的工作项。触发是实测盘点：
+`grep -rn 'harness' crates/` 在判定逻辑上**零命中**，即「有没有静默降级」只能靠人读代码回答。
+
+**新增** `crates/nai-kernel/src/evaluate/harness.rs`（**不新建顶层模块**：`evaluate/` 的契约就是纯逻辑判定，
+且 `memory.rs` 头注释已引用 INV-32，放同处才不会出现两个都声称实现 INV-32 的模块。
+**不复用** `bridge::Degradation`——那个只服务 §119 平台中断，合并会让「降级属于哪一类」重新不可判定）：
+
+- **观测（H15）**：五类各带 `required_fields()`（逐项照抄 §47.1）；判「能否进日志、以何形态进」——
+  必需项齐备、值内无凭据字面量（INV-11，**扫值不扫字段名**）、观众原文已脱敏且在保留期内。
+- **降级（H17）**：六类失败各带互异 `code()` 与 `preferred_level()`，从首选级起沿 §12.2 四级取第一个可用级，
+  静音待机恒可用；装配层 `refuses_call` **不因落点变化而解除**；`visible` 恒真（**不存在不可见的降级**）。
+- **INV-32 后半段**：`assert_no_free_form` 判「已降级且失去策略/人设约束」为具名违规——只给错误码仍生成，同样判违规。
+
+`tests/harness.rs` **24 项**，四组**能区分两种实现**的守卫**每组都用注入验证过确实会失败**：
+字段名黑名单（3 项抓住）／所有失败压到第一级（1 项）／「命名了就继续生成」（1 项）／悄悄删 `crop_reason`（2 项）。
+最后一条是本轮**补出来的缺口**：在此之前 `required_fields()` 没有任何测试钉住 §47.1，
+删一项不会有任何测试失败 ⇒ 新增一条把五类字段表**逐项写死**的断言。
+**教训：补「完整性守卫」时要问一句——它钉住的是「条数」还是「内容」？只钉条数，删内容照样绿。**
+
+**明确不做**：不把记录追加进 `nai-storage` 的哈希链（runtime 接线）、不渲染进 `CapabilityView`（呈现层）、
+**不新增契约名**（目录零漂移）、**不新增第二个门控入口**、不改任何 `status`、不实现 H05–H14/H16（能力包）。
+**边界（如实）**：H15/H17 **保持 `pending`**（沿用 W57 对 H03/H04 的口径：判定面 ≠ 真实路径已接线），
+故报告 MUST NOT 出现「已进决策日志」。
+见 docs/kernel.md（W66 段）、docs/reports/2026-10-12-w66-harness-observability-and-degradation.md、
+openspec/changes/archive/2026-10-12-w66-harness-observability-and-degradation/。

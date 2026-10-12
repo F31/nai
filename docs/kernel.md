@@ -95,3 +95,38 @@ D06还必须复检epoch、审批hash、事实和媒体lease。
 **边界（如实）**：H03/H04 **保持 `pending`**——判据描述的是**运行时行为**，而真实记忆子系统（持久化、控制面接线、
 Pro 跨会话）未建；本轮交付的是判定面。§42.5 的跨会话边界（授权/审批/租约/设备身份不跨场继承）**本轮未覆盖**。
 
+## W66 harness 观测与逐层具名降级（V3.9 §47.1、§47.4；验收 H15/H17）
+
+落在 `evaluate::harness`（**不是**新建顶层模块）：`evaluate/` 的模块契约就是纯逻辑判定，且 `memory.rs`
+的头注释已引用 INV-32——本轮是同一条不变量的后半段，放同处才不会出现两个都声称实现 INV-32 的模块。
+**不复用** `bridge::Degradation`：那个只服务 §119 的平台中断（`bridge_lost`／`auto_reply_revoked`），
+与 harness 六层是两件事，合并会让「这次降级属于哪一类」重新不可判定。
+
+- **观测（H15）**：`ObservationLayer` 五类（装配／意图／记忆／工具／缓存）各带 `required_fields()`，
+  逐项照抄 §47.1；`evaluate_observation` 判「能否进日志、以何形态进」——必需项齐备、值内无凭据字面量
+  （INV-11，**扫值不扫字段名**）、观众原文已脱敏且在 §5.8 保留期内。输出 `redacted` 是已脱敏载荷，
+  凭据值替换为 `[redacted]`、超期观众文本**丢弃**而非仅标记。
+- **降级（H17）**：`FailureLayer` 六类各带互异 `code()` 与 `preferred_level()`；`evaluate_degradation`
+  从首选级起沿 §12.2 四级（模板 → 已批准缓存 → 人工 → 静音待机）取第一个可用级，静音待机恒可用故必有落点。
+  装配层置 `refuses_call`（**不因落点变化而解除拒绝**）；对端不可用置 `keeps_existing_session`。
+  `visible` 恒为真——**不存在不可见的降级**。
+- **INV-32 后半段**：`assert_no_free_form` 判「已降级且上下文失去策略或人设约束」为具名违规。
+  只给错误码仍继续生成，同样判违规。
+
+`ObservationRejection` 收录 **5** 个具名拒绝；`tests/harness.rs`（**24 项**）含四组**能区分两种实现**的守卫，
+每组都用注入验证过确实会失败：
+
+| 注入 | 被抓住的测试 |
+|---|---|
+| 把凭据扫描改成字段名黑名单 | `a_field_named_key_with_a_clean_value_passes` 等 3 项 |
+| 把所有失败压到第一级 | `intent_and_cache_land_on_human_even_when_the_template_is_available` |
+| 「命名了就继续生成」 | `a_degraded_call_without_its_policy_constraint_is_a_violation` |
+| 悄悄删掉 `crop_reason` | `required_fields_match_the_baseline_table` |
+
+最后一条是本轮**补出来的缺口**：在此之前 `required_fields()` 的内容没有任何测试钉住 §47.1，
+删一项不会有任何测试失败；故新增一条把五类字段表**逐项写死**的断言。
+
+**边界（如实）**：H15/H17 **保持 `pending`**——本轮交付的是**判定面**，
+把记录真正追加进 `nai-storage` 的哈希链、以及把 `DegradeVerdict` 渲染进 `CapabilityView` 与界面，
+都属 runtime 与呈现层接线；故报告 MUST NOT 出现「已进决策日志」的措辞。
+

@@ -4,6 +4,7 @@
 //! values never mean pass, granted permission or authorization.
 pub mod agent;
 pub mod guard;
+pub mod harness;
 pub mod memory;
 pub mod show;
 pub mod skill;
