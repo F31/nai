@@ -308,8 +308,8 @@ export const TOTAL_ENTRIES = 34;
 /// 而「总数对『被改类别』是瞎的」正是这张表存在的理由（W66 教训）。
 export const DISPOSITION_COUNTS = new Map([
   ['answered_by_baseline', 4],
-  ['decidable_in_repo', 4],
-  ['decided_in_repo', 1],
+  ['decidable_in_repo', 3],
+  ['decided_in_repo', 2],
   ['needs_precondition', 4],
   ['needs_external', 20],
   ['out_of_scope', 1],

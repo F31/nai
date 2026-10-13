@@ -6,8 +6,9 @@ schema_version: 1
 # 分章的新增条数与总数由 CHAPTER_COUNTS 逐章写死（覆盖性 MUST NOT 靠台账自证）。
 #
 # 处置是**封闭枚举**，每态对应一个必填字段：`answered_by_baseline`→`basis`、
-# `decidable_in_repo`→`recommendation`、`needs_precondition`→`precondition`、
-# `needs_external`→`closure`、`out_of_scope`→`note`。
+# `decidable_in_repo`→`recommendation`、`decided_in_repo`→`landing`（仓库已跟踪路径）、
+# `needs_precondition`→`precondition`、`needs_external`→`closure`、`out_of_scope`→`note`。
+# （W89 补正：W88 立第六态时漏改了本注释，此处仍只列五态。）
 baseline: V3.11
 
 entries:
@@ -242,8 +243,11 @@ entries:
     question: "记忆：观众长期记忆的字段集与保留期"
     introduced_in: "§48.7"
     also_in: ["§5.5"]
-    disposition: decidable_in_repo
-    recommendation: "R1 内判为「**空集 + 默认关闭**」——§5.5 的默认关闭使字段集没有对象；字段集与保留期作为 **R3 跨会话能力**的入档前置，默认关闭时 MUST NOT 被读取"
+    disposition: decided_in_repo
+    landing: ["crates/nai-kernel/src/evaluate/memory.rs"]
+    # W89 就地订正：原句用一个词「字段集」指了两样东西（运行时的字段值集合 / 允许字段白名单），
+    # 读起来像在断言一个非空的白名单是空集。下面把两个对象分开写，并写明 R1 内白名单不生效。
+    recommendation: 'R1 内：**默认关闭**——`MemoryPolicy::default().viewer_memory_enabled = false`（落点见 `landing`）⇒ **运行时被写入的字段值集合为空集**，这是 §5.5「默认关闭」的直接后果。**允许字段白名单**是**另一个对象**，MUST NOT 与它混写：`allowed_viewer_fields = ["preference", "answered_topic"]` 与 `max_retention_ms`（30 天上界）沿用 D10、W57 明写「不新造取值」，且 R1 内**不生效**（H03／H04 保持 `pending`：无持久化、无接线）。字段集与保留期的**取值**仍是 **R3 跨会话能力**的入档前置，MUST NOT 被当作已定。'
 
   # ---- §57.5 新增（3 条）----
   - id: PD-32

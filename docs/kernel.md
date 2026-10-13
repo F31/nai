@@ -64,8 +64,9 @@ D06还必须复检epoch、审批hash、事实和媒体lease。
   重写限次（初值1），URL/脚本单次消毒重写，超限 block；缺失收费审核不会跳过基础守门。
 - `skill::validate_descriptor/validate_tool_plan`：高风险不注册；观众可见需 risk_2 与 output.viewer 权限；
   工具计划步骤/时长有界，参数只允许受控资源 ID，任意 URL/SQL/路径拒绝；结果视为不可信数据。
-- `memory::working_memory/session_summary/viewer_record_allowed`：工作记忆只保留已播完内容；
-  场次摘要在主题/已回答/承诺/恢复点做确定性去重；观众长期记忆默认关闭，需作用域/用途/授权/保留/删除。
+- `memory::working_memory/session_summary/viewer_record_allowed/viewer_memory_gate`：工作记忆只保留已播完内容；
+  场次摘要在主题/已回答/承诺/恢复点做确定性去重；观众长期记忆默认关闭，需作用域/用途/授权/保留/删除
+  （「默认关闭」的判定只有 `viewer_memory_gate` **一处**，读取面/写入面/请求准入面共用，W89）。
 - `selling::evaluate_pitch`：§53 基础讲品循环的确定性规则——段落四段与顺序、检查点只含段落与已完成句、
   段落级冷却与最小切换间隔、受约束断言须绑定当前有效事实版本。
 - `show::evaluate_show`：时长/打断政策有界；敏感场景要求证据绑定；checkpoint 恢复必须显式匹配场景版本。
@@ -92,7 +93,7 @@ D06还必须复检epoch、审批hash、事实和媒体lease。
 - **四操作（§42.6）**：`MemoryOperation` 只接受 `write`/`read`/`forget`/`scopes`，其余是 `unknown_operation`，
   不静默当作未知操作。
 
-`MemoryRejection` 收录 **23** 个具名拒绝，`label()` 互不相同；`tests/memory.rs`（**21 项**）断言
+`MemoryRejection` 收录 **23** 个具名拒绝，`label()` 互不相同；`tests/memory.rs`（**23 项**，W89 起）断言
 「构造出的拒绝集合**恰为** `MemoryRejection::ALL`」（既证每条可构造，也防未登记的名字），并含正向不变量
 （合规候选零拒绝）与**顺序断言**（同时越作用域又过期的记录报 `out_of_scope` ⇒「先作用域后时效」不是注释）。
 
@@ -307,3 +308,31 @@ H01/H02 是 W56 立的项目标（§47.6 的 W56 行写的正是「上下文装�
 只主张「链存在且被消除」；H 系与所有 `status` 一律不动。**本轮不新增条目 ⇒ 不产生新的基线偏差**
 （W68 的 B07、W67 的「影子在 R1 无落点」仍待升基线轮次收录——**两项均已在 W71 收录**，见 V3.10 §58.2 的 E1–E4）。
 
+## W89 观众长期记忆开关的单一来源与写入面（V3.11 §5.5；PD-31）
+
+「观众长期记忆**默认关闭**」这条开关在仓库里被写了三处，W89 实测后**收成一处判定**：
+
+- **`memory::viewer_memory_gate(policy)`**：这条开关的**唯一判定处**（返回 `viewer_memory_disabled`）。
+  读取面 `read_records`、写入面 `admit_write` 与请求准入面 `viewer_record_allowed` 都**调用它**，
+  MUST NOT 各自复写 `if !policy.viewer_memory_enabled`（一条开关答两次就会分家）。
+  legacy `viewer_record_allowed` 保留其 `EvaluateError` 契约，只把 gate 的拒绝**映射**成 `Unauthorized`
+  ——**映射不是第二处定义**。
+- **写入面此前是空的**（本轮补的执行体）：`admit_write` 原先只收 `&MemoryCandidate`、**没有策略** ⇒
+  默认关闭下一条 `kind = "viewer"` 的候选**会被接受**（实测改前返回 `Ok(())`）。
+  本轮给它加 `policy` 入参，并把能力判定放在**必填项之后、来源判定之前**——与读取面
+  「**结构必填 → 能力开关 → 授权**」同序；理由是能力未启用**不依赖条目内容**即成立（能力级），
+  而「来源不可信」是条目级。**顺序有断言**（同时「未启用 + 不可信来源」⇒ 报能力未启用）。
+- **开关 MUST NOT 塞进 `MemoryCandidate`**：让被审对象自带「能力是否启用」，就是 W57 §四.1 已排除的
+  同一反模式（门槛交给被审对象自己填）。
+- **拒因复用 `viewer_memory_disabled`**，不新造名字（同一件事 MUST NOT 有两个名字）⇒ `MemoryRejection::ALL`
+  仍 **23**，既有「构造出的集合**恰为** `ALL`」的总账断言**不放宽**。
+- **非空洞注入**：F0/F1 改前/改后对照（**真跑改前那一行**：默认策略下 viewer 候选改前 `Ok(())`、
+  改后 `Err(viewer_memory_disabled)`）、F2 承重（移出写入面 gate ⇒ 2 failed）、F3 顺序断言、
+  F4 反向不红（启用后合规候选通过、非观众类别不受影响）、F7 反转 gate ⇒ 读取面与写入面
+  **6 failed 同时变红**（证明两面确实共用一个判定）。`tests/memory.rs` **21 → 23**。
+
+**边界（如实）**：本轮修的是**判定面自足性**，**不是运行时接线**——`admit_write`／`read_records`
+在生产代码里**无调用方**（H03／H04 仍 `pending`，原因与 W57 §五一致）⇒ MUST NOT 读成
+「默认关闭已生效于产品」。另有一处**配置面死键**本轮只登记未改：`schemas/config/runtime.schema.json`
+的 `session_defaults.viewer_memory_enabled` 是 **`required`** 键，而全仓非测试代码只读过同层的
+`allow_auto_without_platform_grant`（`apps/engine/src/pipeline.rs:874`）⇒ 改它**无任何效果**。

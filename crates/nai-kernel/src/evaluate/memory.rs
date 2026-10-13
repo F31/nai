@@ -19,6 +19,12 @@
 //! surface exists to prevent, so [`MemoryRejection`] carries a stable label
 //! for each of them and [`MemoryReadOutcome`] reports the refusals rather than
 //! swallowing them (V3.8 §40, INV-32: every layer failure is named).
+//!
+//! V3.11 §5.5 / PD-31 (W89): the "viewer long-term memory is off by default"
+//! switch is answered in **exactly one** place, [`viewer_memory_gate`], and the
+//! read face, the write face and the request-admission face all call it. The
+//! switch used to be answered on the read face only, so a viewer candidate was
+//! accepted by [`admit_write`] while the capability was closed.
 use super::EvaluateError;
 use nai_contracts::v1::{MemoryRecord, MemoryRequest};
 use std::collections::BTreeSet;
@@ -126,13 +132,31 @@ fn scope_ok(id: &str, allowed: &[&str]) -> bool {
         .any(|scope| id.starts_with(&format!("{scope}:")))
 }
 
+/// §5.5 / PD-31: viewer long-term memory is **off by default**.
+///
+/// This is the **single answering point** for that switch. The read face
+/// ([`read_records`]), the write face ([`admit_write`]) and the request
+/// admission face ([`viewer_record_allowed`]) all go through it; none of them
+/// restates `if !policy.viewer_memory_enabled`, because a switch answered twice
+/// drifts (W88: one thing MUST NOT be defined in two places).
+pub fn viewer_memory_gate(policy: &MemoryPolicy) -> Result<(), MemoryRejection> {
+    if policy.viewer_memory_enabled {
+        Ok(())
+    } else {
+        Err(MemoryRejection::ViewerMemoryDisabled)
+    }
+}
+
 /// Viewer long-term memory is off by default. Enabling/reading requires a
 /// scoped ID (never a nickname), an allowed purpose, authorization and retention.
 pub fn viewer_record_allowed(
     request: &MemoryRequest,
     policy: &MemoryPolicy,
 ) -> Result<(), EvaluateError> {
-    if !policy.viewer_memory_enabled {
+    // The answer lives in [`viewer_memory_gate`]; this legacy face keeps its
+    // `EvaluateError` contract and only *maps* the gate's refusal onto it.
+    // Mapping is not a second definition — the decision itself is not restated.
+    if viewer_memory_gate(policy).is_err() {
         return Err(EvaluateError::Unauthorized);
     }
     if request.kind != VIEWER_KIND || request.purpose.is_empty() {
@@ -373,10 +397,15 @@ impl MemoryCandidate {
 
 /// H03 / §42.2: 写入的来源门槛。
 ///
-/// 判据顺序刻意固定：先补**必填项**（作用域、来源标识、时间），再判**来源**，
-/// 最后判**标注**。理由是「缺了必填项」与「来源不可信」是两件事，
-/// 混在一句「不合规」里会让调用方无法区分该补字段还是该换来源。
-pub fn admit_write(candidate: &MemoryCandidate) -> Result<(), MemoryRejection> {
+/// 判据顺序刻意固定：先补**必填项**（作用域、来源标识、时间），再判**能力开关**，
+/// 再判**来源**，最后判**标注**。理由是「缺了必填项」「能力没开」「来源不可信」
+/// 是**三件事**，混在一句「不合规」里会让调用方无法区分该补字段、该去开开关，
+/// 还是该换来源。能力开关的位置与读取面同序（`read_records` 先报 `invalid_scope`、
+/// 再报 `viewer_memory_disabled`）——它是不依赖条目内容就成立的判定，故先于条目级的来源判定。
+pub fn admit_write(
+    candidate: &MemoryCandidate,
+    policy: &MemoryPolicy,
+) -> Result<(), MemoryRejection> {
     let record = &candidate.record;
 
     // §42.2: 每次写入必带作用域（workspace/session）、来源标识与时间。
@@ -388,6 +417,13 @@ pub fn admit_write(candidate: &MemoryCandidate) -> Result<(), MemoryRejection> {
     }
     if candidate.written_at_utc_ms == 0 {
         return Err(MemoryRejection::WriteWithoutTimestamp);
+    }
+
+    // §5.5 / PD-31: 观众长期记忆默认关闭——**写入面也要判**，且用的是与读取面
+    // **同一处**判定（[`viewer_memory_gate`]）。此前这里没有这一步：能力关闭时
+    // 一条 viewer 候选仍会被接受（「读取被拒、写入却被接受」的半覆盖）。
+    if record.kind == VIEWER_KIND {
+        viewer_memory_gate(policy)?;
     }
 
     // §42.2 / INV-31: 工具返回、外部智能体返回、评论原文与模型草稿**一律**不是事实来源。
@@ -612,9 +648,7 @@ pub fn read_records(
     }
     // §42.3: 观众长期记忆默认关闭；读取需授权引用并记录用途。
     if query.kinds.contains(&MemoryKind::Viewer) {
-        if !policy.viewer_memory_enabled {
-            return Err(MemoryRejection::ViewerMemoryDisabled);
-        }
+        viewer_memory_gate(policy)?;
         if query
             .authorization_ref
             .as_deref()

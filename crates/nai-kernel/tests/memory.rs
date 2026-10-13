@@ -52,6 +52,12 @@ fn viewer_enabled() -> MemoryPolicy {
     }
 }
 
+/// 本文件里「来源门槛 / 必填项」那批断言用的都是**默认策略**下的写入。
+/// 观众长期记忆的开关另有显式传策略的用例（见本节末与 H03 的 W89 组）。
+fn admit(candidate: &MemoryCandidate) -> Result<(), MemoryRejection> {
+    admit_write(candidate, &MemoryPolicy::default())
+}
+
 // ---------------------------------------------------------------------------
 // H03 写入面
 // ---------------------------------------------------------------------------
@@ -59,13 +65,13 @@ fn viewer_enabled() -> MemoryPolicy {
 #[test]
 fn a_compliant_write_is_accepted() {
     // 正向不变量：合规候选零拒绝——否则「全都拒」也能让下面每条测试变绿。
-    assert_eq!(admit_write(&well_formed_candidate(SESSION_KIND)), Ok(()));
-    assert_eq!(admit_write(&well_formed_candidate(WORKING_KIND)), Ok(()));
+    assert_eq!(admit(&well_formed_candidate(SESSION_KIND)), Ok(()));
+    assert_eq!(admit(&well_formed_candidate(WORKING_KIND)), Ok(()));
     // 权威事实：语义记忆 + §6 发布引用。
     let fact = well_formed_candidate(SEMANTIC_KIND)
         .with_claim(ClaimKind::AuthoritativeFact)
         .with_publish_ref("publish:kb1:rev7");
-    assert_eq!(admit_write(&fact), Ok(()));
+    assert_eq!(admit(&fact), Ok(()));
 }
 
 #[test]
@@ -82,14 +88,14 @@ fn untrusted_sources_never_become_facts_or_promises() {
             .with_source_ref("src")
             .written_at(NOW);
         assert_eq!(
-            admit_write(&candidate),
+            admit(&candidate),
             Err(MemoryRejection::UntrustedSourceAsFact),
             "来源 {} 不得写成事实或承诺",
             source.label()
         );
         // 即便声称只是「叙述」，也不因 claim 而放行——这些来源根本不属于「已批准且已播完」。
         assert_eq!(
-            admit_write(&candidate.clone().with_claim(ClaimKind::Narrative)),
+            admit(&candidate.clone().with_claim(ClaimKind::Narrative)),
             Err(MemoryRejection::UntrustedSourceAsFact)
         );
     }
@@ -106,7 +112,7 @@ fn an_unplayed_candidate_is_not_a_fact() {
     .with_source_ref("approval:a-1")
     .written_at(NOW);
     assert_eq!(
-        admit_write(&candidate),
+        admit(&candidate),
         Err(MemoryRejection::UnplayedCandidateAsFact)
     );
 }
@@ -116,38 +122,26 @@ fn a_write_missing_a_required_field_is_named_after_that_field() {
     // 「缺了必填项」与「来源不可信」是两件事，各有各的名字。
     let mut no_scope = well_formed_candidate(SESSION_KIND);
     no_scope.record.workspace_id = "  ".into();
-    assert_eq!(
-        admit_write(&no_scope),
-        Err(MemoryRejection::WriteWithoutScope)
-    );
+    assert_eq!(admit(&no_scope), Err(MemoryRejection::WriteWithoutScope));
 
     let mut no_session = well_formed_candidate(SESSION_KIND);
     no_session.record.session_id = String::new();
-    assert_eq!(
-        admit_write(&no_session),
-        Err(MemoryRejection::WriteWithoutScope)
-    );
+    assert_eq!(admit(&no_session), Err(MemoryRejection::WriteWithoutScope));
 
     let mut no_ref = well_formed_candidate(SESSION_KIND);
     no_ref.source_ref = "   ".into();
-    assert_eq!(
-        admit_write(&no_ref),
-        Err(MemoryRejection::WriteWithoutSourceRef)
-    );
+    assert_eq!(admit(&no_ref), Err(MemoryRejection::WriteWithoutSourceRef));
 
     let mut no_time = well_formed_candidate(SESSION_KIND);
     no_time.written_at_utc_ms = 0;
-    assert_eq!(
-        admit_write(&no_time),
-        Err(MemoryRejection::WriteWithoutTimestamp)
-    );
+    assert_eq!(admit(&no_time), Err(MemoryRejection::WriteWithoutTimestamp));
 }
 
 #[test]
 fn an_authoritative_fact_needs_publication_and_semantic_memory() {
     let no_publish = well_formed_candidate(SEMANTIC_KIND).with_claim(ClaimKind::AuthoritativeFact);
     assert_eq!(
-        admit_write(&no_publish),
+        admit(&no_publish),
         Err(MemoryRejection::FactWithoutPublishRef)
     );
 
@@ -155,7 +149,7 @@ fn an_authoritative_fact_needs_publication_and_semantic_memory() {
         .with_claim(ClaimKind::AuthoritativeFact)
         .with_publish_ref("   ");
     assert_eq!(
-        admit_write(&blank_publish),
+        admit(&blank_publish),
         Err(MemoryRejection::FactWithoutPublishRef)
     );
 
@@ -165,11 +159,71 @@ fn an_authoritative_fact_needs_publication_and_semantic_memory() {
             .with_claim(ClaimKind::AuthoritativeFact)
             .with_publish_ref("publish:kb1:rev7");
         assert_eq!(
-            admit_write(&misplaced),
+            admit(&misplaced),
             Err(MemoryRejection::FactOutsideSemanticMemory),
             "{kind} 不得承载权威事实"
         );
     }
+}
+
+// ---------------------------------------------------------------------------
+// H03（W89）：能力开关的单一来源与写入面
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_closed_viewer_memory_is_closed_on_the_write_face_too() {
+    // V3.11 §5.5 / PD-31（W89）：能力关闭时，写入面与读取面报**同一个**拒因。
+    // 改前这一步不存在——同一个候选会被 `admit_write` 接受（报告 §五 的 F0/F1 对照）。
+    let candidate = well_formed_candidate(VIEWER_KIND);
+    assert_eq!(
+        admit_write(&candidate, &MemoryPolicy::default()),
+        Err(MemoryRejection::ViewerMemoryDisabled),
+        "能力关闭时观众长期记忆的写入必须被拒"
+    );
+    // 读取面用的是同一个名字：两面共用一个拒因，不是一个面一个名字。
+    assert_eq!(
+        read(
+            &[],
+            &MemoryQuery::new(scope("s1"), vec![MemoryKind::Viewer], 8),
+            &MemoryPolicy::default()
+        ),
+        Err(MemoryRejection::ViewerMemoryDisabled)
+    );
+    // 启用之后同一候选通过——这一步单独证明「拒」来自开关，而不是别的规则。
+    assert_eq!(admit_write(&candidate, &viewer_enabled()), Ok(()));
+    // 开关只作用于观众类别，MUST NOT 外溢到别的记忆类别。
+    for kind in [SESSION_KIND, WORKING_KIND, SEMANTIC_KIND] {
+        assert_eq!(
+            admit_write(&well_formed_candidate(kind), &MemoryPolicy::default()),
+            Ok(()),
+            "{kind} 不受观众长期记忆开关影响"
+        );
+    }
+}
+
+#[test]
+fn the_capability_gate_is_answered_before_the_source_gate() {
+    // 能力未启用是**不依赖条目内容**就成立的判定 ⇒ MUST 先于条目级的来源判定。
+    // 同时命中两者时若报 `untrusted_source_as_fact`，「顺序」就只是一句注释。
+    let both = MemoryCandidate::new(record(VIEWER_KIND, "r-1", "s1"), WriteSource::ToolReturn)
+        .with_source_ref("src")
+        .written_at(NOW);
+    assert_eq!(
+        admit_write(&both, &MemoryPolicy::default()),
+        Err(MemoryRejection::ViewerMemoryDisabled)
+    );
+    // 启用之后，同一个候选才轮到来源判定——两次报的名字不同，顺序才可判。
+    assert_eq!(
+        admit_write(&both, &viewer_enabled()),
+        Err(MemoryRejection::UntrustedSourceAsFact)
+    );
+    // 必填项仍先于能力：缺作用域的 viewer 候选报的是它缺的那个字段。
+    let mut no_scope = well_formed_candidate(VIEWER_KIND);
+    no_scope.record.workspace_id = "   ".into();
+    assert_eq!(
+        admit_write(&no_scope, &MemoryPolicy::default()),
+        Err(MemoryRejection::WriteWithoutScope)
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -579,7 +633,7 @@ fn every_named_rejection_is_constructible_and_the_set_is_exact() {
     let untrusted = MemoryCandidate::new(record(SESSION_KIND, "r", "s1"), WriteSource::ToolReturn)
         .with_source_ref("src")
         .written_at(NOW);
-    seen.insert(admit_write(&untrusted).unwrap_err());
+    seen.insert(admit(&untrusted).unwrap_err());
 
     let unplayed = MemoryCandidate::new(
         record(SESSION_KIND, "r", "s1"),
@@ -587,27 +641,27 @@ fn every_named_rejection_is_constructible_and_the_set_is_exact() {
     )
     .with_source_ref("src")
     .written_at(NOW);
-    seen.insert(admit_write(&unplayed).unwrap_err());
+    seen.insert(admit(&unplayed).unwrap_err());
 
     let mut no_scope = well_formed_candidate(SESSION_KIND);
     no_scope.record.workspace_id = String::new();
-    seen.insert(admit_write(&no_scope).unwrap_err());
+    seen.insert(admit(&no_scope).unwrap_err());
 
     let mut no_ref = well_formed_candidate(SESSION_KIND);
     no_ref.source_ref = String::new();
-    seen.insert(admit_write(&no_ref).unwrap_err());
+    seen.insert(admit(&no_ref).unwrap_err());
 
     let mut no_time = well_formed_candidate(SESSION_KIND);
     no_time.written_at_utc_ms = 0;
-    seen.insert(admit_write(&no_time).unwrap_err());
+    seen.insert(admit(&no_time).unwrap_err());
 
     let no_publish = well_formed_candidate(SEMANTIC_KIND).with_claim(ClaimKind::AuthoritativeFact);
-    seen.insert(admit_write(&no_publish).unwrap_err());
+    seen.insert(admit(&no_publish).unwrap_err());
 
     let misplaced = well_formed_candidate(SESSION_KIND)
         .with_claim(ClaimKind::AuthoritativeFact)
         .with_publish_ref("publish:kb1:rev7");
-    seen.insert(admit_write(&misplaced).unwrap_err());
+    seen.insert(admit(&misplaced).unwrap_err());
 
     // —— 请求级（H04）
     let incomplete = MemoryQuery::new(MemoryScope::new("ws", "", ""), vec![MemoryKind::Session], 8);

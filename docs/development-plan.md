@@ -1179,6 +1179,18 @@ W78 §九第 8 条撞上后者并作了**就地订正**，W76 §九第 6 条则�
 数据侧 `PD-09` 由 `decidable_in_repo` 迁到 `decided_in_repo`、`DISPOSITION_COUNTS` `decidable_in_repo` **5 → 4** / `decided_in_repo` **0 → 1**（总数仍 **34**、分章计数不变），`recommendation` **原文保留**为注解；`tests/registry.test.mjs` **47 → 50**，非空洞注入 F0–F7（含改前/改后对照）；
 **不改基线正文、不改 `tests/registry.yaml`、不实现任何代码（Rust 零改动）、不新增依赖边与契约名、不改余下 4 条 `decidable_in_repo` 的处置、不重排 W 编号**。
 见 [W88 报告](reports/2026-10-13-w88-decided-in-repo-landing.md)、[ADR 0066](adr/0066-decided-in-repo-landing.md)、`openspec/changes/archive/2026-10-13-w88-decided-in-repo-landing/`）；
+**W89 把「观众长期记忆默认关闭」收成单一来源、并补上写入面的执行体**（W88 §八第 2 条登记的「`PD-31` 的『空集』与 W57 已交付的 `allowed_viewer_fields` 非空存在张力」）——
+核实结论比登记的张力**更靠前**，三条均为实测：
+**F1 配置面是死键**——`schemas/config/runtime.schema.json` 的 `session_defaults` 是 `additionalProperties:false` 且 **`required` 明列** `viewer_memory_enabled`，而全仓**非测试**代码里 `composition.config()["session_defaults"]` **只被读一次**（`apps/engine/src/pipeline.rs:874`）且**只读同层的 `allow_auto_without_platform_grant`** ⇒ 把它改成 `true` **没有任何效果**（同层字段「一个有主、一个无主」，这个**对照本身**就是判据）；
+**F2 判定面只覆盖一半**——`viewer_memory_enabled` 只被 `read_records`（读取面）与 `viewer_record_allowed`（**无生产调用方**）消费，**写入面 `admit_write` 既不接受策略也不检查它** ⇒ 默认关闭下一条 `kind = "viewer"` 的候选**会被接受**（真跑改前那一行：返回 `Ok(())`）；
+**F3 措辞同形不同义**——推荐的「空集」论据是「默认关闭**使字段集没有对象**」，指**运行时被写入的字段值集合**，而 `allowed_viewer_fields`（`["preference","answered_topic"]`，D10 沿用、W57 明写「不新造取值」）是**启用后才生效的允许字段白名单** ⇒ 台账**用同一个词指了两样东西**；
+⇒ 故**不是实现缺陷**，而是**「默认关闭」的落点不闭合**：三处载体里只有读取面一处有执行体；
+裁定**判定面收口**——新增 `viewer_memory_gate(policy)` 作这条开关的**唯一判定处**（读取面／写入面／请求准入面共用，MUST NOT 各自复写 `if !enabled`）、**写入面补上执行体**、判据位置与读取面同序（**结构必填 → 能力开关 → 来源/授权**）且有**顺序断言**；
+设计上 **MUST NOT** 把开关塞进 `MemoryCandidate`（那是 W57 §四.1 已排除的「把门槛交给被审对象自己填」）⇒ `admit_write` 增加 `policy` 入参（全仓调用方只有本 crate 与其集成测试）；legacy `viewer_record_allowed` 保留 `EvaluateError` 契约、只做**错误类型映射**（映射不是第二处定义）；拒因**复用既有 `viewer_memory_disabled`**（同一件事 MUST NOT 有两个名字 ⇒ `MemoryRejection::ALL` 仍 **23**，既有总账断言不放宽）；
+**非空洞注入**：F0/F1 改前/改后对照（**真跑改前那一行**：默认策略下 viewer 候选改前 `Ok(())` 静默通过、改后 `Err(viewer_memory_disabled)`）、F2 **承重**（移出写入面 gate ⇒ 2 failed）、F3 **顺序断言**（同时「未启用 + 不可信来源」⇒ 报能力未启用，改前报的是 `untrusted_source_as_fact`）、F4 反向不红（启用后合规候选通过、非观众类别不受影响）、F7 **反转 gate** ⇒ 读取面与写入面 **6 failed 同时变红**（证明两面确实共用一个判定）；
+数据侧 `PD-31` 由 `decidable_in_repo` 迁 `decided_in_repo` + `landing`，并把「空集」**就地订正**为两个具名对象（W89 另**补正** W88 漏改的台账头部注释——它当时仍只列五态）；`DISPOSITION_COUNTS` `decidable_in_repo` **4 → 3** / `decided_in_repo` **1 → 2**（总数仍 **34**）；`tests/memory.rs` **21 → 23**；
+**F1（配置面死键）只登记不改**（修它要么改变运行时行为、要么立一条新类别的断言「配置面的 `required` 键 MUST 有消费者」，后者本身是一个独立母题）；不改基线正文、不改 `tests/registry.yaml` 的 `status`（H03／H04 仍 `pending`）、不新增依赖边与契约名、不重排 W 编号。
+见 [W89 报告](reports/2026-10-13-w89-viewer-memory-single-answering-point.md)、[ADR 0067](adr/0067-viewer-memory-single-answering-point.md)、`openspec/changes/archive/2026-10-13-w89-viewer-memory-default-off-single-home/`）；
 轨道二的自备资源**已有真实凭据落地**（文本／语音两条真实链路经本栈走通并产出真值证据，文本模型标准化为 `agnes-2.5-flash`）；剩余 **O01**（**W49 已交付判定机制**；仍需授权的演示形象内容、示例知识与场景正文、一键连通的真实接线，以及约 10 分钟首句演练与约 30 分钟真实输出验证的**人工执行**）、
 **O02/O05**（UI 验收，按既有惯例 `pending`；**O05 的呈现层 W49 已落地但未接入界面**；**O02 的「显示最终文本」W51 已在逻辑面满足**——存储新增 `display_text` 列、控制面载荷携带、界面显示并具名缺文本，但真实候选来源/桌面渲染/生产 root 接线未接，故仍 `pending`）与阻塞项 **B01**（**判定机制、载荷载体、参考答案判据与评估执行体均已就位**；**W50 已登记外部语料素材来源**——LiveChat 供「问题措辞」，素材≠题集、不使门槛满足；缺 100 题集内容与真实知识库内容，均为外部投入）、**B02/D12**（模型与目标机证据）、
 **O03**（M0b 定案与真机 S09）、**O04**（干净 Windows 安装、真实音频设备变更与真实回退；安装侧已由 `nai-upgrade-core` 覆盖）、

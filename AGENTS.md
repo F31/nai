@@ -2165,3 +2165,61 @@ W88 **不是**升基线、**不是**加能力，而是**结清一条已登记的
 见 [W88 报告](docs/reports/2026-10-13-w88-decided-in-repo-landing.md)、
 [ADR 0066](docs/adr/0066-decided-in-repo-landing.md)、
 `openspec/changes/archive/2026-10-13-w88-decided-in-repo-landing/`。
+
+## W89 观众长期记忆开关的单一来源与写入面（PD-31 结清）
+
+W89 **不是**升基线、**不是**加能力——它把 W88 §八第 2 条登记的**一处张力**核实到底，并把结论落在**判定面**上。
+
+**问题（W88 §八第 2 条）**：台账 `PD-31`（*观众长期记忆的字段集与保留期*）的推荐写着「R1 内判为
+『**空集 + 默认关闭**』」，而 W57 已交付的 `crates/nai-kernel/src/evaluate/memory.rs` 里
+`MemoryPolicy::default().allowed_viewer_fields` 是**非空**（`["preference", "answered_topic"]`）。
+
+**核实（三条实测事实，比登记的张力更靠前）**：
+
+- **F1 配置面是死键**：`schemas/config/runtime.schema.json` 的 `session_defaults` 是
+  `additionalProperties: false` 且 **`required` 明列** `viewer_memory_enabled`；但全仓**非测试**代码里
+  `composition.config()["session_defaults"]` **只被读一次**（`apps/engine/src/pipeline.rs:874`），
+  且**只读同层的 `allow_auto_without_platform_grant`** ⇒ 把 `viewer_memory_enabled` 改成 `true`
+  **没有任何效果**。同层字段「**一个有主、一个无主**」，这个**对照本身**就是判据（「已声明 ≠ 已执行」）。
+- **F2 判定面只覆盖一半**：`viewer_memory_enabled` 只被 `read_records`（**读取面**）与
+  `viewer_record_allowed`（**无生产调用方**）消费；**写入面 `admit_write` 既不接受策略、也不检查它**
+  ⇒ 默认关闭下一条 `kind = "viewer"` 的候选**会被接受**（真跑改前那一行：返回 `Ok(())`）。
+- **F3 措辞同形不同义**：推荐的「空集」论据是「§5.5 的默认关闭**使字段集没有对象**」，指**运行时被写入的
+  字段值集合**；而 `allowed_viewer_fields` 是**启用后才生效的允许字段白名单**（D10 沿用，W57 报告 §七
+  明写「**不新造取值**」）⇒ 台账**用同一个词指了两样东西**。
+
+⇒ 所以**不是实现缺陷**，而是**「默认关闭」的落点不闭合**：三处载体里**只有读取面一处有执行体**。
+
+**裁定（[ADR 0067](docs/adr/0067-viewer-memory-single-answering-point.md)，决策 1–8）**：
+
+- **`viewer_memory_gate(policy)` 是这条开关的唯一判定处**，读取面／写入面／请求准入面共用；
+  MUST NOT 各自复写 `if !policy.viewer_memory_enabled`（一条开关答两次就会分家）。
+- **写入面 MUST 也判它**（本轮补的**执行体**，不是新增策略）——判定是**能力级**的（不依赖条目内容）。
+- **判据位置**：`admit_write` 里放在**必填项之后、来源判定之前**，与读取面「结构必填 → 能力开关 → 授权」同序；
+  **顺序 MUST 有断言**，否则只是注释。
+- **开关 MUST NOT 塞进 `MemoryCandidate`**：那是 W57 §四.1 已排除的「把门槛交给被审对象自己填」⇒
+  `admit_write` 增加 `policy` 入参（全仓调用方只有本 crate 与其集成测试）。
+- **拒因复用 `viewer_memory_disabled`**，不新造名字（同一件事 MUST NOT 有两个名字）⇒
+  `MemoryRejection::ALL` 仍 **23**，既有总账断言**不放宽**。
+- **legacy `viewer_record_allowed` 保留 `EvaluateError` 契约、只做错误类型映射**——**映射不是第二处定义**，
+  `if !enabled` 这个判定在仓库里只剩一处。
+- **F1 只登记不改**，MUST NOT 用「不动」伪装成「已处理」（修它要么改变运行时行为、要么立一条新类别的
+  断言「配置面的 `required` 键 MUST 有消费者」，后者本身是一个**独立母题**）。
+
+**非空洞注入（F0–F7）**：F0/F1 改前/改后对照（**真跑改前那一行**：默认策略下 viewer 候选改前 `Ok(())`、
+改后 `Err(viewer_memory_disabled)`）；F2 **承重**（移出写入面 gate ⇒ 2 failed）；F3 **顺序断言**
+（同时「未启用 + 不可信来源」⇒ 报能力未启用，改前会报 `untrusted_source_as_fact`）；F4 **反向不红**
+（启用后合规候选通过、非观众类别不受影响）；F7 **反转 gate** ⇒ 读取面与写入面 **6 failed 同时变红**
+（证明两面确实共用一个判定，而不是各自写着看似一样的代码）。
+
+**数据侧**：`PD-31` 由 `decidable_in_repo` 迁 `decided_in_repo` + `landing`（仓库已跟踪路径），
+并把「空集」**就地订正**为两个具名对象（W89 另**补正** W88 漏改的台账头部注释——它当时仍只列五态）；
+`DISPOSITION_COUNTS` `decidable_in_repo` **4 → 3** / `decided_in_repo` **1 → 2**（总数仍 **34**）；
+`tests/memory.rs` **21 → 23**。
+
+**明确不做**：不改基线正文、不改 `tests/registry.yaml` 的 `status`（H03／H04 仍 `pending`）、
+**不动运行时**（F1 只登记）、不改 `allowed_viewer_fields` 与 `max_retention_ms` 的取值、
+不新增依赖边与契约名、不重排 W 编号。
+见 [W89 报告](docs/reports/2026-10-13-w89-viewer-memory-single-answering-point.md)、
+[ADR 0067](docs/adr/0067-viewer-memory-single-answering-point.md)、
+`openspec/changes/archive/2026-10-13-w89-viewer-memory-default-off-single-home/`。
