@@ -187,8 +187,35 @@ portable 侧 **182** = registry 52 + schema 30 + platform 22 + workflow 13 + xta
 
 ## 七、CI
 
-（推送后的单次低频查询结果回填于此：唯一查询参数破坏缓存 + `Cache-Control: no-cache` +
-回读 `head_sha` == 推送 SHA。）
+单次低频查询（**4 次 / 本轮**：`runs` ×2 与 `jobs` ×1 用于结论，另有一次中途观测），
+每次都带**唯一查询参数**（`cb=$(date +%s%N)`）与 `Cache-Control: no-cache`，并回读 `head_sha`。
+
+| 项 | 结果 |
+| --- | --- |
+| run | **38462453158（#126）** |
+| `head_sha` | `c4002077af80fda5488b4c736aad7228f75d198e` **== 推送 SHA（MATCH）** |
+| 结论 | **completed / success** |
+| 时长 | `2026-10-13T20:23:39Z → 20:37:10Z`（约 13 分 31 秒） |
+| HTTP | **200**（三次都由 `-w "%{http_code}"` 实测取到，不是从退出码推断） |
+
+两个 job 各 **26 步**均 `success`，跳过步与 W96 **完全一致**（平台分工，非缺失）：
+
+| job | 时长 | 跳过的步 |
+| --- | --- | --- |
+| `foundation (ubuntu-24.04)` | 20:23:43Z → 20:29:28Z | 仅 **11**（`if: failure()` 的 annotation 诊断通道） |
+| `foundation (windows-latest)` | 20:23:43Z → 20:37:10Z | **8**（Linux C++ protobuf runtime）、**11**、**20**（Linux-only 三语言套件） |
+
+**本机绿与 CI 绿同源**：CI 的 **step 10** = `cargo xtask check --profile full`——
+与本机同命令同 profile，两平台 `success` ⇒ 新增的 `tests/contracts/gate-coverage.test.mjs`
+与改动的 `test-reachability` 站点表、`registry.test.mjs` 逐字清单**在 CI 侧真的跑过**。
+
+**顺带观测**（本轮申购列表里看到的，不是本轮的推送）：run **#125**（38455275758，
+`head_sha = e98a75f`——即 **W96 的回填提交**）也是 `completed / success`
+（19:29:47Z → 19:41:52Z）。W96 报告当时只回填了 #124，故 #125 的结果在此据实补记。
+
+**自限**：观测止于**作业/步骤级**（`/actions/jobs/{id}/logs` 需 admin，匿名 403）
+⇒ 本报告**不断言** CI 侧的 91 目标 / 862 用例与 Node 8 个套件数，只断言
+「该 run 与两个 job 的结论」与「36 个非跳过步全部 `success`」。
 
 ## 八、遗留
 
