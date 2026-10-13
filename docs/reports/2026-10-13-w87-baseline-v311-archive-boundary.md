@@ -169,11 +169,24 @@ one behavior**"）改为**拆成独立 Requirement**（`## ADDED Requirements`�
 
 ## 七、CI 复核
 
-**（待回填）** 推送后 `on: push` 自动触发；两平台（`ubuntu-24.04` / `windows-latest`）跑同一条
-`check --profile full`。观测纪律：**单次低频查询**（**不轮询**）、带**唯一查询参数** `&cb=<ns>`
-破坏代理缓存、`Cache-Control: no-cache`、**回读 `head_sha` == 本次推送 SHA**；`curl` 带
-`--tlsv1.2 --tls-max 1.2`（schannel 与 TLS 1.3 握手失败，W77 实测）。
-本轮 CI 结论在推送后单次观测，并**另以一次回填提交**写入本节（**回填提交自身不回填**）。
+**run `38360257934`（run_number **104**，`head_sha = 337590da8e…`，与本轮推送 SHA 一致）= `success`**（双平台绿）。
+
+观测方式沿用既有纪律：**单次低频查询**（**不轮询**），每次带**唯一查询参数** `&cb=<ns>` 破坏代理缓存、
+`Cache-Control: no-cache`，并**回读 `head_sha` 与本次推送比对**；`curl` 带 `--tlsv1.2 --tls-max 1.2`
+（schannel 与 TLS 1.3 握手失败，W77 实测）。本轮共 4 次查询：
+
+1. 推送后首次：run 104 `in_progress`（`updated_at = 07:03:03Z`）；
+2. 等 5 分钟后：仍 `in_progress`（父 run 的 `updated_at` **未变** —— **「状态不变」≠「卡住」**）；
+3. 为判断「是否真在推进」查了一次 `/jobs`：**`ubuntu-24.04` job 已 `completed / success`**（含
+   step 9 `Check generated contracts without modifying consumers` 与 step 22
+   `openspec validate --archived --no-interactive` 均 `success`），**`windows-latest` job 在 step 10
+   `Complete engineering foundation` `in_progress`** ⇒ 正常推进；
+4. 再等 6 分钟后**单次查询**：run 104 `completed` / `conclusion = success`（`updated_at = 07:14:37Z`）。
+
+「三件齐」满足：① 唯一查询参数 `&cb=<ns>`；② `Cache-Control: no-cache`；
+③ 回读 `head_sha = 337590da8e` == 本次推送 SHA。**本机门控绿在此之上叠加了独立环境的复核**
+——CI 的 **step 9** 独立复核**契约生成物无漂移**（本机对该步 `EBUSY`，见 §六），
+**step 22** 独立复核**归档后规格全绿**（`openspec validate --archived`，与 §6.3 的 `--archived` 同源）。
 
 ## 八、遗留
 
