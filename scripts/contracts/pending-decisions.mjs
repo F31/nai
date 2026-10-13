@@ -83,6 +83,19 @@ export const LEDGER_FIELDS = [
   'note',
 ];
 
+/// **信封**（台账顶层）里允许出现的全部键。这是**第二层**闭世界的基准（W82）。
+///
+/// W81 的闭世界只覆盖**条目内部**——于是顶层成了盲区：台账顶层只认三个键，三个**各有**具名检查，
+/// 而**第四个键没有任何人管**。实测给顶层加 `revision: "见 §99.9"` ⇒ 校验返回**空错误**
+/// （值干净的 `"见 §40.4"` 同样空错误）。⇒ **已知键各有人管 ≠ 键集封闭**。
+///
+/// 同样**逐字写死、MUST NOT 由「现有检查读了哪些键」派生**：派生出的闭世界是恒真的。
+///
+/// 与 `LEDGER_FIELDS` MUST **不相交**（`shapeErrors()`）：一个字段名只属于一个层级。
+/// 最尖锐的反例是把一个**条目字段名**（`question`）写到顶层——实测两个闭世界**都不管**它
+/// （条目闭世界看不见它、信封闭世界还不存在），于是静默通过。
+export const TOP_LEVEL_FIELDS = ['schema_version', 'baseline', 'entries'];
+
 /// 校验器自身两张常量表的一致性。**这不是「自检的装饰」**——它挡的是**未来某次合法编辑**
 /// （加一个处置）导致的**静默失去覆盖**：
 /// - 若某处置进了 `DISPOSITIONS` 却漏在 `REQUIRED_FIELD` 里，`REQUIRED_FIELD.get` 返回 `undefined`、
@@ -90,6 +103,9 @@ export const LEDGER_FIELDS = [
 /// - 若某处置的必填文本字段不在 `CITATION_FIELDS` 里，它的引用**永不被解析**。
 ///
 /// 两种都是**危险方向的瞎**：断言还在，覆盖没了，且没有任何信号（W73 假契约、W66「删字段照样绿」同族）。
+///
+/// W82 增补第三条：**两个闭世界（信封 / 条目）的字段名集 MUST 不相交**——一个名字只属于一个层级。
+/// 详见函数末尾的注释（它挡的是「把一个层级写错」导致两个闭世界同时在缝里放行）。
 export function shapeErrors() {
   const errors = [];
   const dispositions = new Set(DISPOSITIONS);
@@ -160,6 +176,20 @@ export function shapeErrors() {
       );
     }
   }
+
+  // **两个层级 MUST 不相交**（W82）：一个字段名只属于一个层级。
+  // 这条挡的是「把某个层级写错」——最尖锐的形状是把一个**条目字段名**写到顶层
+  // （实测 `question: "§99.9"` 放顶层时两个闭世界都不管它，静默通过）。
+  // 一旦有人为了「让那个顶层 `question` 合法」而把它加进 `TOP_LEVEL_FIELDS`，
+  // 那个洞就**原样重开、且完全无声**——这条断言是它唯一的守卫。
+  const envelope = new Set(TOP_LEVEL_FIELDS);
+  for (const field of envelope) {
+    if (allowed.has(field)) {
+      errors.push(
+        `field ${field} is declared as both an envelope field and an entry field — a name must belong to exactly one level`,
+      );
+    }
+  }
   return errors;
 }
 
@@ -226,6 +256,31 @@ export function validatePendingDecisions(ledger, deps = {}) {
   if (!ledger || typeof ledger !== 'object') {
     return ['pending-decisions ledger must be a mapping'];
   }
+
+  // **信封闭世界**（W82）：台账顶层出现的每个键 MUST ∈ `TOP_LEVEL_FIELDS`。
+  // 与条目闭世界同一条纪律：**只看键名、不看值**——若写成「未知键**且**值含 `§NNN`」才报，
+  // 判据的输入（值）就不等于被断言的对象（键集）。⇒ 值干净的未知键同样必须失败。
+  // 三个已知信封键各有具名检查，但「已知键各有人管」**不等于**「键集封闭」：
+  // 新增的第一个键此前落进盲区（实测顶层 `revision: "见 §99.9"` ⇒ 校验返回空错误）。
+  const allowedTopLevel = new Set(TOP_LEVEL_FIELDS);
+  for (const key of Object.keys(ledger)) {
+    if (!allowedTopLevel.has(key)) {
+      errors.push(
+        `unknown envelope field ${key} — a top-level field the checker does not know can carry §NNN unchecked`,
+      );
+    }
+  }
+  // 信封字段 MUST **必需**：闭世界只挡「不认识的键」，它对「认识的键没人读」是瞎的。
+  // 声明一个字段就必须在数据里有它 ⇒ 往 `TOP_LEVEL_FIELDS` 里错加一个幽灵字段会**立刻红**
+  // （每个真实台账都缺它），而不是「静静地什么都不检查」。
+  for (const field of TOP_LEVEL_FIELDS) {
+    if (!Object.hasOwn(ledger, field)) {
+      errors.push(
+        `envelope field ${field} is missing — a declared envelope field with no value is a field nobody reads`,
+      );
+    }
+  }
+
   if (ledger.schema_version !== 1) errors.push('schema_version must be 1');
 
   // 校验器自身的常量表先自洽——否则下面的逐条检查可能在「危险方向」上已经瞎了而不自知。

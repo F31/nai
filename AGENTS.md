@@ -1845,3 +1845,43 @@ F8 掺一个幽灵字段 ⇒ 同 F5 的措辞。表级注入用**临时模块副
 见 [W81 报告](docs/reports/2026-10-13-w81-ledger-field-closure.md)、
 [ADR 0059](docs/adr/0059-ledger-field-closure.md)、
 `openspec/changes/archive/2026-10-13-w81-ledger-field-closure/`。
+
+### W82 台账信封的闭世界（闭世界 MUST 在每个层级上成立）
+
+**问题**：W81 的闭世界断言**只覆盖一个层级**（条目内部），于是**信封**（台账顶层）成了盲区。
+三个已知信封键（`schema_version`／`baseline`／`entries`）**各有**具名检查 ⇒ 这不是「检查漏写」，
+而是**键集不封闭**：**已知键各有人管 ≠ 键集封闭，新增的第一个键就落进盲区**。
+
+**探针实测**：顶层加 `revision: "见 §99.9"` ⇒ `validatePendingDecisions` 返回**空错误**；
+值干净的 `"见 §40.4"` **同样空错误**；把一个**条目字段名**（`question`）写到顶层
+**也空错误**（条目闭世界看不见它、信封闭世界还不存在 ⇒ **两个闭世界同时在缝里放行**）。
+
+**裁定**（[ADR 0060](docs/adr/0060-ledger-envelope-closure.md)）：
+
+1. **新增并导出** `TOP_LEVEL_FIELDS`（`schema_version`／`baseline`／`entries`，**逐字写死**）。
+2. **信封闭世界**：台账顶层出现的每个键 MUST ∈ `TOP_LEVEL_FIELDS`，否则报
+   `unknown envelope field revision …`（**报键名**）。**只看键名、不看值**（同 W81 决策 2）。
+3. **信封字段必需**：声明的每个顶层字段 MUST 出现在台账上，否则报
+   `envelope field baseline is missing …` ⇒ **声明一个字段就必须在数据里有它**
+   （错加幽灵字段会**立刻红**，而不是静静地什么都不检查）。
+4. **两个层级的字段名集 MUST 不相交**（`shapeErrors()`）⇒ 报
+   `field note is declared as both an envelope field and an entry field`。这是 UB3 那个洞**唯一**的守卫。
+5. **两层各自保留措辞**（一层报**条目 + 字段名**、一层报**键名**），MUST NOT 合并
+   ——合并会让「错在哪一层」在措辞上消失。
+
+**注入 F0 + F1–F4（数据级）+ F5–F9（表级）逐项开火且具名**：
+**F2 是值干净的顶层未知键 ⇒ 同样失败**（证明挡的是**键**，不是它的值）；
+**F4 逐个删除信封字段** ⇒ 各报 `envelope field <name> is missing`；
+F5 把 `baseline` 移出声明集 ⇒ 被当成**未知键**拒；F6 掺幽灵字段 ⇒ `envelope field ghost is missing`；
+F7 把条目字段 `note` 塞进声明集 ⇒ 不相交断言具名；
+**F8／F9 是反向注入**（移出 `entries` 只报未知键、**不**误报必需缺失；声明集**顺序打乱不红**）。
+表级注入用**临时模块副本**（该文件无 import ⇒ 可独立 import），锚点先断言**恰好出现一次**。
+
+**门控**：`cargo xtask check --profile full` **EXIT=0**，测试目标 **91（73 `Running` + 18 `Doc-tests`）**、
+**860 passed / 0 failed**；零 Rust 改动 ⇒ 与前十一轮逐项相同。
+`tests/registry.test.mjs` **30 → 32**（随 `engineering_checks` 既有条目自动进 `portable`／`full`，接线零改动）。
+**台账数据一字未改**（实测顶层键**恰好**等于 `TOP_LEVEL_FIELDS` ⇒ 基线保持全绿）。
+**不改基线正文、不改 `tests/registry.yaml`、不改任何 Rust、不新增依赖边。**
+见 [W82 报告](docs/reports/2026-10-13-w82-ledger-envelope-closure.md)、
+[ADR 0060](docs/adr/0060-ledger-envelope-closure.md)、
+`openspec/changes/archive/2026-10-13-w82-ledger-envelope-closure/`。

@@ -31,6 +31,7 @@ import {
   ID_LIST_FIELDS,
   STRUCTURAL_FIELDS,
   LEDGER_FIELDS,
+  TOP_LEVEL_FIELDS,
   DISPOSITIONS,
   REQUIRED_FIELD,
 } from '../scripts/contracts/pending-decisions.mjs';
@@ -843,6 +844,80 @@ test('the ledger field set is closed and every field has exactly one owner', asy
   // 数据侧闭世界的**直接**形式（`ledgerErrors(pendingLedger) === []` 已隐含，这里明写）。
   for (const field of present) {
     assert.ok(LEDGER_FIELDS.includes(field), `${field} appears in the ledger but is undeclared`);
+  }
+});
+
+test('a top-level field the checker does not know cannot hide from the scan', async () => {
+  // W82：W81 的闭世界只覆盖**条目内部**，于是**信封**（台账顶层）是盲区。实测（探针，改前）：
+  // 给顶层加 `revision: "见 §99.9"` ⇒ `validatePendingDecisions` 返回**空错误**。
+  // 三个已知信封键**各有**具名检查，但「已知键各有人管」**不等于**「键集封闭」。
+  const unknown = structuredClone(pendingLedger);
+  unknown.revision = '见 §99.9 的说明';
+  assert.ok(
+    ledgerErrors(unknown).some(error => error.includes('revision')),
+    'a top-level key outside the declared set must be reported by its key name',
+  );
+
+  // **值干净也 MUST 失败**：断言的是「键集封闭」，不是「这个键的值坏不坏」。
+  const clean = structuredClone(pendingLedger);
+  clean.revision = '见 §40.4 的说明';
+  assert.ok(
+    ledgerErrors(clean).some(error => error.includes('revision')),
+    'the envelope key is rejected on its name alone — a clean value must not buy it a pass',
+  );
+
+  // **两个闭世界之间的缝**：把一个**条目字段名**写到顶层。条目闭世界看不见它（它在顶层），
+  // 信封闭世界若不认识它，就没有任何人管它——实测改前这一条**完全静默**。
+  const misplaced = structuredClone(pendingLedger);
+  misplaced.question = '§99.9';
+  assert.ok(
+    ledgerErrors(misplaced).some(error => error.includes('question')),
+    'a field name that belongs to an entry must not be silently accepted at the top level',
+  );
+
+  // 信封字段 MUST 必需：声明了它、数据里却缺它 ⇒ 具名。闭世界只挡「不认识的键」，
+  // 它对「认识的键没人读」是瞎的——**声明一个字段就必须在数据里有它**。
+  for (const field of TOP_LEVEL_FIELDS) {
+    const missing = structuredClone(pendingLedger);
+    delete missing[field];
+    assert.ok(
+      ledgerErrors(missing).some(
+        error => error.includes(`envelope field ${field} is missing`),
+      ),
+      `declaring ${field} but omitting it must be reported by name`,
+    );
+  }
+});
+
+test('the envelope field set is closed and disjoint from the entry field set', async () => {
+  // 逐字钉内容：`TOP_LEVEL_FIELDS` 是**独立写死**的声明，不是从「现有检查读了哪些键」派生的。
+  assert.deepEqual(
+    [...TOP_LEVEL_FIELDS].sort(),
+    ['baseline', 'entries', 'schema_version'],
+    'the allowed envelope field set must be exactly the three declared keys',
+  );
+
+  // **两个层级 MUST 不相交**：一个字段名只属于一个层级。若某个名字同时被两边声明，
+  // 把它写到错的那一层就**两个闭世界都放行**（正是上面那条静默形状）。
+  for (const field of TOP_LEVEL_FIELDS) {
+    assert.ok(
+      !LEDGER_FIELDS.includes(field),
+      `${field} must belong to exactly one level, not both`,
+    );
+  }
+  assert.deepEqual(shapeErrors(), [], 'the two field sets must stay disjoint as committed');
+
+  // **非空洞**：每个声明的信封字段都真的在台账顶层出现。少了这条，`TOP_LEVEL_FIELDS`
+  // 可以掺进永远打不到数据的幽灵字段——而「必需」断言会在**每个**真实台账上失败（响得早），
+  // 但若有人「为了让它绿」而往台账里补上那个键，就再没有信号了。
+  for (const field of TOP_LEVEL_FIELDS) {
+    assert.ok(
+      Object.hasOwn(pendingLedger, field),
+      `${field} is declared as an envelope field but the ledger does not carry it`,
+    );
+  }
+  for (const key of Object.keys(pendingLedger)) {
+    assert.ok(TOP_LEVEL_FIELDS.includes(key), `${key} appears on the ledger but is undeclared`);
   }
 });
 
