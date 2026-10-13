@@ -79,7 +79,7 @@ test('registry.yaml is machine-readable and internally consistent', async () => 
   const catalogIds = await readCatalogIds();
   const errors = validateRegistry(registry, catalogIds);
   assert.deepEqual(errors, []);
-  // Cover V3.10 §16 + §30.4 + §48.5 + §51.3 + §57.3 acceptance families and
+  // Cover V3.11 §16 + §30.4 + §48.5 + §51.3 + §57.3 acceptance families and
   // release lines.
   assert.ok(registry.acceptance.length >= 87, 'expected >=87 acceptance items');
   assert.ok(registry.mapping.d01_to_d14.D14, 'expected D14 mapping');
@@ -89,7 +89,7 @@ test('registry.yaml is machine-readable and internally consistent', async () => 
   // Every family the baseline defines as a complete range must be registered in
   // full. The extension/marketplace family M (§37.5, §38.10) is not optional —
   // ADR 0042 decision 4 left it unregistered once and the omission was recorded
-  // as a defect. The harness family H (V3.10 §40-§47, §48.5) starts from that
+  // as a defect. The harness family H (V3.11 §40-§47, §48.5) starts from that
   // lesson rather than repeating it: "not started" reads as `pending`, never as
   // a missing row.
   const byId = new Map(registry.acceptance.map(a => [a.id, a]));
@@ -98,11 +98,11 @@ test('registry.yaml is machine-readable and internally consistent', async () => 
       assert.ok(byId.has(n), `baseline acceptance ${n} is not registered`);
     }
   }
-  // The V3.10 scope split has to be readable, not just asserted in prose: the
+  // The V3.11 scope split has to be readable, not just asserted in prose: the
   // pack line holds exactly the §51.3 set, and none of those ids sits on a
   // first-release line (INV-33).
   const packLine = registry.acceptance.filter(a => a.release_line === 'capability_pack').map(a => a.id);
-  assert.equal(packLine.length, 29, 'expected the V3.10 §51.3 capability-pack set');
+  assert.equal(packLine.length, 29, 'expected the V3.11 §51.3 capability-pack set');
   for (const id of ['M01', 'M18', 'H05', 'H14', 'H16']) {
     assert.ok(packLine.includes(id), `${id} must be on the capability_pack line`);
   }
@@ -168,7 +168,7 @@ test('the capability-pack split cannot be emptied, promoted, or filled with stra
   demoted.acceptance.find(item => item.id === 'H17').release_line = 'capability_pack';
   assert.ok(
     validateRegistry(demoted, catalogIds).some(
-      error => error.includes('outside the V3.10 §51.3 set') && error.includes('H17'),
+      error => error.includes('outside the V3.11 §51.3 set') && error.includes('H17'),
     ),
     'a non-pack id on the capability_pack line must be reported',
   );
@@ -1195,7 +1195,7 @@ test('no Rust source hides a second copy of the operation ceiling', () => {
 // 各记一份集合。可 §51.3 的八行说的是**每一个编号属于哪一个包**——那是**划分**。
 // 划分对集合层的断言是瞎的：`M05–M08` 同时属于两个包时，并集一模一样（ADR 0056 决策 2）。
 
-/// §51.3 表后「保留在 R1 的基础纪律」列出的编号（V3.10 正文）。
+/// §51.3 表后「保留在 R1 的基础纪律」列出的编号（V3.11 正文）。
 /// 写在这里，是为了把「解析为空」与「解析结果变了」分开——两者都该失败，但原因完全不同。
 const R1_RETAINED = ['H01', 'H02', 'H03', 'H04', 'H15', 'H17', 'H18'];
 
@@ -1344,7 +1344,7 @@ test('a section is searched inside its own bounds, never in a neighbour’s tabl
     const table = sectionTable(lines, line => predicate.test(line));
     assert.equal(table.found, true, `§${number} heading must be found`);
     assert.equal(table.hasTable, true, `§${number} must hold its table inside its own bounds`);
-    assert.equal(table.level, 3, `§${number} is a level-3 heading in V3.10`);
+    assert.equal(table.level, 3, `§${number} is a level-3 heading in V3.11`);
     assert.ok(
       table.tableStart > table.start && table.tableStart < table.end,
       `§${number}'s table must lie strictly inside [${table.start}, ${table.end})`,

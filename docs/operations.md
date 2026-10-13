@@ -2,7 +2,7 @@
 
 - 代码：`crates/nai-kernel/src/metrics.rs`（延迟分位与长播判定）、`crates/nai-kernel/src/review.rs`（场次复盘报告）
 - 测试：`crates/nai-kernel/tests/metrics.rs`、`crates/nai-kernel/tests/review.rs`
-- 决策：[ADR 0031](adr/0031-operations-review-boundary.md)；判据：`tests/registry.yaml` B04 / R06 / B06（V3.10 §12.5、§5.9）
+- 决策：[ADR 0031](adr/0031-operations-review-boundary.md)；判据：`tests/registry.yaml` B04 / R06 / B06（V3.11 §12.5、§5.9）
 
 本模块给三件运营事项定**口径**：整链路延迟怎么算分位、长播怎么判「无持续增长」、场次复盘报告长什么样。
 它不采任何真实指标、不跑长播——样本由宿主提供，真值需要设备与长时运行。

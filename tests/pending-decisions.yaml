@@ -8,7 +8,7 @@ schema_version: 1
 # 处置是**封闭枚举**，每态对应一个必填字段：`answered_by_baseline`→`basis`、
 # `decidable_in_repo`→`recommendation`、`needs_precondition`→`precondition`、
 # `needs_external`→`closure`、`out_of_scope`→`note`。
-baseline: V3.10
+baseline: V3.11
 
 entries:
   # ---- §18.2 首次出现（10 条）----

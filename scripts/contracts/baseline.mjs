@@ -23,7 +23,7 @@ import { RELEASE_LINES, CAPABILITY_PACK_IDS } from './registry.mjs';
 const BASELINE_NAME_RE = /^直播数字人 \+ 智能体系统技术方案 V(\d+)\.(\d+)\.md$/;
 const ID_TOKEN = /([SRABOPMHX])(\d{2})/g;
 const ID_RANGE = /([SRABOPMHX])(\d{2})\s*[–—-]\s*([SRABOPMHX])(\d{2})/g;
-/// 基线版本串的形状（`readBaseline()` 产出 `V3.10` 这种形式）。台账的跨版判据按它比较。
+/// 基线版本串的形状（`readBaseline()` 产出 `V3.11` 这种形式）。台账的跨版判据按它比较。
 const VERSION_RE = /^V[0-9]+\.[0-9]+$/;
 
 /// §57.3 表格的「线」列标签 ⇒ `release_lines` 键。
@@ -114,7 +114,7 @@ function headingLevel(line) {
 ///
 /// 边界按**标题层级**定：`[标题行, 下一个层级 ≤ 该标题的行)`。层级更深的标题（`####`）**不**截断
 /// 本节——写成「遇到任何标题就停」会把子标题误当节界，于是本节里明明有表却报「本节内无表」，
-/// 那是**假阳性**方向。（V3.10 当前无 `####`，故这半条语义由合成存根验证。）
+/// 那是**假阳性**方向。（V3.11 当前无 `####`，故这半条语义由合成存根验证。）
 ///
 /// 三种情形**必须分开**，因为它们的错因不同、修法也不同：
 /// - `{found: false}`：该节标题不存在（章节号被改指）；
@@ -366,7 +366,7 @@ export async function readBaseline(root = '.') {
 /// `openspec/config.yaml` 里声明的唯一基线文件名。
 ///
 /// 文档目录里「版本号最大的那份」是一个**自维护**的选择，但若有人留下一份废弃草稿（如
-/// `… V3.11.md`），选择就会悄悄指向它。所以选择结果 MUST 与配置声明的指针一致——两者不一致
+/// `… V3.12.md`），选择就会悄悄指向它。所以选择结果 MUST 与配置声明的指针一致——两者不一致
 /// 时门控具名报出，而不是让门控悄悄对着草稿跑。
 export function declaredBaselineName(configText) {
   const match = /docs\/(直播数字人 \+ 智能体系统技术方案 V\d+\.\d+\.md)/.exec(configText);

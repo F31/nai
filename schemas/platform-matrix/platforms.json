@@ -24,7 +24,7 @@
       "target_triples": ["aarch64-apple-darwin", "x86_64-apple-darwin"],
       "release_lines": ["r2", "r3"],
       "status": "planned",
-      "note": "新增需求：基线 V3.10 全文对 macOS 的命中数为 0（随基线订正重新实测：V3.9 亦为 0）。用户拍板 macOS 覆盖 R2（Standard）与 R3（Pro）。本项登记归属，不表示已开始实现；R2/R3 的内容在 macOS 上须与 Windows 档位表分别定义（§14.1 的 Standard 含抖音连接器，而抖音 SDK 是 Windows 原生目标）。"
+      "note": "新增需求：基线 V3.11 全文对 macOS 的命中数为 0（随基线订正重新实测：V3.9 亦为 0）。用户拍板 macOS 覆盖 R2（Standard）与 R3（Pro）。本项登记归属，不表示已开始实现；R2/R3 的内容在 macOS 上须与 Windows 档位表分别定义（§14.1 的 Standard 含抖音连接器，而抖音 SDK 是 Windows 原生目标）。"
     },
     {
       "id": "ios",

@@ -3,9 +3,9 @@
 - 项目英文名为 `nai`，仓库为 https://github.com/F31/nai。命名映射见
   `docs/adr/0001-project-name-and-design-baseline.md`。
 - `docs/design.md` 指向唯一实现基线
-  `docs/直播数字人 + 智能体系统技术方案 V3.10.md`（ADR 0049 升基线；ADR 0048、ADR 0047、ADR 0042 与 ADR 0015 的裁决继续有效）。历史版本（V3.9/V3.8/V3.7/V3.6/V3.5 等）只供参考；
-  不自行拼接旧条款覆盖 V3.10。规范变更记录 ADR。V3.10 的 dh-* 命名不采纳，工程标识一律 nai-*。
-- 验收唯一来源为 `tests/registry.yaml`（V3.10 S/R/A/B/O/P/M/H/X + release_line（新增 capability_pack），D→新编号映射自建）。
+  `docs/直播数字人 + 智能体系统技术方案 V3.11.md`（ADR 0065 升基线；ADR 0049、ADR 0048、ADR 0047、ADR 0042 与 ADR 0015 的裁决继续有效）。历史版本（V3.10/V3.9/V3.8/V3.7/V3.6/V3.5 等）只供参考；
+  不自行拼接旧条款覆盖 V3.11。规范变更记录 ADR。V3.11 的 dh-* 命名不采纳，工程标识一律 nai-*。
+- 验收唯一来源为 `tests/registry.yaml`（V3.11 S/R/A/B/O/P/M/H/X + release_line（新增 capability_pack），D→新编号映射自建）。
   后续任务卡以 registry 验收为准；旧 T/E/U 编号仅追溯，不再新增。
 - 保持统一稳定内核；Lite/Standard/Pro 为能力预设，
   Local/Hybrid/Distributed 为部署配置，不创建三套核心实现。
@@ -74,13 +74,13 @@ OpenAPI SessionCommand 必需 device_id/seq；校验 schema 与 TS 从源生成�
 Local 正式 protected IPC 默认不变；完整预检/审批/配置、Tauri/IPC、真实设备接线尚未实现，Windows/生产认证未执行。
 详见 docs/control.md、ADR 0014 与 docs/reports/2026-10-08-d14-local-control.md。
 
-D15 验收注册表与基线切换已实现/实测：ADR 0015 把 V3.6 升为唯一实现基线（勘误清单生效，dh-* 命名不采纳；V3.6 后由 ADR 0042 升为 V3.7、V3.7 后由 ADR 0047 升为 V3.8、V3.8 后由 ADR 0048 升为 V3.9、**V3.9 后由 ADR 0049 升为 V3.10**），
+D15 验收注册表与基线切换已实现/实测：ADR 0015 把 V3.6 升为唯一实现基线（勘误清单生效，dh-* 命名不采纳；V3.6 后由 ADR 0042 升为 V3.7、V3.7 后由 ADR 0047 升为 V3.8、V3.8 后由 ADR 0048 升为 V3.9、**V3.9 后由 ADR 0049 升为 V3.10、V3.10 后由 ADR 0065 升为 V3.11**），
 tests/registry.yaml 为验收唯一来源（S/R/A/B/O/P/M/H/X + release_line，D01–D14 映射自建并回填）。
 `cargo xtask check --registry` 与 `cargo xtask check --profile portable` 可执行；17 个主规格、15 项归档校验通过。
 决策日志 decision_log（R07 前置）与值守租约（600ms 短期限）为下一轮；播放 ACK 段保持 Draft，不冒充完整 R07。
 详见 docs/adr/0015-v36-baseline-and-admission-registry.md、docs/reports/2026-10-08-d15-admission-registry.md 与 tests/registry.yaml。
 
-W02/W03 决策日志与值守租约已实现/实测（按 V3.10 §31 工作项推进，不再新增 D 编号）：
+W02/W03 决策日志与值守租约已实现/实测（按 V3.11 §31 工作项推进，不再新增 D 编号）：
 nai-storage 新增 0005 迁移、`decision_log` 只追加哈希链、critical/telemetry 分级写入与有界缓冲、`verify_decision_chain`；
 nai-kernel 新增值守租约（显式确认、心跳不续期、到期 600ms 内撤权、重连不恢复）。
 备份契约随迁移升至 schema 5 并重新生成 TS。R07 由 pending 更新为 implemented，S01 补值守证据。
@@ -256,7 +256,7 @@ A02/B03 补证据但保持 implemented **不升级**（真实付费账号无余�
 详见 docs/adr/0025-provider-substitution-boundary.md、docs/reports/2026-10-10-w19-provider-substitution.md 与 docs/provider.md。
 
 W15 升级器基础已实现/实测（ADR 0026）：新增 shared 层 `crates/nai-upgrade-core`（零新增外部依赖），
-把 V3.10 §14.3 的九步升级流程落成可执行编排，registry R05/R09/R10 由 pending 升 implemented（**不标 tested**：
+把 V3.11 §14.3 的九步升级流程落成可执行编排，registry R05/R09/R10 由 pending 升 implemented（**不标 tested**：
 故障注入为内存演练宿主而非真实安装器/断电），O05 按 O02 惯例只补证据保持 pending（其 `automation: ui` 而真实升级 UI 未建），
 S08 补撤销列表证据保持 implemented。核心边界全部可注入——`SignatureVerifier` / `RevocationList` / `SpaceProbe` /
 `ActiveSessionGate` / `SessionDrain` / `UpgradeHost` / `UpgradeJournal`，因此升级器零宿主依赖、portable 下可完整测试。
@@ -721,7 +721,7 @@ docs/reports/2026-10-11-w44-ci-diagnose-signal-to-noise.md。
 W46 把注册表补全到「全部验收家族在册」：基线 §16 与汇总索引 §39.5 把开放平台与技能市场的 **M01–M18** 列为
 「唯一验收编号体系」的一部分（§37.5/§38.10 给出逐条用例；§1.4 明写 R1 含 `M01–M07、M13–M16、M18`、R2 含 `M08–M12、M17`），
 而 `tests/registry.yaml` 里 **M 一条都没有**（`grep -cE '\{id: "M[0-9]'` = 0）。这不是「未开始」的表达而是**登记缺失**——
-`pending` 才是在册未开始。缺口的后果是「以注册表为准」这条规则会把 V3.10 第三部分（§33–§38、W26–W40）从验收视野里抹掉；
+`pending` 才是在册未开始。缺口的后果是「以注册表为准」这条规则会把 V3.11 第三部分（§33–§38、W26–W40）从验收视野里抹掉；
 它长期不可见是因为 **`check --registry` 只校验已登记条目的合法性，不校验家族是否齐全**。
 本轮：登记 **M01–M18 共 18 条 `status: pending`**（title/release_line 取自两张表；`automation` 是**规划意图**并在 notes 写明，
 `contract` 仅在 §37.4 命名了契约时填，M10/M12 留空）；**扩 id 家族白名单到 `M`**
@@ -962,7 +962,7 @@ docs/control.md、docs/ui.md。
 
 W55 把**平台**变成仓库的一等公民（用户五项决策的第 4 项：macOS 覆盖 Standard 与 Pro）。
 **缺口性质（本轮的核心判断，与前两项不同）**：W53（第 3 项）与 W54（第 1 项）都是「**基线有明文、仓库零落点**」，
-而这一项是**全新需求**——基线 V3.10 全文对 `macos`／`darwin`／`apple` 的命中数为 **0**（随基线订正重新实测，V3.9 亦为 0；只有 Windows 首发、
+而这一项是**全新需求**——基线 V3.11 全文对 `macos`／`darwin`／`apple` 的命中数为 **0**（随基线订正重新实测，V3.9 亦为 0；只有 Windows 首发、
 Linux 轻云与 WSL、iOS／Android 实验），`tests/registry.yaml` 亦无任何平台维度条目（全部验收按业务分系列，
 `release_line` 只表达 Slice-0／R1／R2／R3／实验）⇒ **无基线判据、无验收标准、无目标三元组、无签名与分发策略**。
 故按仓规「验收唯一来源为 `tests/registry.yaml`、新需求先立验收」先做**可判定的一步**，而不是凭想象写 macOS 实现。
@@ -1002,7 +1002,7 @@ Standard 与 Pro」**（`r2`／`manual`／`pending`）；**零 Rust 业务改动
 见 docs/platform-matrix.md、docs/reports/2026-10-11-w55-platform-boundary-matrix.md、schemas/platform-matrix/。
 
 W56 把「智能体 Harness 的工程化能力 + 开放互操作（MCP、A2A）」写进设计基线，产出
-`docs/直播数字人 + 智能体系统技术方案 V3.8.md`，并由 **ADR 0047** 升为唯一实现基线（V3.7 降为历史参考；**V3.8 后由 ADR 0048 升为 V3.9、V3.9 后由 ADR 0049 升为 V3.10**）。
+`docs/直播数字人 + 智能体系统技术方案 V3.8.md`，并由 **ADR 0047** 升为唯一实现基线（V3.7 降为历史参考；**V3.8 后由 ADR 0048 升为 V3.9、V3.9 后由 ADR 0049 升为 V3.10、V3.10 后由 ADR 0065 升为 V3.11**）。
 **方法沿用 V3.6 → V3.7 的形状**：第四部分**追加**在文档末尾（§40–§48，**491 行**），§1–§39 **一字不动**——
 实测仅 **8 行**改动（4 个 diff hunk，全部 1:1 行替换：标题、副标题、§0.2、§1.4 两行、§16 前导、§17.3 两行），
 **1875 → 2366 行、行号一一对应**，故全部既有 `§NNN` 引用在本版解析结果一致。
@@ -1080,7 +1080,7 @@ W65 做的是**范围重排与升基线**，不是加能力。产出 `docs/直�
 docs/reports/2026-10-11-w65-v39-scope-and-baseline.md、docs/reports/2026-10-11-v38-review-adjudication.md、
 openspec/changes/archive/2026-10-11-w65-v39-scope-and-baseline/。
 
-### W66 harness 观测与逐层具名降级（V3.10 §47.1、§47.4；验收 H15/H17）
+### W66 harness 观测与逐层具名降级（V3.11 §47.1、§47.4；验收 H15/H17）
 
 W66 落 **W63**——V3.9 收缩后 R1 harness 轨道上**唯一完全未开始**的工作项。触发是实测盘点：
 `grep -rn 'harness' crates/` 在判定逻辑上**零命中**，即「有没有静默降级」只能靠人读代码回答。
@@ -1108,7 +1108,7 @@ W66 落 **W63**——V3.9 收缩后 R1 harness 轨道上**唯一完全未开始*
 见 docs/kernel.md（W66 段）、docs/reports/2026-10-12-w66-harness-observability-and-degradation.md、
 openspec/changes/archive/2026-10-12-w66-harness-observability-and-degradation/。
 
-### W67 harness 爬坡门控（V3.10 §5.9、§47.2、§47.3；验收 H18）
+### W67 harness 爬坡门控（V3.11 §5.9、§47.2、§47.3；验收 H18）
 
 W67 落 **W64 的 R1 那一半**。V3.9 §51.3 把 R1 保留的 harness 基础纪律定为 H01–H04、H15、H17、H18；
 前六条已各有判定面（W56/W57/W66），**H18 是最后一条完全未开始的**。新增
@@ -1132,7 +1132,7 @@ W67 落 **W64 的 R1 那一半**。V3.9 §51.3 把 R1 保留的 harness 基础�
 见 docs/kernel.md（W67 段）、docs/reports/2026-10-12-w67-harness-ramp-gating.md、
 openspec/changes/archive/2026-10-12-w67-harness-ramp-gating/。
 
-### W68 基础讲品循环（V3.10 §53、§5.3、§5.7、§5.4、§45.3；新增验收 B07）
+### W68 基础讲品循环（V3.11 §53、§5.3、§5.7、§5.4、§45.3；新增验收 B07）
 
 W68 落 **§53**——V3.9 **自称「本版最重要的一条」**的那一项。触发是一次实测：§53 把它写进 R1 的**定义句**
 （§14.1 档位矩阵、§56 的「R1 = Lite」行、§2324 的定义段），但 §48.5 的家族索引写「B | B01–B06」、
@@ -1168,7 +1168,7 @@ W55 新增 A13 的处置一致。**该偏差已在 W71 收录**：V3.10 §48.5 �
 见 docs/kernel.md（W68 段）、docs/reports/2026-10-12-w68-basic-selling-loop.md、
 openspec/changes/archive/2026-10-12-w68-basic-selling-loop/。
 
-### W69 上下文装配（V3.10 §41.1–§41.5、§47.1、§47.4；验收 H01/H02）
+### W69 上下文装配（V3.11 §41.1–§41.5、§47.1、§47.4；验收 H01/H02）
 
 W69 落 **H01/H02**——W56 立 harness 轨道时的**原定目标**（§47.6 的 W56 行写的正是「上下文装配器」）。
 此后 W57／W66／W67 分别落下记忆读写面、harness 观测与逐层降级、harness 爬坡门控，**H01/H02 一直停在
@@ -1219,7 +1219,7 @@ W67 不复用 `session::change_mode` 同一条理由）：
 见 docs/kernel.md（W69 段）、docs/reports/2026-10-12-w69-context-assembly.md、
 openspec/changes/archive/2026-10-12-w69-context-assembly/。
 
-### W70 瞬态宿主条件（V3.10 §5.9、§12.2、§20.6、§46.3；runtime 装配根与会话共享）
+### W70 瞬态宿主条件（V3.11 §5.9、§12.2、§20.6、§46.3；runtime 装配根与会话共享）
 
 W70 **不是**一次「清 flaky CI」的运维动作。触发是 W69 收尾时登记的两族 CI 红
 （run `38200252090` @ `a9f9aea` 的 ubuntu 失败落在 `engine.rs::killed_keeper_is_halted_by_the_engine_and_the_chain_survives`；
@@ -1719,7 +1719,7 @@ F9 依据置空），逐项**具名**而非只报「测试红了」。
 
 1. **搜索域由标题层级封闭**：`[标题行, 下一个层级 ≤ 该标题的行)`。
    **层级更深**（`####`）**不**截断——写成「遇到任何标题就停」会把子标题误当节界，
-   于是本节里明明有表却报「本节内无表」，那是**假阳性**方向。V3.10 当前**无 `####`**
+   于是本节里明明有表却报「本节内无表」，那是**假阳性**方向。V3.11 当前**无 `####`**
    （`h1=1/h2=59/h3=259`）⇒ 这半条语义**不可观测**，故**由合成存根验证**，不靠「反正现在没有」蒙过去。
 2. **三态分开具名**：`{found:false}`（章节号被改指）/ `{found:true, hasTable:false}`（章节在、**本节内无表**）
    / `{found:true, hasTable:true}`（解析成功）。把后两者合成「解析出的表是空的」会让**上层用错误的
@@ -2057,3 +2057,51 @@ F3 陈旧声明；F4 空声明集；F5 无人声明已实现；F6 缺 `tracked`�
 见 [W86 报告](docs/reports/2026-10-13-w86-openapi-document-set-closure.md)、
 [ADR 0064](docs/adr/0064-openapi-document-set-closure.md)、
 `openspec/changes/archive/2026-10-13-w86-openapi-document-set-closure/`。
+
+### W87 升基线 V3.11（把 §56.2 的归档边界写死；消除 §56.2 自身的自相矛盾）
+
+W87 **不是**范围版，也**不是**设计变更，而是**订正版**——把 **W78** 登记、**连续八轮未收录**
+（W78–W86 §八）的一条**判据边界**补入正文，并顺带订正 §56.2 自身的一处**自相矛盾**。
+
+**问题（W78 §八第 8 条，八轮复述）**：§56.2 把 `openspec/changes/archive/` 列为「保留原文 + 追加勘误段」，
+但**未区分「上一轮已发布的归档」与「本轮刚归档、尚未入库」**。W78 撞上后者，按「保护已发布原文」的
+立意作了**就地订正**；W76 §九第 6 条则对**已提交**的归档追加了勘误段。两者**处置不同而判据相同**——
+判别项是**「该原文是否已进入提交」**，不是「轮次」（「本轮」在多人协作下无定义）。
+
+**第二处（W87 核实中发现）**：§56.2 的情形③ 把「**§56**」整体列为**保留原文**的版本专属章节，
+而 V3.10 §58.2 的 **E5 自己就就地订正过 §56.2**，ADR 0049 决策 4 的「不改」清单亦**不含 §56**
+（只列 §39、§48.1/§48.2、§57.1/§57.2/§57.4/§57.5）⇒ 该行**自相矛盾**：若「§56」整体冻结，
+「随版本累积订正」这条**一般规则就无法被订正**，E5 与 E2 都无从发生。
+
+两者都不属于「可纯追加」：§56.2 明写**纯追加 MUST NOT 被用来让矛盾长期存续**；边界不定，
+则**每一轮作者都要重新判一次**同一件事。故本版是 §56 规则的**第二次跨轮次适用**（第一次是 V3.10）。
+
+**裁定**（[ADR 0065](docs/adr/0065-design-baseline-v311.md)）：
+
+**产出**：新建 `docs/直播数字人 + 智能体系统技术方案 V3.11.md`（= V3.10 + **2 处 1:1 行订正** +
+**版本标识 3 行** + 追加 **§59**）：
+
+- **E1** §56.2「历史记录」行：补明**保护对象是「已发布的原文」**——判据 = 该原文**是否已进入提交**；
+  同一轮工作区内新建、尚未提交的产物 ⇒ **就地订正**，不产生勘误段。
+- **E2** §56.2 情形③：把「§56」精确为「**§56.1／§56.3／§56.4**」，并注明「§56.2 是一般规则」。
+
+**契约证据**（`diff`，非 `-u`）：整文件 **5 hunk = 4 个 `c` 型**（`1c1`、`3c3`、`29c29`、
+`2573,2574c2573,2574`）**+ 1 个 `a` 型**（`2713a2714,2766`，§59 追加在末行之后）**+ 0 个 `d` 型**；
+限定**前 2713 行**（既有正文）则**只有 4 个 `c` 型、零 `a`·`d`** ⇒ **行号一一对应，全部既有 `§NNN`
+引用继续有效**；规模 **2713 行 / 226,578 字节 ⇒ 2766 行 / 233,290 字节**。
+
+**指针同步按 §56.2 四情形分流**：改动前实测 **143 行 / 31 文件**（口径见报告），**逐条判定**
+（MUST NOT 以「版本号出现即改」批量替换）后**幸存 35 行 / 9 文件，全属情形③**（升基线链条、
+`V3.10 §58.2` 的 E1–E5 收录记载、W71/W72 轮次记录、被拒改写的举例、`tests/registry.test.mjs:155`）。
+情形①（声明当前基线）：`docs/design.md`、`README.md`、`AGENTS.md`、`openspec/config.yaml`、
+`xtask/src/registry.rs` 输出串、`apps/desktop/src/main.tsx` 界面文案、**`docs/development-plan.md`
+的「V3.11 切片工作项进展」标题**（W71 先例）；情形②（`§NNN` 前缀）：`tests/registry.yaml` 的
+**29 条能力包标记**与 release_line 标签、各 `docs/*.md`／`openspec/specs/*` 的章节指针、轮次记录标题。
+
+**明确不做**：不改任何 `status`（88 条原样，H18 与 B07 仍 `pending`）、不改发布线归属
+（§57.3 计数 `slice_0` 10 / `r1` 37 / `r2` 9 / `capability_pack` 29 / `r3` 1 / `experimental` 2 = **88**）、
+**不实现任何代码**（Rust 行为零改动；随版本号同步的只有**字符串常量**——输出串、错误消息、
+`baseline` 串、断言串）、不给 §16 的验收注册表增行、不重排 W 编号。**基线保持全绿**。
+见 [W87 报告](docs/reports/2026-10-13-w87-baseline-v311-archive-boundary.md)、
+[ADR 0065](docs/adr/0065-design-baseline-v311.md)、
+`openspec/changes/archive/2026-10-13-w87-baseline-v311-archive-boundary/`。

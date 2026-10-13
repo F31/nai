@@ -22,8 +22,8 @@ export const STATUSES = ['implemented', 'tested', 'blocked', 'not_applicable', '
 /// drops the whole part from the "the registry is authoritative" view.
 /// ADR 0047 decision 4 applies that lesson instead of repeating it.
 const COMPLETE_FAMILIES = new Map([
-  ['M', {count: 18, baseline: 'V3.10 §37.5、§38.10'}],
-  ['H', {count: 18, baseline: 'V3.10 §40–§47、§48.5'}],
+  ['M', {count: 18, baseline: 'V3.11 §37.5、§38.10'}],
+  ['H', {count: 18, baseline: 'V3.11 §40–§47、§48.5'}],
 ]);
 
 /// The post-V3.9 scope split: ids that are *capability packs* — designed and
@@ -156,13 +156,13 @@ export function validateRegistry(registry, catalogIds) {
   const notOnPackLine = CAPABILITY_PACK_IDS.filter(id => !onPackLine.includes(id));
   if (notOnPackLine.length > 0) {
     errors.push(
-      `capability pack set incomplete (V3.10 §51.3): not on capability_pack line: ${notOnPackLine.join(', ')}`,
+      `capability pack set incomplete (V3.11 §51.3): not on capability_pack line: ${notOnPackLine.join(', ')}`,
     );
   }
   const strayOnPackLine = onPackLine.filter(id => !packSet.has(id));
   if (strayOnPackLine.length > 0) {
     errors.push(
-      `capability_pack line holds ids outside the V3.10 §51.3 set: ${strayOnPackLine.join(', ')}`,
+      `capability_pack line holds ids outside the V3.11 §51.3 set: ${strayOnPackLine.join(', ')}`,
     );
   }
   const leaked = [...byId.values()]

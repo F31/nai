@@ -14,7 +14,7 @@
 - **THEN** 注册表校验失败，不进入后续切片任务
 
 #### Scenario: Missing release line
-- **WHEN** 某验收项缺少合法 release_line 或线号与 V3.10 §16 裁决不符
+- **WHEN** 某验收项缺少合法 release_line 或线号与 V3.11 §16 裁决不符
 - **THEN** 校验失败并给出可读原因
 
 #### Scenario: The registry is written but never checked against its schema
@@ -89,8 +89,8 @@
 
 ### Requirement: Release lines are declared, and the capability pack is never a first-release gate
 
-发布线 SHALL 为 `slice_0`/`r1`/`r2`/`r3`/`experimental`/**`capability_pack`** 六条（V3.10 §51.1）。
-`capability_pack` 的条目集合 MUST **恰为** **M01–M18 与 H05–H14、H16**（共 **29** 条，V3.10 §51.3、§57.3）。
+发布线 SHALL 为 `slice_0`/`r1`/`r2`/`r3`/`experimental`/**`capability_pack`** 六条（V3.11 §51.1）。
+`capability_pack` 的条目集合 MUST **恰为** **M01–M18 与 H05–H14、H16**（共 **29** 条，V3.11 §51.3、§57.3）。
 首版门槛（`slice_0`/`r1`/`r2`）与 `capability_pack` MUST **互不相交**——即 **INV-33**：
 默认组合不依赖能力包，首版门槛内的每一条验收 MUST 在**未安装任何能力包**时可判定。
 集合缺一条、混入归属外的编号，或任一能力包 id 落在首版门槛线上，校验 MUST 失败并**同时给出 id 与当前所在线**。
