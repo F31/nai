@@ -67,6 +67,13 @@ export const TEST_REGISTRATION_SITES = [
     tier: 'portable',
   },
   {
+    id: 'xtask-engineering-workflow',
+    host: 'xtask/src/lib.rs',
+    marker: 'tests/contracts/workflow.test.mjs',
+    base: '.',
+    tier: 'portable',
+  },
+  {
     id: 'xtask-contracts-suite',
     host: 'xtask/src/schema.rs',
     marker: 'tests/contracts/descriptor.test.mjs',

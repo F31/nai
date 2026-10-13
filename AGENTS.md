@@ -2469,3 +2469,45 @@ F8 域里没人认领 ⇒ **红**。
 见 [W94 报告](docs/reports/2026-10-13-w94-precondition-freshness.md)、
 [ADR 0072](docs/adr/0072-precondition-freshness.md)、
 `openspec/changes/archive/2026-10-13-w94-precondition-freshness/`。
+
+### W95 CI 工作流的每个 step MUST 具名在册（判定的消失不能没有信号）
+
+W95 换了一层对象：`cargo xtask check --profile full`（本机门控）与
+`.github/workflows/foundation.yml`（CI）是判定的两个执行入口，而**后者多跑一批判定步**
+（`schema --check`、8 个 `test --suite`、含 `descriptor.test.mjs` 的契约步、`spec:validate`、
+`openspec validate --archived`），**这个集合没有任何在册台账**——它只存在于注释里
+（`tests/contracts/schema.test.mjs` 那句「本地门控从不读它」是一句**解释**，不是判据）。
+
+两个探针实证：①往 workflow 插一个 step ⇒ 本机 3 套件（schema 30 / platform 22 / registry 52）
+**全绿、零信号**；②**删掉** `schema --check` 这个判定步 ⇒ **同样全绿**——一个判定**静默消失**。
+（`grep -rn foundation.yml crates/ xtask/` 为空 ⇒ 无替代守卫；`test-reachability` 只从 workflow
+读**一个 marker**，其余 step 不在受判范围。）这与 W84「测试文件静默不跑」同族。
+
+判据：**文件层 + 步层两层闭世界**。步的**身份**由解析得出（有 `name` 用 `name`，否则 `uses`／
+`run` 首行）且 MUST 唯一；每步 MUST 归入闭集四类之一——`infra`／`local`／`ci-only`／`diagnostic`。
+四处设计取舍：**`local` 必须付代价**（引出的 `{file, marker}` MUST 在门控源里逐字存在——W75
+「已声明 ≠ 已执行」）、**`ci-only` 必须付代价且双向**（成因 ∈ 闭集四格：`host-subprocess`／
+`compiled-artifact`／`platform-toolchain`／`not-in-profile`；且 MUST NOT 同时挂本机凭据）、
+**`infra` MUST NOT 是后门**（`run` 命中判定命令形状 ⇒ 红）、**`diagnostic` 由结构认出**
+（`if` MUST 含 `failure`——`runner.os == 'Linux'` 过不了这条）。
+
+**分类是静态声明，MUST NOT 由运行时探测得出**（铁律二）：`EBUSY` 是宿主事实，换一台机器会对
+同一个仓库得出不同分类；且「能跑但没接进门控」（`spec:validate`）与「根本跑不了」
+（`schema --check`）风险不同、成因不同，运行时探测区分不出。
+
+**非空洞注入 P1/P2 + F1–F8**（真实文件 + sha256 还原校验 **ALL-OK**）：**P1（加法）与 P2（减法）
+由绿转红是本轮成果**；F1 未登记判定步、F2 删已登记步、F3 改名（两侧同时报）、F4 凭据指向不存在的串、
+F5 成因域外、F6 ci-only 挂凭据 ⇒ **红**；F7 换成另一处**真实存在**的落点 ⇒ **不红**；
+F8 新增一份未登记 workflow 文件（真文件 + `git add`）⇒ **红**。
+**与 `test-reachability` 的边界实测**：删它的站点 ⇒ workflow 判据 **0 红** / registry **2 红**；
+删一条 `WORKFLOW_STEPS` ⇒ workflow **5 红** / registry **0 红** ⇒ 二者**互不顶替**
+（前者管「workflow 的 step」，后者管「测试文件的可达性」）。
+
+**本轮有意的耦合**：新增测试文件必须**同时**在 `xtask/src/lib.rs` 登记、在 `test-reachability`
+的站点表登记，否则 W84 的闭世界与 `registry.test.mjs` 的逐字清单**同时红**——这正是它该有的行为。
+
+**明确不做**：不验「CI 真的跑了某步」（那是运行结果）；不验 `ci-only` 的成因是否成立（语义，
+仍由人读）；不改 `foundation.yml` 一个字符。
+见 [W95 报告](docs/reports/2026-10-13-w95-workflow-step-closure.md)、
+[ADR 0073](docs/adr/0073-workflow-step-closure.md)、
+`openspec/changes/archive/2026-10-13-w95-workflow-step-closure/`。

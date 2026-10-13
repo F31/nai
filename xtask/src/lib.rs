@@ -50,6 +50,9 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
     // 在此之前，新增一处 `cfg(target_os = ...)` 不会引起任何地方注意，平台假设只增不减。
     // 同样是纯静态（读 JSON、扫源码、读 SDK 枚举标签），不需要 protoc 或编译产物。
     schema::node(root, &["--test", "tests/platform/platform-matrix.test.mjs"])?;
+    // CI 工作流的步集合与分类的闭世界（W95）：它住在 `tests/contracts/` 下因为判据跟着契约模块走，
+    // 但不需要 protoc，因此与上面两步同级。要编译产物的那一步（`descriptor.test.mjs`）不在此列。
+    schema::node(root, &["--test", "tests/contracts/workflow.test.mjs"])?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,
