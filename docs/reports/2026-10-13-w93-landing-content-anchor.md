@@ -160,7 +160,48 @@ Rust **零改动**、`cargo xtask` **零改动**、`tests/registry.yaml` **零�
 缺的两项（报告+门控、归档+提交+CI）在归档**之后**才全部完成，故在归档目录里
 **就地补勾**（该目录本轮尚未提交 ⇒ 属「同轮未提交就地订正」，MUST NOT 留成不实的历史记录）。
 
-## 七、**CI_PLACEHOLDER**
+## 七、CI 结论
+
+**观测三件齐**：唯一查询参数（`&cb=<time_ns>`）破坏代理缓存 + 请求头 `Cache-Control: no-cache`
++ 回读 `head_sha` 与推送 SHA 比对。**单次**查询
+`https://github.com/F31/nai/actions/runs/38407136362`：
+
+| 项 | 值 |
+| --- | --- |
+| run | **38407136362（#117）** |
+| 回读 `head_sha` | `f19f7542b055ce882f1a36ee96f5257875633dd7` —— 与推送 SHA **MATCH** |
+| 结论 | **completed / success** |
+| 时间 | `2026-10-13T13:42:19Z` → `13:54:22Z`（约 **12 分 3 秒**） |
+
+两个 job 均 **completed / success**，各 **26** 个可视步骤：
+
+| job | 结论 | 跳过项（均为条件跳过，非缺失） |
+| --- | --- | --- |
+| `foundation (ubuntu-24.04)` | **success** | **step 11**「Publish the gate failure summary as annotations」（`if: failure()`） |
+| `foundation (windows-latest)` | **success** | **step 8**（Linux C++ runtime）、**step 11**（同上）、**step 20**（Linux-only 三语言契约套件） |
+
+**本机绿与 CI 绿同源**（逐条比对 `.github/workflows/foundation.yml` 与 §6.2 的本地门控）：CI 的
+**step 10**「Complete engineering foundation (portable steps + frontend workspace)」跑的命令是
+`cargo xtask check --profile full` —— **与 §6.2 本机门控是同一条命令、同一个 profile**，两平台各跑一遍
+且都 `success` ⇒ 本轮的判据变更（`tests/pending-decisions.yaml` + `scripts/contracts/pending-decisions.mjs`
++ `tests/registry.test.mjs`，经 `xtask/src/registry.rs` 的 `node --test` 进入 `engineering_checks`）
+**在 CI 侧也真跑过**。其余各步亦 `success`：step 9 `cargo xtask schema --check`、step 12–18 七个
+`cargo xtask test --suite *`、step 19 `node --test tests/contracts/schema.test.mjs tests/contracts/descriptor.test.mjs`、
+step 21 `pnpm spec:validate`、step 22 `openspec validate --archived --no-interactive`。
+
+**观测粒度的自限**：本结论为**作业/步骤级**（判 run 结论所需的三件已齐），**未**导出各步骤日志内的
+逐目标计数（`GET /actions/jobs/{id}/logs` 要求仓库 admin 权限，无凭据不可读，且 step 11 的 annotation 通道
+在无失败时本就跳过）⇒ **不断言**「CI 侧也是 91 目标 / 862 passed」，只断言
+「**同一条 `check --profile full` 在 CI 两平台均 `success`，且其 `head_sha` 等于本轮推送 SHA**」。
+
+**顺带观测**（同一份查询里读到的前一条）：run **38401563359（#116）** = W92 的**回填提交** `f368825`
+= **success**（`13:00:27Z → 13:13:07Z`）。它按「回填提交自身不回填」的约定**不在上一轮观测范围内**，
+此处只是顺带读到，作为一次**免费的交叉印证**记一笔。
+
+⚠️ **一次观测失败与它的根因**：首次查询脚本把代理端口**写死**成上一轮的 `127.0.0.1:52675`，
+而沙箱代理端口**随会话变化**（本轮为 `61209`）⇒ `curl` 连不上、响应体为空、`json.loads` 抛
+`JSONDecodeError`。**这看起来像"CI 出问题"，实际是本机没取到观测**——按铁律二，它与"被测系统出错"
+**类型上分开**，MUST NOT 进证据链。修法：端口 MUST 从 `https_proxy` 环境变量读，MUST NOT 硬编码。
 
 ## 八、遗留
 
