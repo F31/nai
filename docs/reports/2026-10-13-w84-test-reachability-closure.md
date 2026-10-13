@@ -167,13 +167,34 @@ openspec validate --all --strict --archived   →  82 passed / 0 failed   （81 
 
 另对**活动变更**单独跑 `openspec validate w84-test-reachability-closure --strict` ⇒ `valid`。
 ⚠️ **订正**：初稿此处曾照抄上一轮写「CLI 对 Why 段给了一条非阻塞警告」——**本轮没有这条警告**。
-核实方式：`openspec validate <归档变更> --strict` 的输出里**无任何 warn/⚠ 行**，
-归档命令本身也只打印 `Task status: ✓ Complete` 与规格变更计数。**照抄上一轮的性状是不实陈述**，
-故就地订正为「无警告」。
+核实方式：① 归档命令只打印 `Task status: ✓ Complete` 与规格变更计数；② `openspec validate
+<归档变更> --strict` 输出里**无任何 warn/⚠ 行**；③ 实测本轮 `proposal.md` 的 `## Why` 段
+**521 字符**（阈值 1000）。**照抄上一轮的性状是不实陈述**，故就地订正为「无警告」。
 
 ## 七、CI 复核
 
-<!--CI-->
+**run `38339165763`（`head_sha = 3448eb51e2…`，与本轮推送 SHA 一致）= `success`**（run_number **98**，双平台绿）。
+
+观测方式沿用既有纪律：**单次低频查询**（**不轮询**），每次带**唯一查询参数**破坏代理缓存、
+`Cache-Control: no-cache`，并**回读 `head_sha` 与本次推送比对**；`curl` 带 `--tlsv1.2 --tls-max 1.2`
+（schannel 与 TLS 1.3 握手失败，W77 实测）。本轮共 3 次查询：`in_progress`（推送后）
+→ `in_progress`（等待 7 分钟后）→ **`success`**（`/jobs` 端点顺带确认）。
+
+**jobs 明细**（`/actions/runs/38339165763/jobs`）：
+
+```
+foundation (ubuntu-24.04)  | completed success | steps=26 | failed: -
+foundation (windows-latest)| completed success | steps=26 | failed: -
+```
+
+同一列表查询顺带证实上一轮 run `38333487130`（`head_sha = 0683ede8b1`，W83 回填）也是 `success`。
+
+> **一处观测噪声（如实登记，非本轮引入）**：某一版单行 `node -e` 直接读 `curl` 的管道输出时
+> `JSON.parse` 抛错并打印了 `RAW:`——**响应本身是合法 JSON**（44 004 字节），
+> 与其后**存盘再解析**得到的结构完全一致（`total_count=97`）。判为**管道分块读取**的读侧问题，
+> **不是端点异常**。⇒ 取证时**先落盘再解析**，别让读侧噪声污染判据。
+
+**按观测轮终止约定**：本条回填提交会触发一个新的 run，**该 run 不再回填**——否则无限递推。
 
 ## 八、遗留
 
