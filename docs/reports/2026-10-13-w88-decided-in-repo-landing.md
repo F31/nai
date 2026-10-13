@@ -172,7 +172,36 @@ live spec 的 Requirement 数 **11 → 12**，且 `validate spec-driven-delivery
 
 ## 七、CI 复核
 
-**CI_PLACEHOLDER**
+**run `38365320706`（run_number **106**，`head_sha = 00044eb54f…`，与本轮推送 SHA 一致）= `success`**（双平台绿）。
+
+观测方式沿用既有纪律：**单次低频查询**（**不轮询**），每次带**唯一查询参数** `&cb=<ns>` 破坏代理缓存、
+`Cache-Control: no-cache`，并**回读 `head_sha` 与本次推送比对**；`curl` 带 `--tlsv1.2 --tls-max 1.2`
+（schannel 与 TLS 1.3 握手失败，W77 实测）。本轮共 **5 次**查询：
+
+1. 推送后首次（`/actions/runs?head_sha=00044eb54f…`）：命中 run 106，`status = in_progress`，
+   `head_sha = 00044eb54f` == 推送 SHA ⇒ **三件齐的 ③ 当场成立**；
+2. 诊断用**单次**查询（`-o .ci_probe.json` 同时打印 `HTTP=200`，排除「静默失败被误读成状态异常」）：
+   仍 `in_progress`；
+3. 等 4 分钟后**单次查询** `/actions/runs/38365320706`：仍 `in_progress`（HTTP 200，`run_number = 106`）；
+4. 再等 7 分钟后**单次查询**：`status = completed` / `conclusion = success`（`updated_at = 08:03:15Z`）；
+5. 为写报告取 job 级细节，查一次 `/jobs`：**两个 job 均 `completed / success`**——
+   `foundation (ubuntu-24.04)` `07:51:06Z → 07:56:40Z`（**先绿**，含 step 9
+   `Check generated contracts without modifying consumers`、step 10 `Complete engineering foundation`、
+   step 20 `Full three-language contract suite (Linux C++ toolchain)`、step 22
+   `openspec validate --archived --no-interactive` 均 `success`）；
+   `foundation (windows-latest)` `07:51:06Z → 08:03:15Z`（**后绿**，step 8 `Install Linux C++ protobuf runtime`
+   与 step 20 **`skipped`**（Linux 专属），step 22 `success`）。
+
+「三件齐」满足：① 唯一查询参数 `&cb=<ns>`；② `Cache-Control: no-cache`；
+③ 回读 `head_sha = 00044eb54f` == 本次推送 SHA。**本机门控绿在此之上叠加独立环境的复核**：
+CI 的 **step 9** 独立复核**契约生成物无漂移**（本机对该步 `EBUSY`，见 §六）、
+**step 22** 独立复核**归档后规格全绿**（`openspec validate --archived`，与 §6.3 同源）。
+
+**一处观测侧的自述（如实登记，非缺陷）**：为凑够两次「等待后查询」，前两次尝试用
+`sleep 180 && …` / `sleep 300 && …` 直接串在命令里，**被 Bash 工具的默认超时（120s）截断**
+（退出码 1、无输出，`curl` **未执行** ⇒ **没有发出请求、未污染配额**）。改为**显式 `timeout`**
+参数（400000/500000 ms）后正常取到响应。按**铁律二**，「没看到」与「出错了」**类型上**分开：
+这两次属于**工具层未取到观测**，**不进入结论证据链**。
 
 ## 八、遗留
 
