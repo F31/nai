@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import Ajv2020 from 'ajv/dist/2020.js';
 import SwaggerParser from '@apidevtools/swagger-parser';
+import { operationErrors } from './openapi-ops.mjs';
 
 export const readJson = async filename => JSON.parse(await readFile(filename, 'utf8'));
 
@@ -58,15 +59,10 @@ export function validateSemantic(kind, value) {
 export async function apiDocument() {
   const document = await SwaggerParser.validate('schemas/openapi/control.yaml');
   if (document['x-implementation-status'] !== 'partial-loopback-engineering') throw new Error('API contract must preserve partial engineering status');
-  const implemented = new Set(['get /health','get /runtime/status','get /sessions/{id}','post /sessions/{id}/mute','post /sessions/{id}/takeover','get /approvals','post /approvals/{id}/approve','post /approvals/{id}/reject']);
-  for (const [path,item] of Object.entries(document.paths)) {
-    for (const method of ['get','post','put','delete']) {
-      if (item[method] && !item[method]['x-required-permission']) throw new Error('API operation missing permission declaration');
-      if (item[method]) {
-        const expected = implemented.has(`${method} ${path}`) ? 'implemented-loopback' : undefined;
-        if (item[method]['x-implementation-status'] !== expected) throw new Error(`API implementation claim does not match verified subset: ${method} ${path}`);
-      }
-    }
-  }
+  // 逐操作检查的**覆盖闭世界**（W85）。判据在 `openapi-ops.mjs` 里，此处只负责把它接到
+  // 文档上——原先这里有一张手写的 `['get','post','put','delete']` 方法清单，它的补集
+  // （`patch` 等）既不查权限也不查状态，静默通过。见 ADR 0063。
+  const errors = operationErrors(document);
+  if (errors.length > 0) throw new Error(`API operation set is not closed:\n${errors.join('\n')}`);
   return document;
 }

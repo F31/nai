@@ -4,6 +4,14 @@ import { readFile, readdir, writeFile, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { validators, readJson, validateSemantic, apiDocument, AJV_SOURCES, TS_GENERATED_SOURCES } from '../../scripts/contracts/validation.mjs';
 import { parseIndex, readTrackedPaths, describeFailure } from '../../scripts/contracts/git-index.mjs';
+import {
+  HTTP_METHODS,
+  PATH_ITEM_FIELDS,
+  IMPLEMENTED_OPERATIONS,
+  operations,
+  operationShapeErrors,
+  operationErrors,
+} from '../../scripts/contracts/openapi-ops.mjs';
 
 const check = await validators();
 const runtime = await readJson('tests/fixtures/contracts/runtime.json');
@@ -142,6 +150,140 @@ test('OpenAPI preserves permissions, session revision/epoch, actual ACK and defe
   assert.ok(api.paths['/knowledge/import'].post.responses['202']);
   assert.equal(api.components.schemas.CommandAck.properties.executed.type,'boolean');
   assert.equal(api.security[0].bearerAuth.length,0);
+});
+
+/// ── OpenAPI 操作集的闭世界（W85，ADR 0063）─────────────────────────────────
+///
+/// `apiDocument()` 的两道逐操作检查（权限声明、实现状态）原先都靠一张**手写的方法清单**
+/// （`['get','post','put','delete']`）。手写清单的补集就是盲区：往文档里加一个 `patch` 操作，
+/// 既不查权限、也不查状态。W85 探针实测（SwaggerParser 校验 + 逐字复刻那段循环）：
+/// 加一个无权限、无状态的 `patch` ⇒ 判定返回**空错误**；同位置换成 `get` ⇒ 立刻报错。
+/// **SwaggerParser 两种情况都放行**——它管结构合法性，不管覆盖。
+///
+/// 补法是闭世界（与 W81／W83／W84 同形）：触发**只由「文档里存在这个方法键」决定**；
+/// 方法键集封闭、与 path-item 字段集**不相交**；已实现声明 MUST **无孤儿**；且 MUST 非空洞。
+
+test('the real API description passes the operation-set closure', async () => {
+  const api = await apiDocument();
+  // 非空洞：判据 MUST 真的看到了操作，而且**不只是**已实现的那几条。
+  const seen = operations(api);
+  assert.ok(
+    seen.length > IMPLEMENTED_OPERATIONS.length,
+    `the closure must see operations beyond the implemented subset; saw ${seen.length}`,
+  );
+  // 闭世界：真实文档零错误（收紧后不引入红）。
+  assert.deepEqual(operationErrors(api), [], 'the real description must already be closed');
+  // 前提的另一半：已实现声明**每一条**都能在文档里解析出来——否则上一条可能只是「什么都没看」。
+  for (const entry of IMPLEMENTED_OPERATIONS) {
+    assert.ok(
+      seen.some(op => `${op.method} ${op.path}` === entry),
+      `${entry} must resolve to a real operation`,
+    );
+  }
+});
+
+test('an operation under a method nobody listed is judged, not skipped', async () => {
+  const api = await apiDocument();
+  // 洞的**现场**：`patch` 不在任何手写清单里，且既无权限、也无状态。
+  const probe = structuredClone(api);
+  probe.paths['/w85-probe'] = { parameters: [], patch: { responses: { '204': { description: 'No content' } } } };
+  assert.ok(
+    operationErrors(probe).some(error => error.includes('patch /w85-probe') && error.includes('x-required-permission')),
+    'a patch operation with no permission declaration must be named',
+  );
+  // 判据**遍历方法键**、不遍历手写子集：同一个缺陷换成 `get` 走的是同一条路径（对照组）。
+  const asGet = structuredClone(api);
+  asGet.paths['/w85-probe'] = { get: { responses: { '204': { description: 'No content' } } } };
+  assert.ok(
+    operationErrors(asGet).some(error => error.includes('get /w85-probe') && error.includes('x-required-permission')),
+    'the same defect under a listed method must be caught by the same rule',
+  );
+});
+
+test('a path-item key that is neither a method nor a field is named', async () => {
+  const api = await apiDocument();
+  const probe = structuredClone(api);
+  probe.paths['/w85-probe'] = { gets: { responses: { '204': { description: 'No content' } } } };
+  assert.ok(
+    operationErrors(probe).some(error => error.includes('"gets"') && error.includes('/w85-probe')),
+    'a key nobody recognises must be named together with its path',
+  );
+});
+
+test('a new method done correctly is not rejected, and x- extensions are allowed', async () => {
+  // **反向注入**：本轮补的是「**检查**新方法」，MUST NOT 变成「**拒绝**新方法」。
+  const api = await apiDocument();
+  const probe = structuredClone(api);
+  probe.paths['/w85-probe'] = {
+    'x-internal': true,
+    parameters: [],
+    patch: { 'x-required-permission': 'session.manage', responses: { '204': { description: 'No content' } } },
+  };
+  assert.deepEqual(
+    operationErrors(probe),
+    [],
+    'a new method with a permission declaration, plus a spec extension, must not fail the judge',
+  );
+});
+
+test('a declared implementation must have an operation and a matching status', async () => {
+  const api = await apiDocument();
+  // **孤儿声明**：删掉一个已实现的路径 ⇒ 声明还在，对象没了。
+  const orphaned = structuredClone(api);
+  delete orphaned.paths['/approvals'];
+  assert.ok(
+    operationErrors(orphaned).some(error => error.includes('get /approvals') && error.includes('no such operation')),
+    'a declaration with no object must be named',
+  );
+  // **状态不符**：一条已声明的实现被改成别的状态。
+  const mismatched = structuredClone(api);
+  mismatched.paths['/health'].get['x-implementation-status'] = 'partial';
+  assert.ok(
+    operationErrors(mismatched).some(error => error.includes('get /health') && error.includes('expected')),
+    'a declared implementation whose status disagrees must be named',
+  );
+});
+
+test('an empty or unreadable API description is reported, not silently closed', () => {
+  assert.ok(
+    operationErrors({ paths: {} }).some(error => error.includes('exposes no operations')),
+    'a description with no operations makes every per-operation check vacuously true',
+  );
+  assert.ok(
+    operationErrors(null).some(error => error.includes('no readable paths')),
+    'an unreadable description must fail rather than pass',
+  );
+});
+
+test('the operation tables are disjoint, closed and non-empty', () => {
+  // 真实三表自洽。
+  assert.deepEqual(operationShapeErrors(), [], 'the shipped tables must be consistent');
+  // **相邻层不相交**（W82）：一个键不能既是方法又是字段。
+  assert.ok(
+    operationShapeErrors(HTTP_METHODS, [...PATH_ITEM_FIELDS, 'get'], IMPLEMENTED_OPERATIONS)
+      .some(error => error.includes('overlap')),
+    'a key claimed by both layers must be named',
+  );
+  // 非空洞：空方法集／空字段集／空声明，各是一种「谁都挡不住」的形状。
+  assert.ok(operationShapeErrors([], PATH_ITEM_FIELDS, IMPLEMENTED_OPERATIONS).some(error => error.includes('HTTP_METHODS is empty')));
+  assert.ok(operationShapeErrors(HTTP_METHODS, [], IMPLEMENTED_OPERATIONS).some(error => error.includes('PATH_ITEM_FIELDS is empty')));
+  assert.ok(operationShapeErrors(HTTP_METHODS, PATH_ITEM_FIELDS, []).some(error => error.includes('IMPLEMENTED_OPERATIONS is empty')));
+  // 声明里的方法 MUST 识别得到，且 MUST NOT 重复。
+  assert.ok(
+    operationShapeErrors(HTTP_METHODS, PATH_ITEM_FIELDS, ['fetch /x']).some(error => error.includes('not a recognised HTTP method')),
+    'a declared operation naming an unknown method must be named',
+  );
+  assert.ok(
+    operationShapeErrors(HTTP_METHODS, PATH_ITEM_FIELDS, ['get /a', 'get /a']).some(error => error.includes('declared twice')),
+    'a duplicated declaration must be named',
+  );
+  // 声明**逐字写死**且**与文档无关**：八条；顺序不承载语义。
+  assert.equal(IMPLEMENTED_OPERATIONS.length, 8);
+  assert.deepEqual(
+    operationShapeErrors(HTTP_METHODS, PATH_ITEM_FIELDS, [...IMPLEMENTED_OPERATIONS].reverse()),
+    [],
+    'the declaration order must carry no meaning',
+  );
 });
 
 /// ── 每份 schema 要么被执行体消费，要么被具名声明（ADR 0051 决策 3 / ADR 0052）────────

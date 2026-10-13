@@ -1968,3 +1968,46 @@ ui 文件红；**T2** 放宽 `TEST_EXTENSIONS` ⇒ 盲区**重开**（0 错误�
 见 [W84 报告](docs/reports/2026-10-13-w84-test-reachability-closure.md)、
 [ADR 0062](docs/adr/0062-test-reachability-closure.md)、
 `openspec/changes/archive/2026-10-13-w84-test-reachability-closure/`。
+
+### W85 OpenAPI 操作集的闭世界（判据 MUST 遍历文档自己的操作键）
+
+**问题**：`validation.mjs` 的 `apiDocument()` 有两道**逐操作**检查——权限声明
+（`x-required-permission`）与实现状态（`x-implementation-status`）——但「哪些操作要被查」由一张
+**手写的方法清单**决定：`for (const method of ['get', 'post', 'put', 'delete'])`。
+`patch`／`head`／`options`／`trace` 都是 **OpenAPI 3.0 的合法方法键**，全部落在清单之外。
+
+**探针实测**（往 `paths` 里加操作、`SwaggerParser` 校验、再跑那段循环的**逐字逻辑**）：
+一个**无**权限、**无**状态的 `patch` 操作 ⇒ 判定返回**空错误**（静默通过）；同位置换成 `get`
+⇒ 立刻报错。**`SwaggerParser` 两种情况都放行**——它管结构合法性，不管覆盖。
+⇒ 一个 HTTP 方法只要落在清单之外，权限与状态**都不再被问**：**一整类操作可以从契约门口走进来而无人过问**。
+
+**同族第二处**（潜伏，当前计数为零）：`implemented` 的八条**只被用来反查文档**，从未要求
+**指回文档里真实存在的操作** ⇒ 一条**只有声明、没有对象**的契约可以零信号存活。
+
+**裁定**（[ADR 0063](docs/adr/0063-openapi-operation-closure.md)）：
+
+1. **判据遍历文档自己的操作键**（W83 的应用），MUST NOT 遍历手写子集——「新方法」与「老方法」
+   走同一条路径。
+2. **`HTTP_METHODS` 逐字写死**（八个，OpenAPI 3.0 全表），MUST NOT 由「文档里现有方法」派生
+   （否则「现有方法 == 清单」是**恒真式**）。仓库此刻只用四个，但清单 MUST NOT 随之收缩。
+3. **`PATH_ITEM_FIELDS` 逐字写死**（五个），path item 的**每个键** MUST ∈ 两者之一
+   （`x-` 扩展前缀按规范放行）⇒ `patch` 被**检查**、`gets:` 这类笔误被**具名拒绝**。
+4. **相邻层不相交**（W82）：`HTTP_METHODS ∩ PATH_ITEM_FIELDS == ∅`。
+5. **声明无孤儿**（W75）：`IMPLEMENTED_OPERATIONS` 的每一项 MUST 指回文档里真实存在、
+   且状态为 `implemented-loopback` 的操作。
+6. **非空洞**：文档 MUST 至少暴露一个操作，否则逐操作检查全部为真但**空转**（同 W84）。
+
+**注入 F0 + T1–T8（表级 11/11，含 T7／T8 两条反向注入）逐项开火且具名**：
+**T1 是本轮的核心表级证据**（把 `HTTP_METHODS` 收缩回旧的四方法 ⇒ 逐操作检查**不再覆盖 patch**，
+只剩键集闭世界在挡）；T2（删 `get` ⇒ 声明侧出现孤儿）；T3（空声明表 ⇒ 非空洞断言开火）；
+T6（声明表掺幽灵 ⇒ `no such operation`）；**T7 是反向注入**（声明顺序打乱不红）；
+**T8 是反向注入**（还原后基线仍绿）。表级注入用**临时模块副本**（该文件无 import，副本可独立加载）。
+
+`tests/contracts/schema.test.mjs` **17 → 24**（随 `engineering_checks` 既有条目自动进 `portable`／`full`，
+接线零改动）。**`schemas/openapi/control.yaml` 一字未改**（实测其 path item 键全部落在闭集内、
+42 个操作全部带权限声明、状态全部与声明一致、八条 `implemented` **零孤儿** ⇒ 收紧后
+**报错集合不变**，基线**保持全绿**）。
+**不改基线正文、不改 `tests/registry.yaml`、不改 `tests/pending-decisions.yaml`、不改任何 Rust、不新增依赖边。**
+见 [W85 报告](docs/reports/2026-10-13-w85-openapi-operation-closure.md)、
+[ADR 0063](docs/adr/0063-openapi-operation-closure.md)、
+`openspec/changes/archive/2026-10-13-w85-openapi-operation-closure/`。

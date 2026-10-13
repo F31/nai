@@ -107,3 +107,12 @@ grep -c "w84 probe" .log = 0     ← 探针的用例名在日志里**零出现**
    与 `CAPABILITY_PACK_IDS` 仍手写（ADR 0056 遗留 4）同类。
 4. harness 轨道仍 `pending` 的 **H18 与 B07**、W76 台账 5 条 `decidable_in_repo`
    （`PD-09/22/24/31/34`）的推荐落地，均未动手。
+
+> **进展段（W85 / ADR 0063 追加）**：同族的**下一处**已在 W85 落地——**契约文档的操作层**。
+> `validation.mjs` 的 `apiDocument()` 两道逐操作检查（权限声明、实现状态）原先靠一张手写方法清单
+> （`['get','post','put','delete']`），其补集（`patch`／`head`／`options`／`trace`）既不查权限、
+> 也不查状态；W85 探针实测该注入**静默通过**（`SwaggerParser` 也放行）。裁定见 ADR 0063：
+> 判据 MUST 遍历**文档自己的操作键**（W83），方法键集封闭且与 path-item 字段集**不相交**（W82），
+> 已实现声明 MUST **无孤儿**（W75）。本条遗留 3 的「手写声明带摩擦」在 `HTTP_METHODS`／
+> `PATH_ITEM_FIELDS` 上**再次成立**（ADR 0063 决策 2／3）——与本条遗留 7 的
+> `TEST_REGISTRATION_SITES` 属同一类需要维护、且**有意**维护的声明。
