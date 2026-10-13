@@ -133,7 +133,34 @@
 
 ## 七、CI 复核
 
-**CI_PLACEHOLDER**
+**CI 复核**
+
+- run **38379952857**（run_number **111**），`head_sha = 71efbf0405` = 本次推送 SHA
+  `71efbf0405a3539fd10be11d470a9a604198ffe7` ⇒ 结论 **`success`**（09:56:56Z → 10:08:49Z，约 12 min）。
+- 两平台均绿、各 **26 steps**：`foundation (ubuntu-24.04)` 09:57:00Z → 10:02:06Z；
+  `foundation (windows-latest)` 09:57:00Z → 10:08:49Z。
+
+### 观测纪律
+
+- 查询带**唯一参数** `&cb=<ns>` + 请求头 `Cache-Control: no-cache`；**回读** `head_sha` == 推送 SHA；
+  `curl --tlsv1.2 --tls-max 1.2`（本机 schannel 与 TLS 1.3 握手失败）。
+- 本轮共 **8 次** GitHub API 调用（含 1 次 `/rate_limit`（不计 core 配额）、1 次 `runs/<n>/jobs` 因
+  误用 run_number 得 404、run 109 的诊断 3 次）；单轮保持个位数、无轮询。
+  `sleep 720` / `sleep 300` 均被 SIGTERM 截断（**无输出、退出码 1**，与 W88 同现象）⇒ 改为直接单次查询。
+
+### 顺带观测（**上一轮**的回填提交）
+
+- run **38374444778**（run_number **109**，`head_sha = 0b01ee35ee` = W89 的 CI 回填提交 `0b01ee3`）
+  结论 **`failure`**：`foundation (ubuntu-24.04)` **success**（09:10:45Z→09:16:05Z）、
+  `foundation (windows-latest)` **failure**，失败步为第 10 步合并门控
+  `Complete engineering foundation (portable steps + frontend workspace)`（09:10:46Z→09:17:11Z）。
+- **判据（实测，非推断）**：run 110（`54d892f`）的改动**包含** run 109（`0b01ee3`）的全部改动，
+  二者在**同一 windows 作业**上结果相反 ⇒ **失败不由提交内容引起**（平台侧瞬时）。
+- **未取得的证据**：作业日志端点 `/actions/jobs/<id>/logs` 对匿名请求返回
+  **403 `Must have admin rights to Repository.`** ⇒ **未能取到失败细节**。故本条只到
+  「内容无关 + 平台侧」为止，**MUST NOT 读成「已查明为 flaky」**。
+- 该 failure 属**上一轮**回填提交，按 W89 既定边界「**回填提交自身不回填**」不在 W89 §七的承诺范围内；
+  本轮**首次观测到并如实登记**（不追溯改写 W89 报告）。
 
 ## 八、遗留
 
