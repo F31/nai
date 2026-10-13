@@ -116,7 +116,25 @@ W88 的反向用例「可解析 `precondition` 挂别的处置上 ⇒ 不红」�
 归档 `w94-precondition-freshness`：`spec-driven-delivery` **+ 1 added, ~ 1 modified**
 （Totals `+ 1, ~ 1, - 0, → 0`），Task status **✓ Complete**（归档前已全勾）。
 
-## 七、**CI_PLACEHOLDER**
+**单次观测**（三件齐：唯一查询参数 `cb=<ns>` + `Cache-Control: no-cache` + 回读 `head_sha`）：
+
+| 项 | 值 |
+| --- | --- |
+| run | **38416987565（#119）** |
+| 回读 `head_sha` | `e3e4ee57739fdd164df1e7bbf128802cecb8003a` —— **== 推送 SHA（MATCH）** |
+| 结论 | **completed / success**（`14:51:32Z → 15:01:55Z`，约 10 分 23 秒） |
+| 两个 job | `foundation (windows-latest)` / `foundation (ubuntu-24.04)`，各 26 步，**全 success** |
+
+- Ubuntu 仅 **step 11**（`if: failure()` 的 annotation 通道）跳过；Windows 另跳过 **step 8**
+  （Linux C++ protobuf runtime）与 **step 20**（Linux-only 三语言套件）——**平台分工，非缺失**。
+- **本机绿与 CI 绿同源**：CI **step 10** 跑的正是 `cargo xtask check --profile full`，与 §6.2 本机门控
+  **同一条命令、同一个 profile**，两平台都 `success` ⇒ 本轮判据变更在 CI 侧**真跑过**。
+  另：CI **step 21／22** 分别跑 `pnpm spec:validate` 与 `openspec validate --archived`，与 §6.3 同族。
+- **自限声明**：观测为**作业／步骤级**（`/actions/jobs/{id}/logs` 需 admin，不可读）
+  ⇒ 本轮**不断言**「CI 侧也是 91/862／52」，只断言上面这条。
+- **顺带观测**：run `38409489827`（#118）= W93 回填提交 `21ee78c` = **success**
+  （上一轮按约定不观测，此处顺带读到）。
+- **代理端口从 `https_proxy` 读**（本轮 `61209`），未硬编码——W93 曾因写死上一轮端口而取空响应。
 
 ## 八、遗留
 
