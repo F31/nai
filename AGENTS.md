@@ -2570,4 +2570,41 @@ workflow **0 红**；删新增的 `test-reachability` 站点 ⇒ registry **2 �
 不验「`check --profile portable` 的证据专属于它」（如实披露的假阴性方向宽松）。
 见 [W96 报告](docs/reports/2026-10-14-w96-xtask-command-surface.md)、
 [ADR 0074](docs/adr/0074-xtask-command-surface.md)、
-`openspec/changes/2026-10-14-w96-xtask-command-surface/`。
+`openspec/changes/archive/2026-10-14-w96-xtask-command-surface/`。
+（W97 就地订正：W96 段原写 `openspec/changes/2026-10-14-w96-…`，归档后真路径在 `archive/` 下。）
+
+### W97 被测面的集合 MUST 由解析算出并交叉核验
+
+W97 接着 W95／W96 补**层与层之间的接线**：前两轮的闭世界各自成立，但它们之间的包含关系
+没有被计算过。「门控测哪些包」与「每个 `test --suite` 测哪些包」都由**实参**决定——而 ADR 0073
+那 8 条 suite step 的 `localEvidence` **全部填了同一条 marker**（`--workspace --exclude HARNESS`）。
+一条 `--workspace` 的证据回答的是「全 workspace 被跑了」，**没有一条**回答「这个 suite 自己的包集
+被跑了」——**用超集冒充专属**。这是同一个陷阱的**第六次**出现（`repositoryFiles` → `readTrackedText`
+→ W94 两表 → W95 `gateSources` → W96 门控闭包 → 本轮：包含关系必须**算出来**）。
+
+三个 Mutation 实证（改真文件 → 真跑 → `sha256` 逐字还原）：①M1 把门控的
+`--workspace --exclude HARNESS` 换成 `-p nai-storage` ⇒ **9 个 suite 全部失去覆盖 +
+17 个成员不再被测**，零信号；②M2 某个 suite 的 `-p` 改成幽灵包名 ⇒ 本机与静态判据都不发现；
+③M3 往 `members` 加成员 ⇒ 「它的测试有没有被跑」无人回答（**如实**：`--workspace` 形态**自适应**
+于成员集合，`cargo test --workspace` 确实会跑到新成员 ⇒ 判据**不**该报警；真正的缺口在
+「门控改用显式列表并漏掉某个成员」那一天，已由测试用例钉住）。
+
+判据（新 `scripts/contracts/gate-coverage.mjs`）：**V1** suite 登记表与 dispatch 派生的 suite 集合
+**双向**闭世界；**V2** 包集由 driver（`inline`／`delegated` 穿透 `schema::contracts`）从源码算出，
+登记表**不写第二份**（W93）；**V3** 每个 `-p` 值 MUST 落在真实成员包名上（`HARNESS` 由
+`xtask/Cargo.toml` 派生，不写死）；**V4** 每个 suite 的包集 MUST 被**单一条**门控命令覆盖
+（不许用并集凑）；**V5** 每个成员 MUST 被这些命令的并集覆盖；**V6** CI 的每条 xtask 命令
+MUST 在 dispatch 在册（复用 W96 的 `dispatchSignatures`，**不写第二套解析**）。
+
+**空态 MUST 被显式断言**（W92，本轮实测出来的）：driver 标错形态时包集算成 **∅**，而 inclusion
+对空集**恒真** ⇒ 加「MUST 至少解析出一条 test 命令」与「包集 MUST 非空」两条。**注释不是实参**：
+评论区一句 `[…]` 形状的例子曾被当成实参数组去解析 ⇒ 加 `stripRustComments`（且须跟踪字符串状态，
+`"https://x"` 里的 `//` 不是注释）。
+
+`tests/contracts/gate-coverage.test.mjs` **24 个用例**、`test-reachability` 站点 **9 → 10**、
+**Node 套件 7 → 8**、`xtask/src/lib.rs` **+1 行登记**（Rust 零行为改动）。
+**明确不做**：不判「每条 suite 命令 MUST 有 CI step」——`test --suite upgrade` 在 CI 没有具名 step，
+而仓库里**无任何记载**说明原因 ⇒ 给它配成因等于**给未知事实贴标签**（W90），只作为发现登记。
+见 [W97 报告](docs/reports/2026-10-14-w97-gate-coverage.md)、
+[ADR 0075](docs/adr/0075-gate-coverage.md)、
+`openspec/changes/2026-10-14-w97-gate-coverage/`。

@@ -57,6 +57,12 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
     // 下因为判据跟着契约模块走，但不需要 protoc，因此与上面几步同级。★ 这一行有一个副作用：
     // 它自己也是一条命令的证据源头——`check-deps` 与 `check --registry` 的门控落点就在本函数体里。
     schema::node(root, &["--test", "tests/contracts/xtask-commands.test.mjs"])?;
+    // 被测面的集合守卫（W97）：门控跑哪些包、每个 suite 跑哪些包、CI 调用哪些命令，三者由实参
+    // 解析成集合后做包含关系核验——不再只用「某个 marker 逐字存在」充当覆盖证明。同样纯静态：
+    // 读 workspace 与成员清单、解析本文件的测试实参、读 CI workflow 文本，不需要 protoc。
+    // ★ 副作用：本函数是它的**第四个**受审对象——它自己就是「门控闭包」的边界，
+    // 把这里的 `--workspace` 换成任何显式列表，该测试会立刻算出被牺牲的包。
+    schema::node(root, &["--test", "tests/contracts/gate-coverage.test.mjs"])?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,

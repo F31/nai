@@ -81,6 +81,13 @@ export const TEST_REGISTRATION_SITES = [
     tier: 'portable',
   },
   {
+    id: 'xtask-engineering-gate-coverage',
+    host: 'xtask/src/lib.rs',
+    marker: 'tests/contracts/gate-coverage.test.mjs',
+    base: '.',
+    tier: 'portable',
+  },
+  {
     id: 'xtask-contracts-suite',
     host: 'xtask/src/schema.rs',
     marker: 'tests/contracts/descriptor.test.mjs',
