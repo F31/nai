@@ -2166,7 +2166,7 @@ W88 **不是**升基线、**不是**加能力，而是**结清一条已登记的
 [ADR 0066](docs/adr/0066-decided-in-repo-landing.md)、
 `openspec/changes/archive/2026-10-13-w88-decided-in-repo-landing/`。
 
-## W89 观众长期记忆开关的单一来源与写入面（PD-31 结清）
+### W89 观众长期记忆开关的单一来源与写入面（PD-31 结清）
 
 W89 **不是**升基线、**不是**加能力——它把 W88 §八第 2 条登记的**一处张力**核实到底，并把结论落在**判定面**上。
 
@@ -2223,3 +2223,58 @@ W89 **不是**升基线、**不是**加能力——它把 W88 §八第 2 条登�
 见 [W89 报告](docs/reports/2026-10-13-w89-viewer-memory-single-answering-point.md)、
 [ADR 0067](docs/adr/0067-viewer-memory-single-answering-point.md)、
 `openspec/changes/archive/2026-10-13-w89-viewer-memory-default-off-single-home/`。
+
+### W90 配置面的键级消费状态（受判 `required` 键的三分类闭世界）
+
+W90 **不是**升基线、**不是**给配置接线——它是 W89 遗留 1 那个**母题**（「配置面 `required` 键 MUST 有
+消费者」）的兑现：把「同层字段一个有主、一个无主」那条**一次性对照**下推成**键级**的可执行判据。
+
+**实测（扫描非测试、非生成、已跟踪源码，读取形状 `EXPR["<key>"]`）**：45 个 `required` 键里
+8 个是**有 `required` 子键的容器**（消费由子键蕴含）⇒ **受判键 37**；其中 **[A] 有读取点 10**、
+**[B] 无读取点但值被 `const` 钉死 4**、**[C] 既无读取点也未被钉死 23**。
+⇒ **W89 的 `viewer_memory_enabled` 不是特例，是 23 分之 1**；改这 23 个键的值**不改变任何行为**。
+
+**[C] 的成因逐段实测**（`scripts/contracts/config-consumption.mjs` 的成因表，6 条）：
+① `constructor-injected`（12 条）——值以构造器/参数由调用方注入，而调用方在生产代码里**不存在**
+（`Book::new(workspace, limits)`、`EventIngress::new(…, capacity, …)`、`Scheduler::new(…, policy)`、
+`RemoteGateway::new(policy)` 的调用方**只有 `tests/`**）；② `hardcoded-default`（1 条：`Session::new`
+写死 `SessionMode::Assisted`）；③ `surface-absent`（5 条：非测试代码里**连键名都不出现**）；
+④ `same-name-other-object`（3 条：`cloud.*` 的同名者是 `nai-upgrade-core` 读的**升级清单**字段）；
+⑤ `binding-consumer-absent`（1 条）；⑥ `awaiting-decision`（1 条：`viewer_memory_enabled`）。
+
+**判据（四条，全部在既有 `tests/contracts/schema.test.mjs` 里跑 ⇒ `xtask` 零改动）**：
+
+- **受判键集合派生**：`required` 里减去「自己有 `required` 子键的容器」；**容器由结构判定**，
+  MUST NOT 写成键名清单。**无 `required` 子键的 object 键 MUST 自己受判**（`bindings` 就是这一条——
+  它不能被任何子键蕴含）。MUST NOT 按章号/层级圈范围。
+- **三分类双向闭世界**：`[A] ∪ [B] ∪ [C]` 两两不相交、并集**恰等于**受判键集合；
+  **[A] 与 [C] 两侧都双向**——有读取点的键 MUST 具名在册（**观测不能替人签名**）、在册的键 MUST
+  真的没有读取点（**签名不能遮住观测**）。
+- **读取形状只认 `EXPR["<key>"]`**（`[` 前必须是表达式字符）：实测 `xtask/src/deps.rs:441` 的
+  `&["knowledge"]` 是 Rust **数组字面量**，宽松正则会把它算成读取点、让零读者的容器键凭空获得读者。
+  代价是「将来改用反序列化到结构体读配置会被报成未接线」——**假阳性方向**，安全。
+- **两张台账手写 + 自清理**：`[A]` 每条写**证据文件**（断言文件里真有该形状、且被跟踪）；
+  `[C]` 每条写成因 id（成因表每条 MUST 至少被一个键引用）。缺失/陈旧/遮蔽/未知成因都报错。
+
+**扫描面按结构排除、每条排除付理由**：测试面按**路径段**（含 `crates/*/tests/`、`src/tests.rs`、
+`*.test.mjs`）、生成面、判据自身。**定义面不靠具名排除**——`.json` 不在语言表里，schema 凭**语言闭包**
+就在扫描集之外，测试侧另有一条断言钉住它（第一版把它写进排除表，**判据自己**报了「陈旧排除」）。
+
+**非空洞注入 F0a–F12**（12 条 + 3 条非空洞断言）：F0a 三类非空／扫描面 > 100 文件；F0b 定义面凭语言闭包
+在扫描集外；**F0c 两张台账都承重——清空 `WIRED` 必须报错**（**本判据第一版的真洞**：闭世界只要求
+「落在三类之一」，而 [A] 由扫描自动成立 ⇒ 清空台账判据照旧全绿）；F1 把**真实源码文本**里
+`store.rs` 的 `["max_buffer_ms"]` 挖掉 ⇒ `deepEqual` 钉死**唯一**一条消息；**F1′ 手工真跑改前/改后**
+（真的改成 `["max_buffer_ms_"]`：改前 **30 pass / 0 fail**、改后 **29 pass / 1 fail** 且名指该键，
+还原后 **sha256 逐字一致**、复测 30/0）；F2 证据文件不含形状；F3 在册遮蔽真读者；F4 陈旧在册；
+F5 缺成因／未知成因；F6 把被钉死的键登记为未接线；F7 新增 `required` 键不接线不登记；
+F8 取消钉死（证明 [B] 派生）；F9 容器边界三条；F10 数组字面量 vs 真索引；F11 整行注释不算；F12 陈旧排除。
+
+**门控与计数**：`tests/contracts/schema.test.mjs` **29 → 30**（`tests/registry.test.mjs` 仍 50）；
+`cargo xtask` 零改动；`check --profile full` 见 W90 报告 §六。
+
+**明确不做**：**不给 23 个 [C] 键接线**（改变运行时行为 ⇒ 产品轮次）、不把配置面的键接到 `MemoryPolicy`
+（ADR 0067 已裁定「判定面收口」）、不新增 JSON Schema 约束这份台账（ADR 0054 遗留 5 的同款判断）、
+不动 `tests/pending-decisions.yaml`、不改基线正文、不重排 W 编号。
+见 [W90 报告](docs/reports/2026-10-13-w90-config-surface-key-consumption.md)、
+[ADR 0068](docs/adr/0068-config-surface-key-consumption.md)、
+`openspec/changes/archive/2026-10-13-w90-config-surface-consumption/`。

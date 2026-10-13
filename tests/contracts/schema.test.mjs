@@ -5,6 +5,20 @@ import path from 'node:path';
 import { validators, readJson, validateSemantic, apiDocument, apiDocuments, AJV_SOURCES, TS_GENERATED_SOURCES } from '../../scripts/contracts/validation.mjs';
 import { parseIndex, readTrackedPaths, describeFailure } from '../../scripts/contracts/git-index.mjs';
 import {
+  RUNTIME_CONFIG_SCHEMA,
+  guardedKeys,
+  readSites,
+  WIRED,
+  UNWIRED,
+  UNWIRED_CAUSES,
+  partitionErrors,
+  evidenceErrors,
+  causeErrors,
+  scanExclusionErrors,
+  SCAN_EXCLUSIONS,
+  inScan,
+} from '../../scripts/contracts/config-consumption.mjs';
+import {
   HTTP_METHODS,
   PATH_ITEM_FIELDS,
   OPENAPI_DIR,
@@ -971,5 +985,178 @@ test('the tracked-path reader agrees with the repository it is asked about', asy
   // 被忽略的目录 MUST NOT 在索引里（它们不是仓库内容）。
   assert.ok(![...repository.paths].some(file => file.startsWith('dist/')), 'ignored directories are not tracked');
   assert.ok(repository.paths.size > 100, `the tracked-path set looks too small: ${repository.paths.size}`);
+});
+
+/// ── 配置面的**键级**消费状态（W90 / ADR 0068）──────────────────────────────
+///
+/// W73 的守卫管的是「**文件**级」：每份 schema 要么被执行体消费、要么具名例外。本组断言把
+/// 同一件事下推**一层**：`schemas/config/runtime.schema.json` 的每个受判 `required` 键
+/// MUST 落在三类的**恰一个**里——[A] 有派生出来的读取点、[B] 无读取点但其值被 `const` 钉死、
+/// [C] 无读取点也未被钉死但**逐键在册并附成因**。
+///
+/// 母题来自 W89 的 F1：`session_defaults` 里 `allow_auto_without_platform_grant` 有读取点、
+/// `viewer_memory_enabled` 没有——「**同层字段一个有主、一个无主**」。本判据把那条对照
+/// 一般化到整个配置面。⇒「配置里有这个键」MUST NOT 被当作「运行时看得见它的值」。
+
+/// 扫描面：非测试、非生成、非判据自身的代码文本，且**按语言去掉整行注释**。
+/// 去注释这一步是判据的一部分：注释里 `// value["viewer_memory_enabled"]` 一句话就能
+/// 凭空造出一个读者，而「没人读的配置键」正是本判据唯一要抓的东西（W73 的第二次适用）。
+async function configSources(files) {
+  const out = [];
+  for (const file of files) {
+    if (inScan(file, SCAN_EXCLUSIONS)) continue;
+    out.push({ file, text: stripCommentLines(await readFile(file, 'utf8'), CODE_LANGUAGES.get(path.extname(file))) });
+  }
+  return out;
+}
+
+test('every required runtime-config key is read, pinned, or registered', async () => {
+  const schema = await readJson(RUNTIME_CONFIG_SCHEMA);
+  const files = await codeFiles();
+  const sources = await configSources(files);
+  const guarded = guardedKeys(schema);
+  const scanned = readSites(guarded, sources);
+  // 判据的输入 MUST 等于它断言的对象：要断言「**仓库**里没有读者」，证据文件就必须在仓库里。
+  const repository = await readTrackedPaths();
+  assert.ok(repository.ok, repository.ok ? '' : describeFailure(repository));
+  assert.deepEqual(partitionErrors(guarded, scanned, WIRED, UNWIRED), []);
+  assert.deepEqual(evidenceErrors(WIRED, scanned, repository.paths), []);
+  assert.deepEqual(causeErrors(UNWIRED, UNWIRED_CAUSES), []);
+  assert.deepEqual(scanExclusionErrors(SCAN_EXCLUSIONS, files), []);
+
+  // 非空洞①：三类都必须非空 —— 任一类为空，对它的断言就在空集上空转（「非空洞」≠「数量 > 0」，
+  // 所以下面还有逐类的**具体**断言：读取点必须落在具名的文件上、在册键必须指向真实成因）。
+  const pinned = guarded.filter(entry => !scanned.has(entry.path) && entry.node.const !== undefined).map(entry => entry.path);
+  assert.ok(guarded.length > 0, 'the guard must have keys to judge');
+  assert.ok(sources.length > 100, `the scan set looks too small: ${sources.length}`);
+  for (const [label, size] of [
+    ['read', scanned.size],
+    ['pinned', pinned.length],
+    ['registered', UNWIRED.size],
+  ]) {
+    assert.ok(size > 0, `the ${label} class is empty; an assertion over an empty class cannot fail`);
+  }
+  // 非空洞②：定义面凭**语言闭包**就在扫描集之外（`.json` 不在语言表里）——所以排除表里没有它。
+  // 一旦有人把 `.json` 加进 `CODE_LANGUAGES`，这条会开火，逼他在 `SCAN_EXCLUSIONS` 里补一条有理由的排除。
+  assert.ok(
+    !CODE_EXTENSIONS.includes('.json'),
+    'JSON must stay outside the scan set: the schema is the asserted object, it MUST NOT also be its own evidence',
+  );
+  assert.ok(!files.includes(RUNTIME_CONFIG_SCHEMA), 'the schema file must not be a scanned source');
+  // 非空洞③：两张台账都**承重** —— 清空任何一张都必须产生错误，否则它只是注释。
+  assert.ok(
+    partitionErrors(guarded, scanned, new Map(), UNWIRED).length > 0,
+    'emptying the wired ledger must be reported — otherwise the ledger proves nothing',
+  );
+  assert.ok(
+    partitionErrors(guarded, scanned, WIRED, new Map()).length > 0,
+    'emptying the registration ledger must be reported — otherwise the ledger proves nothing',
+  );
+
+  // 注入 F1：真跑那一行——把**真实源码文本**里的一条读取点挖掉（不是造桩）。
+  // 挖的是 `store.rs` 的 `["max_buffer_ms"]` ⇒ 该键从 [A] 掉出来，而它既未被钉死也未在册。
+  const store = 'crates/nai-storage/src/store.rs';
+  const gutted = sources.map(source =>
+    source.file === store ? { ...source, text: source.text.replace('["max_buffer_ms"]', '["max_buffer_ms_"]') } : source,
+  );
+  assert.notEqual(gutted.find(source => source.file === store).text, sources.find(source => source.file === store).text, 'the injection must actually change the text');
+  const guttedScan = readSites(guarded, gutted);
+  assert.ok(!guttedScan.has('media.max_buffer_ms'), 'the injected read site must be gone');
+  assert.deepEqual(partitionErrors(guarded, guttedScan, WIRED, UNWIRED), [
+    'media.max_buffer_ms is required by the schema, nothing reads it, the schema does not pin it, and it is not registered — a configuration key nobody reads and nobody named is a value the runtime silently ignores',
+  ]);
+  assert.ok(
+    evidenceErrors(WIRED, guttedScan, repository.paths).some(error => error.includes('media.max_buffer_ms')),
+    'the ledger must also be caught naming a reader that no longer reads',
+  );
+
+  // 注入 F2：把证据文件指到一个**不含**该读取形状的文件 ⇒ 自清理开火（读取点搬家/被删）。
+  assert.ok(
+    evidenceErrors(new Map([['edition', { evidence: 'crates/nai-kernel/src/session.rs', note: 'x' }]]), scanned, repository.paths).some(error =>
+      error.includes('edition'),
+    ),
+    'a named reader that does not read the key must be reported',
+  );
+  // 注入 F3：在册遮蔽真消费者 ⇒ 报「这是让判据自我满足的那条路」。
+  assert.ok(
+    partitionErrors(guarded, scanned, WIRED, new Map([...UNWIRED, ['media.max_buffer_ms', 'surface-absent']])).some(error =>
+      error.includes('media.max_buffer_ms') && error.includes('shadows a real reader'),
+    ),
+    'registering a key that does have a reader must be reported',
+  );
+  // 注入 F4：陈旧在册（schema 里没有这个键）⇒ 报错。台账 MUST 自清理。
+  assert.ok(
+    partitionErrors(guarded, scanned, WIRED, new Map([...UNWIRED, ['cloud.gone', 'surface-absent']])).some(error => error.includes('cloud.gone')),
+    'a stale registration must be reported',
+  );
+  // 注入 F5：缺成因 / 成因不在成因表里 ⇒ 两条都报（理由就是台账的全部价值）。
+  assert.ok(
+    partitionErrors(guarded, scanned, WIRED, new Map([...UNWIRED, ['bindings', '   ']])).some(error => error.includes('without a cause')),
+    'a registration without a cause must fail',
+  );
+  assert.ok(
+    partitionErrors(guarded, scanned, WIRED, new Map([...UNWIRED, ['bindings', 'unknown-cause']])).some(error => error.includes('not in the cause table')),
+    'an unknown cause is a label, not a reason',
+  );
+  // 注入 F6：把一个**被钉死**的键登记成死键 ⇒ 报「值不可能不同，不需要读者」。
+  assert.ok(
+    partitionErrors(guarded, scanned, WIRED, new Map([...UNWIRED, ['schema_version', 'surface-absent']])).some(error => error.includes('pins its value')),
+    'registering a pinned key as unwired must be reported',
+  );
+  // 注入 F7：新增一个 required 键、不接线也不登记 ⇒ 立刻被指名（这条就是「不许新增死键」）。
+  const grown = structuredClone(schema);
+  grown.properties.cloud.required.push('relay_region');
+  grown.properties.cloud.properties.relay_region = { type: 'string' };
+  assert.ok(
+    partitionErrors(guardedKeys(grown), readSites(guardedKeys(grown), sources), WIRED, UNWIRED).some(error => error.includes('cloud.relay_region')),
+    'a new required key that nobody wired must be named',
+  );
+  // 注入 F8：**取消钉死**（`const` → `boolean`）⇒ 它从 [B] 掉到「未登记」⇒ 证明 [B] 是**派生**的，
+  // 不是一份手写清单（若 [B] 是硬写的，这一条不会开火）。
+  const unpinned = structuredClone(schema);
+  unpinned.properties.cache.properties.invalidate_on_fact_change = { type: 'boolean' };
+  assert.ok(
+    partitionErrors(guardedKeys(unpinned), readSites(guardedKeys(unpinned), sources), WIRED, UNWIRED).some(error =>
+      error.includes('cache.invalidate_on_fact_change'),
+    ),
+    'unpinning a key must drop it out of [B] and be reported',
+  );
+  // 注入 F9：容器传递的**健全性**（这一条决定了「受判键」这个集合是否真的封闭）——
+  // 有 `required` 子键的容器不受判（`cloud`），无 `required` 子键的 object 键必须自己受判（`bindings`）。
+  assert.ok(!guardedKeys(schema).some(entry => entry.path === 'cloud'), 'a container is covered by its required children');
+  assert.ok(guardedKeys(schema).some(entry => entry.path === 'bindings'), 'an object key with no required children cannot be covered — it must be guarded');
+  const escaped = structuredClone(schema);
+  escaped.properties.runtime.required.push('empty_bag');
+  escaped.properties.runtime.properties.empty_bag = { type: 'object', additionalProperties: { type: 'string' } };
+  assert.ok(
+    partitionErrors(guardedKeys(escaped), readSites(guardedKeys(escaped), sources), WIRED, UNWIRED).some(error => error.includes('runtime.empty_bag')),
+    'a required object with no required children must not escape the guard by looking like a container',
+  );
+  // 注入 F10：读取形状只认 `EXPR["…"]`。Rust 的**数组字面量** MUST NOT 被当成读取点——
+  // 实测 `xtask/src/deps.rs` 的 `&["knowledge"]` 就骗过了一版宽松的正则，让一个零读者的容器键
+  // 凭空获得读者。反过来，真索引 MUST 被认（否则判据在另一个方向上变瞎）。
+  assert.equal(
+    readSites([{ path: 'knowledge', name: 'knowledge' }], [{ file: 'x.rs', text: '        &["knowledge"],' }]).size,
+    0,
+    'a Rust array literal must not count as a read site',
+  );
+  assert.equal(
+    readSites([{ path: 'knowledge', name: 'knowledge' }], [{ file: 'x.rs', text: 'let k = &value["knowledge"];' }]).size,
+    1,
+    'a real index must still count',
+  );
+  // 注入 F11：整行注释里的读取 MUST NOT 算（`configSources` 已按语言去注释）。
+  assert.equal(
+    readSites([{ path: 'runtime.http_enabled', name: 'http_enabled' }], [
+      { file: 'x.rs', text: stripCommentLines('// value["http_enabled"]', 'slash') },
+    ]).size,
+    0,
+    'a read mentioned in a comment must not count as a reader',
+  );
+  // 注入 F12：陈旧排除 ⇒ 排除不是豁免，一条匹配不到任何文件的排除必须被指名。
+  assert.ok(
+    scanExclusionErrors(new Map([...SCAN_EXCLUSIONS, ['vendor/', '一个不存在的目录']]), files).some(error => error.includes('vendor/')),
+    'an exclusion that matches no file must be reported',
+  );
 });
 
