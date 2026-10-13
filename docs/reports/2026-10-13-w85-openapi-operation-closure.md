@@ -163,7 +163,21 @@ openspec validate --all --strict --archived   →  83 passed / 0 failed   （82 
 
 ## 七、CI 复核
 
-<!--CI-->
+**run `38343617885`（`head_sha = 41bda076e6…`，与本轮推送 SHA 一致）= `success`**（run_number **100**，双平台绿）。
+
+观测方式沿用既有纪律：**单次低频查询**（**不轮询**），每次带**唯一查询参数**破坏代理缓存、
+`Cache-Control: no-cache`，并**回读 `head_sha` 与本次推送比对**；`curl` 带 `--tlsv1.2 --tls-max 1.2`
+（schannel 与 TLS 1.3 握手失败，W77 实测）。本轮共 4 次查询（配额起点 53/60）：
+
+1. 推送后首次：run 100 `in_progress`，**顺带证实 run 99（`195d5fa`，W84 回填）亦 `success`**；
+2. 等待 8 分钟后：仍 `in_progress`（父 run 的 `updated_at` 未变）；
+3. 为判断「是否真在推进」查了一次 `/jobs`：**`ubuntu-24.04` 已 `completed success`（25/26 步），
+   `windows-latest` `in_progress`（13/25 步，正在 `Scheduling and shared budget ledger`）**
+   ⇒ 正常推进，只是 windows 侧更慢（**这是「查一次进度」而不是「轮询」**）；
+4. 再等 7 分钟后单次查询 `/jobs` ⇒ **两个 job 均 `completed success`（各 26 步，`failed: []`）**。
+
+「三件齐」满足：① 唯一查询参数 `&cb=<ns>`；② `Cache-Control: no-cache`；
+③ 回读 `head_sha = 41bda076e6` == 本次推送 SHA。**本机门控绿在此之上叠加了独立环境的复核**。
 
 ## 八、遗留
 
