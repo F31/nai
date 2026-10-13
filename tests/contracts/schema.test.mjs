@@ -2,16 +2,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir, writeFile, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { validators, readJson, validateSemantic, apiDocument, AJV_SOURCES, TS_GENERATED_SOURCES } from '../../scripts/contracts/validation.mjs';
+import { validators, readJson, validateSemantic, apiDocument, apiDocuments, AJV_SOURCES, TS_GENERATED_SOURCES } from '../../scripts/contracts/validation.mjs';
 import { parseIndex, readTrackedPaths, describeFailure } from '../../scripts/contracts/git-index.mjs';
 import {
   HTTP_METHODS,
   PATH_ITEM_FIELDS,
-  IMPLEMENTED_OPERATIONS,
+  OPENAPI_DIR,
+  OPENAPI_DOCUMENTS,
+  documentSetErrors,
+  openapiDocumentPaths,
   operations,
   operationShapeErrors,
   operationErrors,
 } from '../../scripts/contracts/openapi-ops.mjs';
+
+/// 本文件判据用到的两份描述与它们**各自**的已实现声明。W86 起「已实现的是哪些操作」是
+/// **每一份文档各自的属性**（`remote-knowledge.yaml` 自述 `client-only`，它的表为空）——
+/// 把 `control.yaml` 的八条套上去只会得到八条孤儿声明。
+const CONTROL = 'schemas/openapi/control.yaml';
+const REMOTE = 'schemas/openapi/remote-knowledge.yaml';
+const controlDeclared = OPENAPI_DOCUMENTS[CONTROL].implemented;
 
 const check = await validators();
 const runtime = await readJson('tests/fixtures/contracts/runtime.json');
@@ -152,7 +162,7 @@ test('OpenAPI preserves permissions, session revision/epoch, actual ACK and defe
   assert.equal(api.security[0].bearerAuth.length,0);
 });
 
-/// ── OpenAPI 操作集的闭世界（W85，ADR 0063）─────────────────────────────────
+/// ── OpenAPI 操作集的闭世界（W85，ADR 0063；W86 起逐文档参数化）─────────────────
 ///
 /// `apiDocument()` 的两道逐操作检查（权限声明、实现状态）原先都靠一张**手写的方法清单**
 /// （`['get','post','put','delete']`）。手写清单的补集就是盲区：往文档里加一个 `patch` 操作，
@@ -162,19 +172,22 @@ test('OpenAPI preserves permissions, session revision/epoch, actual ACK and defe
 ///
 /// 补法是闭世界（与 W81／W83／W84 同形）：触发**只由「文档里存在这个方法键」决定**；
 /// 方法键集封闭、与 path-item 字段集**不相交**；已实现声明 MUST **无孤儿**；且 MUST 非空洞。
+///
+/// W86 把同一句话推到**上一层**：上面说完的是「哪些**操作**被校验」，而判据原先只被喂
+/// **一份**文档（路径硬编码）。⇒ `declared` 从此是**必需入参**，每份文档带**自己**的已实现表。
 
 test('the real API description passes the operation-set closure', async () => {
   const api = await apiDocument();
   // 非空洞：判据 MUST 真的看到了操作，而且**不只是**已实现的那几条。
   const seen = operations(api);
   assert.ok(
-    seen.length > IMPLEMENTED_OPERATIONS.length,
+    seen.length > controlDeclared.length,
     `the closure must see operations beyond the implemented subset; saw ${seen.length}`,
   );
   // 闭世界：真实文档零错误（收紧后不引入红）。
-  assert.deepEqual(operationErrors(api), [], 'the real description must already be closed');
+  assert.deepEqual(operationErrors(api, controlDeclared), [], 'the real description must already be closed');
   // 前提的另一半：已实现声明**每一条**都能在文档里解析出来——否则上一条可能只是「什么都没看」。
-  for (const entry of IMPLEMENTED_OPERATIONS) {
+  for (const entry of controlDeclared) {
     assert.ok(
       seen.some(op => `${op.method} ${op.path}` === entry),
       `${entry} must resolve to a real operation`,
@@ -188,14 +201,14 @@ test('an operation under a method nobody listed is judged, not skipped', async (
   const probe = structuredClone(api);
   probe.paths['/w85-probe'] = { parameters: [], patch: { responses: { '204': { description: 'No content' } } } };
   assert.ok(
-    operationErrors(probe).some(error => error.includes('patch /w85-probe') && error.includes('x-required-permission')),
+    operationErrors(probe, controlDeclared).some(error => error.includes('patch /w85-probe') && error.includes('x-required-permission')),
     'a patch operation with no permission declaration must be named',
   );
   // 判据**遍历方法键**、不遍历手写子集：同一个缺陷换成 `get` 走的是同一条路径（对照组）。
   const asGet = structuredClone(api);
   asGet.paths['/w85-probe'] = { get: { responses: { '204': { description: 'No content' } } } };
   assert.ok(
-    operationErrors(asGet).some(error => error.includes('get /w85-probe') && error.includes('x-required-permission')),
+    operationErrors(asGet, controlDeclared).some(error => error.includes('get /w85-probe') && error.includes('x-required-permission')),
     'the same defect under a listed method must be caught by the same rule',
   );
 });
@@ -205,7 +218,7 @@ test('a path-item key that is neither a method nor a field is named', async () =
   const probe = structuredClone(api);
   probe.paths['/w85-probe'] = { gets: { responses: { '204': { description: 'No content' } } } };
   assert.ok(
-    operationErrors(probe).some(error => error.includes('"gets"') && error.includes('/w85-probe')),
+    operationErrors(probe, controlDeclared).some(error => error.includes('"gets"') && error.includes('/w85-probe')),
     'a key nobody recognises must be named together with its path',
   );
 });
@@ -220,7 +233,7 @@ test('a new method done correctly is not rejected, and x- extensions are allowed
     patch: { 'x-required-permission': 'session.manage', responses: { '204': { description: 'No content' } } },
   };
   assert.deepEqual(
-    operationErrors(probe),
+    operationErrors(probe, controlDeclared),
     [],
     'a new method with a permission declaration, plus a spec extension, must not fail the judge',
   );
@@ -232,57 +245,187 @@ test('a declared implementation must have an operation and a matching status', a
   const orphaned = structuredClone(api);
   delete orphaned.paths['/approvals'];
   assert.ok(
-    operationErrors(orphaned).some(error => error.includes('get /approvals') && error.includes('no such operation')),
+    operationErrors(orphaned, controlDeclared).some(error => error.includes('get /approvals') && error.includes('no such operation')),
     'a declaration with no object must be named',
   );
   // **状态不符**：一条已声明的实现被改成别的状态。
   const mismatched = structuredClone(api);
   mismatched.paths['/health'].get['x-implementation-status'] = 'partial';
   assert.ok(
-    operationErrors(mismatched).some(error => error.includes('get /health') && error.includes('expected')),
+    operationErrors(mismatched, controlDeclared).some(error => error.includes('get /health') && error.includes('expected')),
     'a declared implementation whose status disagrees must be named',
   );
 });
 
 test('an empty or unreadable API description is reported, not silently closed', () => {
   assert.ok(
-    operationErrors({ paths: {} }).some(error => error.includes('exposes no operations')),
+    operationErrors({ paths: {} }, []).some(error => error.includes('exposes no operations')),
     'a description with no operations makes every per-operation check vacuously true',
   );
   assert.ok(
-    operationErrors(null).some(error => error.includes('no readable paths')),
+    operationErrors(null, []).some(error => error.includes('no readable paths')),
     'an unreadable description must fail rather than pass',
   );
 });
 
 test('the operation tables are disjoint, closed and non-empty', () => {
-  // 真实三表自洽。
+  // 真实两张表自洽。
   assert.deepEqual(operationShapeErrors(), [], 'the shipped tables must be consistent');
   // **相邻层不相交**（W82）：一个键不能既是方法又是字段。
   assert.ok(
-    operationShapeErrors(HTTP_METHODS, [...PATH_ITEM_FIELDS, 'get'], IMPLEMENTED_OPERATIONS)
-      .some(error => error.includes('overlap')),
+    operationShapeErrors(HTTP_METHODS, [...PATH_ITEM_FIELDS, 'get']).some(error => error.includes('overlap')),
     'a key claimed by both layers must be named',
   );
-  // 非空洞：空方法集／空字段集／空声明，各是一种「谁都挡不住」的形状。
-  assert.ok(operationShapeErrors([], PATH_ITEM_FIELDS, IMPLEMENTED_OPERATIONS).some(error => error.includes('HTTP_METHODS is empty')));
-  assert.ok(operationShapeErrors(HTTP_METHODS, [], IMPLEMENTED_OPERATIONS).some(error => error.includes('PATH_ITEM_FIELDS is empty')));
-  assert.ok(operationShapeErrors(HTTP_METHODS, PATH_ITEM_FIELDS, []).some(error => error.includes('IMPLEMENTED_OPERATIONS is empty')));
-  // 声明里的方法 MUST 识别得到，且 MUST NOT 重复。
+  // 非空洞：空方法集／空字段集，各是一种「谁都挡不住」的形状。
+  assert.ok(operationShapeErrors([], PATH_ITEM_FIELDS).some(error => error.includes('HTTP_METHODS is empty')));
+  assert.ok(operationShapeErrors(HTTP_METHODS, []).some(error => error.includes('PATH_ITEM_FIELDS is empty')));
+});
+
+/// ── OpenAPI **文档集**的闭世界（W86，ADR 0064）───────────────────────────────
+///
+/// W85 修好了「哪些**操作**被校验」，但「哪些**文档**被校验」仍是一张手写清单：
+/// `apiDocument()` 把路径硬编码成 `control.yaml`。同目录的 `remote-knowledge.yaml` 是它的补集
+/// ——**本地门控从不读它**（唯一读它的 `generate.mjs` 只在 CI-only 的 `cargo xtask schema --check`
+/// 里跑，而本机对该步 `EBUSY`），它自己的权限检查又是**同一件事的第二处定义**。
+/// W86 探针实测：往 remote 加一个无权限的 `patch`，`SwaggerParser` 放行、本机门控全绿。
+///
+/// 补法仍是闭世界（同族第七处）：文档集由**已跟踪路径**派生，逐文档声明是**单一来源**，
+/// 判据逐文档参数化且 `declared` **必需**。
+
+test('every tracked OpenAPI description is declared, and every declaration has a description', async () => {
+  const repository = await readTrackedPaths();
+  assert.ok(repository.ok, repository.ok ? '' : describeFailure(repository));
+  // 非空洞：文档集必须真的非空，否则闭世界对空集恒真。
+  const onDisk = openapiDocumentPaths(repository.paths);
+  assert.ok(onDisk.length >= 2, `expected the repository's OpenAPI descriptions, saw ${JSON.stringify(onDisk)}`);
+  assert.deepEqual(documentSetErrors(repository.paths), [], 'the shipped declaration set must match the repository');
+  // 注入一：在册描述**未声明** ⇒ 具名（这正是 W86 的洞）。
+  const dropped = { ...OPENAPI_DOCUMENTS };
+  delete dropped[REMOTE];
   assert.ok(
-    operationShapeErrors(HTTP_METHODS, PATH_ITEM_FIELDS, ['fetch /x']).some(error => error.includes('not a recognised HTTP method')),
-    'a declared operation naming an unknown method must be named',
+    documentSetErrors(repository.paths, dropped).some(error => error.includes(REMOTE) && error.includes('nobody declares')),
+    'a tracked description with no declaration must be named',
+  );
+  // 注入二：**陈旧声明**（指向不存在的文档）⇒ 具名。
+  assert.ok(
+    documentSetErrors(repository.paths, {
+      ...OPENAPI_DOCUMENTS,
+      'schemas/openapi/gone.yaml': { status: 'x', implemented: [] },
+    }).some(error => error.includes('gone.yaml') && error.includes('no document')),
+    'a declaration with no document must be named',
+  );
+  // 注入三：声明集清空 ⇒ 每份描述都逃逸。
+  assert.ok(documentSetErrors(repository.paths, {}).some(error => error.includes('is empty')));
+  // 注入四：没有一份文档声明已实现 ⇒ 「声明无孤儿」在每份文档上空转。
+  const noneImplemented = Object.fromEntries(
+    Object.entries(OPENAPI_DOCUMENTS).map(([docPath, entry]) => [
+      docPath,
+      { status: entry.status, implemented: [] },
+    ]),
   );
   assert.ok(
-    operationShapeErrors(HTTP_METHODS, PATH_ITEM_FIELDS, ['get /a', 'get /a']).some(error => error.includes('declared twice')),
-    'a duplicated declaration must be named',
+    documentSetErrors(repository.paths, noneImplemented).some(error =>
+      error.includes('vacuously true on every document'),
+    ),
+    'an all-empty implemented set makes the orphan half vacuous',
   );
-  // 声明**逐字写死**且**与文档无关**：八条；顺序不承载语义。
-  assert.equal(IMPLEMENTED_OPERATIONS.length, 8);
+  // 非空洞：缺 tracked 输入 ⇒ 具名失败，MUST NOT 被当成「仓库里没有文档」。
+  assert.ok(documentSetErrors(undefined).some(error => error.includes('requires the tracked-path set')));
+  // 闭世界**只看名字**：目录与扩展名各是一层，别的文件不参与。
   assert.deepEqual(
-    operationShapeErrors(HTTP_METHODS, PATH_ITEM_FIELDS, [...IMPLEMENTED_OPERATIONS].reverse()),
+    openapiDocumentPaths(new Set([
+      `${OPENAPI_DIR}/a.yaml`,
+      `${OPENAPI_DIR}/b.yml`,
+      `${OPENAPI_DIR}/c.json`,
+      'other/e.yaml',
+    ])),
+    [`${OPENAPI_DIR}/a.yaml`, `${OPENAPI_DIR}/b.yml`],
+    'the document set is decided by directory and extension, not by content',
+  );
+});
+
+test('the second description is judged by the same closure as the first', async () => {
+  const documents = await apiDocuments();
+  assert.deepEqual(
+    Object.keys(documents).sort(),
+    [CONTROL, REMOTE].sort(),
+    'every declared description must be validated',
+  );
+  // 非空洞：remote 真的暴露了操作（判据的输入不是空的）。
+  assert.equal(operations(documents[REMOTE]).length, 6);
+  assert.deepEqual(
+    operationErrors(documents[REMOTE], OPENAPI_DOCUMENTS[REMOTE].implemented),
     [],
-    'the declaration order must carry no meaning',
+    'the shipped remote description must already be closed',
+  );
+  // 洞的**现场**：往 remote 加一个无权限的操作 ⇒ 与 control 走**同一条**判据。
+  const probe = structuredClone(documents[REMOTE]);
+  probe.paths['/w86-probe'] = { patch: { responses: { '204': { description: 'No content' } } } };
+  assert.ok(
+    operationErrors(probe, OPENAPI_DOCUMENTS[REMOTE].implemented).some(
+      error => error.includes('patch /w86-probe') && error.includes('x-required-permission'),
+    ),
+    'an operation in the second description must be judged, not skipped',
+  );
+  // **反向注入**：一份合法的新操作 MUST NOT 红——补的是「**覆盖**文档集」，不是「只允许一份文档」。
+  const legit = structuredClone(documents[REMOTE]);
+  legit.paths['/w86-probe'] = {
+    patch: { 'x-required-permission': 'knowledge.read', responses: { '204': { description: 'No content' } } },
+  };
+  assert.deepEqual(operationErrors(legit, OPENAPI_DOCUMENTS[REMOTE].implemented), []);
+  // 反向：声明顺序不承载语义。
+  assert.deepEqual(operationErrors(documents[CONTROL], [...controlDeclared].reverse()), []);
+});
+
+test('a per-document declaration must be injected, not defaulted', async () => {
+  const api = await apiDocument();
+  // 缺参 MUST 具名失败：静默退回**另一份文档**的声明会让判据的输入不再等于被断言的对象。
+  assert.ok(operationErrors(api).some(error => error.includes('own implemented-declaration array')));
+  assert.ok(operationErrors(api, 'get /health').some(error => error.includes('own implemented-declaration array')));
+  // 用错文档的声明是**有害的**：control 的八条在 remote 上全是孤儿声明。
+  const remote = (await apiDocuments())[REMOTE];
+  assert.equal(
+    operationErrors(remote, controlDeclared).filter(error => error.includes('no such operation')).length,
+    controlDeclared.length,
+  );
+});
+
+test('the declaration shape of every document is checked and names the document', () => {
+  // 逐文档的声明形状与文档集闭世界同住 `documentSetErrors`——错误措辞 MUST 带上「是哪一份文档」。
+  const errors = documentSetErrors(new Set([CONTROL]), {
+    [CONTROL]: { status: 'partial-loopback-engineering', implemented: ['fetch /x', 'get /a', 'get /a'] },
+  });
+  assert.ok(errors.some(error => error.includes('not a recognised HTTP method')), 'an unknown method must be named');
+  assert.ok(errors.some(error => error.includes('twice')), 'a duplicate declaration must be named');
+  assert.ok(errors.every(error => error.includes(CONTROL)), 'every declaration error must name its document');
+  assert.ok(
+    documentSetErrors(new Set([CONTROL]), { [CONTROL]: { implemented: [] } }).some(error =>
+      error.includes('has no status'),
+    ),
+    'a declaration without a status must be named',
+  );
+  assert.ok(
+    documentSetErrors(new Set([CONTROL]), { [CONTROL]: { status: 'x' } }).some(error =>
+      error.includes('no implemented list'),
+    ),
+    'a declaration without an implemented list must be named',
+  );
+});
+
+test('the generator reuses the operation closure instead of restating it', async () => {
+  const generator = await readFile('scripts/contracts/generate.mjs', 'utf8');
+  assert.ok(generator.includes('operationErrors'), 'the generator must call the single judge');
+  assert.ok(generator.includes('OPENAPI_DOCUMENTS'), 'the generator must read the per-document declaration');
+  // 防回退：**代码里**（整行注释不算，W74）MUST NOT 再有第二份权限规则。
+  assert.ok(
+    !stripCommentLines(generator, 'slash').includes('x-required-permission'),
+    'the permission rule must live in exactly one place',
+  );
+  // 判据本身也不再硬编码某一份文档的路径。
+  const validation = await readFile('scripts/contracts/validation.mjs', 'utf8');
+  assert.ok(
+    !validation.includes("SwaggerParser.validate('schemas/openapi/control.yaml')"),
+    'the judge must not hard-code one document',
   );
 });
 

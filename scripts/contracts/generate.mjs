@@ -7,6 +7,7 @@ import { compileFromFile } from 'json-schema-to-typescript';
 import openapiTS, { astToString } from 'openapi-typescript';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import { validators, readJson, validateSemantic, TS_GENERATED_SOURCES } from './validation.mjs';
+import { operationErrors, OPENAPI_DOCUMENTS } from './openapi-ops.mjs';
 
 const require = createRequire(import.meta.url);
 const stage = process.argv[2];
@@ -58,6 +59,15 @@ exports.push("export type { paths, components, operations } from './http.js';");
 // the explicitly supported OpenAPI DTO subset; validators preserve all bounds.
 await SwaggerParser.validate('schemas/openapi/remote-knowledge.yaml');
 const remote = await SwaggerParser.bundle('schemas/openapi/remote-knowledge.yaml');
+// 权限规则的**唯一家**是 `openapi-ops.mjs`：这里**调用**它，而不是复述它。
+// （原先这里另写了一份 `!operation.operationId || !operation['x-required-permission']`
+// ——同一件事的第二处定义，措辞与覆盖都和判据不同，且会独立漂移。与 `TS_GENERATED_SOURCES`
+// 同形：一处定义、两处使用。）W86 / ADR 0064。
+const remoteErrors = operationErrors(
+  remote,
+  OPENAPI_DOCUMENTS['schemas/openapi/remote-knowledge.yaml'].implemented,
+);
+if (remoteErrors.length > 0) throw new Error(`remote API operation set is not closed:\n${remoteErrors.join('\n')}`);
 await writeFile(path.join(ts, 'remote-knowledge.ts'), astToString(await openapiTS(remote)));
 exports.push("export type * as remoteKnowledge from './remote-knowledge.js';");
 const schemas = remote.components.schemas;
@@ -122,7 +132,9 @@ if (controlFormatted.error || controlFormatted.status !== 0) throw new Error('co
 rust.push(`pub const SCHEMAS_JSON: &str = r###"${JSON.stringify({$schema:'https://json-schema.org/draft/2020-12/schema',$defs:jsonSchema(schemas)})}"###;`);
 for (const [route, methods] of Object.entries(remote.paths)) {
   for (const [method, operation] of Object.entries(methods)) {
-    if (!operation.operationId || !operation['x-required-permission']) throw new Error('remote endpoint lacks identity or permission');
+    // 这里只保留生成器**自己需要**的约束：`*_PATH` / `*_METHOD` 常量要有名字。
+    // 权限声明由上面的操作集判据负责（一处定义）。
+    if (!operation.operationId) throw new Error('remote endpoint lacks identity');
     rust.push(`pub const ${operation.operationId.toUpperCase()}_PATH: &str = ${JSON.stringify(route)};`);
     rust.push(`pub const ${operation.operationId.toUpperCase()}_METHOD: &str = ${JSON.stringify(method.toUpperCase())};`);
   }

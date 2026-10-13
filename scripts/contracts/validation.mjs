@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import Ajv2020 from 'ajv/dist/2020.js';
 import SwaggerParser from '@apidevtools/swagger-parser';
-import { operationErrors } from './openapi-ops.mjs';
+import { operationErrors, OPENAPI_DOCUMENTS } from './openapi-ops.mjs';
 
 export const readJson = async filename => JSON.parse(await readFile(filename, 'utf8'));
 
@@ -56,13 +56,30 @@ export function validateSemantic(kind, value) {
   }
 }
 
+/// 仓库里**每一份** OpenAPI 描述都过同一道判据。文档集来自 `OPENAPI_DOCUMENTS`（逐文档声明，
+/// 逐字写死），而不是这里硬编码的一条路径——W85 修好了「哪些**操作**被校验」，这一层是
+/// 「哪些**文档**被校验」，同族洞的第七处（W86 / ADR 0064）。
+///
+/// 每份文档两件事：① 顶层 `x-implementation-status` MUST 等于该文档声明的期望值；
+/// ② 操作集 MUST 闭合（权限声明、状态的声明一致性、path-item 键集闭世界、声明无孤儿、非空洞）。
+/// 判据本身在 `openapi-ops.mjs` 里（纯函数、与 I/O 分离），这里只负责把它接到文档上。
+export async function apiDocuments() {
+  const documents = {};
+  for (const [docPath, declaration] of Object.entries(OPENAPI_DOCUMENTS)) {
+    const document = await SwaggerParser.validate(docPath);
+    if (document['x-implementation-status'] !== declaration.status) {
+      throw new Error(
+        `${docPath} must preserve implementation status ${JSON.stringify(declaration.status)}`,
+      );
+    }
+    const errors = operationErrors(document, declaration.implemented);
+    if (errors.length > 0) throw new Error(`${docPath} operation set is not closed:\n${errors.join('\n')}`);
+    documents[docPath] = document;
+  }
+  return documents;
+}
+
+/// 控制面 API 描述（`schemas/openapi/control.yaml`）——`apiDocuments()` 的一份视图。
 export async function apiDocument() {
-  const document = await SwaggerParser.validate('schemas/openapi/control.yaml');
-  if (document['x-implementation-status'] !== 'partial-loopback-engineering') throw new Error('API contract must preserve partial engineering status');
-  // 逐操作检查的**覆盖闭世界**（W85）。判据在 `openapi-ops.mjs` 里，此处只负责把它接到
-  // 文档上——原先这里有一张手写的 `['get','post','put','delete']` 方法清单，它的补集
-  // （`patch` 等）既不查权限也不查状态，静默通过。见 ADR 0063。
-  const errors = operationErrors(document);
-  if (errors.length > 0) throw new Error(`API operation set is not closed:\n${errors.join('\n')}`);
-  return document;
+  return (await apiDocuments())['schemas/openapi/control.yaml'];
 }

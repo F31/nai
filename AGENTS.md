@@ -2011,3 +2011,49 @@ T6（声明表掺幽灵 ⇒ `no such operation`）；**T7 是反向注入**（�
 见 [W85 报告](docs/reports/2026-10-13-w85-openapi-operation-closure.md)、
 [ADR 0063](docs/adr/0063-openapi-operation-closure.md)、
 `openspec/changes/archive/2026-10-13-w85-openapi-operation-closure/`。
+
+### W86 OpenAPI 文档集的闭世界（操作集判据 MUST 覆盖仓库里每一份描述）
+
+**问题**：W85 把「哪些**操作**被逐项校验」从手写方法清单改成遍历文档自己的操作键，但
+「哪些**文档**被校验」仍是手写清单——`validation.mjs` 的 `apiDocument()` 把描述路径**硬编码**
+成 `schemas/openapi/control.yaml`。同目录的 `remote-knowledge.yaml` 是它的补集：
+**本地门控从不读它**（唯一读它的 `generate.mjs` 只在 **CI-only** 的 `cargo xtask schema --check`
+里跑，而本机对该步 `EBUSY`），而它自己的生成器（W86 改动前位于 `generate.mjs:125`）又给
+「remote 的每个操作必须有 `operationId` 与 `x-required-permission`」**另写了一份定义**——
+措辞与覆盖都与判据不同，是**同一件事的第二处定义**。
+
+**探针实测**（两份真实文档 + `SwaggerParser`）：往 `remote-knowledge.yaml` 加一个**无**
+`x-required-permission` 的 `patch` 操作 ⇒ `SwaggerParser` **放行（没拦）**，而现有本地判据
+**根本不接触这份文档** ⇒ **本机门控全绿**。同位置换成 `get` 同样无人过问。
+⇒ 一份**承载鉴权语义**的契约文档，可以在本地绿 + CI 结构校验绿的情况下新增一个**不声明权限**的操作。
+
+**裁定**（[ADR 0064](docs/adr/0064-openapi-document-set-closure.md)）：
+
+1. **文档集由已跟踪路径派生**（W75／W84）：`OPENAPI_DIR` 下扩展名 ∈ `OPENAPI_EXTENSIONS` 的
+   **在册**路径；闭世界**只看名字**，MUST NOT 手写「有哪些文档」。
+2. **`OPENAPI_DOCUMENTS` 是逐文档声明的单一来源，逐字写死**（`status` + `implemented`）——
+   「已实现的是哪些操作」是**每一份文档各自的属性**（remote 自述 `client-only`，表为空）。
+3. **文档集闭世界是双向的**：在册描述 ⊆ 声明集（新增文档忘了声明 ⇒ 无人校验）；
+   声明集 ⊆ 在册描述（文档改名/删除而声明留着 ⇒ 没有对象的覆盖）。
+4. **判据逐文档参数化，`declared` 是必需入参**：缺参／类型不对 ⇒ 具名失败，MUST NOT 退回
+   另一份文档的默认值（否则**判据的输入不再等于被断言的对象**，而断言看上去仍在跑）。
+5. **权限规则只有一处定义**：`generate.mjs` 改为**调用** `operationErrors`，删掉复述的那半句，
+   只保留它真正需要的 `operationId`（生成 `*_PATH`／`*_METHOD` 常量要名字）。
+6. **非空洞**：文档集非空、每份文档至少一个操作、且**至少一份**文档声明了非空 `implemented`
+   ——否则「声明无孤儿」在每份文档上**空转**。
+
+**注入 F0 + F1–F10 + T1–T2（共 21/21）逐项开火且具名**：**F1 是本轮洞的现场**
+（remote + 无权限 `patch` ⇒ 具名；对照组 `SwaggerParser` 放行）；F2 未声明的在册描述；
+F3 陈旧声明；F4 空声明集；F5 无人声明已实现；F6 缺 `tracked`；**F7 缺 `declared` 入参 ⇒ 具名
+（MUST NOT 静默降级）**，且用错文档的声明会得到**八条孤儿**（证明「用错对象」有害）；
+**F8／F9 是反向注入**（合法新操作不红、声明顺序无关）；F10 扩展名层（只看名字）；
+**T1 打判据的输入**（声明集缩回一份 ⇒ remote 逃逸被指名）；**T2 三条文本守卫**
+（生成器代码里不再有第二份权限规则——整行注释不算，W74；判据不再硬编码文档路径）。
+
+`tests/contracts/schema.test.mjs` **24 → 29**（随 `engineering_checks` 既有条目自动进 `portable`／`full`，
+接线零改动）。**两份 OpenAPI 描述一字未改**（实测各自通过闭世界 ⇒ 收紧后**报错集合不变**，
+基线**保持全绿**）。
+**不改基线正文、不改 `tests/registry.yaml`、不改 `tests/pending-decisions.yaml`、不改任何 Rust、不新增依赖边。**
+见 [W86 报告](docs/reports/2026-10-13-w86-openapi-document-set-closure.md)、
+[ADR 0064](docs/adr/0064-openapi-document-set-closure.md)、
+`openspec/changes/archive/2026-10-13-w86-openapi-document-set-closure/`。

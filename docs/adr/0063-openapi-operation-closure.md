@@ -128,3 +128,22 @@ for (const [path, item] of Object.entries(document.paths)) {
 4. §56.2 归档边界的正式裁定仍未落地（已被 W78 起连续七轮登记）。
 5. harness 轨道仍 `pending` 的 **H18 与 B07**、W76 台账 5 条 `decidable_in_repo`
    （`PD-09/22/24/31/34`）的推荐落地，均未动手。
+
+## 进展（W86 追加，ADR 0064）
+
+> 本段按 §56.2 追加，原文保留。本 ADR 的**判据形状与决策全部继续有效**；W86 只把它的
+> **作用域**从「一份文档」推到「仓库里每一份 OpenAPI 描述」。
+>
+> - 决策 5 与「实施」段引用的 `IMPLEMENTED_OPERATIONS`（八条）已重构为**逐文档声明**
+>   `OPENAPI_DOCUMENTS[<路径>].implemented` —— 「已实现的是哪些操作」是**每一份文档各自的属性**，
+>   不再是模块级的一张全局表（把 `control.yaml` 的八条套到 `remote-knowledge.yaml` 上会得到
+>   八条孤儿声明）。`operationErrors(document, declared)` 的 `declared` 从此是**必需入参**。
+> - `operationShapeErrors()` 收缩为只管 `HTTP_METHODS`／`PATH_ITEM_FIELDS` 两张键集表；
+>   逐文档的**声明形状**（未知方法、重复项、缺字段）搬进 `documentSetErrors()`，
+>   因为那里才有「这是哪一份文档」这个上下文。
+> - 「实施」段第 2 条写的 `apiDocument()` 已改为 `apiDocuments()` 遍历**声明集**；
+>   `generate.mjs` 不再复述权限规则，改为**调用**判据。
+> - 「后果·中性」段写的 `schemas/openapi/control.yaml` 一字未改**继续成立**；W86 对
+>   `remote-knowledge.yaml` 追加了同一事实。`tests/contracts/schema.test.mjs` **24 → 29**。
+> - 本 ADR 遗留 2 提到的「三张手写表」现为 `HTTP_METHODS`／`PATH_ITEM_FIELDS`／`OPENAPI_DOCUMENTS`；
+>   遗留 4／5 未变（W86 报告 §八继续登记）。
