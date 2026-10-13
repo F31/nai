@@ -17,12 +17,17 @@ loopback HTTP 服务启动与 broker 装配接线仍待后续里程碑。
 5. 构造 `Session`（session_id 即 workspace id）、`MediaGate::with_epoch_floor`、
    `Registry::new(boot_id, Limits)` 与 `ApprovalBackend`（共享 store）。
 
-⚠️ **`config_json` 的形状被强制，不等于它的每个键都被运行时看见。** `required` 键的**消费状态**
-由 `scripts/contracts/config-consumption.mjs` 逐键在册、在门控内执行：每个受判 `required` 键
-MUST 落在「有读取点（**非测试、非生成**的源码里 `EXPR["<key>"]`）／值被 schema 用 `const` 钉死
-（值不可能不同 ⇒ 无需读者）／在册登记（附可核实的成因）」三类**之一**；三类 MUST 两两不相交、
-并集恰等于受判键集合。⇒ **加一个 `required` 键而没有任何东西读它，门控会红**（判据与两张台账
-的成因见 [ADR 0068](adr/0068-config-surface-key-consumption.md)）。
+⚠️ **`config_json` 的形状被强制，不等于它的每个键都被运行时看见。** `schemas/config/` 下**每份**
+schema 的 `required` 键的**消费状态**由 `scripts/contracts/config-consumption.mjs` 逐键在册、在门控内
+执行：每个受判 `required` 键 MUST 落在「有读取点（**非测试、非生成**的源码，且在该 schema 的**归因
+文件集**内——`include_str!` 它的文件 ∪ 具名外部读者）／值被 schema 用 `const` 钉死（值不可能不同 ⇒
+无需读者）／在册登记（附可核实的成因）」三类**之一**；三类 MUST 两两不相交、并集恰等于受判键集合。
+⇒ **加一个 `required` 键而没有任何东西读它，门控会红**；读取形状覆盖**直接索引／中间变量／辅助函数／
+结构体解码**四种（判据与两张台账的成因见 [ADR 0068](adr/0068-config-surface-key-consumption.md)、
+[ADR 0069](adr/0069-config-key-attribution.md)）。
+⚠️ **判定单元是 `(schema, 键路径)`，不是裸键名**：`schema_version` 在 5 份 schema 的顶层同形，
+`["path"]`／`["session_id"]` 等通用名会在**别的对象**上命中（实测 `crates/nai-plugin-sdk`／
+`crates/nai-control-api`）⇒ 「同名」MUST NOT 被当作「同一个键」，归属外的命中 MUST NOT 授权。
 
 每次存储/决策访问新建 5s `Operation`（上限 30s，无长租表达），P0 静音经 `EmergencyHandle`
 不等数据库锁。

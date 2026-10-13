@@ -2278,3 +2278,61 @@ F8 取消钉死（证明 [B] 派生）；F9 容器边界三条；F10 数组字�
 见 [W90 报告](docs/reports/2026-10-13-w90-config-surface-key-consumption.md)、
 [ADR 0068](docs/adr/0068-config-surface-key-consumption.md)、
 `openspec/changes/archive/2026-10-13-w90-config-surface-consumption/`。
+
+### W91 配置键的归因（读取点 MUST 绑定到拥有它的 schema）
+
+W91 **不是**接线轮——它把 W90 的键级门控从 `runtime` **一份** schema 扩到 `schemas/config/` **全部 6 份**
+（`avatar-2d` 9 ／ `backup` 10 ／ `binding-plan` 6 ／ `provider` 12 ／ `upgrade-package` 22 + `runtime` 37）。
+
+**为什么不能原样扩面（实测）**：W90 的读取形状是**裸键名** `EXPR["<key>"]`，**不带对象上下文**。96 个
+受判键里 3 个裸名跨 schema 重名（`schema_version` ×5、`mode` ×3、`currency` ×2），通用名词**跨对象污染**
+——实测 `["sample_rate"]` 命中 `apps/render-worker`、`["session_id"]` 命中 `crates/nai-control-api`、
+`["path"]`／`["sha256"]`／`["id"]` 命中 `crates/nai-plugin-sdk`，全是**同名不同物**。⇒ **判定单元改成
+`(schema, 键路径)`**（标签 `schemas/config/<x>.schema.json#<键路径>`），且读取点 MUST 落在**归因文件集**内。
+
+**归因文件集（派生）**：`attribution(schema)` = Rust `include_str!` 该 schema 的文件 ∪ **具名外部读者**
+（经 `composition.config()` 拿 `Value`）。实测 `avatar-2d → plugins/avatar-2d/src/lib.rs`、
+`backup → snapshot.rs`、`provider`/`runtime → store.rs`、`upgrade-package → manifest.rs`、
+**`binding-plan` → 无**；`runtime` 另加 `composition.rs`（外部读者）与 `pipeline.rs`（外部读者）——
+正是 W90 的 [A] 里**唯二**跨出 `store.rs` 的条目。每条外部读者 MUST **自清理**。
+
+**读取形状三态（必须全部实现，少一种就整族假阴性）**：① `index`——`EXPR["<key>"]`，顶层要求 `[` 前是
+**表达式字符**（排除 Rust 数组字面量 `&["knowledge"]`），嵌套要求紧邻锚是 `["<parent>"]` **或** `<parent>`
+（标识符 = **中间变量**写法，如 `let media = &config["media"]; media["lease_renew_ms"]`），`parent` =
+键路径**倒数第二段**（派生）；② `serde`——`let x: T = serde_json::from_value(...)` 且 `struct T` 定义在
+**同一文件** ⇒ `T` 字段名 ∩ 受判键名（**判定域**；实测 `struct Manifest` 与 `struct Config` **同在**
+`plugins/avatar-2d/src/lib.rs`，拦下 Manifest 字段的是判定域而非同文件）；③ `helper`——**读键辅助函数**
+（函数体含变量下标 `x[key]`，**或**传递调用已判定者，如 `amount` → `text`）以字符串字面量为实参调用
+（`amount(&value, "install_bytes")`）。MUST NOT 推广成「任何带字符串实参的调用」。
+
+**实测三分类**：**96 = [A] 有读取点 49 + [B] 值被 `const` 钉死 13 + [C] 既无读取点也未被钉死 34**；
+形状分布 **serde 7 / index 28 / helper 14**。**关键回归**：`runtime` 的 37 键在扩面后 = **10 / 4 / 23**，
+与 W90 **逐项一致** ⇒ 扩面没有改变既有判定（已写成测试断言 `[37, 10, 4, 23]`）。
+
+**[C] 的成因 8 条**：`constructor-injected` 12、`hardcoded-default` 1、`surface-absent` 7（W90 的 5 +
+`provider.region`／`provider.data_policy_ref`）、`same-name-other-object` 6（`cloud.*` 3 + `provider.timeout_ms`／
+`max_concurrency` 命中**技能**字段、`provider.max_retries` 命中**知识源**字段）、`binding-consumer-absent` 1、
+`awaiting-decision` 1、**`validator-only` 5**（`binding-plan` 只有 Ajv 校验、**无归因文件**）、
+**`write-only` 1**（`backup.created_at_utc_ms` 写入侧生成、读侧从不读）。
+
+**判据（五条，全部在既有 `tests/contracts/schema.test.mjs` 里跑 ⇒ `xtask` 零改动）**：`partitionErrors`
+（三分类双向闭世界）／`evidenceErrors`（[A] 证据文件真有形状且被跟踪）／`causeErrors`（成因 id 在册且
+成因表每条被引用）／`attributionErrors`（归因集自清理）／`scanExclusionErrors`（陈旧排除即报）。受判面
+**派生自磁盘**（`schemasOnDisk('schemas/config')`），MUST NOT 是手写清单。
+
+**非空洞注入 F1–F17 + 6 条非空洞断言**（受判面派生自磁盘、三类非空、三形状都出现、`binding-plan` 是唯一
+无 `include_str!` 消费者的 schema、runtime 回归、`.json` 语言闭包、两张台账承重）。**F1 与 F12/F13 手工
+真跑改前/改后**：真实挖掉 `store.rs` 的 `["max_buffer_ms"]`、`lib.rs` 的 `max_buffer_samples`、
+`manifest.rs` 的 `"install_bytes"` ⇒ **改前 30 pass / 0 fail**、**改后 29 pass / 1 fail** 且**各只指名那一个
+键**、**还原后 sha256 逐字一致**、复测 30/0。
+
+**门控与计数**：`tests/contracts/schema.test.mjs` **30 → 30**（**替换而非新增**；`tests/registry.test.mjs`
+仍 50）；`cargo xtask` 零改动；`check --profile full` 见 W91 报告 §六。
+
+**明确不做**：不接线任何新增 [C] 键（产品决策）、不做跨语言（TS／生成面）的键级消费、不给 `binding-plan`
+设具名例外（它是**事实登记**而非豁免）、不新增 JSON Schema 约束这份台账、不动 `tests/pending-decisions.yaml`、
+不改基线正文、不重排 W 编号。**`provider.*` 的同名张力**（配置面 3 键的**同名者**在别处**真的被读**）已
+登记 ⇒「配置里有这个键」MUST NOT 被读成「这些策略已生效」。
+见 [W91 报告](docs/reports/2026-10-13-w91-config-key-attribution.md)、
+[ADR 0069](docs/adr/0069-config-key-attribution.md)、
+`openspec/changes/archive/2026-10-13-w91-config-key-attribution/`。
