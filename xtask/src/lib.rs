@@ -53,6 +53,10 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
     // CI 工作流的步集合与分类的闭世界（W95）：它住在 `tests/contracts/` 下因为判据跟着契约模块走，
     // 但不需要 protoc，因此与上面两步同级。要编译产物的那一步（`descriptor.test.mjs`）不在此列。
     schema::node(root, &["--test", "tests/contracts/workflow.test.mjs"])?;
+    // `execute()` 的命令面闭世界与 usage 字符串的双向对账（W96）：它住在 `tests/contracts/`
+    // 下因为判据跟着契约模块走，但不需要 protoc，因此与上面几步同级。★ 这一行有一个副作用：
+    // 它自己也是一条命令的证据源头——`check-deps` 与 `check --registry` 的门控落点就在本函数体里。
+    schema::node(root, &["--test", "tests/contracts/xtask-commands.test.mjs"])?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,

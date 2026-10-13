@@ -2511,3 +2511,63 @@ F8 新增一份未登记 workflow 文件（真文件 + `git add`）⇒ **红**�
 见 [W95 报告](docs/reports/2026-10-13-w95-workflow-step-closure.md)、
 [ADR 0073](docs/adr/0073-workflow-step-closure.md)、
 `openspec/changes/archive/2026-10-13-w95-workflow-step-closure/`。
+
+### W96 `cargo xtask` 的每一条命令 MUST 具名在册（usage 与 dispatch 必须对账）
+
+W96 接着 W95 换**另一层对象**：W95 管「**CI 侧**的执行面」（`foundation.yml` 的 step 集合），
+W96 管「**本机门控的入口面**」——`xtask/src/lib.rs` 的 `execute()` 这个
+`match args…as_slice()` 的 **24 条臂**。它**住在同一个文件里**、与 `check --profile full`
+的门控闭包相隔几十行，却**没有任何在册台账**；同一文件里的 `Usage: cargo xtask …` 字符串是
+命令集合的**第二次书写**，两处没有任何机制要求一致。
+
+三个探针实证（改真实 `lib.rs` → 跑本机 4 套件 → 还原 → `sha256` 逐字校验）：①插一条臂
+`["check", "--audit"] => Ok(())` ⇒ registry 52 / schema 30 / platform 22 / workflow 13
+**全绿、零信号**；②**删掉** `["check", "--secrets"]` 这条判定命令 ⇒ **同样全绿**（一条判定
+**静默消失**）；③usage 字符串追加 `| check --audit` ⇒ **同样全绿**（usage 与 dispatch **分家**）。
+（`grep -rn "Usage:" tests/` 为空 ⇒ 无替代守卫。）
+
+判据：**命令面闭世界 + usage 双向对账 + `gate` 付代价**。
+判定单元 MUST 是**命令签名**（空格连接的顶层字面量序列），MUST NOT 是裸命令名——W91 的教训
+「同名」≠「同一个」：`check --golden` 与 `check --golden --dir` 是**两条**命令，签名区分它们；
+匹配锚是整条签名，不是 `"--secrets"`（后者会在 `secrets::check` 这类**别的对象**上命中）。
+**usage 与 dispatch 对账**（不是消除第二处——usage 是自然语言，不可能由 match 臂渲染）：
+`usage ⊆ dispatch` 且 `dispatch \ usage ⊆ HELP_SIGNATURES`（三条具名豁免 `help`／`--help`／空串；
+少写一条**判定命令**是缺陷，少写 `help` 不是）。四类闭集：`gate`（执行体在门控闭包里被执行）／
+`standalone`（是判定命令但不在闭包里）／`artifact`（生成产物、不产生判定）／`help`。
+
+**`gate` 的代价是「落在门控闭包内」，不是一个「逐字存在」的串**：`evidence.marker` MUST 在
+**门控区域**（`engineering_checks` 的函数体 ∪ 各 `check --profile` arm 体，由**解析**得出）
+内逐字存在。只要求「在文件里逐字存在」的话，marker 就能填 **arm 自己**的文本，把「本机门控
+真的跑它」偷换成「这条命令自己存在」——**自我满足**的典型形态。这是本项目「注入事实而非判定」
+这一族的**第五次出现**（`repositoryFiles` → `readTrackedText` → W94 两张表 → W95 `gateSources`
+→ 本轮 `gateRegions`）。`standalone` 的成因取自闭集四格：`host-subprocess`／
+`requires-compiled-artifact`／**`superseded-by-workspace-run`（本轮新增**：这 8 条不是「跑不了」，
+而是「门控跑的是它们的**超集**」）／`deliberate-on-demand`（ADR 0043）。
+
+**分类是静态声明，MUST NOT 由运行时探测得出**（铁律二）；**不可解析 ⇒ 具名失败**；dispatch／
+usage／某一类为空 ⇒ **显式报错**（空态 MUST 被显式断言，W92 同族）。
+
+**非空洞注入 P1–P6**（真实文件 + `sha256` 逐字还原 **ALL-OK**，每个注入都产生**具名**错误）：
+P1 未登记臂 ⇒ `dispatches the command "check --audit", which nobody declares`；P2 删命令 ⇒
+`a registered command that vanished is a judgement that silently disappeared` + `usage must not
+promise what does not exist`；P3 usage 漂移 ⇒ `the usage string advertises "check --audit"`；
+P4 把 `check-deps` 的落点移出门控闭包 ⇒ `which is not inside the local gate closure
+(engineering_checks, arm@…)`；P5 删 `windows-local` arm 的独有落点 ⇒ 同上；P6 usage 少写
+`sbom [--out <path>]` ⇒ `dispatched but never appears in the usage string`。
+
+**与 W95／W84 的边界实测**（改真实表 → 跑两个套件 → 还原）：删一条 `WORKFLOW_STEPS` ⇒
+workflow **2 红** / xtask-commands **0 红**；删一条 `XTASK_COMMANDS` ⇒ xtask-commands **4 红** /
+workflow **0 红**；删新增的 `test-reachability` 站点 ⇒ registry **2 红** / xtask-commands **0 红**
+⇒ 三者**互不顶替**（分别管「workflow 的 step」／「`execute()` 的 CLI 命令」／「测试文件的可达性」）。
+
+**本轮有意的耦合**：新增测试文件必须**同时**在 `xtask/src/lib.rs` 登记、在 `test-reachability`
+的站点表登记、并在 `registry.test.mjs` 的逐字清单里出现，否则三处**同时红**——这正是它该有的行为。
+`tests/contracts/xtask-commands.test.mjs` **17 个用例**、`test-reachability` 站点 **8 → 9**、
+**Node 套件 6 → 7**、`xtask/src/lib.rs` 只加一行登记（**Rust 零行为改动**，`execute()` 与 usage
+一个字符未动）。
+
+**明确不做**：不验「CI 真的跑了某条命令」；不验 `standalone` 的成因是否成立（语义，仍由人读）；
+不验「`check --profile portable` 的证据专属于它」（如实披露的假阴性方向宽松）。
+见 [W96 报告](docs/reports/2026-10-14-w96-xtask-command-surface.md)、
+[ADR 0074](docs/adr/0074-xtask-command-surface.md)、
+`openspec/changes/2026-10-14-w96-xtask-command-surface/`。
