@@ -175,10 +175,53 @@ gate-coverage **24** / **npm-scripts 34（本轮新增）** = **192**。
 - 门控 `EXIT=0`（§6.2）；归档 `EXIT=0`；两条 validate `EXIT_A=0 / EXIT_B=0`。
 - 规格 `engineering-foundation` 变更量：**+1 added / ~0 / -0 / →0**（一条 ADDED Requirement）。
 
-## 七、CI
+## 七、CI（**红**，且**不是**本轮的判据）
 
-（推送后的单次低频查询结果回填于此：唯一查询参数破坏缓存 + `Cache-Control: no-cache` +
-回读 `head_sha` == 推送 SHA。）
+推送 SHA `0194886c1607c60c7db8c0e86baf8ba22fa9ebac`。
+
+| 项 | 值 |
+| --- | --- |
+| run | **38482728125 / #128** |
+| 结论 | **failure** |
+| `head_sha` 回读 | `0194886…` **== 推送 SHA（MATCH）** |
+| 起止 | `23:11:48Z → 23:22:45Z`（约 11 分钟） |
+| windows job | **success**（26 步；跳 8 / 11 / 20） |
+| ubuntu job | **failure**（step 10 `Complete engineering foundation …`） |
+
+**失败体**（ubuntu job 的 check-run 注释，`gate-failure-summary`）：
+
+```
+     Running tests/engine.rs (target/debug/deps/engine-f2152189a41cd270)
+test killed_keeper_is_halted_by_the_engine_and_the_chain_survives ... FAILED
+thread '…' panicked at apps/engine/tests/engine.rs:130:25:
+engine printed its control address
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.29s
+```
+
+### 7.1 三件齐（判结论的输入）
+
+① URL 带唯一查询参数（`cb=time.time_ns()`）破坏代理缓存；② `Cache-Control: no-cache`；
+③ 回读 `head_sha` **等于**本次推送 SHA。`HTTP=200` 由 `-w "%{http_code}"` **实测**（非从退出码推断）。
+四个端点（`/actions/runs`、`/actions/runs/{id}/jobs`、job 日志 `403`、check-run 注释）各自带 cb。
+job 日志匿名取不到（`403 Must have admin rights`）⇒ 改从 **check-run 注释**取失败摘要。
+
+### 7.2 判定：与 W98 无关（证据，不是推断）
+
+1. **提交内唯一的 `.rs` 改动** `xtask/src/lib.rs` **+4 行**（`git show --stat` 逐字核对），
+   内容是把 `tests/contracts/npm-scripts.test.mjs` 登记进 `engineering_checks`——
+   **零 Rust 生产代码改动**。
+2. 该 drill 是 `#[cfg(target_os = "linux")]`（`engine.rs:232`）⇒ **本机 Windows 门控与 CI 的
+   windows job 都不编译它**，**「本机 862 passed / 0 failed」对它没有任何证据力**。
+   这正是「本机绿 ≠ CI 绿」的形状：失败落在**只在本平台编译**的用例上。
+3. 失败发生在**共享 helper** `Engine::start`（`engine.rs:130` 的
+   `port.expect("engine printed its control address")`）——即**引擎子进程未在启动期打印控制地址**；
+   该二进制 **3.29s** 即失败 ⇒ 是**子进程提前 EOF**，**不是** 15 秒等待超时。
+4. 旁证：本仓 `docs/reports/2026-10-10-engineering-loop-platform-truths.md` §附 已记载
+   **同一区域**「整机负载高时…测试失败而规则没错——即这条用例本身是 flaky 的」；
+   该文件头注释亦声明这些是 **Linux 工程演练**、受宿主进程模型限制。
+
+**处置**（**铁律二**）：判为 **runner/host 瞬态**，**不**宣称 CI 绿、**不**改断言去迎合；
+登记为待裁定项（§八 7）；以**回填提交**触发 #129 作第二次观测（**回填提交自身不回填**）。
 
 ## 八、遗留
 
@@ -190,10 +233,14 @@ gate-coverage **24** / **npm-scripts 34（本轮新增）** = **192**。
 5. **`test --suite upgrade` 在 CI 没有具名 step**（W97 §八 1 的发现）——本轮**仍未动**，成因仍无记载。
 6. **W90 §八遗留 1／3／4／5、W91 跨语言键级消费、W92 基线收录、W93 锚点唯一性、
    W94 `needs_external` 审计、W95 `ci-only` 成因、W96 五项、W97 六项**均**未动**。
+7. **`apps/engine/tests/engine.rs::killed_keeper_…` 在 ubuntu runner 上启动期失败**（§七）：
+   本轮**只观测到一次**（run #128）。判定为 runner 瞬态，但**成因未定**——
+   是「引擎子进程为何未打印控制地址」这一条的**待裁定项**，MUST NOT 靠改断言消除。
 
 ## 九、如实披露
 
-1. **不断言 CI 的执行结果**——那要读运行结果，不是静态判据的事（除非 §七 有运行级证据）。
+1. **不断言 CI 的执行结果**——那要读运行结果，不是静态判据的事（§七 已有运行级证据，
+   **本轮 CI 结论是 failure**，且失败**不在**本轮新增的判据上）。
 2. **不验「某个脚本真的按门控的形态被跑过」**：判据验的是「声明与代价」，不是「那次运行的输出」。
 3. **`--filter P` 形态在引用扫描面里实例数为 0**：`pnpm --filter @nai/desktop test` 与
    `pnpm --filter @nai/desktop dev` 都只出现在 `docs/**`（文档不在扫描面）⇒ V2 的这条分支当前
