@@ -158,17 +158,72 @@ the baseline does not have`、`#22 each disposition has to pay for itself with i
 | 变更校验 | `openspec validate w92-decidable-in-repo-settlement --strict` | **valid** |
 | 归档前全量 | `openspec validate --all --strict` | **44 passed / 0 failed**（含活动变更；归档后见 §6.3） |
 
-### 6.2 全量门控与两条 validate
+### 6.2 全量门控
 
-**见 §六.3 与本轮的 `check --profile full` 输出**（跑完回填）。
+`cargo xtask check --profile full` = **EXIT=0**：
+
+| 指标 | 值 | 与 W91 对比 |
+| --- | --- | --- |
+| `test result` 行数（目标数） | **91** | 一致 |
+| passed 合计 | **862** | 一致 |
+| failed 合计 | **0** | 一致 |
+| 预链接（`cargo test --workspace --all-targets --locked --no-run`） | **第 1 轮即收敛**，`LNK1104` 命中 **0** | W91 是第 5 轮 |
+| `cargo fmt --all --check`（独立复跑） | **EXIT=0** | 一致 |
+| frontend 步骤 | 「全部步骤通过（工程基础，非渲染/人工 UI 验收）」 | 一致 |
+
+**Node 侧 5 个套件全绿**：`tests/registry.test.mjs` **50/50**（**本轮改动**）、
+`tests/contracts/schema.test.mjs` 30/30、其余 22/5/52（`tests/registry.test.mjs` 在门控内 ——
+`xtask/src/registry.rs` 直接 `node --test tests/registry.test.mjs`）。
+
 `cargo xtask` 与 `tests/registry.yaml` **零改动**、**Rust 零改动** ⇒ 与 W91 同形（**91 目标 / 862 passed**，
-两侧数字不变属预期，不是"门控没跑到新判据"）。
+两侧数字不变属预期，不是"门控没跑到新判据"——Node 侧 registry 的 50/50 就是本轮判据在门控里跑过的证据）。
 
 ### 6.3 归档与两条 validate
 
-见下节回填。
+归档：`openspec archive w92-decidable-in-repo-settlement --yes` ⇒
+`agent-harness: ~ 1 modified`（Totals `+ 0, ~ 1, - 0, → 0`），归档为
+`2026-10-13-w92-decidable-in-repo-settlement`；活规格已含新句（`R1 首版入站只响应…`／`MUST NOT 提供配置面`／
+`A third party asks to be admitted`）。
 
-## 七、**CI_PLACEHOLDER**
+| 命令 | 结果 |
+| --- | --- |
+| `openspec validate --all --strict`（**归档前**） | **44 passed / 0 failed**（含活动变更） |
+| `openspec validate --all --strict`（**归档后**） | **43 passed / 0 failed**（与 W91 的 44 → 43 同形） |
+| `openspec validate --all --strict --archived`（归档后） | **90 passed / 0 failed**（W91 的 89 → 90） |
+
+## 七、CI 结论
+
+**观测三件齐**：唯一查询参数（`&cb=<time_ns>`）破坏代理缓存 + 请求头 `Cache-Control: no-cache`
++ 回读 `head_sha` 与推送 SHA 比对。**单次**查询
+`https://github.com/F31/nai/actions/runs/38399560922`：
+
+| 项 | 值 |
+| --- | --- |
+| run | **38399560922（#115）** |
+| 回读 `head_sha` | `349fc1a15c468c5fa7a296faa9c1bdbc9df81b33` —— 与推送 SHA **MATCH** |
+| 结论 | **completed / success** |
+| 时间 | `2026-10-13T12:44:44Z` → `12:57:09Z`（约 **12 分 25 秒**；同 push 事件只触发这一个 run） |
+
+两个 job 均 **completed / success**，各 **26** 个可视步骤：
+
+| job | 结论 | 跳过项（均为条件跳过，非缺失） |
+| --- | --- | --- |
+| `foundation (ubuntu-24.04)` | **success** | **step 11**「Publish the gate failure summary as annotations」（`if: failure()`） |
+| `foundation (windows-latest)` | **success** | **step 8**（Linux C++ runtime）、**step 11**（同上）、**step 20**（Linux-only 三语言契约套件） |
+
+**本机绿与 CI 绿同源**（逐条比对 `.github/workflows/foundation.yml` 与 §6.2 的本地门控）：CI 的
+**step 10**「Complete engineering foundation (portable steps + frontend workspace)」跑的命令是
+`cargo xtask check --profile full` —— **与 §6.2 本机门控是同一条命令、同一个 profile**，两平台各跑一遍
+且都 `success` ⇒ 本轮的判据变更（`tests/pending-decisions.yaml` + `tests/registry.test.mjs`，经
+`xtask/src/registry.rs` 的 `node --test` 进入 `engineering_checks`）**在 CI 侧也真跑过**。
+其余各步亦 `success`：step 9 `cargo xtask schema --check`、step 12–18 七个 `cargo xtask test --suite *`、
+step 19 `node --test tests/contracts/schema.test.mjs tests/contracts/descriptor.test.mjs`、
+step 21 `pnpm spec:validate`、step 22 `openspec validate --archived --no-interactive`。
+
+**观测粒度的自限**：本结论为**作业/步骤级**（判 run 结论所需的三件已齐），**未**导出各步骤日志内的
+逐目标计数（`GET /actions/jobs/{id}/logs` 要求仓库 admin 权限，无凭据不可读，且 step 11 的 annotation 通道
+在无失败时本就跳过）⇒ **不断言**「CI 侧也是 91 目标 / 862 passed」，只断言
+「**同一条 `check --profile full` 在 CI 两平台均 `success`，且其 `head_sha` 等于本轮推送 SHA**」。
 
 ## 八、遗留
 
