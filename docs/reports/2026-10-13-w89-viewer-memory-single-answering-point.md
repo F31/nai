@@ -137,7 +137,26 @@ live spec 的 Requirement 数 **18 → 19**（新增条目在 `openspec/specs/ag
 
 ## 七、CI 复核
 
-**CI_PLACEHOLDER**
+**run `38372749099`（run_number **108**，`head_sha = 6ba5c5a4f2…`，与本轮推送 SHA 一致）= `success`**（双平台绿）。
+
+观测方式沿用既有纪律：**单次低频查询**（**不轮询**），每次带**唯一查询参数** `&cb=<ns>` 破坏代理缓存、
+`Cache-Control: no-cache`，并**回读 `head_sha` 与本次推送比对**；`curl` 带 `--tlsv1.2 --tls-max 1.2`
+（schannel 与 TLS 1.3 握手失败，W77 实测）。本轮共 **4 次**查询：
+
+1. 推送后首次（`/actions/runs?head_sha=6ba5c5a4f2…`）：`total_count = 1`，命中 run 108，
+   `status = in_progress`，`conclusion = None`，`head_sha = 6ba5c5a4f2` == 推送 SHA ⇒ **三件齐的 ③ 当场成立**；
+2. 等 **5 分钟**后单次查询 `/actions/runs/38372749099`：仍 `in_progress`（HTTP 200，`head_sha` 仍一致）；
+3. 再等 **7 分钟**后单次查询：`status = completed` / `conclusion = success`
+   （`created_at = 08:56:27Z`、`updated_at = 09:08:46Z`）；
+4. 为写报告取 job 级细节，查一次 `/jobs`：**两个 job 均 `completed / success`**——
+   `foundation (ubuntu-24.04)` `08:56:30Z → 09:00:51Z`（**先绿**），
+   `foundation (windows-latest)` `08:56:30Z → 09:08:45Z`（各 26 steps）。
+
+`run_number = 108` 与本地历史自洽：W88 主提交得 run 106、W88 回填提交得 run 107（本轮未单独查询），
+本轮主提交得 run 108 ⇒ **三次推送三条 run，无跳号**。
+
+> **本机绿 ≠ CI 绿**：本轮本机门控为 **91 目标 / 862 passed / 0 failed**，
+> 与 CI 的 job 组成**不是同一份步骤集合**，CI 绿是**独立观测**得出的结论，不是本机结论的复述。
 
 ## 八、遗留
 
