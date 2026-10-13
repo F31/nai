@@ -31,7 +31,9 @@ import {
   CITATION_FIELDS,
   ID_LIST_FIELDS,
   REPO_PATH_FIELDS,
+  ANCHOR_FIELDS,
   STRUCTURAL_FIELDS,
+  COUPLED_REQUIRED_FIELDS,
   LEDGER_FIELDS,
   TOP_LEVEL_FIELDS,
   REFERENCE_FIELDS,
@@ -674,12 +676,23 @@ test("the registry's shape layer and semantic layer agree, constant by constant"
 const pendingLedger = YAML.parse(await readFile('tests/pending-decisions.yaml', 'utf8'));
 const tracked = await readTrackedPaths('.');
 assert.ok(tracked.ok, `the repository file set must be readable: ${tracked.reason ?? ''}`);
+// W93：`landing_anchor` 的判据要读**落地点文件的内容**。
+// 读不到时返回 `undefined`——判据会把「读不到」报成一条**具名失败**，而不是当成通过。
+// 这里 MUST NOT 用 try/catch 把它吞成空串：那等于让一次宿主异常把这条判据整体关掉（铁律二）。
+const readTrackedText = path => {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    return undefined;
+  }
+};
 const ledgerDeps = {
   baselineVersion: baseline.version,
   baselineText: baseline.text,
   acceptanceIds: new Set((await readRegistry()).acceptance.map(item => item.id)),
   workItemIds: baselineWorkItems(baseline.text),
   repositoryFiles: tracked.paths,
+  readTrackedText,
 };
 const ledgerErrors = ledger => validatePendingDecisions(ledger, ledgerDeps);
 
@@ -703,6 +716,9 @@ test('the pending-decision ledger classifies every item and every reference reso
     'acceptanceIds',
     'workItemIds',
     'repositoryFiles',
+    // W93：少了它，`landing_anchor` 的「内容真的在」会退化成恒真——
+    // 与 `repositoryFiles` 是同一个陷阱的第二次出现。
+    'readTrackedText',
   ]) {
     const partial = {...ledgerDeps};
     delete partial[key];
@@ -854,16 +870,26 @@ test('the ledger field set is closed and every field has exactly one owner', asy
       'id',
       'introduced_in',
       'landing',
+      // W93 第五类（内容锚点）带来的新字段：它必须与 `landing` 同生同灭且等长。
+      'landing_anchor',
       'note',
       'precondition',
       'question',
       'recommendation',
     ],
-    'the allowed field set must be exactly the eleven declared fields',
+    'the allowed field set must be exactly the twelve declared fields',
   );
 
-  // 四类**两两不相交**，且其并集**恰等于** `LEDGER_FIELDS`。
-  const categories = [CITATION_FIELDS, ID_LIST_FIELDS, REPO_PATH_FIELDS, STRUCTURAL_FIELDS];
+  // 各类**两两不相交**，且其并集**恰等于** `LEDGER_FIELDS`。
+  // W93：四类变五类（新增内容锚点）。这一行的**类别清单**必须与 `shapeErrors()` 里的
+  // `categories` 同形——漏掉 `ANCHOR_FIELDS` 会让「并集恰等于」直接失败（F8 的落点）。
+  const categories = [
+    CITATION_FIELDS,
+    ID_LIST_FIELDS,
+    REPO_PATH_FIELDS,
+    ANCHOR_FIELDS,
+    STRUCTURAL_FIELDS,
+  ];
   assert.equal(
     new Set(categories.flat()).size,
     categories.flat().length,
@@ -872,7 +898,7 @@ test('the ledger field set is closed and every field has exactly one owner', asy
   assert.deepEqual(
     [...new Set(categories.flat())].sort(),
     [...LEDGER_FIELDS].sort(),
-    'the four categories must partition the allowed field set',
+    'the five categories must partition the allowed field set',
   );
   assert.deepEqual(shapeErrors(), [], 'the partition must be internally consistent as committed');
 
@@ -1115,6 +1141,10 @@ test('a landing must name a path the repository actually tracks', async () => {
   const ghost = structuredClone(pendingLedger);
   const ghostEntry = ghost.entries.find(entry => entry.disposition === 'decided_in_repo');
   ghostEntry.landing = [...ghostEntry.landing, 'crates/nai-security/src/no-such-file.rs'];
+  // W93：耦合断言按**字段存在**触发 ⇒ `landing` 加一项就必须同时补一个锚点，
+  // 否则会多出一条「长度不等」的错。补上它，本注入红的**唯一**原因才是那个不存在的路径
+  // （W92 教训：「红」不等于「红在我以为的地方」——多一条错就可能把定位引向别处）。
+  ghostEntry.landing_anchor = [...ghostEntry.landing_anchor, 'probe'];
   assert.ok(
     ledgerErrors(ghost).some(
       error =>
@@ -1139,6 +1169,10 @@ test('a landing must name a path the repository actually tracks', async () => {
   const untracked = structuredClone(pendingLedger);
   const untrackedEntry = untracked.entries.find(entry => entry.disposition === 'decided_in_repo');
   untrackedEntry.landing = [probeDir];
+  // 同上：补锚点使两侧等长。锚点检查本身也会因 `node_modules` 是**目录**而报「不可读」
+  // （读不到 MUST 具名失败，MUST NOT 静默降级）——那是新判据的预期行为，且同样含 `probeDir`，
+  // 不掩盖本用例真正要验的那一条「路径未被跟踪」。
+  untrackedEntry.landing_anchor = ['probe'];
   assert.ok(
     ledgerErrors(untracked).some(
       error => error.includes(untrackedEntry.id) && error.includes('landing') && error.includes(probeDir),
@@ -1150,10 +1184,128 @@ test('a landing must name a path the repository actually tracks', async () => {
   const legal = structuredClone(pendingLedger);
   const carrier = legal.entries.find(entry => entry.disposition === 'needs_external');
   carrier.landing = ['crates/nai-security/src/lib.rs'];
+  // W93 **合法地改了这个用例的前提**：耦合断言按字段存在触发，与处置无关 ⇒
+  // 挂到别的处置上的 `landing` 同样 MUST 配锚点（锚点也得真的在那个文件里）。
+  // 只给 `landing` 不给 `landing_anchor` 现在会红，而红的原因是**缺内容证据**，
+  // 不是「放错位置」——本用例要验的是后者，故必须把前者的条件补齐（与 W92「清空一个态」
+  // 暴露既有用例隐含依赖同族，MUST 在报告与 ADR 里明写）。
+  carrier.landing_anchor = ['NativeVault'];
   assert.deepEqual(
     ledgerErrors(legal),
     [],
     'a resolvable landing outside its own disposition must not be reported',
+  );
+});
+
+test('a landing must carry content evidence that is actually in the file', async () => {
+  // W93 母题：`decided_in_repo` 断言「决定已作出**且已落地**」，而原先判据只验 `landing`
+  // 的每个元素是**已跟踪路径**。核实阶段跑过两个探针（都改真实文件 → 跑 `node --test`）：
+  //   ① 把 `PD-22.landing` 换成 `README.md`（真实存在、已被 git 跟踪）⇒ **50/50 全绿**；
+  //   ② `landing` 不动，删掉 `PD-24` 在规格里的落地句 ⇒ **50/50 全绿**。
+  // ⇒ 本用例是那两个探针的**回归守卫**：同样的改动现在 MUST 变红。
+  //
+  // 锚点**守不住**什么（如实披露，MUST NOT 被读作"已落地已被证明"）：它验的是
+  // 「你指的那个文件里有这个串」，**不**验「这个串只应出现在那里」。把 `landing` 指到另一个
+  // 恰好也含该锚点的文件，判据仍会绿——这是**签名 + 观测**的分工，不是全知验证。
+  const clean = structuredClone(pendingLedger);
+  const settled = clean.entries.filter(entry => entry.disposition === 'decided_in_repo');
+  assert.ok(settled.length > 0, 'the ledger must carry settled entries');
+  for (const entry of settled) {
+    assert.ok(
+      Array.isArray(entry.landing_anchor) && entry.landing_anchor.length === entry.landing.length,
+      `${entry.id}: every landing site must carry exactly one content anchor`,
+    );
+    for (let index = 0; index < entry.landing.length; index += 1) {
+      const content = readTrackedText(entry.landing[index]);
+      assert.ok(
+        content !== undefined && content.includes(entry.landing_anchor[index]),
+        `${entry.id}: anchor ${index} must actually be present in ${entry.landing[index]}`,
+      );
+    }
+  }
+
+  // ① **探针①的回归守卫**：落地点换成另一个已跟踪文件，锚点留在原处 ⇒ MUST 红。
+  const swapped = structuredClone(pendingLedger);
+  const target = swapped.entries.find(entry => entry.disposition === 'decided_in_repo');
+  target.landing = ['README.md'];
+  assert.ok(
+    ledgerErrors(swapped).some(
+      error => error.includes(target.id) && error.includes('landing_anchor') && error.includes('README.md'),
+    ),
+    'pointing the landing at another tracked file must be reported — a path alone is not evidence',
+  );
+
+  // ② **探针②的回归守卫**：落地点不动，把锚点改成文件里没有的串 ⇒ MUST 红。
+  const revoked = structuredClone(pendingLedger);
+  const revokedEntry = revoked.entries.find(entry => entry.disposition === 'decided_in_repo');
+  revokedEntry.landing_anchor = ['这段内容绝不会出现在那个文件里'];
+  assert.ok(
+    ledgerErrors(revoked).some(
+      error =>
+        error.includes(revokedEntry.id) &&
+        error.includes('landing_anchor') &&
+        error.includes('is not present in'),
+    ),
+    'a landing whose content is gone must be reported — this is the hole the probes walked through',
+  );
+
+  // ③ 两侧长度不等 ⇒ 对应关系不存在 ⇒ MUST 红。
+  const short = structuredClone(pendingLedger);
+  const shortEntry = short.entries.find(entry => entry.disposition === 'decided_in_repo');
+  assert.ok(shortEntry.landing.length > 1, 'the probe needs a settled entry with more than one site');
+  shortEntry.landing_anchor = shortEntry.landing_anchor.slice(0, -1);
+  assert.ok(
+    ledgerErrors(short).some(
+      error => error.includes(shortEntry.id) && error.includes('correspond one-to-one'),
+    ),
+    'an anchor list that does not match its landing list must be reported',
+  );
+
+  // ④ 有 `landing` 却没有 `landing_anchor` ⇒ MUST 红（锚点若可选，这就是绕过判据的那条缝）。
+  const bare = structuredClone(pendingLedger);
+  const bareEntry = bare.entries.find(entry => entry.disposition === 'decided_in_repo');
+  delete bareEntry.landing_anchor;
+  assert.ok(
+    ledgerErrors(bare).some(
+      error => error.includes(bareEntry.id) && error.includes('landing_anchor is missing'),
+    ),
+    'a landing without content evidence must be reported',
+  );
+
+  // ⑤ 锚点给空串 ⇒ MUST 红。
+  const blank = structuredClone(pendingLedger);
+  const blankEntry = blank.entries.find(entry => entry.disposition === 'decided_in_repo');
+  blankEntry.landing_anchor = [''];
+  assert.ok(
+    ledgerErrors(blank).some(
+      error => error.includes(blankEntry.id) && error.includes('must be non-empty strings'),
+    ),
+    'an empty anchor must be reported — an empty string is present in every file',
+  );
+
+  // ⑥ **按字段存在触发**（不按处置）：锚点挂在**别的**处置上且不在文件里 ⇒ MUST 红。
+  const elsewhere = structuredClone(pendingLedger);
+  const carrier = elsewhere.entries.find(entry => entry.disposition === 'needs_external');
+  carrier.landing = ['crates/nai-security/src/lib.rs'];
+  carrier.landing_anchor = ['这段内容绝不在 lib.rs 里'];
+  assert.ok(
+    ledgerErrors(elsewhere).some(
+      error => error.includes(carrier.id) && error.includes('landing_anchor'),
+    ),
+    'an anchor outside its own disposition must still be checked — ownership is a property of the field',
+  );
+
+  // ⑦ **读不到文件 MUST 具名失败**，MUST NOT 静默降级（铁律二：「没看到」与「出错了」分开）。
+  const blind = {...ledgerDeps, readTrackedText: () => undefined};
+  assert.ok(
+    validatePendingDecisions(pendingLedger, blind).some(error => error.includes('unreadable')),
+    'an unreadable landing file must be reported, not silently passed',
+  );
+  // 抛错同理：MUST NOT 把宿主异常当成「通过」。
+  const throwing = {...ledgerDeps, readTrackedText: () => { throw new Error('EACCES'); }};
+  assert.ok(
+    validatePendingDecisions(pendingLedger, throwing).some(error => error.includes('could not read')),
+    'a reader that throws must be reported, not swallowed',
   );
 });
 

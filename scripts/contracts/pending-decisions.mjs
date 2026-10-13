@@ -80,6 +80,42 @@ export const CITATION_FIELDS = [
 /// 它与 `CITATION_FIELDS`、`REPO_PATH_FIELDS` 一起，必须**恰好覆盖** `REQUIRED_FIELD` 的全部取值。
 export const ID_LIST_FIELDS = ['precondition'];
 
+/// **内容锚点**（W93 新增第五类）：承载「某个文件里**应当有**这段内容」的证据。
+///
+/// 为什么它不是前三类中的任何一个：
+/// - 不是 `CITATION_FIELDS`——锚点不解析成 `§NNN`；
+/// - 不是 `ID_LIST_FIELDS`——它不解析成登记 id；
+/// - 不是 `REPO_PATH_FIELDS`——**路径**回答「落在哪个文件」，**锚点**回答「那个文件里的东西还在不在」。
+///   两者是同一个落地点的一对属性，但**判据不同**（成员集 vs 文件内容）⇒ 归两类（W66「不合并不同维度」）；
+/// - 不是 `STRUCTURAL_FIELDS`——结构字段的判定只用到字段自身（`id` 的形状、`disposition` 的枚举），
+///   而锚点必须与**另一个字段（`landing`）**配对、并读到**仓库里另一个文件的内容**才能判。
+///
+/// 为什么需要它（本轮的母题）：`decided_in_repo` 断言「决定已作出**且已落地**」，而原先判据只验
+/// `landing` 的每个元素是**已跟踪路径**。实测两个探针（都跑真实台账 → `node --test`）：
+///   ① 把 `PD-22.landing` 换成 `README.md`（真实存在、已被 git 跟踪）⇒ **50/50 全绿**；
+///   ② `landing` 不动，删掉 `PD-24` 在规格里的落地句 ⇒ **50/50 全绿**。
+/// ⇒ 「已落地」是一条**判据放过的空声明**：指任意一个已跟踪文件都算落地，落地内容被撤销也算落地。
+/// 这是「**已声明 ≠ 已执行**（无执行体即假契约）」的形状。W92 把该态从 2 条扩到 4 条，风险随之变大。
+///
+/// **它守什么、不守什么（MUST 如实披露）**：锚点把门槛从「路径存在」提高到「**所指文件里真有那段内容**」，
+/// 把"随手改一个 landing"变成"必须同时伪造一个内容证据"。但它**守不住**「把 `landing` 指到另一个
+/// 恰好也含该锚点的文件」——判据验的是"你指的那个文件里有这个串"，**不**是"这个串只应出现在那里"。
+/// ⇒ 这是**签名 + 观测**的分工，不是全知验证；MUST NOT 被读作"已落地已被证明"。
+export const ANCHOR_FIELDS = ['landing_anchor'];
+
+/// **耦合字段对**（W93 新增）：两个字段 MUST **同生同灭**，且（对清单型）**等长**。
+///
+/// 为什么它不能只是「给 `landing_anchor` 加一条可选检查」：若锚点**可选**，那么"不给锚点"就是
+/// 绕过本轮判据的那条缝——洞原样还在（与 W81「清单之外的字段不受检」同形）。⇒ 有 `landing` 就
+/// MUST 有 `landing_anchor`，反之亦然。
+///
+/// 为什么不动 `REQUIRED_FIELD`（一态一个必填字段）的形状：把它扩成「字段列表」会牵动
+/// `REQUIRED_FIELD.get` 的每个使用点；而「这一态的必填字段是谁」与「两个字段之间是什么关系」
+/// 是**两个不同的问题** ⇒ 单独一张表、单独的判据（与 W73 的耦合断言同形）。
+///
+/// 触发条件同样是**字段是否存在**，与 `disposition` 无关（W80／W83／W88 同一条律）。
+export const COUPLED_REQUIRED_FIELDS = new Map([['landing', 'landing_anchor']]);
+
 /// **仓库路径**：元素是「仓库成员路径」而非 `§NNN`、也不是登记 id 的字段（W88 新增）。
 ///
 /// 为什么需要一个新类别而不是把 `landing` 塞进 `ID_LIST_FIELDS`：`ID_LIST_FIELDS` 的元素按
@@ -144,6 +180,9 @@ export const LEDGER_FIELDS = [
   'basis',
   'recommendation',
   'landing',
+  // W93：`landing` 的**内容锚点**。它必须与 `landing` 同生同灭且等长（见 `COUPLED_REQUIRED_FIELDS`）。
+  // 不进 `REFERENCE_FIELDS`：它不是"可解析的引用"，是"文件里应有这段内容"的证据。
+  'landing_anchor',
   'precondition',
   'closure',
   'note',
@@ -196,15 +235,19 @@ export function shapeErrors() {
   const cited = new Set(CITATION_FIELDS);
   const idList = new Set(ID_LIST_FIELDS);
   const repoPath = new Set(REPO_PATH_FIELDS);
+  const anchor = new Set(ANCHOR_FIELDS);
   const structural = new Set(STRUCTURAL_FIELDS);
 
-  // 四类 MUST **两两不相交**：一个字段不能「由两个检查同时负责」——否则「谁在管它」不再是单一回答。
+  // 各类 MUST **两两不相交**：一个字段不能「由两个检查同时负责」——否则「谁在管它」不再是单一回答。
   // （W88 把第三类 `REPO_PATH_FIELDS` 加进来：`landing` 若同时被 id 校验与路径校验认领，
-  // 两条检查会各自报一次，而「谁负责它」就没有单一答案。）
+  // 两条检查会各自报一次，而「谁负责它」就没有单一答案。
+  //  W93 的第五类 `ANCHOR_FIELDS` 同理：锚点若同时被路径校验认领，「落在哪」与「里面的东西还在吗」
+  //  会变成同一个检查，而它们失败时的含义完全不同。）
   const categories = [
     ['citation', cited],
     ['id-list', idList],
     ['repo-path', repoPath],
+    ['anchor', anchor],
     ['structural', structural],
   ];
   for (let i = 0; i < categories.length; i += 1) {
@@ -229,12 +272,53 @@ export function shapeErrors() {
     }
   }
 
-  // **闭世界**：四类别之并 MUST **恰等于** `LEDGER_FIELDS`（这份表是**独立写死**的，
+  // **耦合表 MUST 自洽**（W93）：`COUPLED_REQUIRED_FIELDS` 声明的每一对 MUST 满足——
+  // ① 两个字段名都 ∈ `LEDGER_FIELDS`（否则闭世界会先拒掉数据，而这条配对永远打不到东西）；
+  // ② 两者**分属不同的检查类别**（否则"配对"退化成"同一个字段被检查两次"，而"同生同灭"也无从谈起）；
+  // ③ 两者**都为清单型或都为文本型**（长度可比的前提——`landing`／`landing_anchor` 同为清单）。
+  // 这三条挡的都是**未来一次合法编辑**：改了某一类的归属、或漏登记一个字段，
+  // 配对检查会静默地失去作用对象（W93 与 W66「删字段照样绿」、W92「清空态」同族）。
+  const allowed = new Set(LEDGER_FIELDS);
+  // 「清单型」= 元素逐项判定的那些类别。W93 的 `ANCHOR_FIELDS` 也是清单型
+  // （`landing_anchor` 与 `landing` 逐项对应）⇒ 必须与 `landing` 同为清单型，否则长度可比的前提不成立。
+  const listLike = new Set([...idList, ...repoPath, ...anchor]);
+  for (const [left, right] of COUPLED_REQUIRED_FIELDS) {
+    if (!allowed.has(left) || !allowed.has(right)) {
+      errors.push(
+        `coupled pair ${left} <-> ${right} names a field outside LEDGER_FIELDS — the pair can never match`,
+      );
+    }
+    const categoryOf = field =>
+      cited.has(field) ? 'citation'
+        : idList.has(field) ? 'id-list'
+          : repoPath.has(field) ? 'repo-path'
+            : anchor.has(field) ? 'anchor'
+              : structural.has(field) ? 'structural' : null;
+    const leftCat = categoryOf(left);
+    const rightCat = categoryOf(right);
+    if (leftCat === null || rightCat === null) {
+      errors.push(
+        `coupled pair ${left} <-> ${right} names a field no check category claims — the pair is unenforced`,
+      );
+    } else if (leftCat === rightCat) {
+      errors.push(
+        `coupled fields ${left} and ${right} are both ${leftCat} — a pair must span two different checks`,
+      );
+    } else if (listLike.has(left) !== listLike.has(right)) {
+      errors.push(
+        `coupled fields ${left} and ${right} differ in shape — one is list-like, the other is not`,
+      );
+    }
+  }
+
+  // **闭世界**：各类别之并 MUST **恰等于** `LEDGER_FIELDS`（这份表是**独立写死**的，
   // 所以这不是恒真式）。两个方向都被点名：
   // ① 某字段进了 `LEDGER_FIELDS` 却没被任何一类认领 ⇒ 数据允许它出现、却无人负责它；
   // ② 某字段被分类了却不在 `LEDGER_FIELDS` 里 ⇒ 那份分类永远打不到东西（闭世界断言会先拒掉数据）。
-  const allowed = new Set(LEDGER_FIELDS);
-  const classified = new Set([...cited, ...idList, ...repoPath, ...structural]);
+  // W93 的 `landing_anchor` 正是方向①要挡的那种合法编辑：往 `LEDGER_FIELDS` 加一个字段却忘了
+  // 把它分进某个类别，它会**静默地不受任何检查**。
+  // （`allowed` 已在上面的耦合检查前声明，此处复用同一份。）
+  const classified = new Set([...cited, ...idList, ...repoPath, ...anchor, ...structural]);
   for (const field of allowed) {
     if (!classified.has(field)) {
       errors.push(
@@ -350,11 +434,13 @@ export function baselineWorkItems(baselineText) {
 const nonEmptyText = value => typeof value === 'string' && value.trim().length > 0;
 
 /// 校验台账。`deps` 显式注入：
-/// `{baselineVersion, baselineText, acceptanceIds, workItemIds, repositoryFiles}`。
+/// `{baselineVersion, baselineText, acceptanceIds, workItemIds, repositoryFiles, readTrackedText}`。
 ///
 /// **缺任一项即报错**，不做「缺了就跳过对应检查」的降级——那会让判据在被削弱时保持沉默。
 /// W88 把 `repositoryFiles`（仓库成员路径集，由 `.git/index` 派生）加入必填依赖：
 /// 少了它，`landing` 的「路径存在」会退化成恒真，而那正是本轮要钉的东西。
+/// W93 把 `readTrackedText`（读一个已跟踪文件的文本）加入必填依赖：少了它，`landing_anchor`
+/// 的「内容真的在」会退化成恒真——**同一个陷阱的第二次出现**。
 export function validatePendingDecisions(ledger, deps = {}) {
   const errors = [];
   const required = [
@@ -363,6 +449,7 @@ export function validatePendingDecisions(ledger, deps = {}) {
     'acceptanceIds',
     'workItemIds',
     'repositoryFiles',
+    'readTrackedText',
   ];
   const missing = required.filter(key => deps[key] === undefined);
   if (missing.length > 0) {
@@ -549,6 +636,83 @@ export function validatePendingDecisions(ledger, deps = {}) {
               `${id}: ${field} ${item} is neither a registry acceptance id nor a baseline work item`,
             );
           }
+        }
+      }
+    }
+
+    // **耦合字段对**（W93）：两个字段 MUST **同生同灭**。
+    // 触发条件是**字段是否存在**，与 `disposition` 无关——与上面引用扫描同一条律：
+    // 一个字段由谁检查它，是**字段的属性**，不是这条数据当前归哪一类的属性。
+    //
+    // 为什么必须强制而不是可选：若锚点可选，"不给锚点"就是绕过本轮判据的那条缝，
+    // 而「已落地」会退回成「路径存在」——洞原样还在（W81「清单之外的字段不受检」同形）。
+    for (const [leftField, rightField] of COUPLED_REQUIRED_FIELDS) {
+      const hasLeft = Array.isArray(entry[leftField]) || nonEmptyText(entry[leftField]);
+      const hasRight = Array.isArray(entry[rightField]) || nonEmptyText(entry[rightField]);
+      if (hasLeft && !hasRight) {
+        errors.push(
+          `${id}: ${leftField} is present but ${rightField} is missing — a landing without content evidence is only a path`,
+        );
+      } else if (!hasLeft && hasRight) {
+        errors.push(
+          `${id}: ${rightField} is present but ${leftField} is missing — content evidence with nothing to anchor`,
+        );
+      } else if (hasLeft && hasRight) {
+        const left = Array.isArray(entry[leftField]) ? entry[leftField] : [entry[leftField]];
+        const right = Array.isArray(entry[rightField]) ? entry[rightField] : [entry[rightField]];
+        if (left.length !== right.length) {
+          errors.push(
+            `${id}: ${rightField} holds ${right.length} items but ${leftField} holds ${left.length} — they must correspond one-to-one`,
+          );
+        }
+      }
+    }
+
+    // **内容锚点**（W93）：每个 (落地点, 锚点) 对 MUST 满足「锚点出现在那个文件的内容里」。
+    //
+    // 触发条件同样是**字段是否存在**（不是 `disposition === 'decided_in_repo'`）：
+    // 一个锚点挂在别的处置上，它的内容证据一样要被核——「谁在管它」不该是条件性的。
+    //
+    // 读不到文件 MUST **具名失败**，MUST NOT 静默降级：这是「**没看到**」与「**出错了**」的
+    // 类型分离（铁律二）——两者若都当通过，一次宿主异常就会把这条判据整体关掉。
+    for (const field of ANCHOR_FIELDS) {
+      if (!(field in entry)) continue;
+      const anchors = entry[field];
+      const sites = Array.isArray(entry.landing) ? entry.landing : [];
+      if (!Array.isArray(anchors)) {
+        errors.push(`${id}: ${field} must be a list of anchors, one per landing site`);
+        continue;
+      }
+      for (let index = 0; index < anchors.length; index += 1) {
+        const anchorText = anchors[index];
+        const site = sites[index];
+        if (!nonEmptyText(anchorText)) {
+          errors.push(`${id}: ${field} entries must be non-empty strings`);
+          continue;
+        }
+        if (site === undefined) {
+          // 长度不等已由上面的耦合检查具名报出，此处不再重复一次。
+          continue;
+        }
+        let content;
+        try {
+          content = deps.readTrackedText(site);
+        } catch (cause) {
+          errors.push(
+            `${id}: could not read ${site} for the ${field} check (${cause?.message ?? cause}) — the anchor check must not silently pass`,
+          );
+          continue;
+        }
+        if (content === undefined || content === null) {
+          errors.push(
+            `${id}: ${site} is unreadable for the ${field} check — the anchor check must not silently pass`,
+          );
+          continue;
+        }
+        if (!String(content).includes(anchorText)) {
+          errors.push(
+            `${id}: ${field} ${JSON.stringify(anchorText)} is not present in ${site} — a landing whose content is gone is not a landing`,
+          );
         }
       }
     }

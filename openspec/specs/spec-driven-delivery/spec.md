@@ -91,11 +91,10 @@ MUST NOT 被读作「同一轮内」（不可行），也 MUST NOT 被读作「N
 基线各章「待决策与待确认」的条目 SHALL 被登记进一份机器可读台账（`tests/pending-decisions.yaml`）。
 每条 MUST 有**封闭枚举的处置**与**一条非空洞依据**：`answered_by_baseline` MUST 给 `basis`，
 其中每个 `§NNN` MUST 真实存在于当前基线；`decidable_in_repo` MUST 给 `recommendation`；
-`decided_in_repo` MUST 给 `landing`，其中每个元素 MUST 是**本仓库已跟踪**的路径；
-`needs_precondition` MUST 给一组**真实存在**的前置（验收 id 或工作项编号）；
-`needs_external` MUST 给 `closure`（取到什么算闭合）；`out_of_scope` MUST 给 `note`。
-一条推荐**已被采纳并落地**的条目 MUST 迁到 `decided_in_repo`，MUST NOT 留在「可决定」里。
-「待裁定」MUST NOT 被读作「无人负责」。
+`decided_in_repo` MUST 给 `landing`，其中每个元素 MUST 是**本仓库已跟踪**的路径，并 MUST 逐项配
+`landing_anchor`——该锚点 MUST 真实出现在那个落地点文件的内容里；`needs_precondition` MUST 给一组
+**真实存在**的前置（验收 id 或工作项编号）；`needs_external` MUST 给 `closure`；`out_of_scope`
+MUST 给 `note`。「待裁定」MUST NOT 被读作「无人负责」。
 
 #### Scenario: A pending decision is answered by the baseline itself
 
@@ -127,8 +126,8 @@ MUST NOT 被读作「同一轮内」（不可行），也 MUST NOT 被读作「N
 #### Scenario: A settled recommendation stays in the undecided class
 
 - **WHEN** 某条 `decidable_in_repo` 的推荐已经在仓库里落地（代码、数据或既有轮次的产物）
-- **THEN** 它 MUST 被登记为 `decided_in_repo` 并给出 `landing`——一个已经决定了的条目继续挂在
-  「可在仓库内决定」上，台账读起来会说「还等人决定」，这是**不实**，不是措辞不够好
+- **THEN** 它 MUST 被登记为 `decided_in_repo` 并给出 `landing` 与 `landing_anchor`——一个已经决定了
+  的条目继续挂在「可在仓库内决定」上，台账读起来会说「还等人决定」，这是**不实**，不是措辞不够好
 
 #### Scenario: A settled item is recorded as answered by the baseline
 
@@ -140,6 +139,13 @@ MUST NOT 被读作「同一轮内」（不可行），也 MUST NOT 被读作「N
 
 - **WHEN** 某条 `decided_in_repo` 缺 `landing`，或 `landing` 为空
 - **THEN** 校验 MUST 失败——「已落地」若不指出落在哪里，它就只是一句自述
+
+#### Scenario: A settled item points somewhere the content is gone
+
+- **WHEN** 某条 `decided_in_repo` 的 `landing` 每个元素都是仓库成员，但 `landing_anchor` 的内容
+  已不在那个文件里（落地内容被撤销或落地点被换成另一个已跟踪文件）
+- **THEN** 校验 MUST 失败——指着**任意**一个已跟踪文件都算「已落地」，等于把「已落地」降级成了
+  「路径存在」
 
 ### Requirement: Every field that can carry a section reference is checked
 
@@ -177,10 +183,12 @@ MUST NOT 在循环里手写。触发条件 MUST 只由**字段是否存在**决�
 待裁定台账的**字段集** SHALL 在**两个层级上各自封闭**：**信封**（台账顶层）出现的每个键 MUST ∈
 已声明集合 `TOP_LEVEL_FIELDS`，**条目**出现的每个键 MUST ∈ 已声明集合 `LEDGER_FIELDS`；
 两个集合 MUST **不相交**——一个字段名只属于一个层级。每个条目 MUST 被分入**结构字段**∪
-**引用字段**∪**id 清单字段**∪**仓库路径字段**之一，四类 MUST 两两不相交且其并集恰等于
-`LEDGER_FIELDS`；信封的每个已声明字段 MUST 在台账上**必需**。只遍历一份清单的扫描，盲区恰是
+**引用字段**∪**id 清单字段**∪**仓库路径字段**∪**内容锚点字段**之一，五类 MUST 两两不相交且其并集
+恰等于 `LEDGER_FIELDS`；信封的每个已声明字段 MUST 在台账上**必需**。只遍历一份清单的扫描，盲区恰是
 **清单的补集** ⇒ 新增键 MUST 命中一条**闭世界**断言，且 MUST NOT 只在一个层级上成立。
-`question` 这类**复述字段** MUST 被纳入引用扫描，MUST NOT 只做非空检查。
+`question` 这类**复述字段** MUST 被纳入引用扫描，MUST NOT 只做非空检查。**内容锚点字段**
+（承载"文件里应有这段内容"的证据）MUST **不**进引用扫描域——它不需要被解析成章节、id 或路径，
+它需要被**读到并比对**。
 
 #### Scenario: An entry carries a field the checker does not know
 
@@ -217,10 +225,16 @@ MUST NOT 在循环里手写。触发条件 MUST 只由**字段是否存在**决�
 
 #### Scenario: A new check category enters the partition
 
-- **WHEN** 新增一类检查（如**仓库路径**）而对应的字段没有同步进 `REFERENCE_FIELDS`，
+- **WHEN** 新增一类检查（如**仓库路径**或**内容锚点**）而对应的字段没有同步进 `REFERENCE_FIELDS`，
   或进了类别表却不在 `LEDGER_FIELDS` 里
-- **THEN** 校验 MUST 失败并指名该字段——「四类并集恰等于 `LEDGER_FIELDS`」与「引用域与类别划分
+- **THEN** 校验 MUST 失败并指名该字段——「各类并集恰等于 `LEDGER_FIELDS`」与「引用域与类别划分
   双向相等」两条断言 MUST 在**两个方向**上各报一次，MUST NOT 让新类别落在缝里
+
+#### Scenario: A content-evidence field joins the reference scan
+
+- **WHEN** 「内容锚点」这类字段被加进了 `REFERENCE_FIELDS`（可解析引用的扫描域）
+- **THEN** `shapeErrors()` 的「被类别认领却不在声明集里」方向 MUST 覆盖它并**具名**点名——
+  锚点不是可解析引用，把它塞进引用扫描域会让「谁在管它」失去单一答案
 
 ### Requirement: Every register-id reference is resolved wherever its field appears
 
@@ -342,3 +356,46 @@ change 目录）**MUST 就地订正**，不产生勘误段（它从未发布，�
 
 - **WHEN** `landing` 出现在**非**其专属处置的条目上，而它的每个元素都是仓库成员
 - **THEN** 校验 MUST NOT 失败——本轮拒绝的是**不可解析**的引用，不是**放错位置**的引用
+
+### Requirement: Every landing site carries content evidence that is actually there
+
+`decided_in_repo` 的每个落地点 SHALL 配一个**内容锚点**：`landing_anchor` MUST 与 `landing`
+**等长且逐项对应**，第 *i* 个锚点 MUST 真实出现在第 *i* 个落地点文件的**内容**里；两者 MUST
+**同生同灭**——有落地点就 MUST 有锚点，反之亦然。判据验的是「**所指文件里有这段内容**」，
+**不**验「这段内容只应出现在那里」，也**不**验它语义上兑现了那个决定（那部分仍由人读）。
+读不到该文件 MUST **具名失败**，MUST NOT 静默降级。
+
+#### Scenario: A landing site whose anchor is not in the file
+
+- **WHEN** 某条 `landing_anchor` 的第 *i* 项不出现在第 *i* 个落地点文件的内容里
+  （落地点被换成另一个已跟踪文件，或落地内容被撤销）
+- **THEN** 校验 MUST 失败并指名该条目、该字段与该值——「已落地」若只看路径是否存在，
+  它就是一条被判据放过的空声明
+
+#### Scenario: An anchor list that does not match its landing list
+
+- **WHEN** `landing_anchor` 与 `landing` 的长度不等，或任一项不是非空字符串
+- **THEN** 校验 MUST 失败并指名该条目与两侧长度——按位置对应的两份清单，长度不等即对应关系不存在
+
+#### Scenario: A landing without an anchor
+
+- **WHEN** 某条目有 `landing` 却没有 `landing_anchor`（或反之）
+- **THEN** 校验 MUST 失败并指名该条目与缺失的那个字段——锚点若可选，「不给锚点」会成为
+  绕过本条判据的那条缝，洞会原样重开
+
+#### Scenario: An anchor on an entry of another disposition
+
+- **WHEN** `landing_anchor` 出现在**非** `decided_in_repo` 的条目上，而它的锚点不在对应文件里
+- **THEN** 校验 MUST 失败并指名该条目、该字段与该值——一个字段由谁检查它的内容证据，是
+  **字段的属性**，与这条数据当前是什么处置无关
+
+#### Scenario: A legal anchor on an entry of another disposition
+
+- **WHEN** `landing_anchor` 出现在**非**其专属处置的条目上，而它的锚点确实在对应文件里
+- **THEN** 校验 MUST NOT 失败——本条拒绝的是「**锚点不在**」，不是「**放错位置**」
+
+#### Scenario: An unreadable landing file
+
+- **WHEN** 某个落地点文件读不到（不存在、不可读、读取抛错）
+- **THEN** 校验 MUST 失败并**指名该路径**——「没读到」与「读到了但不含锚点」是两种不同的错，
+  MUST NOT 都被当成通过

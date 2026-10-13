@@ -85,6 +85,11 @@ entries:
     # `nai-security/src/lib.rs` —— `NativeVault` 在 Windows 走系统凭据库，非 Windows 一律 `CapabilityNotReady`；
     # `platform-matrix/platforms.json` —— `secret-protection` 能力行逐平台登记（linux/macos = explicit-unavailable）。
     landing: ["crates/nai-security/Cargo.toml", "crates/nai-security/src/lib.rs", "schemas/platform-matrix/platforms.json"]
+    # W93：与 `landing` 等长、逐项对应的**内容锚点**——第 i 个锚点 MUST 真实出现在第 i 个落地点文件里。
+    # 没有它，「已落地」只等于「路径存在」（实测：换成 `README.md` 判据照旧全绿）。
+    # 锚点取「承载该决定的那一段」而非「文件里任意一句话」：
+    # `[target.'cfg(windows)'.dependencies]` 是「只在 Windows 引入 keyring」这一决定的承载处。
+    landing_anchor: ["[target.'cfg(windows)'.dependencies]", "NativeVault", "secret-protection"]
 
   - id: PD-10
     question: "wasm 组件模型的异步与流式能力"
@@ -183,6 +188,9 @@ entries:
     # 决定的内容（注解性留存，先例 PD-09）：`decided_in_repo` 的**必填**字段是下面的 `landing`（管到哪）。
     recommendation: "首版**默认不对第三方开放**，只响应本机与本地信任配置中已登记的受信对端；开放第三方入站 MUST 作为一次**显式的版本决策**（INV-31 与 T-24 的威胁面：对端自报无任何效力）"
     landing: ["openspec/specs/agent-harness/spec.md"]
+    # W93 内容锚点：取 W92 落到该规格正文的那一句。PD-22 与 PD-24 的**落地点是同一个文件**，
+    # 锚点不同 ⇒ 「落地点相同」不蕴含「决定相同」，这正是锚点存在的理由。
+    landing_anchor: ["R1 首版入站只响应本机与本地信任配置中已登记的受信对端"]
 
   - id: PD-23
     question: "A2A：对端身份与信任配置的分发方式"
@@ -201,6 +209,7 @@ entries:
     disposition: decided_in_repo
     recommendation: "首版**固定为常量 1、不提供配置面**；配置化 MUST 推迟到 A2A 协议验证之后，且引入时必须同时给出上限校验与「越界具名终止」（§40.4 的「有界」纪律）"
     landing: ["openspec/specs/agent-harness/spec.md"]
+    landing_anchor: ["R1 首版委派链深度上限 MUST 为常量"]
 
   - id: PD-25
     question: "MCP：sampling 是否存在可接受的启用场景"
@@ -253,6 +262,8 @@ entries:
     also_in: ["§5.5"]
     disposition: decided_in_repo
     landing: ["crates/nai-kernel/src/evaluate/memory.rs"]
+    # W93 内容锚点：`MemoryPolicy::default()` 里把观众记忆**默认关闭**的那一行（§5.5「默认关闭」的落点）。
+    landing_anchor: ["viewer_memory_enabled: false"]
     # W89 就地订正：原句用一个词「字段集」指了两样东西（运行时的字段值集合 / 允许字段白名单），
     # 读起来像在断言一个非空的白名单是空集。下面把两个对象分开写，并写明 R1 内白名单不生效。
     recommendation: 'R1 内：**默认关闭**——`MemoryPolicy::default().viewer_memory_enabled = false`（落点见 `landing`）⇒ **运行时被写入的字段值集合为空集**，这是 §5.5「默认关闭」的直接后果。**允许字段白名单**是**另一个对象**，MUST NOT 与它混写：`allowed_viewer_fields = ["preference", "answered_topic"]` 与 `max_retention_ms`（30 天上界）沿用 D10、W57 明写「不新造取值」，且 R1 内**不生效**（H03／H04 保持 `pending`：无持久化、无接线）。字段集与保留期的**取值**仍是 **R3 跨会话能力**的入档前置，MUST NOT 被当作已定。'

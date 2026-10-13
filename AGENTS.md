@@ -2379,3 +2379,51 @@ F5 用**工作区有、索引无**的 `node_modules` 证明判据读的是索引
 见 [W92 报告](docs/reports/2026-10-13-w92-decidable-in-repo-settlement.md)、
 [ADR 0070](docs/adr/0070-decidable-in-repo-settlement.md)、
 `openspec/changes/archive/2026-10-13-w92-decidable-in-repo-settlement/`。
+
+### W93 `decided_in_repo` 的落地点 MUST 带内容证据（`landing` 补锚点）
+
+W93 补的是 **W92 自己造大的那个风险**：`decided_in_repo` 断言「决定已作出**且已落地**」，而判据只验
+`landing` 的每个元素是**仓库已跟踪路径**——「落在哪」被验了，「**落在那里的东西还在不在**」没人验。
+两个探针实测（改真实文件 → 跑 `node --test` → 还原）：① `PD-22.landing` 换成 `README.md`（真实存在、
+已 git 跟踪）⇒ **50/50 全绿**；② `landing` 不动、删掉规格里 `PD-24` 的落地句 ⇒ **50/50 全绿**。
+⇒ 「已落地」是一条**判据放过的空声明**（「已声明 ≠ 已执行（无执行体即假契约）」的形状）。
+
+新增字段 **`landing_anchor`**：与 `landing` **等长、逐项对应**，第 *i* 个锚点 MUST 真实出现在第 *i* 个
+落地点文件的**内容**里。设计上三处取舍：**平行数组**（不把 `landing` 改成对象数组——那会重写
+`REPO_PATH_FIELDS` 的解析器并改 4 条既有数据形状）、**第五类检查 `ANCHOR_FIELDS`**（锚点是"文件内容
+证据"，不是 `§NNN`／id／路径／结构字段中的任何一类，且与四类**两两不相交**）、**耦合断言
+`COUPLED_REQUIRED_FIELDS`**（`landing` 与 `landing_anchor` **同生同灭且等长**——锚点若可选，"不给锚点"
+就是绕过判据的那条缝）。判据新增依赖 `readTrackedText`，**读不到文件 MUST 具名失败**
+（「没看到」与「出错了」分开，MUST NOT 静默降级）。触发条件一律**按字段存在**，与 `disposition` 无关。
+
+**四条锚点**（逐条实测）：PD-09 → `[target.'cfg(windows)'.dependencies]`／`NativeVault`／
+`secret-protection`；PD-22 → `R1 首版入站只响应本机与本地信任配置中已登记的受信对端`；
+PD-24 → `R1 首版委派链深度上限 MUST 为常量`；PD-31 → `viewer_memory_enabled: false`。
+PD-22／PD-24 的**落地点是同一个文件、锚点不同** ⇒ 正说明「落地点相同 ≠ 决定相同」。
+
+**锚点守什么、不守什么（如实披露）**：把门槛从"路径存在"提高到"**所指文件里真有那段内容**"，
+但它**不**验"这个串只应出现在那里"（指到另一个恰好含该锚点的文件仍绿），也**不**验那段内容
+**语义上**兑现了决定（仍由人读，ADR 0054 决策 2）⇒ MUST NOT 被读作"已落地已被证明"。
+
+**本轮合法地改了既有用例的前提**：W88 的反向用例「可解析 `landing` 挂别的处置上 ⇒ 不红」注入时
+只给 `landing` 不给锚点 ⇒ 现在会红（原因是**缺内容证据**而非"放错位置"）⇒ 补上锚点后仍验原意。
+与 W92 的「清空一个态暴露隐含依赖」同族：修法是**补齐前提**，MUST NOT 用短路把判据关掉。
+
+**非空洞注入 P1/P2 + F1–F8**（全部真跑 + sha256 还原校验 OK）：**P1／P2 由绿转红是本轮成果**；
+F1 锚点不在文件里、F2 长度不等（`correspond one-to-one`）、F3 有 landing 无 anchor、F4 空串、
+F5 挂别的处置 ⇒ **红**；F6 反向（合法锚点挂别处）**不红**；F7 闭世界漏登记
+（`unknown field landing_anchor`）、F8 类别并集漏掉 `ANCHOR_FIELDS` ⇒ **红**。
+⚠️ 注入中的两处自我纠错：F1 探针值一度选了 `viewer_memory_enabled: true`（它**真的存在**于
+`memory.rs` ⇒ 假阴性）；F7 的替换只替换注释前缀、把后半句留成裸代码 ⇒ `pass=0 fail=1` 是**注入自身**的错。
+
+**另两态实测无可订正的数据（本轮未动）**：`answered_by_baseline` 4 条 `basis` 都真的答出了（§46.2
+sampling 默认禁用、§41.4 不设阈值、§46.5 不新增契约名、§51.3 清单逐行独立）；
+`needs_precondition` 4 条前置**全部未达成**（H05/06/07/08/13/14/16 与 W61 的 H11/H12 均 `pending`）。
+
+**门控与计数**：`tests/registry.test.mjs` **50 → 51**（新增 1 个用例）；`LEDGER_FIELDS` **11 → 12**；
+`shapeErrors()` 的类别划分**四类 → 五类**；`cargo xtask` 零改动、**Rust 零改动**。
+**明确不做**：不实现 A2A、不改基线正文、不改任何验收 `status`、不把锚点做成"全仓唯一"（无法判定
+且会把判据变脆）。
+见 [W93 报告](docs/reports/2026-10-13-w93-landing-content-anchor.md)、
+[ADR 0071](docs/adr/0071-landing-content-anchor.md)、
+`openspec/changes/archive/2026-10-13-w93-landing-content-anchor/`。
