@@ -64,7 +64,8 @@ W90 的读取形状是**裸键名** `EXPR["<key>"]`，**不带对象上下文**�
 
 ### 2.5 三分类实测
 
-扫描面 = **非测试、非生成、已跟踪**源码（**205 文件**）。
+扫描面 = **非测试、非生成、已跟踪**源码（**200 文件**；全部候选代码文件 297 个，其中 97 个被
+`SCAN_EXCLUSIONS` 按**路径段**排除）。
 
 | 分类 | 数量 |
 | --- | --- |
@@ -141,8 +142,12 @@ W90 的读取形状是**裸键名** `EXPR["<key>"]`，**不带对象上下文**�
 | 面 | 命令 | 结果 |
 | --- | --- | --- |
 | 契约（Node） | `node --test tests/contracts/schema.test.mjs` | **30 passed / 0 failed**（**30 → 30**，替换而非新增） |
-| 判据 harness | `node .w91-check.mjs` | 五条判据 `partitionErrors`／`evidenceErrors`／`causeErrors`／`attributionErrors`／`scanExclusionErrors` **全 `(none)`**；**96 = 49 + 13 + 34**；形状 **serde 7 / index 28 / helper 14** |
+| 判据自检（**一次性** harness，**用完即删**） | `node .w91-check.mjs` | 五条判据 **全 `(none)`**；**96 = 49 + 13 + 34**；形状 **serde 7 / index 28 / helper 14**（数字与 §2.5 一致） |
 | `openspec validate <change> --strict`（归档前） | — | **valid** |
+| 提交后**仅注释**订正 | `node --test tests/contracts/schema.test.mjs` | **30 / 0** —— 订正 `config-consumption.mjs` 两处**文档注释**（一处**不实陈述**「SDK 的 `Manifest` 定义在另一个文件」，实测它在**同一文件**；一处**悬空符号引用** `readShapes`），**零行为改动** |
+
+> 说明：上一条注释订正发生在**已提交之后**（随 CI 回填提交一并落盘），故**不包含在 CI 观测的 SHA 内**；
+> 受影响的判据面（Node 契约测试）已**复跑 30/0**，`cargo` 侧**不读 `.mjs`** ⇒ 不受影响。
 
 ### 6.2 全量门控
 
@@ -154,7 +159,7 @@ W90 的读取形状是**裸键名** `EXPR["<key>"]`，**不带对象上下文**�
 - 门控前先做 `--no-run` 预链接（`cargo test --workspace --locked --exclude nai-xtask --no-run`，
   `CARGO_BUILD_JOBS=1`）**第 5 轮**收敛至 `EXIT=0`（前 4 轮 `exit=101` 折在**不同目标**上 ⇒ 环境级，
   非代码缺陷；`cargo test -p nai-xtask --lib --no-run` 第 1 轮即过）。
-- 与 W90 同形：**91 目标 / 862 passed**。本轮新增的是 **Node 契约判据**（**30 → 30，替换**），
+- 与 W90 同形：**91 目标 / 862 passed**。本轮改的是**既有那条 Node 契约判据**（**30 → 30，替换而非新增**），
   **不进 cargo 目标计数** ⇒ 两侧数字不变属预期，不是「门控没跑到新判据」。
 
 ### 6.3 两条 validate
@@ -167,7 +172,29 @@ W90 的读取形状是**裸键名** `EXPR["<key>"]`，**不带对象上下文**�
 
 ## 七、CI 复核
 
-**CI_PLACEHOLDER**
+**CI 复核**
+
+- run **38393814617**（run_number **113**），`head_sha = 0b6d1053e1` = 本次推送 SHA
+  `0b6d1053e19436e63330d1ba0dff66a6218d951b` ⇒ 结论 **`success`**（11:57:26Z → 12:07:52Z，约 10.4 min）。
+- 两平台均绿、各 **26 steps**：`foundation (ubuntu-24.04)` 11:57:30Z → 12:02:01Z（4m31s）；
+  `foundation (windows-latest)` 11:57:30Z → 12:07:51Z（10m21s）。
+
+### 观测纪律
+
+- 查询带**唯一参数** `&cb=<ns>` + 请求头 `Cache-Control: no-cache`；**回读** `head_sha` == 推送 SHA；
+  `curl --tlsv1.2 --tls-max 1.2`（本机 schannel 与 TLS 1.3 握手失败）。
+- 本轮共 **7 次** GitHub API 调用（run 列表 1 次 + `/runs/<id>` 6 次 + `/runs/<id>/jobs` 1 次）。
+  ⚠️ 前 5 次单查时 run 仍 `in_progress`（`updated_at` 停在 `11:57:30Z` 不动是**正常**的：未完成时该字段不推进，
+  **不是**代理缓存）。**`sleep` 未使用**（沿用 W88/W90 教训：长 `sleep` 会被工具层 SIGTERM 截断）——
+  改为「**先做别的事（文档自查、模块通读），再单次查询**」。
+
+### 顺带观测
+
+- run **112**（`ef620e61f1` = W90 的 CI 回填提交）**`success`**（10:56:40Z → 11:08:42Z）
+  ⇒ W90 那一轮的**回填提交本身也是绿的**。
+- ⚠️ **本轮回填提交之后**另作了一处**仅注释**订正（见 §6.1 末行），**不包含在本 run 的 SHA 内**；
+  其受影响面（Node 契约测试）已复跑 **30/0**，`cargo` 侧不读 `.mjs` ⇒ 不受影响。按既定边界
+  「**回填提交自身不回填**」，该订正**不再回填**。
 
 ## 八、遗留
 

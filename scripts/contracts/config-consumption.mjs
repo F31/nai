@@ -11,7 +11,8 @@
 /// ——实测 `["sample_rate"]` 命中 `apps/render-worker`、`["session_id"]` 命中 `crates/nai-control-api`、
 /// `["path"]`/`["sha256"]`/`["id"]` 命中 `crates/nai-plugin-sdk`。照裸名规则，这些键会**凭空获得读者**。
 ///
-/// ⇒ 读取点 MUST 通过**归因文件集**绑定到 schema，且形状 MUST 覆盖**三态**（见 `readShapes`）。
+/// ⇒ 读取点 MUST 通过**归因文件集**绑定到 schema，且形状 MUST 覆盖**三态**（见 `indexShape` /
+/// `serdeFieldsByFile` / `keyHelpersByFile`）。
 ///
 /// ## 三类
 ///
@@ -99,10 +100,12 @@ export function readShape(name) {
 /// **`struct T` 定义在同一个文件**（`let x: T = ...` 或 `...::<T>` 两种写法）。
 /// ⇒ `T` 的字段名 ∩ 该 schema 的受判键名，算有读取点。
 ///
-/// ⚠️ **「同文件定义」这一条是必须的**：实测 `plugins/avatar-2d/src/lib.rs` 的 `Avatar::admit` 里
-/// 既有 `let manifest: Manifest = ...`（插件 SDK 的 **Manifest**，定义在**另一个文件**）又有
-/// `let config: Config = ...`（**同文件**的 `Config`）。不限定的话，插件清单的字段
-/// （`kind` / `model_binding` / `output_width` …）会**凭空**成为配置面的读者。
+/// ⚠️ **判定域是「`T` 的字段名 ∩ 受判键名」，「同文件」只是安全方向的收紧**：实测
+/// `plugins/avatar-2d/src/lib.rs` 的 `Avatar::admit` 同时解码 `Manifest` 与 `Config`，而
+/// **`struct Manifest`（line 76）与 `struct Config`（line 100）同在同一个文件** ⇒ 「同文件」
+/// **并不能**拦下 `Manifest` 的字段。真正拦下它的是**判定域**（`Manifest` 的 `output_width` /
+/// `kind` / `model_binding` 都不是 avatar-2d 的受判键）。**移掉判定域、只留「同文件」**的话，
+/// 插件清单的字段会**凭空**成为配置面的读者。
 export function serdeFieldsByFile(sources) {
   const decodePatterns = [
     /from_(?:value|str|slice)\s*::\s*<([A-Za-z_][A-Za-z0-9_]*)>/g,
