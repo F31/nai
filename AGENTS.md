@@ -2608,3 +2608,46 @@ MUST 在 dispatch 在册（复用 W96 的 `dispatchSignatures`，**不写第二�
 见 [W97 报告](docs/reports/2026-10-14-w97-gate-coverage.md)、
 [ADR 0075](docs/adr/0075-gate-coverage.md)、
 `openspec/changes/2026-10-14-w97-gate-coverage/`。
+
+### W98 npm 脚本的每个脚本 MUST 有具名处置（执行面：谁调用它）
+
+W98 接着 W95／W96／W97 换**第四层对象**：前几轮管的是 CI 的 step 集合、`cargo xtask` 的命令面、
+Rust 侧的包集合，而**npm 脚本的执行面**完全在外面——3 份 `package.json`、13 个脚本，每个都声称
+做了某件事，却**没有任何判据**回答「**谁调用它**」。三个 Mutation 实证零信号（改真文件 → 真跑现有
+6 个 portable 套件 → 备份拷回 → `sha256` 逐字还原）：① 往根 `package.json` 加
+`"typecheck:fast": "node scripts/nowhere.mjs"`、② 把 `frontend-gate.mjs` 的 `STEPS` 里
+`['apps/desktop','test']` 改成不存在的 `'tests'`、③ 加自引用 `"test:loop": "pnpm test:loop"`
+——三者都是 **158 passed / 0 failed**。**如实记录的反例**：M1（CI 里 `pnpm spec:validate` 拼错成
+`spec:validat`）**会红 2 条**，因为 ADR 0073 的 `localEvidence` marker 逐字比对抓到了——但它抓的是
+「**那一行文本变了**」，不是「**那个脚本没有消费者了**」，**同一处文本、两种语义**。
+
+四条纪律：① **判定单元 MUST 是 `(包目录, 脚本名)` 的配对**（W91）——`typecheck` 在三个包里同名、
+`build` 在两个包里同名，键用 `dir\0script`，删一条 MUST **只**点名那一条；② **文档不是调用**：
+`.md` MUST NOT 进引用扫描面（文档只能被「写错」证伪，把它当消费者，两个从不运行的脚本会**永久
+绿灯**）⇒ `manual` 成因的证据 MUST 是 `.md` 且逐字存在；③ **自引用 MUST NOT 充当消费者**
+（全 `package.json` 自动并入扫描面，因为**脚本互相调用是真实的**——根包的
+`pnpm --recursive typecheck` 是一条**跨包**引用——**自引用排除与这个并入是一件事的两面**）；
+④ **成因闭集按「可判定性」划分、MUST NOT 按语义划分**：3 格（`covered-by-driver`／`manual-alias`／
+`manual`）的**判定域两两不同**，「冒烟」与「开发服务器」**不拆**（证据形态同为「文档里一行」，
+拆开会让合法改签不被发现 ⇒ 两格不可区分 ⇒ 分类退化成标签）。
+
+**两条硬点**：**`covered-by-driver` 的递归委托只覆盖同名脚本**（`pnpm --recursive typecheck`
+不被 `build` step 认证——少了这条，「委托」会变成万能通行证）；**把运行时拒绝静态化**——
+`frontend-gate.mjs` 只在运行时拒绝未知可执行名与未实现 shell 语法，而静态判据**只对驱动表里那 6 项**
+复算同一件事（根包其余脚本头 token 是 `pnpm`／`openspec`／`cargo`，它们**本来就不经**该门控 ⇒
+拿这把尺子量它们是**用错了对象**）。
+
+**两条判据缺陷是本轮测试抓出来的（真收获）**：① 一行里两条命令（`pnpm a && pnpm b`）时贪婪
+`[^\n]*` 把第二条吞进第一条 token ⇒ **第二条引用静默消失**（**假阴性，危险方向**）⇒ 改非贪婪
+`[^\n&|;]*`；② `packages` 解析失败后仍被 `packages.keys()` 访问 ⇒ 崩而非具名。⇒ **凡「解析多行／
+多命令」，MUST 用一行两条的样本验过**。另：「注释不是引用」的泛化换形——原始正则命中 4 行，
+剥注释后**只有 1 行**是真引用（其余是文档注释与 `tests/registry.yaml` 的 `notes` 散文）。
+
+`tests/contracts/npm-scripts.test.mjs` **34 个用例**、`test-reachability` 站点 **10 → 11**、
+**Node 套件 8 → 9**、`xtask/src/lib.rs` **+1 行登记**（Rust 零行为改动，**被审对象一个字符未动**）。
+注入 **P1–P15** 全红且逐字还原；边界 **b1–b5 = 4/2/4/3/2** 与 W95／W96／W97／站点清单**互不顶替**。
+**如实披露**：`--filter P` 形态在引用扫描面里实例数为 **0**（只在 `docs/**`）⇒ 该分支当前只有
+测试文件里的注入用例作证据，不写成「已覆盖」。
+见 [W98 报告](docs/reports/2026-10-14-w98-npm-script-surface.md)、
+[ADR 0076](docs/adr/0076-npm-script-surface.md)、
+`openspec/changes/2026-10-14-w98-npm-script-surface/`。

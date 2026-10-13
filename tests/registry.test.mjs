@@ -2146,10 +2146,11 @@ test('the site table is pinned verbatim and the ledger is declared empty', () =>
   assert.deepEqual(TEST_TIERS, ['portable', 'full', 'ci']);
   assert.deepEqual(LOCALLY_UNREACHABLE, [], 'the unreachable ledger is declared empty by this round');
   assert.deepEqual(siteShapeErrors(), [], 'the shipped site table must be self-consistent');
-  // 十个站点，逐字写死 id：新增/删除站点会让这条红，而不是静静地改变覆盖集。
+  // 十一个站点，逐字写死 id：新增/删除站点会让这条红，而不是静静地改变覆盖集。
   // （W95 新增 `xtask-engineering-workflow`、W96 新增 `xtask-engineering-xtask-commands`、
-  // W97 新增 `xtask-engineering-gate-coverage`——它们正是这条断言的应有行为：新增一个测试文件
-  // 而不登记站点，会让 W84 的闭世界与这条逐字清单**同时**红。）
+  // W97 新增 `xtask-engineering-gate-coverage`、W98 新增 `xtask-engineering-npm-scripts`
+  // ——它们正是这条断言的应有行为：新增一个测试文件而不登记站点，会让 W84 的闭世界与这条
+  // 逐字清单**同时**红。）
   assert.deepEqual(
     TEST_REGISTRATION_SITES.map(site => site.id).sort(),
     [
@@ -2158,6 +2159,7 @@ test('the site table is pinned verbatim and the ledger is declared empty', () =>
       'root-test-ui',
       'xtask-contracts-suite',
       'xtask-engineering-gate-coverage',
+      'xtask-engineering-npm-scripts',
       'xtask-engineering-platform',
       'xtask-engineering-schema',
       'xtask-engineering-workflow',

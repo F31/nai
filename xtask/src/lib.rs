@@ -63,6 +63,10 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
     // ★ 副作用：本函数是它的**第四个**受审对象——它自己就是「门控闭包」的边界，
     // 把这里的 `--workspace` 换成任何显式列表，该测试会立刻算出被牺牲的包。
     schema::node(root, &["--test", "tests/contracts/gate-coverage.test.mjs"])?;
+    // npm 脚本的执行面守卫（W98）：每个脚本「谁调用它」由解析算出，孤儿必须具名付代价；
+    // 文档里的命令不算调用，自引用不算消费者。同样纯静态：读三份 `package.json`、解析驱动表、
+    // 扫引用、读 `pnpm-workspace.yaml`，不需要 protoc。
+    schema::node(root, &["--test", "tests/contracts/npm-scripts.test.mjs"])?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,
