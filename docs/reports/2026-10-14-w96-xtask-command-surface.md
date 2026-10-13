@@ -200,8 +200,28 @@ standalone 挂凭据／artifact 挂凭据／help 挂成因／空 dispatch／dupl
 
 ## 七、CI
 
-（推送后的单次低频查询结果回填于此：唯一查询参数破坏缓存 + `Cache-Control: no-cache` +
-回读 `head_sha` == 推送 SHA。）
+CI 观测为**单次低频查询**（唯一查询参数破坏缓存 + `Cache-Control: no-cache` + 回读 `head_sha` == 推送 SHA）。
+
+| 项 | 值 |
+| --- | --- |
+| run | **38452942776（#124）** |
+| 回读 `head_sha` | `24d6edf1504c338628f210e8503812d31d154280` == 推送 SHA（**MATCH**） |
+| 结论 | **completed / success**（`19:12:02Z → 19:22:52Z`，约 10 分 50 秒） |
+| API | 查询共 **3 次**（`runs?per_page=5`、`runs?per_page=3`、`runs/{id}/jobs`），均 **`HTTP=200`**（实测取到） |
+| 两个 job | 各 **26 步**：`foundation (ubuntu-24.04)`（`19:12:06Z → 19:18:07Z`）/ `foundation (windows-latest)`（`19:12:05Z → 19:22:51Z`），均 **success** |
+
+- Ubuntu 仅 **step 11**（`if: failure()` 的 annotation 通道）跳过；Windows 另跳过 **step 8**
+  （Linux C++ protobuf runtime）与 **step 20**（Linux-only 三语言套件）——**平台分工，非缺失**。
+- **本机绿与 CI 绿同源**：CI **step 10 跑的就是 `cargo xtask check --profile full`**
+  （与 §6.2 本机门控**同一条命令、同一个 profile**），两平台都 `success` ⇒ 本轮新增的
+  `tests/contracts/xtask-commands.test.mjs`（在 `engineering_checks` 里被登记）与改动的
+  `test-reachability` 站点表在 CI 侧**也真跑过**。
+- CI **step 9** 跑的正是 `cargo xtask schema --check`——**它就是本轮登记为 `standalone`
+  （`host-subprocess`）的那一条命令**；本轮**没有删它**（探针 P2 只是临时删过并已 `sha256` 逐字还原）。
+- **自限声明**：观测为**作业/步骤级**（`/actions/jobs/{id}/logs` 需仓库 admin 权限，匿名不可读）
+  ⇒ 本报告**不**断言「CI 侧也是 91/862 与 7 个 Node 套件」，只断言上面那条同源关系。
+- 本轮 API 查询共 **3 次**，远未触及匿名配额（60/h）；代理端口从 `https_proxy` 读（本轮 `61209`），
+  **未硬编码**。
 
 ## 八、遗留
 
