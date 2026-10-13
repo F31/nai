@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import {
   readRegistry,
   readCatalogIds,
@@ -36,6 +37,19 @@ import {
   DISPOSITIONS,
   REQUIRED_FIELD,
 } from '../scripts/contracts/pending-decisions.mjs';
+import { readTrackedPaths } from '../scripts/contracts/git-index.mjs';
+import {
+  TEST_EXTENSIONS,
+  TEST_TIERS,
+  TEST_REGISTRATION_SITES,
+  LOCALLY_UNREACHABLE,
+  isTestFile,
+  markerMatcher,
+  resolveSite,
+  siteShapeErrors,
+  extensionErrors,
+  reachabilityErrors,
+} from '../scripts/contracts/test-reachability.mjs';
 
 /// 基线文档只读一次：后面的注入用例都在同一份文本上做「最小改动」。
 const baseline = await readBaseline();
@@ -1404,5 +1418,289 @@ test('a prose section has no table of its own, and that premise is asserted', ()
   }
   // 前提的另一半：§51.3 的表**确实**被读到了，否则上一条可能只是「什么都没解析出来」。
   assert.equal(parseCapabilityPacks(baseline.text).rows.length, 8);
+});
+
+/* ----------------------------------------------------------------------------------------------
+ * W84：测试文件的可达性闭世界
+ *
+ * 门控靠「逐条列举 + 两个 glob」把 Node 测试接上电，而**列举的盲区是它的补集**：
+ * 一个放进 `tests/kernel/` 的测试文件（已在 `.git/index` 里、含 `assert.fail`）此前**静默不跑**
+ * ——门控 `EXIT=0`、目标数与用例数不变、其用例名在日志里零出现。
+ *
+ * 下面的注入用例**不改真实文件**：它们喂一份**合成的**在册集与 host 正文给判据，
+ * 因此每一组的「我改的确实是我以为的那一处」是构造出来的，而不是靠内存里的写法。
+ * 唯一的真实仓库用例在最后（F0），它用 `readTrackedPaths` 读 `.git/index`。
+ * -------------------------------------------------------------------------------------------- */
+
+/// 合成世界：两个站点、两份 host 正文、三个在册测试文件。
+const fakeSites = () => [
+  { id: 'alpha', host: 'gate/a.txt', marker: 'tests/one.test.mjs', base: '.', tier: 'portable' },
+  { id: 'beta', host: 'gate/b.json', marker: 'tests/group/*.test.mjs', base: '.', tier: 'full' },
+];
+const fakeHosts = () => new Map([
+  ['gate/a.txt', 'run --test tests/one.test.mjs\n'],
+  ['gate/b.json', '"test": "node --test tests/group/*.test.mjs"\n'],
+]);
+const fakeTracked = () => new Set([
+  'tests/one.test.mjs',
+  'tests/group/two.test.mjs',
+  'tests/group/three.test.mjs',
+]);
+const readFrom = hosts => host => (hosts.has(host) ? hosts.get(host) : null);
+
+test('the reachability judge is green on a well-formed world, and names nothing', () => {
+  // F0（合成）：两个站点都逐字落在 host 里、都覆盖到东西 ⇒ 无错误。
+  const errors = reachabilityErrors({
+    tracked: fakeTracked(),
+    sites: fakeSites(),
+    unreachable: [],
+    readHost: readFrom(fakeHosts()),
+  });
+  assert.deepEqual(errors, [], 'a well-formed registration world must produce no errors');
+});
+
+test('a test file nobody registers is reported by name', () => {
+  // F1：这正是本轮要修的洞——在册却不被任何站点覆盖的文件此前**完全静默**。
+  const tracked = fakeTracked();
+  tracked.add('tests/lonely.test.mjs');
+  const errors = reachabilityErrors({
+    tracked,
+    sites: fakeSites(),
+    unreachable: [],
+    readHost: readFrom(fakeHosts()),
+  });
+  assert.ok(
+    errors.some(error => error.includes('tests/lonely.test.mjs') && error.includes('no registration site covers it')),
+    `a tracked test file with no site must be named; got ${JSON.stringify(errors)}`,
+  );
+});
+
+test('a site whose marker is absent from its host is a declared lie', () => {
+  // F2：改一个字符 —— 站点还在表里，但 host 里已经没有那段原文。
+  const hosts = fakeHosts();
+  hosts.set('gate/a.txt', 'run --test tests/renamed.test.mjs\n');
+  const errors = reachabilityErrors({
+    tracked: fakeTracked(),
+    sites: fakeSites(),
+    unreachable: [],
+    readHost: readFrom(hosts),
+  });
+  assert.ok(
+    errors.some(error => error.includes('alpha') && error.includes('does not contain it verbatim')),
+    `a site whose marker is missing from its host must be named; got ${JSON.stringify(errors)}`,
+  );
+});
+
+test('a narrowed glob drops exactly the files it stopped matching', () => {
+  // F3：把一个 glob 缩成单文件 —— 被丢下的**那些**文件必须落进闭世界。
+  const sites = fakeSites();
+  sites[1].marker = 'tests/group/two.test.mjs';
+  const hosts = fakeHosts();
+  hosts.set('gate/b.json', '"test": "node --test tests/group/two.test.mjs"\n');
+  const errors = reachabilityErrors({
+    tracked: fakeTracked(),
+    sites,
+    unreachable: [],
+    readHost: readFrom(hosts),
+  });
+  assert.ok(
+    errors.some(error => error.includes('tests/group/three.test.mjs')),
+    `the file dropped by the narrowed glob must be named; got ${JSON.stringify(errors)}`,
+  );
+  assert.ok(
+    !errors.some(error => error.includes('tests/group/two.test.mjs')),
+    'the file the narrow glob still matches must not be reported',
+  );
+});
+
+test('a site that covers nothing is a hollow declaration', () => {
+  // F4：marker 逐字存在，但解析后在在册集合上匹配不到任何东西。
+  const sites = fakeSites();
+  sites[0].marker = 'tests/absent.test.mjs';
+  const hosts = fakeHosts();
+  hosts.set('gate/a.txt', 'run --test tests/absent.test.mjs\n');
+  const errors = reachabilityErrors({
+    tracked: fakeTracked(),
+    sites,
+    unreachable: [],
+    readHost: readFrom(hosts),
+  });
+  assert.ok(
+    errors.some(error => error.includes('alpha') && error.includes('matches no tracked file')),
+    `a site that covers nothing must be named; got ${JSON.stringify(errors)}`,
+  );
+});
+
+test('a stale exemption in the unreachable ledger is reported', () => {
+  // F5：台账里的条目**已经可达** ⇒ 过期豁免。台账不是垃圾桶。
+  const errors = reachabilityErrors({
+    tracked: fakeTracked(),
+    sites: fakeSites(),
+    unreachable: [{ path: 'tests/one.test.mjs', reason: '说是没人跑' }],
+    readHost: readFrom(fakeHosts()),
+  });
+  assert.ok(
+    errors.some(error => error.includes('tests/one.test.mjs') && error.includes('stale exemption')),
+    `an already-covered ledger entry must be named; got ${JSON.stringify(errors)}`,
+  );
+});
+
+test('a genuine unreachable entry is accepted, and the ledger must carry a reason', () => {
+  // F7（反向注入）：一条**真**未被覆盖的条目 + 非空理由 ⇒ **不红**。
+  // 这是「假阳性方向」的证据：本轮拒绝的是**过期/无理由**的条目，不是**所有**台账条目。
+  //
+  // 注意「未覆盖」必须由**站点侧**造成（缩窄 glob），MUST NOT 把文件移出在册集合——
+  // 台账条目要描述**仓库内容**，把文件移出去会让条目本身变成非法的（实测过这个坑）。
+  const sites = fakeSites();
+  sites[1].marker = 'tests/group/two.test.mjs';
+  const hosts = fakeHosts();
+  hosts.set('gate/b.json', '"test": "node --test tests/group/two.test.mjs"\n');
+  const tracked = fakeTracked(); // `three` 仍在册，只是没有任何站点跑它
+
+  const accepted = reachabilityErrors({
+    tracked,
+    sites,
+    unreachable: [{ path: 'tests/group/three.test.mjs', reason: '仅由手工命令跑，尚未接入门控' }],
+    readHost: readFrom(hosts),
+  });
+  assert.deepEqual(accepted, [], 'a genuine, reasoned ledger entry must not fail the judge');
+  // 而同一条目**没有理由**时必须红——否则台账会变成「加进去就再也不用管」。
+  const reasonless = reachabilityErrors({
+    tracked,
+    sites,
+    unreachable: [{ path: 'tests/group/three.test.mjs', reason: '  ' }],
+    readHost: readFrom(hosts),
+  });
+  assert.ok(
+    reasonless.some(error => error.includes('non-empty reason')),
+    `a ledger entry without a reason must be named; got ${JSON.stringify(reasonless)}`,
+  );
+});
+
+test('a test extension outside the recognized list is reported', () => {
+  // F6：文件层的闭世界对 `foo.test.ts` **看不见**（它连「未被覆盖」都不会被报出），
+  // 因为 `isTestFile` 为假。⇒ 扩展名层必须自己有一条断言。
+  const tracked = fakeTracked();
+  tracked.add('tests/x/typed.test.ts');
+  const errors = reachabilityErrors({
+    tracked,
+    sites: fakeSites(),
+    unreachable: [],
+    readHost: readFrom(fakeHosts()),
+  });
+  assert.ok(
+    errors.some(error => error.includes('tests/x/typed.test.ts') && error.includes('blind spot')),
+    `an unscanned test extension must be named; got ${JSON.stringify(errors)}`,
+  );
+  // 前提的另一半：这个文件确实**不**是「被识别的测试文件」，否则上一条可能只是碰巧命中。
+  assert.equal(isTestFile('tests/x/typed.test.ts'), false);
+});
+
+test('an empty coverage set is reported, so "nothing covers anything" cannot pass', () => {
+  // F9：站点表清空 ⇒ 若没有这条断言，文件层闭世界会因台账为空而**全部静默通过**。
+  const errors = reachabilityErrors({
+    tracked: fakeTracked(),
+    sites: [],
+    unreachable: [],
+    readHost: readFrom(fakeHosts()),
+  });
+  assert.ok(
+    errors.some(error => error.includes('no registration site covers any tracked file')),
+    `an empty coverage set must be reported; got ${JSON.stringify(errors)}`,
+  );
+});
+
+test('site order does not matter, and a missing input is an error rather than a silence', () => {
+  // F8（反向注入）：站点表顺序打乱 ⇒ 不红（判据只看集合，不看顺序）。
+  const reordered = [...fakeSites()].reverse();
+  assert.deepEqual(
+    reachabilityErrors({
+      tracked: fakeTracked(),
+      sites: reordered,
+      unreachable: [],
+      readHost: readFrom(fakeHosts()),
+    }),
+    [],
+    'site order must not change the verdict',
+  );
+  // 入参缺失 ⇒ **具名报错**，MUST NOT 静默降级（与 `validatePendingDecisions` 同纪律）。
+  const missing = reachabilityErrors({ sites: fakeSites() });
+  assert.ok(
+    missing.some(error => error.includes('tracked-path set') || error.includes('readHost')),
+    `missing inputs must be named, not silently skipped; got ${JSON.stringify(missing)}`,
+  );
+});
+
+test('the site table is pinned verbatim and the ledger is declared empty', () => {
+  // 表级：逐字钉住三张常量表。派生写法（例如把扩展名由「仓库里现有文件」算出）会让
+  // 「清单 == 它自己」恒真，一个字都没说。
+  assert.deepEqual(TEST_EXTENSIONS, ['.test.mjs']);
+  assert.deepEqual(TEST_TIERS, ['portable', 'full', 'ci']);
+  assert.deepEqual(LOCALLY_UNREACHABLE, [], 'the unreachable ledger is declared empty by this round');
+  assert.deepEqual(siteShapeErrors(), [], 'the shipped site table must be self-consistent');
+  // 七个站点，逐字写死 id：新增/删除站点会让这条红，而不是静静地改变覆盖集。
+  assert.deepEqual(
+    TEST_REGISTRATION_SITES.map(site => site.id).sort(),
+    [
+      'ci-contract-suite',
+      'desktop-test',
+      'root-test-ui',
+      'xtask-contracts-suite',
+      'xtask-engineering-platform',
+      'xtask-engineering-schema',
+      'xtask-registry',
+    ],
+  );
+  for (const site of TEST_REGISTRATION_SITES) {
+    assert.ok(TEST_TIERS.includes(site.tier), `site ${site.id} must have a tier in the closed set`);
+    // **非空洞**：每个站点在**合成世界**里都能解析成一个 matcher（形状可用），
+    // 真实覆盖与否由 F0 与注入用例分别证明。
+    assert.equal(typeof markerMatcher(site).matches, 'function');
+  }
+});
+
+test('the site table rejects duplicate ids, unknown tiers, and repeated host+marker pairs', () => {
+  const duplicated = [...fakeSites(), { ...fakeSites()[0] }];
+  assert.ok(
+    siteShapeErrors(duplicated).some(error => error.includes('declared twice')),
+    'a duplicated id must be reported',
+  );
+  const badTier = fakeSites();
+  badTier[0].tier = 'nightly';
+  assert.ok(
+    siteShapeErrors(badTier).some(error => error.includes('which is not one of')),
+    'a tier outside the closed set must be reported',
+  );
+  const repeated = [...fakeSites(), { ...fakeSites()[0], id: 'gamma' }];
+  assert.ok(
+    siteShapeErrors(repeated).some(error => error.includes('duplicates the host+marker')),
+    'two sites with the same host+marker are redundant and must be reported',
+  );
+});
+
+test('the real repository reaches every tracked test file', async () => {
+  // F0：真实仓库——用 `.git/index` 的已跟踪路径集（W75 的纯 JS 设施，不派生子进程）。
+  const tracked = await readTrackedPaths('.');
+  assert.equal(tracked.ok, true, tracked.detail ?? 'the tracked-path set must be readable');
+  const errors = reachabilityErrors({
+    tracked: tracked.paths,
+    sites: TEST_REGISTRATION_SITES,
+    unreachable: LOCALLY_UNREACHABLE,
+    readHost: host => {
+      try {
+        return readFileSync(host, 'utf8');
+      } catch {
+        return null;
+      }
+    },
+  });
+  assert.deepEqual(errors, [], 'the reachability closed world must hold for the real repository');
+
+  // 前提的另一半：覆盖集**确实非空**，否则上面的空错误可能只是「什么都没解析出来」。
+  const covered = new Set();
+  for (const site of TEST_REGISTRATION_SITES) {
+    for (const filePath of resolveSite(site, tracked.paths)) covered.add(filePath);
+  }
+  assert.ok(covered.size >= 9, `expected at least nine covered test files, got ${covered.size}`);
 });
 

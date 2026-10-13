@@ -1924,3 +1924,47 @@ F1–F3 三种坏值走**三条不同分支**（作业项 / 验收 id / 两者�
 见 [W83 报告](docs/reports/2026-10-13-w83-reference-field-verification.md)、
 [ADR 0061](docs/adr/0061-reference-field-verification.md)、
 `openspec/changes/archive/2026-10-13-w83-reference-field-verification/`。
+
+### W84 测试文件的可达性闭世界（在册测试文件 MUST 被某个登记站点覆盖）
+
+**问题**：Node 测试靠**逐条列举**（`xtask/src/lib.rs`、`xtask/src/registry.rs` 里手写
+`node --test <path>`）加**两个 glob**（`package.json` 的 `tests/ui/*.test.mjs`、
+`apps/desktop/package.json` 的 `tests/*.test.mjs`）接上电。**列举的盲区恰好是它的补集**。
+
+**探针实测**（非推断）：把 `tests/kernel/w84-probe.test.mjs`（内容只有一句 `assert.fail(...)`）
+加入 `.git/index` 后跑 `cargo xtask check --profile portable` ⇒ **`EXIT=0`**、
+`test result` 行数 **91**（73 `Running` + 18 `Doc-tests`）、**860 passed / 0 failed**、
+而 `grep -c "w84 probe"` = **0**（探针用例名在日志里**零出现**）。
+⇒ 不是「未登记 = 不跑」，而是**静默的不跑**：连「忽略了一个文件」都没有任何信号。
+
+**裁定**（[ADR 0062](docs/adr/0062-test-reachability-closure.md)）：
+
+1. **新增并导出** `TEST_REGISTRATION_SITES`（七个站点，逐字写死 `{id, host, marker, base, tier}`）
+   ——「测试在哪里被接上电」的**单一来源**。
+2. **覆盖集由 marker 原文解析得出**（`resolveSite`），MUST NOT 另行声明一份——否则「表 == 它自己」
+   是**恒真式**（W80 决策 5）。用**已跟踪路径**而非 `readdir`：按**仓库成员**计算（W75），
+   未跟踪文件不参与覆盖集 ⇒ 探针**必然**触发闭世界。
+3. **假契约 + 非空洞**：marker MUST 在 host 里**逐字存在**；站点 MUST 至少覆盖一个**在册**文件。
+   「非空洞」**不是**「站点数 > 0」——后者对一个空 glob 是瞎的。
+4. **闭世界 MUST 在「扩展名层」也成立**：`looksLikeTest`（宽）与扩展名 ∈ `TEST_EXTENSIONS`（窄）
+   分开判——`foo.test.ts` 连「未被覆盖」都不会被报出。**清单的窄，正是它闭合的原因**（T2 注入）。
+5. **台账不是豁免**：`LOCALLY_UNREACHABLE` 条目 MUST 带理由、MUST 是在册测试文件、
+   MUST **确实未被覆盖**（自清理，已可达即红）。
+6. **「覆盖集非空」与「两集不相交」成对**：台账为空时不相交退化成恒真 ⇒ 必须有 `covered.size > 0`，
+   否则「全不覆盖」也能绿（「非空是互斥类断言的必要一半」）。
+7. **入参显式注入，缺任一项即报错**。
+
+**注入 F0 + F1–F9（数据级）＋ T0–T5（表级，临时模块副本）共 15/15 开火且具名**：
+**F0** 真实仓库绿；**F1** 是洞的直接复现（在册却不被覆盖的文件被具名）；**F2** marker 漂移 ⇒ 假契约；
+**F3** glob 缩窄 ⇒ 恰好丢掉的文件落进闭世界；**F4** 空站点 ⇒ 非空洞；**F5** 已可达的台账条目 ⇒
+过期豁免；**F6** `typed.test.ts` ⇒ 扩展名盲区；**F7／F8 是反向注入**（真未覆盖的台账条目不红、
+站点顺序打乱不红）；**F9** 站点表清空 ⇒ 覆盖集为空。表级 **T1** 从真实表删一个站点 ⇒ 恰好 4 个
+ui 文件红；**T2** 放宽 `TEST_EXTENSIONS` ⇒ 盲区**重开**（0 错误）而窄清单报 1 条；
+**T3** 清空真实站点表 ⇒ 10 条错误含空覆盖；**T4/T5** 还原后仍绿、源文件逐字未改。
+
+`tests/registry.test.mjs` **34 → 47**（随 `engineering_checks` 既有条目自动进 `portable`／`full`，接线零改动）。
+**探针文件在归档前删除**，基线**保持全绿**（基线 91 / 860 与 W71–W83 逐项相同）。
+**不改基线正文、不改 `tests/registry.yaml`、不改 `tests/pending-decisions.yaml`、不改任何 Rust、不新增依赖边。**
+见 [W84 报告](docs/reports/2026-10-13-w84-test-reachability-closure.md)、
+[ADR 0062](docs/adr/0062-test-reachability-closure.md)、
+`openspec/changes/archive/2026-10-13-w84-test-reachability-closure/`。
