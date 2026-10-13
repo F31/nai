@@ -133,3 +133,11 @@ cargo xtask check --profile full
    > 字段集 MUST 是**闭世界**的（`LEDGER_FIELDS`，ADR 0059）——新字段**不**进清单会被**具名拒绝**；
    > 并且本条把 `question` 列为「不承载 `§NNN`」的那份**假设**，已被**换成断言**：
    > `question` 现在**在** `CITATION_FIELDS` 里（实测当时 0 命中，故不引入红）。原文保留，细节见 ADR 0059。
+
+   > **勘误段（W83 / ADR 0061 追加）**：「单一来源的清单」是必要的，但**不足以**——决策 1 里
+   > **同一条**决策引入了 `ID_LIST_FIELDS = ['precondition']` 并声明它「按 id 校验」，而那个校验
+   > 是**按处置触发**的（`if (entry.disposition === 'needs_precondition' …)`）。决策 1 写下的规则
+   > 「**扫描按「字段是否存在」触发**」只落到了 `§NNN` 一侧。W83 实测：把 `precondition: ["W99"]`
+   > 挂到非 `needs_precondition` 的条目上**完全静默**（对照组：同条目的 `closure='§99.9'` 被抓）。
+   > ⇒ 「清单是单一来源」MUST 补上一半：**触发条件 MUST 只由字段存在决定，MUST NOT 由处置决定**——
+   > 一份完整的清单配上一个条件性的触发，覆盖仍然是条件性的。原文保留，细节见 ADR 0061。

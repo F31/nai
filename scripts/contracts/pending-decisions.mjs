@@ -60,6 +60,31 @@ export const ID_LIST_FIELDS = ['precondition'];
 /// 一个字段可以「既被扫、又有专属检查」——分类判的是「`§NNN` 由谁负责」。）
 export const STRUCTURAL_FIELDS = ['id', 'disposition'];
 
+/// **承载「必须可解析的引用」的全部字段**——`CITATION_FIELDS`（解析 `§NNN`）∪
+/// `ID_LIST_FIELDS`（解析登记 id）。这是引用扫描的**单一来源**：校验循环遍历**它**，
+/// 而不是各写一份。
+///
+/// **逐字写死，MUST NOT 由 `[...CITATION_FIELDS, ...ID_LIST_FIELDS]` 派生**：派生出的
+/// 「声明集 == 两类别之并」是**恒真**的（W80 §九结论 5）。写死之后，`shapeErrors()` 的
+/// 「双向相等」才是**内容断言**：新加一个 id 清单字段却忘了排进扫描域，会被**具名**点名。
+///
+/// **触发条件 MUST 只由「字段是否存在」决定，MUST NOT 由处置决定**（W80 在 § 侧确立；
+/// 本轮 W83 把它扩展到 id 侧）。`precondition` 此前只在 `disposition === 'needs_precondition'`
+/// 时被校验——挂到别的处置上**完全静默**（实测：`PD-01`（`needs_external`）加
+/// `precondition: ["W99"]` ⇒ 空错误）。一个字段由谁解析它的引用，是**字段的属性**，与
+/// 「这条数据当前是什么处置」无关；把「谁负责」写成 `disposition === 'X' && …` 的合取，
+/// 等于让「这个字段有主」变成**条件性的**。
+export const REFERENCE_FIELDS = [
+  'basis',
+  'introduced_in',
+  'also_in',
+  'recommendation',
+  'closure',
+  'note',
+  'question',
+  'precondition',
+];
+
 /// 台账里**允许出现**的全部字段。这是**闭世界**断言的基准：出现在条目里、却不在此集合中的字段
 /// ⇒ **具名失败**（`validatePendingDecisions`）。
 ///
@@ -173,6 +198,27 @@ export function shapeErrors() {
     if (!allowed.has(field)) {
       errors.push(
         `field ${field} is classified but not listed in LEDGER_FIELDS — the closed-world check would reject it`,
+      );
+    }
+  }
+
+  // **引用扫描域 MUST 与类别划分双向相等**（W83）：扫描域是**声明**（`REFERENCE_FIELDS`），
+  // 类别划分是**谁解析这个字段的引用**。两个方向都具名：
+  // ① 声明了却无类别认领 ⇒ 它的引用**没人解析**（`precondition` 曾是这个形状的另一半：
+  //    在类别里，却只在一种处置下被扫）；
+  // ② 被类别认领却不在声明集里 ⇒ 引用扫描会**跳过它**（类别表说它有主，扫描却不看它）。
+  const reference = new Set(REFERENCE_FIELDS);
+  for (const field of reference) {
+    if (!cited.has(field) && !idList.has(field)) {
+      errors.push(
+        `reference field ${field} is declared but no check category owns it — its references would be resolved by nobody`,
+      );
+    }
+  }
+  for (const field of [...cited, ...idList]) {
+    if (!reference.has(field)) {
+      errors.push(
+        `field ${field} is owned by a check category but is not a reference field — the reference scan would skip it`,
       );
     }
   }
@@ -309,6 +355,9 @@ export function validatePendingDecisions(ledger, deps = {}) {
   const byChapter = new Map([...CHAPTER_COUNTS.keys()].map(key => [key, 0]));
   const byDisposition = new Map(DISPOSITIONS.map(key => [key, 0]));
   const allowedFields = new Set(LEDGER_FIELDS);
+  // 引用扫描按 `REFERENCE_FIELDS` 遍历，再按类别分派到两个解析器——分类判的是
+  // 「这个字段的引用由谁解析」，与这条数据当前是什么处置**无关**。
+  const citationSet = new Set(CITATION_FIELDS);
 
   for (const entry of entries) {
     const id = entry?.id;
@@ -366,21 +415,49 @@ export function validatePendingDecisions(ledger, deps = {}) {
       }
     }
 
-    // 台账里出现的**每一个** §NNN 都必须真实存在于当前基线。这条把「凭印象编一个章节号」排除掉；
-    // 语义上是否真的回答了该问题由 ADR 与报告承载，不由脚本假装判定。
+    // 台账里出现的**每一个「必须可解析的引用」**都必须解析得开。
     //
-    // 扫描域取自 `CITATION_FIELDS`（**包括** `recommendation`／`closure`／`note`）——
-    // W80 之前只用三个 `sectionRefs(...)` 手写，那三个字段整片漏扫、17 条引用无人核。
-    // 错误措辞 MUST 是「条目 + 字段 + 章节号」三件齐：同一个坏章节号可能同时出现在多个字段里，
-    // 只说条目无法定位（W79：错误的措辞会把定位引向错误的方向）。
-    for (const field of CITATION_FIELDS) {
+    // 扫描域取自 `REFERENCE_FIELDS`（**单一来源**），触发条件是**字段是否存在**——
+    // 循环体里**没有 `disposition`**。`disposition` 只决定「哪个字段是必填的」（预设断言），
+    // 不决定「哪个字段的引用要解析」（内容断言）。两者的触发条件 MUST 分开：
+    // W80 把这一条应用到了 `§NNN` 侧（`recommendation`／`closure`／`note` 曾被整片漏扫），
+    // 而 id 侧（`precondition`）仍按处置触发 ⇒ 挂到别的处置上**完全静默**（W83 实测）。
+    //
+    // 错误措辞 MUST 是「条目 + 字段 + 值」三件齐：同一个坏引用可能同时出现在多个字段里，
+    // 只说条目无法定位（W79：错误的措辞会把定位引向错误的方向）。字段名由 `${field}` 生成，
+    // MUST NOT 写死——写死的字面量在新增一个 id 清单字段的那一刻会**说谎**。
+    for (const field of REFERENCE_FIELDS) {
       const value = entry[field];
       const values = Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
-      for (const text of values) {
-        for (const ref of sectionRefs(text)) {
-          if (sections.size > 0 && !sections.has(ref)) {
+      if (citationSet.has(field)) {
+        // `§NNN` 引用：每个都必须真实存在于当前基线。这条把「凭印象编一个章节号」排除掉；
+        // 语义上是否真的回答了该问题由 ADR 与报告承载，不由脚本假装判定。
+        for (const text of values) {
+          for (const ref of sectionRefs(text)) {
+            if (sections.size > 0 && !sections.has(ref)) {
+              errors.push(
+                `${id}: ${field} references §${ref}, which does not exist in the baseline`,
+              );
+            }
+          }
+        }
+      } else {
+        // 登记 id 引用：每个都必须解析为基线作业项或注册表验收 id。
+        for (const item of values) {
+          if (!nonEmptyText(item)) {
+            errors.push(`${id}: ${field} entries must be non-empty strings`);
+          } else if (/^W\d{2}$/.test(item)) {
+            if (!deps.workItemIds.has(item)) {
+              errors.push(`${id}: ${field} ${item} is not a work item named by the baseline`);
+            }
+          } else if (/^[SRABOPMHX]\d{2}$/.test(item)) {
+            // 形状是验收 id、但注册表里没有它——与「写的根本不是 id」是两种不同的错，分开报。
+            if (!deps.acceptanceIds.has(item)) {
+              errors.push(`${id}: ${field} ${item} is not a registry acceptance id`);
+            }
+          } else {
             errors.push(
-              `${id}: ${field} references §${ref}, which does not exist in the baseline`,
+              `${id}: ${field} ${item} is neither a registry acceptance id nor a baseline work item`,
             );
           }
         }
@@ -390,28 +467,6 @@ export function validatePendingDecisions(ledger, deps = {}) {
     // answered_by_baseline 必须**指回**至少一个章节——否则「有依据」是空的。
     if (entry.disposition === 'answered_by_baseline' && sectionRefs(entry.basis).length === 0) {
       errors.push(`${id}: answered_by_baseline must cite at least one §NNN it is answered by`);
-    }
-
-    // 前置必须落在真实存在的东西上。
-    if (entry.disposition === 'needs_precondition' && Array.isArray(entry.precondition)) {
-      for (const item of entry.precondition) {
-        if (!nonEmptyText(item)) {
-          errors.push(`${id}: precondition entries must be non-empty strings`);
-        } else if (/^W\d{2}$/.test(item)) {
-          if (!deps.workItemIds.has(item)) {
-            errors.push(`${id}: precondition ${item} is not a work item named by the baseline`);
-          }
-        } else if (/^[SRABOPMHX]\d{2}$/.test(item)) {
-          // 形状是验收 id、但注册表里没有它——与「写的根本不是 id」是两种不同的错，分开报。
-          if (!deps.acceptanceIds.has(item)) {
-            errors.push(`${id}: precondition ${item} is not a registry acceptance id`);
-          }
-        } else {
-          errors.push(
-            `${id}: precondition ${item} is neither a registry acceptance id nor a baseline work item`,
-          );
-        }
-      }
     }
   }
 

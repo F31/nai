@@ -1885,3 +1885,42 @@ F7 把条目字段 `note` 塞进声明集 ⇒ 不相交断言具名；
 见 [W82 报告](docs/reports/2026-10-13-w82-ledger-envelope-closure.md)、
 [ADR 0060](docs/adr/0060-ledger-envelope-closure.md)、
 `openspec/changes/archive/2026-10-13-w82-ledger-envelope-closure/`。
+
+### W83 引用字段的验证范围（触发条件 MUST 只由**字段存在**决定）
+
+**问题**：W80 给台账确立了「**扫描按「字段是否存在」触发，MUST NOT 按处置触发**」这条纪律
+（当时的发现是注解型的 `note`），**但它只落到了 `§NNN` 一侧**。台账里的**登记 id 引用**
+（`precondition`，`ID_LIST_FIELDS` 的唯一成员）的校验是**按处置触发**的：
+`if (entry.disposition === 'needs_precondition' && …)`。
+
+**探针实测**（用真实注册表）：把 `precondition: ["W99"]` 挂到**非** `needs_precondition` 的条目上
+⇒ `validatePendingDecisions` 返回**空错误**（`needs_external`／`answered_by_baseline`／
+`decidable_in_repo` 三种宿主全部静默）；**对照组**：同条目的 `closure='§99.9'` **被抓**——
+**同一个洞的两半，只有一半被 W80 补上**。
+
+**裁定**（[ADR 0061](docs/adr/0061-reference-field-verification.md)）：
+
+1. **新增并导出** `REFERENCE_FIELDS`（八个：七个引用字段 ＋ `precondition`，**逐字写死**）
+   ——引用扫描域的**单一来源**。
+2. **扫描循环由 `REFERENCE_FIELDS` 驱动，触发条件里不出现 `disposition`**——
+   「**必填**」是**预设**断言（按处置触发正确）；「**引用可解析**」是**内容**断言（按处置触发错误），
+   两者 MUST 分开。
+3. **错误措辞「条目 + 字段 + 值」三件齐**，字段名由 `${field}` 生成（写死的字面量在新增字段时**说谎**）。
+4. **只拒「不可解析的引用」，不拒「放错位置的引用」**——可解析的 `precondition` 出现在非专属处置上
+   MUST NOT 红（假阳性方向）。
+5. **`shapeErrors()` 双向具名断言**：`REFERENCE_FIELDS` ↔ `CITATION_FIELDS ∪ ID_LIST_FIELDS`
+   （方向②正是本轮洞的近亲：曾在类别里、却只在一种处置下被扫）。
+
+**注入 F0 + F1–F4（数据级）+ F5–F8（表级）逐项开火且具名**（8/8）：
+F1–F3 三种坏值走**三条不同分支**（作业项 / 验收 id / 两者都不是）都失败并报**条目 + 字段 + 值**；
+**F4 是反向注入**（合法 id 在非专属处置上 MUST NOT 红）；F5 把 `closure` 移出扫描域 ⇒
+`is not a reference field`；F6 掺幽灵字段 ⇒ `no check category owns it`；
+**F7／F8 是反向注入**（顺序打乱不红、还原后基线仍绿）。表级注入用**临时模块副本**（该文件无 import）。
+
+`tests/registry.test.mjs` **32 → 34**（随 `engineering_checks` 既有条目自动进 `portable`／`full`，接线零改动）。
+**台账数据一字未改**（实测 `precondition` **只**出现在 4 条 `needs_precondition` 条目上 ⇒
+触发条件放宽后**报错集合不变**，基线**保持全绿**）。
+**不改基线正文、不改 `tests/registry.yaml`、不改任何 Rust、不新增依赖边。**
+见 [W83 报告](docs/reports/2026-10-13-w83-reference-field-verification.md)、
+[ADR 0061](docs/adr/0061-reference-field-verification.md)、
+`openspec/changes/archive/2026-10-13-w83-reference-field-verification/`。

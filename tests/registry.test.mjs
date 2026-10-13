@@ -32,6 +32,7 @@ import {
   STRUCTURAL_FIELDS,
   LEDGER_FIELDS,
   TOP_LEVEL_FIELDS,
+  REFERENCE_FIELDS,
   DISPOSITIONS,
   REQUIRED_FIELD,
 } from '../scripts/contracts/pending-decisions.mjs';
@@ -973,6 +974,95 @@ test('a precondition must name something that exists', async () => {
     ledgerErrors(nonsense).some(error => error.includes('neither a registry acceptance id')),
     'a precondition that names nothing checkable must be reported',
   );
+});
+
+test('an id reference must resolve wherever its field appears, not only under its own disposition', async () => {
+  // W83：`precondition` 是 `ID_LIST_FIELDS` 的唯一成员，而它的 id 校验此前**按处置触发**
+  // ——只在 `disposition === 'needs_precondition'` 时运行。挂到别的处置上**完全静默**
+  // （探针：`PD-01`（`needs_external`）加 `precondition: ["W99"]` ⇒ 空错误）。
+  // 一个字段由谁解析它的引用，是**字段的属性**，与这条数据当前是什么处置无关。
+  //
+  // 本用例**泛化到清单**：对 `ID_LIST_FIELDS` 的**每个**成员，在其专属处置**之外**注入一个
+  // 不可解析的引用 ⇒ MUST 失败并指名「条目 + 字段 + 值」。将来再加 id 清单字段，本用例自动扩展。
+  let injected = 0;
+  for (const field of ID_LIST_FIELDS) {
+    const ownDisposition = [...REQUIRED_FIELD].find(([, owned]) => owned === field)?.[0];
+    assert.ok(ownDisposition, `${field} must be the required field of exactly one disposition`);
+    const host = structuredClone(pendingLedger);
+    const target = host.entries.find(entry => entry.disposition !== ownDisposition);
+    assert.ok(target, `an entry whose disposition is not ${ownDisposition} must exist to host the probe`);
+    for (const bad of ['W99', 'H99', '不是 id']) {
+      const probe = structuredClone(host);
+      probe.entries.find(entry => entry.id === target.id)[field] = [bad];
+      assert.ok(
+        ledgerErrors(probe).some(
+          error =>
+            error.includes(target.id) && error.includes(field) && error.includes(bad),
+        ),
+        `${field} on a ${target.disposition} entry must name the entry, the field and the value`,
+      );
+      injected += 1;
+    }
+    // 三种坏值走**三条不同分支**（作业项 / 验收 id / 两者都不是）——都 MUST 被解析检查抓住，
+    // 而不是被「必填字段」的那条检查顺带挡住：这里的宿主条目**不缺**它自己的必填字段。
+    assert.ok(
+      ledgerErrors(host).length === 0,
+      `the host entry without the injected field must stay clean for ${field}`,
+    );
+  }
+  assert.ok(injected >= 3, 'the injection must actually run over the declared id-list fields');
+
+  // **反向注入**（不该红时不红）：一个**可解析**的 id 出现在**非专属**处置上 ⇒ MUST NOT 红。
+  // 本轮拒绝的是「**不可解析**的引用」，不是「**放错位置**的引用」——把位置也一并拒绝会把
+  // 合法数据判红（假阳性方向，design 决策 4）。
+  const legal = structuredClone(pendingLedger);
+  const carrier = legal.entries.find(entry => entry.disposition !== 'needs_precondition');
+  carrier.precondition = [[...ledgerDeps.workItemIds][0]];
+  assert.deepEqual(
+    ledgerErrors(legal),
+    [],
+    'a resolvable precondition outside its own disposition must not be reported',
+  );
+});
+
+test('the reference scan domain is a declared single source over every reference category', async () => {
+  // 逐字钉内容：`REFERENCE_FIELDS` 是**独立写死**的声明，不是
+  // `[...CITATION_FIELDS, ...ID_LIST_FIELDS]` 派生出来的——派生出的「并集 == 它」是**恒真式**
+  // （W80：只钉「关系」不够，要逐字钉内容）。
+  assert.deepEqual(
+    [...REFERENCE_FIELDS].sort(),
+    [
+      'also_in',
+      'basis',
+      'closure',
+      'introduced_in',
+      'note',
+      'precondition',
+      'question',
+      'recommendation',
+    ],
+    'the reference scan domain must be exactly the eight declared fields',
+  );
+
+  // 与类别划分**双向相等**：① 声明了却无类别认领 ⇒ 它的引用**没人解析**；
+  // ② 被类别认领却不在声明集里 ⇒ 引用扫描会**跳过它**。（方向②正是本轮洞的近亲：
+  // `precondition` 曾在类别里，却只在一种处置下被扫。）
+  assert.deepEqual(
+    [...REFERENCE_FIELDS].sort(),
+    [...new Set([...CITATION_FIELDS, ...ID_LIST_FIELDS])].sort(),
+    'the reference domain must equal the union of the two reference categories',
+  );
+  assert.deepEqual(shapeErrors(), [], 'the reference domain must be consistent as committed');
+
+  // **非空洞**：声明的每个引用字段都真的在台账里出现过。少了这条，`REFERENCE_FIELDS` 可以掺进
+  // 永远打不到数据的幽灵字段——而「双向相等」对它仍然成立。
+  const present = new Set(pendingLedger.entries.flatMap(entry => Object.keys(entry)));
+  for (const field of REFERENCE_FIELDS) {
+    assert.ok(
+      present.has(field),
+      `${field} is declared as a reference field but appears in no entry — a phantom field`,
+    );
+  }
 });
 
 test('the ledger cannot shrink, be reclassified, or address a stale baseline', async () => {
