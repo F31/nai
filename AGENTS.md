@@ -2105,3 +2105,63 @@ W87 **不是**范围版，也**不是**设计变更，而是**订正版**——�
 见 [W87 报告](docs/reports/2026-10-13-w87-baseline-v311-archive-boundary.md)、
 [ADR 0065](docs/adr/0065-design-baseline-v311.md)、
 `openspec/changes/archive/2026-10-13-w87-baseline-v311-archive-boundary/`。
+
+### W88 待裁定台账的第六态与落地点（PD-09 结清）
+
+W88 **不是**升基线、**不是**加能力，而是**结清一条已登记的推荐**——并由此发现台账缺了一整个维度。
+
+**问题（W87 §八第 1 条 / ADR 0054 遗留 3）**：W76 的台账（`tests/pending-decisions.yaml`）把 34 条
+待裁定项分成**五态**，五态回答的都是「**何处能闭合**」：基线答了／可在仓库内决定／等前置／等外部／
+不在范围。**没有一态**表示「**仓库已经作出决定、并且已经落地**」⇒ 一个已结清的条目只能永远停在
+`decidable_in_repo`，而那个状态的名字叫「**可**决定」。本轮采纳的 **PD-09**
+（*静态数据加密所用的系统密钥保护机制*）正是这个形状。
+
+**核实（先读后判，四条子句逐条落地）**：`crates/nai-security/Cargo.toml` 把 `keyring` **只**放在
+`[target.'cfg(windows)'.dependencies]` 下；`NativeVault` 在 Windows 走系统凭据库、非 Windows 一律
+`CapabilityNotReady`（**失败关闭，不是静默降级**，有 `production_backend_is_explicitly_unavailable`
+钉住）；`schemas/platform-matrix/platforms.json` 的 `secret-protection` 能力行逐平台登记
+（`windows` = supported、`linux`/`macos` = `explicit-unavailable`/`not_ported_to_target_os`、
+`ios`/`android` = `out-of-scope`）⇒ 推荐的四条子句（按平台用系统密钥库／Windows 原生凭据首发／
+缺后端的平台显式登记／MUST NOT 自造跨平台密钥库）**逐条成立**。
+
+**同时排除了一条看似更省事的路**：**MUST NOT** 把它记作 `answered_by_baseline`——基线 §11.5 的原文是
+「备份与录制提供可选加密，密钥由系统密钥保护机制封装（**具体机制待选型验证**）」，
+**基线没有回答它**，是**仓库**回答了它。写成 `answered_by_baseline` 会是一条**不实声明**
+（这条排除是**判据级**的，不是措辞级的）。
+
+**裁定**（[ADR 0066](docs/adr/0066-decided-in-repo-landing.md)；ADR 0054 **追加勘误段**）：
+
+- **新增第六态 `decided_in_repo`**（决定已在仓库内作出且已落地），必填字段 **`landing`（落地点）**
+  ——与 `answered_by_baseline` 用 `basis`（答在哪一节）而不是「答案原文」是**同一条纪律**：
+  台账钉「**管到哪**」这个可判事实，语义是否真的落地**刻意留给人读**。「每态**一个**必填字段」**不变**。
+- **落地点 MUST 是仓库已跟踪的路径**，判据输入由 `.git/index` 派生（`git-index.mjs`，W75）——
+  **MUST NOT** 遍历工作区（那是 W75 的 **F2 根因**：未跟踪文件会被算成仓库成员）。
+  探针以 `node_modules` 为样本（磁盘上存在、索引里没有）把两种读法**分开**。
+  为什么不用作业项编号：实测基线的工作项表**不含 W41–W55**（§47.6 的编号说明）⇒
+  落地轮次 `W55` **无法作为 `W\d{2}` 解析**，那会让必填字段恒假。
+- **新增第三类检查类别 `REPO_PATH_FIELDS`**，与 `ID_LIST_FIELDS` **不合并**（解析器不同：登记 id vs
+  仓库成员路径）。四类 MUST 两两不相交、并集恰等于 `LEDGER_FIELDS`；`shapeErrors()` 的
+  「不相交 / 并集相等 / 引用域双向相等」三条断言随之从三扩到四。
+- **「清单型 / 文本型」改由类别表决定，MUST NOT 写死字段名**。原实现把分派写成
+  `field === 'precondition'`（由**写死的字段名**决定）；本轮**实测改前那一行**：给 `PD-09.landing` 一个
+  **合法跟踪路径的字符串** ⇒ 改前 **0 error**（当文本判，「非空」即过关）、改后 **1 error**
+  （`requires a non-empty landing`）。
+- **路径校验按「字段是否存在」触发，MUST NOT 按处置触发**（W80 在 `§NNN` 侧、W83 在 id 侧已确立；
+  `landing` **出生即遵此律**）。
+- **不引入 `tests/pending-decisions.schema.json`**：ADR 0054 遗留 5 说「等第二次结构变更再判」，
+  本轮**正是**那次变更（6 态 + 1 字段 + 1 类别 + 1 依赖），判定为**不引入**——校验器已用
+  **闭世界**（条目键集、信封键集）+ 封闭枚举 + 类别划分把形状钉死**且接上了电**，再写一份 schema
+  会在**同一件事上出现第二处定义**（W86 的教训：两处定义会静默分家）。
+- `validatePendingDecisions` 新增必填依赖 **`repositoryFiles`**；缺它即具名报错，**MUST NOT** 降级。
+
+**数据侧**：`PD-09` 由 `decidable_in_repo` 迁到 `decided_in_repo`；`DISPOSITION_COUNTS`
+`decidable_in_repo` **5 → 4**、`decided_in_repo` **0 → 1**（总数仍 **34**、分章计数不变）；
+`recommendation` **原文保留**为注解（它就是被采纳的那份建议，删掉就丢了「决定了什么」）。
+`tests/registry.test.mjs` **47 → 50**；非空洞注入 F0–F7（含 F3「把 `landing` 移出扫描域 ⇒ 同一个坏值
+**静默**」与 F4/F5 的改前/改后对照）。
+
+**明确不做**：不改基线正文、不改 `tests/registry.yaml`、**不实现任何代码**（Rust 零改动）、
+不新增依赖边、不新增契约名、不改余下 4 条 `decidable_in_repo` 的处置、不重排 W 编号。
+见 [W88 报告](docs/reports/2026-10-13-w88-decided-in-repo-landing.md)、
+[ADR 0066](docs/adr/0066-decided-in-repo-landing.md)、
+`openspec/changes/archive/2026-10-13-w88-decided-in-repo-landing/`。

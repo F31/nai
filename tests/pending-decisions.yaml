@@ -72,8 +72,18 @@ entries:
     question: "静态数据加密所用的系统密钥保护机制"
     introduced_in: "§18.2"
     also_in: ["§39.7"]
-    disposition: decidable_in_repo
+    # W88 结清：决定已作出**并已落地**，故处置从 `decidable_in_repo` 迁到 `decided_in_repo`。
+    # 这些条目**不是**「基线回答了它」——§11.5 恰恰明写「（具体机制待选型验证）」，
+    # 是仓库回答了它（W55 的平台矩阵 + `crates/nai-security`），故 MUST NOT 记作 `answered_by_baseline`。
+    disposition: decided_in_repo
+    # 决定的内容。原文保留：它就是**被采纳的那份建议**，删掉就丢了「决定了什么」。
+    # `decided_in_repo` 的**必填**字段是下面的 `landing`（管到哪），本条是注解性的留存。
     recommendation: "按目标平台各用**系统密钥库**（Windows 原生凭据为首发实现），缺该后端的平台如实登记 explicit-unavailable（沿用 W55 的平台维度处置），MUST NOT 自造一套跨平台密钥库"
+    # 落地点（必填）：每个元素 MUST 是**本仓库已跟踪**的路径。
+    # `nai-security/Cargo.toml` —— `keyring` 只在 `[target.'cfg(windows)'.dependencies]` 下引入；
+    # `nai-security/src/lib.rs` —— `NativeVault` 在 Windows 走系统凭据库，非 Windows 一律 `CapabilityNotReady`；
+    # `platform-matrix/platforms.json` —— `secret-protection` 能力行逐平台登记（linux/macos = explicit-unavailable）。
+    landing: ["crates/nai-security/Cargo.toml", "crates/nai-security/src/lib.rs", "schemas/platform-matrix/platforms.json"]
 
   - id: PD-10
     question: "wasm 组件模型的异步与流式能力"

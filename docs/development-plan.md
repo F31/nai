@@ -1166,6 +1166,19 @@ W78 §九第 8 条撞上后者并作了**就地订正**，W76 §九第 6 条则�
 **指针同步按四情形分流**：改动前实测 **143 行 / 31 文件**，逐条判定（MUST NOT 批量替换）后**幸存 35 行 / 9 文件全属情形③**（升基线链条、`V3.10 §58.2` 的 E1–E5 收录记载、W71/W72 轮次记录、被拒改写的举例、`tests/registry.test.mjs:155`）；
 **88 条不变、归属不变、一条 `status` 未动**（H18 与 B07 仍 `pending`）、**不实现任何代码**（Rust 行为零改动，随版本号同步的只有字符串常量）、不给 §16 的验收注册表增行、不重排 W 编号。
 见 [W87 报告](reports/2026-10-13-w87-baseline-v311-archive-boundary.md)、[ADR 0065](adr/0065-design-baseline-v311.md)、`openspec/changes/archive/2026-10-13-w87-baseline-v311-archive-boundary/`）；
+**W88 结清了 W76 台账的第一条推荐，并由此发现台账缺了一整个维度**（W87 §八第 1 条与 ADR 0054 遗留 3 都登记着「5 条 `decidable_in_repo` 的推荐尚未执行，每条值得单独一轮」，本轮采纳 **PD-09**——*静态数据加密所用的系统密钥保护机制*）——
+核实结论是**缺口不在数据、在分类**：台账五态回答的都是「**何处能闭合**」（基线答了／可在仓库内决定／等前置／等外部／不在范围），**没有一态**表达「**仓库已作出决定、并且已落地**」⇒ 一个已结清的条目只能永远停在 `decidable_in_repo`（名为「**可**决定」）；
+而 PD-09 的推荐**早已在仓库落地**——`crates/nai-security/Cargo.toml` 把 `keyring` **只**放在 `[target.'cfg(windows)'.dependencies]` 下、`NativeVault` 在 Windows 走系统凭据库而非 Windows 一律 `CapabilityNotReady`（**失败关闭，不是静默降级**，有测试钉住）、`schemas/platform-matrix/platforms.json` 的 `secret-protection` 能力行逐平台登记（`linux`/`macos` = `explicit-unavailable`）⇒ 推荐的四条子句**逐条成立**；
+**同时排除了更省事的那条路**：MUST NOT 记作 `answered_by_baseline`——基线 §11.5 明写「（**具体机制待选型验证**）」，**基线没有回答它，是仓库回答了它**，写成「基线已答」会是不实声明（这条排除是**判据级**的）——
+产出 [ADR 0066](adr/0066-decided-in-repo-landing.md)（ADR 0054 **追加勘误段**）：**新增第六态 `decided_in_repo`**（决定已作出且已落地），必填字段 **`landing`（落地点）**——与 `answered_by_baseline` 用 `basis`（答在哪一节）而不是答案原文是**同一条纪律**，台账钉「管到哪」这个可判事实（「每态**一个**必填字段」不变）；
+**落地点 MUST 是仓库已跟踪的路径**，判据输入由 `.git/index` 派生（`git-index.mjs`，W75），**MUST NOT** 遍历工作区（那是 W75 的 F2 根因；探针以 `node_modules` 为样本把两种读法**分开**），且**不用作业项编号**（实测基线工作项表**不含 W41–W55**，§47.6 的编号说明 ⇒ 落地轮次 `W55` 无法作为 `W\d{2}` 解析，会让必填字段恒假）；
+**新增第三类检查类别 `REPO_PATH_FIELDS`**，与 `ID_LIST_FIELDS` **不合并**（解析器不同），四类 MUST 两两不相交、并集恰等于 `LEDGER_FIELDS`（`shapeErrors()` 三条断言从三扩到四）；
+**「清单型 / 文本型」改由类别表决定，MUST NOT 写死字段名**（原实现 `field === 'precondition'`；实测改前给一个**合法跟踪路径的字符串** ⇒ **0 error**、改后 ⇒ 具名失败）；
+**路径校验按「字段是否存在」触发，MUST NOT 按处置触发**（W80／W83 的纪律，`landing` 出生即遵）；`validatePendingDecisions` 新增必填依赖 **`repositoryFiles`**（缺即具名报错，不降级）；
+**判定不引入 `tests/pending-decisions.schema.json`**（ADR 0054 遗留 5 说「等第二次结构变更再判」，本轮**正是**那次变更，结论是**不引入**——校验器已用闭世界 + 枚举 + 类别划分钉死形状**且接上了电**，再写一份 schema 会在**同一件事上出现第二处定义**）；
+数据侧 `PD-09` 由 `decidable_in_repo` 迁到 `decided_in_repo`、`DISPOSITION_COUNTS` `decidable_in_repo` **5 → 4** / `decided_in_repo` **0 → 1**（总数仍 **34**、分章计数不变），`recommendation` **原文保留**为注解；`tests/registry.test.mjs` **47 → 50**，非空洞注入 F0–F7（含改前/改后对照）；
+**不改基线正文、不改 `tests/registry.yaml`、不实现任何代码（Rust 零改动）、不新增依赖边与契约名、不改余下 4 条 `decidable_in_repo` 的处置、不重排 W 编号**。
+见 [W88 报告](reports/2026-10-13-w88-decided-in-repo-landing.md)、[ADR 0066](adr/0066-decided-in-repo-landing.md)、`openspec/changes/archive/2026-10-13-w88-decided-in-repo-landing/`）；
 轨道二的自备资源**已有真实凭据落地**（文本／语音两条真实链路经本栈走通并产出真值证据，文本模型标准化为 `agnes-2.5-flash`）；剩余 **O01**（**W49 已交付判定机制**；仍需授权的演示形象内容、示例知识与场景正文、一键连通的真实接线，以及约 10 分钟首句演练与约 30 分钟真实输出验证的**人工执行**）、
 **O02/O05**（UI 验收，按既有惯例 `pending`；**O05 的呈现层 W49 已落地但未接入界面**；**O02 的「显示最终文本」W51 已在逻辑面满足**——存储新增 `display_text` 列、控制面载荷携带、界面显示并具名缺文本，但真实候选来源/桌面渲染/生产 root 接线未接，故仍 `pending`）与阻塞项 **B01**（**判定机制、载荷载体、参考答案判据与评估执行体均已就位**；**W50 已登记外部语料素材来源**——LiveChat 供「问题措辞」，素材≠题集、不使门槛满足；缺 100 题集内容与真实知识库内容，均为外部投入）、**B02/D12**（模型与目标机证据）、
 **O03**（M0b 定案与真机 S09）、**O04**（干净 Windows 安装、真实音频设备变更与真实回退；安装侧已由 `nai-upgrade-core` 覆盖）、

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import {
   readRegistry,
@@ -30,6 +30,7 @@ import {
   shapeErrors,
   CITATION_FIELDS,
   ID_LIST_FIELDS,
+  REPO_PATH_FIELDS,
   STRUCTURAL_FIELDS,
   LEDGER_FIELDS,
   TOP_LEVEL_FIELDS,
@@ -670,11 +671,14 @@ test("the registry's shape layer and semantic layer agree, constant by constant"
 /// 入参**显式注入**（与 `baseline.mjs` 的 `normalizeDeviations` 同一条纪律）：缺任一项即报错，
 /// 不做「缺了就跳过对应检查」的降级——一条会被削弱的断言若保持沉默，比没有断言更坏。
 const pendingLedger = YAML.parse(await readFile('tests/pending-decisions.yaml', 'utf8'));
+const tracked = await readTrackedPaths('.');
+assert.ok(tracked.ok, `the repository file set must be readable: ${tracked.reason ?? ''}`);
 const ledgerDeps = {
   baselineVersion: baseline.version,
   baselineText: baseline.text,
   acceptanceIds: new Set((await readRegistry()).acceptance.map(item => item.id)),
   workItemIds: baselineWorkItems(baseline.text),
+  repositoryFiles: tracked.paths,
 };
 const ledgerErrors = ledger => validatePendingDecisions(ledger, ledgerDeps);
 
@@ -692,7 +696,13 @@ test('the pending-decision ledger classifies every item and every reference reso
   );
 
   // 缺输入必须**报错**，而不是静默跳过对应的检查。
-  for (const key of ['baselineVersion', 'baselineText', 'acceptanceIds', 'workItemIds']) {
+  for (const key of [
+    'baselineVersion',
+    'baselineText',
+    'acceptanceIds',
+    'workItemIds',
+    'repositoryFiles',
+  ]) {
     const partial = {...ledgerDeps};
     delete partial[key];
     assert.ok(
@@ -702,6 +712,13 @@ test('the pending-decision ledger classifies every item and every reference reso
       `omitting ${key} must be reported, not silently skipped`,
     );
   }
+
+  // 非空洞自检（W88）：跟踪集若恒空，`landing` 的「路径存在」会**恒假**（响得早、但方向相反），
+  // 而「跟踪集真的取到了仓库」这件事本身必须被断言。
+  assert.ok(
+    tracked.paths.size > 100,
+    'the tracked-path set must actually hold the repository, not a handful of files',
+  );
 });
 
 test('a pending decision cannot cite a section the baseline does not have', async () => {
@@ -765,10 +782,13 @@ test('the ledger checker cannot lose coverage through its own tables', async () 
     'every disposition needs exactly one required field, and every required field needs a disposition',
   );
 
-  // 每个处置的必填字段都必须被**某**检查覆盖：要么扫 §NNN 引用、要么按 id 校验。
+  // 每个处置的必填字段都必须被**某**检查覆盖：要么扫 `§NNN` 引用、要么按 id 校验、
+  // 要么按**仓库成员**校验（W88 新增第三类）。
   for (const [disposition, field] of REQUIRED_FIELD) {
     assert.ok(
-      CITATION_FIELDS.includes(field) || ID_LIST_FIELDS.includes(field),
+      CITATION_FIELDS.includes(field) ||
+        ID_LIST_FIELDS.includes(field) ||
+        REPO_PATH_FIELDS.includes(field),
       `${disposition}'s required field ${field} must be covered by some check`,
     );
   }
@@ -778,6 +798,7 @@ test('the ledger checker cannot lose coverage through its own tables', async () 
   for (const field of ['recommendation', 'closure', 'note']) {
     assert.ok(CITATION_FIELDS.includes(field), `${field} must be scanned for §NNN references`);
     assert.ok(!ID_LIST_FIELDS.includes(field), `${field} is a citation field, not an id list`);
+    assert.ok(!REPO_PATH_FIELDS.includes(field), `${field} is a citation field, not a path list`);
   }
 });
 
@@ -828,16 +849,17 @@ test('the ledger field set is closed and every field has exactly one owner', asy
       'disposition',
       'id',
       'introduced_in',
+      'landing',
       'note',
       'precondition',
       'question',
       'recommendation',
     ],
-    'the allowed field set must be exactly the ten declared fields',
+    'the allowed field set must be exactly the eleven declared fields',
   );
 
-  // 三类**两两不相交**，且其并集**恰等于** `LEDGER_FIELDS`。
-  const categories = [CITATION_FIELDS, ID_LIST_FIELDS, STRUCTURAL_FIELDS];
+  // 四类**两两不相交**，且其并集**恰等于** `LEDGER_FIELDS`。
+  const categories = [CITATION_FIELDS, ID_LIST_FIELDS, REPO_PATH_FIELDS, STRUCTURAL_FIELDS];
   assert.equal(
     new Set(categories.flat()).size,
     categories.flat().length,
@@ -846,7 +868,7 @@ test('the ledger field set is closed and every field has exactly one owner', asy
   assert.deepEqual(
     [...new Set(categories.flat())].sort(),
     [...LEDGER_FIELDS].sort(),
-    'the three categories must partition the allowed field set',
+    'the four categories must partition the allowed field set',
   );
   assert.deepEqual(shapeErrors(), [], 'the partition must be internally consistent as committed');
 
@@ -940,6 +962,7 @@ test('each disposition has to pay for itself with its own required field', async
   const cases = [
     ['answered_by_baseline', 'basis'],
     ['decidable_in_repo', 'recommendation'],
+    ['decided_in_repo', 'landing'],
     ['needs_precondition', 'precondition'],
     ['needs_external', 'closure'],
     ['out_of_scope', 'note'],
@@ -1039,6 +1062,133 @@ test('an id reference must resolve wherever its field appears, not only under it
   );
 });
 
+test('a landing must name a path the repository actually tracks', async () => {
+  // W88：`decided_in_repo` 的必填字段是**落地点**。它 MUST 是可判的，否则「结清」只是换了个词。
+  // 判据的输入是**仓库成员集**（`.git/index` 派生，W75），不是工作区清单——
+  // 这条正是 W75 的 F2 根因的**直接**回归守卫。
+  const clean = structuredClone(pendingLedger);
+  const settled = clean.entries.find(entry => entry.disposition === 'decided_in_repo');
+  assert.ok(settled, 'the ledger must carry at least one settled entry');
+  assert.ok(
+    settled.landing.length > 0 && settled.landing.every(item => tracked.paths.has(item)),
+    'as committed, every landing path must be a tracked file',
+  );
+
+  // ① 不存在的路径 ⇒ 具名（条目 + 字段 + 值）。
+  const ghost = structuredClone(pendingLedger);
+  const ghostEntry = ghost.entries.find(entry => entry.disposition === 'decided_in_repo');
+  ghostEntry.landing = [...ghostEntry.landing, 'crates/nai-security/src/no-such-file.rs'];
+  assert.ok(
+    ledgerErrors(ghost).some(
+      error =>
+        error.includes(ghostEntry.id) &&
+        error.includes('landing') &&
+        error.includes('no-such-file.rs'),
+    ),
+    'a landing path that does not exist must be reported with the entry, the field and the value',
+  );
+
+  // ② **磁盘上存在 ≠ 仓库成员**：这一条把「用 `.git/index`」与「用 `readdir`」分开。
+  // 若判据改成遍历工作区，`node_modules` 会被算成仓库成员 ⇒ 本注入将**静默通过**。
+  const probeDir = 'node_modules';
+  assert.ok(
+    (await stat(probeDir)).isDirectory(),
+    'the probe needs a directory that exists on disk so the two readings can disagree',
+  );
+  assert.ok(
+    !tracked.paths.has(probeDir),
+    'the probe needs a path the index does not hold — otherwise it proves nothing',
+  );
+  const untracked = structuredClone(pendingLedger);
+  const untrackedEntry = untracked.entries.find(entry => entry.disposition === 'decided_in_repo');
+  untrackedEntry.landing = [probeDir];
+  assert.ok(
+    ledgerErrors(untracked).some(
+      error => error.includes(untrackedEntry.id) && error.includes('landing') && error.includes(probeDir),
+    ),
+    'a path that exists on disk but is untracked must be rejected — the index decides, not the filesystem',
+  );
+
+  // **反向注入**（不该红时不红）：一个**可解析**的路径出现在**别的**处置上 ⇒ MUST NOT 红。
+  const legal = structuredClone(pendingLedger);
+  const carrier = legal.entries.find(entry => entry.disposition === 'needs_external');
+  carrier.landing = ['crates/nai-security/src/lib.rs'];
+  assert.deepEqual(
+    ledgerErrors(legal),
+    [],
+    'a resolvable landing outside its own disposition must not be reported',
+  );
+});
+
+test('a repository-path reference must resolve wherever its field appears, not only under its own disposition', async () => {
+  // W83 的同一条纪律，泛化到 W88 新增的第三类（`REPO_PATH_FIELDS`）：
+  // 「一个字段由谁解析它的引用」是**字段的属性**，与这条数据当前是什么处置**无关**。
+  // 若把路径校验写成 `disposition === 'decided_in_repo' && …`，`landing` 挂到别的处置上就**完全静默**。
+  let injected = 0;
+  for (const field of REPO_PATH_FIELDS) {
+    const ownDisposition = [...REQUIRED_FIELD].find(([, owned]) => owned === field)?.[0];
+    assert.ok(ownDisposition, `${field} must be the required field of exactly one disposition`);
+    const host = structuredClone(pendingLedger);
+    const target = host.entries.find(entry => entry.disposition !== ownDisposition);
+    assert.ok(target, `an entry whose disposition is not ${ownDisposition} must exist to host the probe`);
+    for (const bad of ['no/such/file.rs', 'node_modules']) {
+      const probe = structuredClone(host);
+      probe.entries.find(entry => entry.id === target.id)[field] = [bad];
+      assert.ok(
+        ledgerErrors(probe).some(
+          error =>
+            error.includes(target.id) && error.includes(field) && error.includes(bad),
+        ),
+        `${field} on a ${target.disposition} entry must name the entry, the field and the value`,
+      );
+      injected += 1;
+    }
+    // 宿主条目**不缺**它自己的必填字段 ⇒ 报错只能来自路径解析，不会被别的检查顺带挡住。
+    assert.ok(
+      ledgerErrors(host).length === 0,
+      `the host entry without the injected field must stay clean for ${field}`,
+    );
+  }
+  assert.ok(injected >= 2, 'the injection must actually run over the declared repository-path fields');
+});
+
+test('a landing must be a list, and that list must be the required field of exactly one disposition', async () => {
+  // 必填字段的「清单型 / 文本型」判定 MUST 由**类别表**决定，MUST NOT 靠写死字段名。
+  // 改前的实现写着 `field === 'precondition'` ⇒ 新字段 `landing` 会被当成**文本**判：
+  // 一个非空字符串（而不是数组）会被当成合格，而它一个有效路径都没给。
+  const asText = structuredClone(pendingLedger);
+  const entry = asText.entries.find(item => item.disposition === 'decided_in_repo');
+  entry.landing = 'crates/nai-security/src/lib.rs';
+  assert.ok(
+    ledgerErrors(asText).some(
+      error => error.includes(entry.id) && error.includes('landing'),
+    ),
+    'a landing given as a bare string must be reported — the required shape is a list',
+  );
+
+  // 空列表同样不是「落地点」。
+  const empty = structuredClone(pendingLedger);
+  const emptied = empty.entries.find(item => item.disposition === 'decided_in_repo');
+  emptied.landing = [];
+  assert.ok(
+    ledgerErrors(empty).some(
+      error => error.includes(emptied.id) && error.includes('landing'),
+    ),
+    'an empty landing must be reported — a settled item that points nowhere has not settled',
+  );
+
+  // 类别归属是**声明**：每个路径清单字段都必须是**恰好一个**处置的必填字段。
+  // 少了这条，`REPO_PATH_FIELDS` 可以掺进一个谁都不需要的字段（闭世界对它仍恒真）。
+  for (const field of REPO_PATH_FIELDS) {
+    const owners = [...REQUIRED_FIELD].filter(([, owned]) => owned === field);
+    assert.equal(
+      owners.length,
+      1,
+      `${field} must be the required field of exactly one disposition`,
+    );
+  }
+});
+
 test('the reference scan domain is a declared single source over every reference category', async () => {
   // 逐字钉内容：`REFERENCE_FIELDS` 是**独立写死**的声明，不是
   // `[...CITATION_FIELDS, ...ID_LIST_FIELDS]` 派生出来的——派生出的「并集 == 它」是**恒真式**
@@ -1050,12 +1200,13 @@ test('the reference scan domain is a declared single source over every reference
       'basis',
       'closure',
       'introduced_in',
+      'landing',
       'note',
       'precondition',
       'question',
       'recommendation',
     ],
-    'the reference scan domain must be exactly the eight declared fields',
+    'the reference scan domain must be exactly the nine declared fields',
   );
 
   // 与类别划分**双向相等**：① 声明了却无类别认领 ⇒ 它的引用**没人解析**；
@@ -1063,8 +1214,8 @@ test('the reference scan domain is a declared single source over every reference
   // `precondition` 曾在类别里，却只在一种处置下被扫。）
   assert.deepEqual(
     [...REFERENCE_FIELDS].sort(),
-    [...new Set([...CITATION_FIELDS, ...ID_LIST_FIELDS])].sort(),
-    'the reference domain must equal the union of the two reference categories',
+    [...new Set([...CITATION_FIELDS, ...ID_LIST_FIELDS, ...REPO_PATH_FIELDS])].sort(),
+    'the reference domain must equal the union of the three reference categories',
   );
   assert.deepEqual(shapeErrors(), [], 'the reference domain must be consistent as committed');
 
