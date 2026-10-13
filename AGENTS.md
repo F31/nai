@@ -2607,7 +2607,7 @@ MUST 在 dispatch 在册（复用 W96 的 `dispatchSignatures`，**不写第二�
 而仓库里**无任何记载**说明原因 ⇒ 给它配成因等于**给未知事实贴标签**（W90），只作为发现登记。
 见 [W97 报告](docs/reports/2026-10-14-w97-gate-coverage.md)、
 [ADR 0075](docs/adr/0075-gate-coverage.md)、
-`openspec/changes/2026-10-14-w97-gate-coverage/`。
+`openspec/changes/archive/2026-10-14-w97-gate-coverage/`。
 
 ### W98 npm 脚本的每个脚本 MUST 有具名处置（执行面：谁调用它）
 
@@ -2650,4 +2650,6 @@ Rust 侧的包集合，而**npm 脚本的执行面**完全在外面——3 份 `
 测试文件里的注入用例作证据，不写成「已覆盖」。
 见 [W98 报告](docs/reports/2026-10-14-w98-npm-script-surface.md)、
 [ADR 0076](docs/adr/0076-npm-script-surface.md)、
-`openspec/changes/2026-10-14-w98-npm-script-surface/`。
+`openspec/changes/archive/2026-10-14-w98-npm-script-surface/`。
+（W98 就地订正：W97 段与 W98 段原写 `openspec/changes/<name>/`，归档后真路径在 `archive/` 下；
+全仓扫描后仅此两处失效，`reports/`／`adr/`／`archive/` 属历史记录，未动。）
