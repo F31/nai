@@ -2336,3 +2336,46 @@ W91 **不是**接线轮——它把 W90 的键级门控从 `runtime` **一份** 
 见 [W91 报告](docs/reports/2026-10-13-w91-config-key-attribution.md)、
 [ADR 0069](docs/adr/0069-config-key-attribution.md)、
 `openspec/changes/archive/2026-10-13-w91-config-key-attribution/`。
+
+### W92 清空 `decidable_in_repo`（A2A 首版边界落规格、画像验证订正）
+
+W92 **不是**接线轮——它把 `tests/pending-decisions.yaml` 里 `decidable_in_repo` 一态**清到 0**：
+该态的必填字段是 `recommendation`（**"建议"**），判据只钉住「有一个建议」、**不钉**「建议落地了没有」。
+三条各走一条路：
+
+- **PD-22（入站是否对第三方开放）与 PD-24（委派深度是否可配置）落到同一段活规格**
+  `openspec/specs/agent-harness/spec.md` 的 `A2A inbound is an external request; outbound delegation is bounded`
+  ⇒ 处置迁 `decided_in_repo`、`landing` 指该规格文件。规格补两句：**R1 首版入站只响应本机与本地信任配置中
+  已登记的受信对端**（原正文只说「对端身份由本地信任配置**派生**」——那约束"身份从哪来"、**不约束"谁可以到达"**，
+  是实现可以"接受任意第三方再查身份"的那道缝）、**R1 首版委派链深度上限 MUST 为常量、MUST NOT 提供配置面**
+  （原正文写「深度 MUST 有上限（**初值 1**）」——"初值"恰好暗示可调，而 PD-24 要裁的正是那个自由度）。
+- **PD-34（用户画像的验证方式）订正为 `needs_external`**：基线 §54.2 标题即「初版，未经验证」、§57.5 明写
+  「MUST 在 R1 实现期以**真实使用者验证**」⇒ 验证方式已被基线答出，未闭合的是**执行**（真人访谈）——
+  必然在**仓外**。原登记 `decidable_in_repo` 是**不实分类**；也不是 `decided_in_repo`（闭合条件在仓库里不存在）。
+
+**不越权**：基线 §46.3 的「初值 1」是**一般描述**、规格的「首版常量」是 **R1 具体化**，两者分层不矛盾
+⇒ 基线正文本轮**一字不动**；§48.7 本就把它登记为待决策 ⇒ 规格补上是从"待决"变"已决"。
+
+**「清空一个态」暴露的守卫隐含依赖（本轮教训）**：两处测试用例按**处置**定位样本
+（`find(entry => entry.disposition === X)`），态一空即失去作用对象（实测立刻 **2 条红**：#16、#22）。
+危险的修法是 `if (!item) continue`（把「该态没有实例」与「该字段不再被扫」混为一谈）；
+采用的修法是**样本定位改为按字段存在**（`Object.hasOwn`），与 W80／W83／W88 的
+「触发条件 MUST 只由**字段是否存在**决定」同源，并新增空态的双向一致断言与本轮成果断言。
+
+**非空洞注入 F1–F8**（改真实台账 → 跑真实测试 → 抓具名 → 还原校验）：F1 具名串
+`PD-22: landing crates/nai-security/src/no-such-file.rs is not a file tracked by this repository`、
+F2 `PD-34: closure references §99.9, which does not exist in the baseline`、
+F4 `PD-24: disposition decided_in_repo requires a non-empty landing`；
+F5 用**工作区有、索引无**的 `node_modules` 证明判据读的是索引；F6／F7 反向（合法 landing／closure
+挂到**别的**处置上）**不红**；F8 清空态后真跑 **50/0 全绿**；每次注入后 **sha256 逐字还原**。
+
+**门控与计数**：`tests/registry.test.mjs` **50 → 50**（**替换而非新增**）；`DISPOSITION_COUNTS`
+`decidable_in_repo` **3 → 0** / `decided_in_repo` **2 → 4** / `needs_external` **20 → 21**（总数仍 **34**）；
+`cargo xtask` 零改动、**Rust 零改动**；`check --profile full` 见 W92 报告 §六。
+
+**明确不做**：不实现 A2A（H13／H14 仍 `capability_pack` + `pending`，INV-33）、不改基线正文、
+不改任何验收 `status`、不给"深度上限"加无消费者的常量（W73 假契约教训）、不重排 W 编号。
+**落地是规范层的**——MUST NOT 被读作"A2A 已可用"（`delegation_depth` 在 Rust 仍零命中）。
+见 [W92 报告](docs/reports/2026-10-13-w92-decidable-in-repo-settlement.md)、
+[ADR 0070](docs/adr/0070-decidable-in-repo-settlement.md)、
+`openspec/changes/archive/2026-10-13-w92-decidable-in-repo-settlement/`。

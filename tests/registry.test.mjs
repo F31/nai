@@ -36,6 +36,7 @@ import {
   TOP_LEVEL_FIELDS,
   REFERENCE_FIELDS,
   DISPOSITIONS,
+  DISPOSITION_COUNTS,
   REQUIRED_FIELD,
 } from '../scripts/contracts/pending-decisions.mjs';
 import { readTrackedPaths } from '../scripts/contracts/git-index.mjs';
@@ -741,14 +742,17 @@ test('a pending decision cannot cite a section the baseline does not have', asyn
   // W80：`recommendation`／`closure`／`note` 同样承载 §NNN（实测 17 条），此前**整片漏扫**。
   // 三个字段各注入一次，且 MUST 指名是哪一个字段——同一个坏章节号若同时出现在多个字段里，
   // 只说条目无法定位（W79：错误的措辞会把定位引向错误的方向）。
-  for (const [field, disposition] of [
-    ['recommendation', 'decidable_in_repo'],
-    ['closure', 'needs_external'],
-    ['note', 'out_of_scope'],
-  ]) {
+  //
+  // **样本按「字段存在」选，MUST NOT 按处置选**（W92）：本轮把 `decidable_in_repo` 的计数清到 0，
+  // 而这三个字段此前是用**处置**定位的（`find(entry => entry.disposition === X)`）——一个态一旦
+  // 合法地变空，用例就**失去作用对象**（原来会 `assert.ok(item)` 失败），或更坏：有人顺手补一句
+  // 「找不到就跳过」，把它变成**静默失去覆盖**。判据要断言的是「**这个字段**里的 §NNN 被扫」，
+  // 样本就该按「谁有这个字段」选——与 W80／W83／W88 三次确立的
+  // 「触发条件 MUST 只由**字段是否存在**决定」是同一条纪律。
+  for (const field of ['recommendation', 'closure', 'note']) {
     const stray = structuredClone(pendingLedger);
-    const item = stray.entries.find(entry => entry.disposition === disposition);
-    assert.ok(item, `${disposition} must be represented in the ledger`);
+    const item = stray.entries.find(entry => Object.hasOwn(entry, field));
+    assert.ok(item, `${field} must appear in the ledger — without a carrier the scan is untested`);
     item[field] = `${item[field]} §99.9`;
     assert.ok(
       ledgerErrors(stray).some(
@@ -967,9 +971,24 @@ test('each disposition has to pay for itself with its own required field', async
     ['needs_external', 'closure'],
     ['out_of_scope', 'note'],
   ];
+  let injected = 0;
   for (const [disposition, field] of cases) {
     const ledger = structuredClone(pendingLedger);
     const entry = ledger.entries.find(item => item.disposition === disposition);
+    // **空的处置**（W92 新增）：`decidable_in_repo` 的计数已在 W92 清到 0 ⇒ 数据侧没有实例可注入。
+    // 这不是「找不到就跳过」——跳过是**静默**的，而这里是**被断言的事实**：计数说 0，数据里就
+    // MUST 确实没有该态条目（两份声明**双向一致**）。该处置的「必填字段」关系与数据无关，
+    // 由 `shapeErrors()` 与上面的常量表断言看守（它们不依赖任何一条数据）。
+    const declared = DISPOSITION_COUNTS.get(disposition);
+    assert.notEqual(declared, undefined, `${disposition} must carry a declared count`);
+    if (declared === 0) {
+      assert.equal(
+        entry,
+        undefined,
+        `${disposition} declares zero entries but the ledger carries one — count and data disagree`,
+      );
+      continue;
+    }
     assert.ok(entry, `${disposition} must be represented in the ledger`);
     if (Array.isArray(entry[field])) entry[field] = [];
     else delete entry[field];
@@ -977,7 +996,25 @@ test('each disposition has to pay for itself with its own required field', async
       ledgerErrors(ledger).some(error => error.includes(entry.id) && error.includes(field)),
       `${disposition} without ${field} must be reported`,
     );
+    injected += 1;
   }
+  assert.ok(
+    injected >= cases.length - 1,
+    'the injection must actually run over the non-empty dispositions',
+  );
+
+  // **本轮成果断言**（W92）：没有任何条目还停在「可在仓库内决定」的门口。
+  // 这条与 `DISPOSITION_COUNTS` 的 0 是**同一件事的两面**——计数是**声明**，下面是**数据**。
+  assert.equal(
+    DISPOSITION_COUNTS.get('decidable_in_repo'),
+    0,
+    'the decidable-in-repo queue must be emptied — every recommendation is settled or reclassified',
+  );
+  assert.equal(
+    pendingLedger.entries.filter(item => item.disposition === 'decidable_in_repo').length,
+    0,
+    'no entry may remain decidable-in-repo once the count is declared zero',
+  );
 
   const outside = structuredClone(pendingLedger);
   outside.entries[0].disposition = 'to_be_decided_later';

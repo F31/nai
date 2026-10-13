@@ -306,12 +306,21 @@ export const TOTAL_ENTRIES = 34;
 /// **W88 的迁移**：`decidable_in_repo` **5 → 4**、新增 `decided_in_repo` **1**。
 /// 这不是「把一个数改成另一个数」——总数不变（34），只有类别移动了一格，
 /// 而「总数对『被改类别』是瞎的」正是这张表存在的理由（W66 教训）。
+///
+/// **W92 的迁移**：`decidable_in_repo` **3 → 0**（三条全部迁出）、`decided_in_repo` **2 → 4**
+/// （PD-22／PD-24 落到活规格）、`needs_external` **20 → 21**（PD-34 订正）。
+///
+/// ⚠️ 这一格归零**不是**「没有断言」：它是本轮的**成果断言**——「没有任何条目还停在
+/// 『可在仓库内决定』的门口」。但它同时让**按处置取样本**的测试用例**失去了作用对象**
+/// （实测 `tests/registry.test.mjs` 有两处 `find(entry => entry.disposition === X)`）——
+/// 所以本轮的测试改动把样本定位改成**按字段存在**：守卫 MUST NOT 依赖「某个态一定非空」，
+/// 否则一次**合法的数据变更**就会**改变判据的覆盖面**（W66「删字段照样绿」的同族形状）。
 export const DISPOSITION_COUNTS = new Map([
   ['answered_by_baseline', 4],
-  ['decidable_in_repo', 3],
-  ['decided_in_repo', 2],
+  ['decidable_in_repo', 0],
+  ['decided_in_repo', 4],
   ['needs_precondition', 4],
-  ['needs_external', 20],
+  ['needs_external', 21],
   ['out_of_scope', 1],
 ]);
 
