@@ -174,7 +174,23 @@ openspec validate --all --strict --archived   →  84 passed / 0 failed   （83 
 
 ## 七、CI 复核
 
-（待回填）
+**run `38347867385`（run_number **102**，`head_sha = 95426da807…`，与本轮推送 SHA 一致）= `success`**（双平台绿）。
+
+观测方式沿用既有纪律：**单次低频查询**（**不轮询**），每次带**唯一查询参数** `&cb=<ns>` 破坏代理缓存、
+`Cache-Control: no-cache`，并**回读 `head_sha` 与本次推送比对**；`curl` 带 `--tlsv1.2 --tls-max 1.2`
+（schannel 与 TLS 1.3 握手失败，W77 实测）。本轮共 5 次查询：
+
+1. 推送后首次：run 102 `in_progress`（`updated_at` 未变）；
+2. 为判断「是否真在推进」查了一次 `/jobs`：**两个 job（`windows-latest`、`ubuntu-24.04`）均在
+   step 10 `Complete engineering foundation` `in_progress`**，而 **step 9 `Check generated contracts
+   without modifying consumers` 双平台 `completed success`** ⇒ 正常推进，且 **step 9 正是独立复核
+   本轮对 `generate.mjs` 改动的 CI 步骤**（本机因 `EBUSY` 跑不了该步，见 §六与 §八第 6 条）；
+3. 等待 5 分钟后：仍 `in_progress`（父 run 的 `updated_at` 未变 —— **「状态不变」≠「卡住」**，
+   判断推进看 `/jobs` 的步级进度）；
+4. 再等 6 分钟后**单次查询**：run 102 `completed` / `conclusion = success`（`updated_at = 04:56:01Z`）。
+
+「三件齐」满足：① 唯一查询参数 `&cb=<ns>`；② `Cache-Control: no-cache`；
+③ 回读 `head_sha = 95426da807` == 本次推送 SHA。**本机门控绿在此之上叠加了独立环境的复核。**
 
 ## 八、遗留
 
