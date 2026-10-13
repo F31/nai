@@ -147,7 +147,20 @@ openspec validate --all --strict --archived   →  81 passed / 0 failed   （80 
 
 ## 七、CI 复核
 
-<!--CI-->
+**run `38331933294`（`head_sha = 9985ae6c3b…`，与本轮推送 SHA 一致）= `success`**（run_number **96**，双平台绿）。
+
+观测方式沿用既有纪律：**单次低频查询**（**不轮询**），每次带**唯一查询参数**破坏代理缓存、
+`Cache-Control: no-cache`，并**回读 `head_sha` 与本次推送比对**；`curl` 带 `--tlsv1.2 --tls-max 1.2`
+（schannel 与 TLS 1.3 握手失败，W77 实测）。本轮共 3 次列表查询：`in_progress`（推送后）
+→ **被拒**（匿名配额打满）→ `success`（**配额重置后单次**读到，updated `01:36:27Z`）。
+同一列表查询顺带证实上一轮 run `38330257112`（`head_sha = be80249a7c`，W82 回填）也是 `success`。
+
+**流量事故（如实登记）**：本轮观测途中匿名配额打满（`/rate_limit` 显示 `remaining=0`、`reset=1791855656`）。
+其症状与登记完全一致：响应体**不含 `status`**、`total_count=undefined`，正文为
+`API rate limit exceeded for …` ——**看着像 run 状态异常，实为限流**。处置遵守纪律：**绝不轮询**，
+读出 `reset`（UTC `01:40:56Z`）后**等待重置再做单次查询**（`/rate_limit` 本身不计数）。
+
+**按观测轮终止约定**：本条回填提交会触发一个新的 run，**该 run 不再回填**——否则无限递推。
 
 ## 八、遗留
 
