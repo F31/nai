@@ -2427,3 +2427,45 @@ sampling 默认禁用、§41.4 不设阈值、§46.5 不新增契约名、§51.3
 见 [W93 报告](docs/reports/2026-10-13-w93-landing-content-anchor.md)、
 [ADR 0071](docs/adr/0071-landing-content-anchor.md)、
 `openspec/changes/archive/2026-10-13-w93-landing-content-anchor/`。
+
+### W94 `needs_precondition` 的「还在等」MUST 是真的（前置补达成状态）
+
+W94 堵的是同一族缝的**第三种形状**（W93 堵「已落地」）：`needs_precondition` 断言「这条现在还不能
+裁定，因为它在等前置」，而判据只验 `precondition` 的每个 id **解析得开**。探针实测：把
+`PD-26.precondition` 换成 `["S03"]`——`S03` 在 registry 里是 `status: tested`、**早已达成**
+⇒ **51/51 全绿**。⇒ 「还在等」是一条**判据放过的空声明**；而六个态里只有这一个态的
+**有效期会随仓库自身进展而过期**（前置达成了，台账不会有任何信号，条目会一直挂着）。
+
+判据新增：**每个前置 MUST 仍未达成**，已达成 ⇒ 具名失败。四处设计取舍：**注入事实而非判定**
+（`acceptanceStatus` + `workItemAcceptance` 两张表；若注入 `preconditionMet(id)` 这类判定函数，
+注入方算错时判据照样绿 ⇒ **守卫自我满足**——与 `repositoryFiles`、`readTrackedText` 是
+**同一个陷阱的第三次出现**）、**`W\d{2}` 经关联验收派生**（基线工作项表**没有状态列**，只有
+`编号|内容|关联验收|发布线` ⇒ 措辞只说「`W61` 的关联验收 `H11/H12` 均已达成」，
+MUST NOT 冒充「W61 已完成」）、**取值域闭世界两道**（`MET_STATUSES` ∪ `UNMET_STATUSES` 必须
+**恰好划分** `ACCEPTANCE_STATUSES`，否则将来新增一个 `status` 取值时判据会**静默地不认识它**
+——与 W92「清空一个态」同族）、**不可解析 ⇒ 具名失败**（工作项表 36 行里 **11 行（W00–W10）
+第 3 列是路径／包名**，无关联验收 ⇒ 不可判定）。
+
+**`not_applicable` 归「未达成」，依据实测反例而非字面直觉**：`S12` 的 `notes` 明写「依赖真实平台
+规则核对」⇒ 它**仍未闭合**；把它算成已达成会漏掉整整一类「不适用但仍悬空」的前置。
+
+**本轮合法地改了既有用例的前提**（第二次出现）：W88 的反向用例取 `workItemIds` 的第一个元素
+（实际是 `W00`），而 `W00` 现在**不可判定** ⇒ 改用「有非空关联验收、且那些验收全部仍未达成」的
+工作项（实测 `W61`）——不是放宽断言，是把样本换成**本轮口径下真正还悬空**的那一个。
+
+**非空洞注入 P1 + F1–F8**（全部真跑 + sha256 还原校验 **ALL-OK**）：**P1 由绿转红是本轮成果**；
+F1 另一条已达成、F2 W 派生路径、F3 不可判定（`W00`）、F4 按字段触发（`PD-01` 是 `needs_external`）
+⇒ **红**；F5 `S12`（`not_applicable`）**不红**、F6 合法 `pending` **不红**；F7 分类认领域外取值、
+F8 域里没人认领 ⇒ **红**。
+⚠️ 一处自我纠错：F7 第一次选的值不对——把 `tested` 从取值域拿掉后它仍在 `MET_STATUSES` 里，
+运行时不会判成域外，报红的是 `shapeErrors` 的**另一个方向**；修正后 F7 改验方向②，
+**运行时**遇域外 `status` 由测试 ⑤（`domainBreach.set('H05','deferred')`）覆盖。
+
+**零数据改动**（纯判据）：4 条前置当前全部 `pending`（H05/06/07/08/13/14/16 与 W61 的 H11/H12）
+⇒ 补判据后仍全绿。**门控与计数**：`tests/registry.test.mjs` **51 → 52**；必填依赖 **6 → 8**；
+`LEDGER_FIELDS` 仍 12（不新增字段类别——达成状态是**同一字段的第二条断言**）；Rust 零改动。
+**另两个候选实测无可做的事**：21 条 `closure` 确实闭合在仓外；`question` 逐字对账**过脆**
+（34 条中 11 条未命中 ⇒ 会造 11 条假阳性）。
+见 [W94 报告](docs/reports/2026-10-13-w94-precondition-freshness.md)、
+[ADR 0072](docs/adr/0072-precondition-freshness.md)、
+`openspec/changes/archive/2026-10-13-w94-precondition-freshness/`。

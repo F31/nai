@@ -370,6 +370,41 @@ export function shapeErrors() {
       );
     }
   }
+
+  // **status 取值域 MUST 被「已达成 / 未达成」恰好划分**（W94）。
+  // 这条挡的是**未来一次合法编辑**：registry 里出现一个新的 `status` 取值（例如 `deferred`）
+  // 却没人回头给 `MET_STATUSES`／`UNMET_STATUSES` 归类——那一刻判据会**静默地不认识它**
+  // （既不报"已达成"也不报"未达成"），而「还在等」这条断言在危险方向上瞎了且毫无信号。
+  // 与 W92「清空一个态」、W66「删字段照样绿」、W93 的耦合表自洽同族：
+  // **一次合法的数据/取值变更，改变了判据的覆盖面**。
+  //
+  // 两个方向都具名：① 域里有取值没被任何一边认领 ⇒ 它既不算已达成也不算未达成；
+  // ② 某边认领了域外的取值 ⇒ 那份分类永远打不到东西（运行时会先以"域外取值"失败）。
+  const statusDomain = new Set(ACCEPTANCE_STATUSES);
+  const met = new Set(MET_STATUSES);
+  const unmet = new Set(UNMET_STATUSES);
+  for (const status of statusDomain) {
+    if (!met.has(status) && !unmet.has(status)) {
+      errors.push(
+        `status ${status} is in the acceptance status domain but neither MET nor UNMET claims it — it would be neither waited on nor reported`,
+      );
+    }
+  }
+  for (const [kind, set] of [['MET_STATUSES', met], ['UNMET_STATUSES', unmet]]) {
+    for (const status of set) {
+      if (!statusDomain.has(status)) {
+        errors.push(
+          `status ${status} is listed in ${kind} but is outside the acceptance status domain — the classification can never match`,
+        );
+      }
+    }
+  }
+  for (const status of met) {
+    if (unmet.has(status)) {
+      errors.push(`status ${status} is claimed by both MET_STATUSES and UNMET_STATUSES`);
+    }
+  }
+
   return errors;
 }
 
@@ -408,6 +443,30 @@ export const DISPOSITION_COUNTS = new Map([
   ['out_of_scope', 1],
 ]);
 
+/// registry.yaml 里 `acceptance[].status` 的**取值域**（W94 实测照抄：
+/// `implemented` 29 / `tested` 22 / `pending` 43 / `blocked` 6 / `not_applicable` 3）。
+///
+/// **逐字写死，MUST NOT 由「数据在用的取值」派生**：派生出的「域 ⊆ 数据」是恒真的，
+/// 一个字都没说（W80 §九结论 5）。写死之后，运行时遇到**域外取值**才是**内容断言**。
+export const ACCEPTANCE_STATUSES = [
+  'pending',
+  'blocked',
+  'implemented',
+  'tested',
+  'not_applicable',
+];
+
+/// **已达成的、不该再被等**的状态。
+export const MET_STATUSES = ['implemented', 'tested'];
+
+/// **仍未达成的、仍可以被等**的状态。
+///
+/// `not_applicable` 归这一格的依据是**实测反例**而不是字面直觉：`S12`（虚拟人标识与合规门禁）
+/// 的 `status` 是 `not_applicable`，而它的 `notes` 明写「依赖真实平台规则核对」
+/// ⇒ **它仍未闭合**。把它算成"已达成"会漏掉整整一类「不适用但仍悬空」的前置。
+/// ⇒ 取值域里没有哪一格可以靠字面判断归属，必须由**内容**定。
+export const UNMET_STATUSES = ['pending', 'blocked', 'not_applicable'];
+
 /// 抽取文本里出现的全部 `§NNN` 引用（`NN` 或 `NN.M`）。
 export function sectionRefs(text) {
   return [...String(text ?? '').matchAll(/§(\d+(?:\.\d+)?)/g)].map(match => match[1]);
@@ -431,16 +490,37 @@ export function baselineWorkItems(baselineText) {
   return out;
 }
 
+/// 抽出每个工作项在基线里**明写**的关联验收 id（表格第 3 列，`| W61 | … | H11、H12 | 能力包 |`）。
+///
+/// 为什么需要它：基线的工作项表**没有状态列**，只有 `编号 | 内容 | 关联验收 | 发布线`
+/// ⇒ 「W61 达成了没有」在基线里**直接不可判**。可判的只有它第 3 列**明写**的关联验收
+/// （H11／H12）的 `status`。⇒ 这是**派生**，不是判定：措辞 MUST 只说到「关联验收已达成」，
+/// MUST NOT 冒充「W61 已完成」——「关联验收达成」与「工作项做完」不是同一件事。
+///
+/// 第 3 列**可能没有验收 id**：实测 36 行里有 **11 行（W00–W10）第 3 列是路径／包名**
+/// ⇒ 这些工作项**不可判定**，判据 MUST 具名失败，MUST NOT 静默跳过（铁律二：
+/// 「没看到」与「出错了」在类型上分开）。
+export function baselineWorkItemAcceptance(baselineText) {
+  const out = new Map();
+  for (const match of String(baselineText ?? '').matchAll(/^\|\s*(W\d{2})\s*\|[^|]*\|([^|]*)\|/gm)) {
+    out.set(match[1], [...match[2].matchAll(/[SRABOPMHX]\d{2}/g)].map(item => item[0]));
+  }
+  return out;
+}
+
 const nonEmptyText = value => typeof value === 'string' && value.trim().length > 0;
 
 /// 校验台账。`deps` 显式注入：
-/// `{baselineVersion, baselineText, acceptanceIds, workItemIds, repositoryFiles, readTrackedText}`。
+/// `{baselineVersion, baselineText, acceptanceIds, workItemIds, repositoryFiles, readTrackedText,
+/// acceptanceStatus, workItemAcceptance}`。
 ///
 /// **缺任一项即报错**，不做「缺了就跳过对应检查」的降级——那会让判据在被削弱时保持沉默。
 /// W88 把 `repositoryFiles`（仓库成员路径集，由 `.git/index` 派生）加入必填依赖：
 /// 少了它，`landing` 的「路径存在」会退化成恒真，而那正是本轮要钉的东西。
 /// W93 把 `readTrackedText`（读一个已跟踪文件的文本）加入必填依赖：少了它，`landing_anchor`
 /// 的「内容真的在」会退化成恒真——**同一个陷阱的第二次出现**。
+/// W94 把 `acceptanceStatus` 与 `workItemAcceptance` 加入必填依赖：少了它们，前置的
+/// 「是否仍未达成」会退化成恒真——**同一个陷阱的第三次出现**。
 export function validatePendingDecisions(ledger, deps = {}) {
   const errors = [];
   const required = [
@@ -450,11 +530,28 @@ export function validatePendingDecisions(ledger, deps = {}) {
     'workItemIds',
     'repositoryFiles',
     'readTrackedText',
+    'acceptanceStatus',
+    'workItemAcceptance',
   ];
   const missing = required.filter(key => deps[key] === undefined);
   if (missing.length > 0) {
     // 具名报出缺什么，而不是让后面的检查「因为没有输入所以看起来通过」。
     errors.push(`validation inputs are required and were not provided: ${missing.join(', ')}`);
+    return errors;
+  }
+  // 两张**事实表**的形状也 MUST 对：注入的必须是「id → 值」的映射。
+  // 只查 `undefined` 会放过「给了但给错形状」——那时判据会在 `.get` 上**抛异常**而不是报一条错
+  // （实测：`acceptanceStatus: {}` ⇒ `TypeError: deps.acceptanceStatus.get is not a function`）。
+  // ⇒ 与「缺输入」同等处理：具名报出后**立刻返回**，MUST NOT 带着坏形状继续跑下去。
+  const malformed = [];
+  if (!(deps.acceptanceStatus instanceof Map)) {
+    malformed.push('acceptanceStatus must be a Map from acceptance id to its registry status');
+  }
+  if (!(deps.workItemAcceptance instanceof Map)) {
+    malformed.push('workItemAcceptance must be a Map from work item to its acceptance ids');
+  }
+  if (malformed.length > 0) {
+    errors.push(...malformed);
     return errors;
   }
 
@@ -519,6 +616,8 @@ export function validatePendingDecisions(ledger, deps = {}) {
   const citationSet = new Set(CITATION_FIELDS);
   const idListFields = new Set(ID_LIST_FIELDS);
   const repoPathFields = new Set(REPO_PATH_FIELDS);
+  const metSet = new Set(MET_STATUSES);
+  const unmetSet = new Set(UNMET_STATUSES);
 
   for (const entry of entries) {
     const id = entry?.id;
@@ -713,6 +812,77 @@ export function validatePendingDecisions(ledger, deps = {}) {
           errors.push(
             `${id}: ${field} ${JSON.stringify(anchorText)} is not present in ${site} — a landing whose content is gone is not a landing`,
           );
+        }
+      }
+    }
+
+    // **前置 MUST 仍未达成**（W94）：`needs_precondition` 断言的是「这条现在还不能裁定，
+    // 因为它在等前置」，而「等」必须是**真的**。等一个**已经达成**的前置与等一个真正悬空的前置，
+    // 判据此前给的是同一个答案——实测把 `PD-26.precondition` 换成 `["S03"]`
+    // （registry 里 `status: tested`）⇒ **51/51 全绿**。⇒ 「还在等」是一条判据放过的空声明。
+    //
+    // 触发条件是**字段是否存在**，与 `disposition` 无关（W80／W83／W88／W93 同一条律）：
+    // 一个已达成的前置挂在别的处置上，一样要报。
+    //
+    // 判定由**注入的事实**算出，MUST NOT 由注入侧直接给答案：注入的是「验收 id → status」与
+    // 「工作项 → 关联验收」两张表，「达成了没有」在这里按取值域判。若注入的是
+    // `preconditionMet(id)` 这样的判定函数，注入方算错时判据照样绿 ⇒ **守卫自我满足**。
+    //
+    // 「解析得开」（引用扫描）只答「这个 id 存在」，**不**答「它现在还悬空着」——
+    // 两条断言 MUST NOT 互相冒充。
+    for (const field of ID_LIST_FIELDS) {
+      if (!(field in entry)) continue;
+      const raw = entry[field];
+      const ids = Array.isArray(raw) ? raw : typeof raw === 'string' ? [raw] : [];
+      for (const item of ids) {
+        if (!nonEmptyText(item)) continue; // 空值已由引用扫描具名报出，此处不重复
+        if (/^W\d{2}$/.test(item)) {
+          // 不在这个基线工作项表里的编号，已由**引用扫描**具名报出（"不是基线工作项"）。
+          // 此处 MUST NOT 再报一次"没有关联验收"——那会把「红的原因」引向错误的方向
+          // （W92 的教训：红 ≠ 红在我以为的地方）。
+          if (!deps.workItemIds.has(item)) continue;
+          // 工作项：基线工作项表**没有状态列** ⇒ 由它第 3 列明写的关联验收**派生**。
+          // 措辞只说到派生那一层（"其关联验收均已达成"），MUST NOT 冒充"该工作项已完成"。
+          const backed = deps.workItemAcceptance.get(item) ?? [];
+          if (backed.length === 0) {
+            errors.push(
+              `${id}: ${field} ${item} names no acceptance ids in the baseline work-item table — whether it is still unmet cannot be decided, and an undecidable wait must not pass silently`,
+            );
+            continue;
+          }
+          const unknown = backed.filter(candidate => !deps.acceptanceStatus.has(candidate));
+          if (unknown.length > 0) {
+            errors.push(
+              `${id}: ${field} ${item} is backed by acceptance ids ${unknown.join('/')} that carry no status — the wait cannot be decided`,
+            );
+            continue;
+          }
+          const pairs = backed.map(candidate => [candidate, deps.acceptanceStatus.get(candidate)]);
+          const outside = pairs.filter(([, status]) => !metSet.has(status) && !unmetSet.has(status));
+          if (outside.length > 0) {
+            errors.push(
+              `${id}: ${field} ${item} is backed by ${outside[0][0]} whose status ${outside[0][1]} is outside the declared status domain — decide the domain before deciding the wait`,
+            );
+            continue;
+          }
+          if (pairs.every(([, status]) => metSet.has(status))) {
+            errors.push(
+              `${id}: ${field} ${item} is backed by ${backed.join('/')}, all of which are already met — an entry that still waits on it is a stale claim`,
+            );
+          }
+        } else if (/^[SRABOPMHX]\d{2}$/.test(item)) {
+          // 验收 id：直接查 status。解析不开的 id 已由引用扫描具名报出，此处不重复一次。
+          const status = deps.acceptanceStatus.get(item);
+          if (status === undefined) continue;
+          if (!metSet.has(status) && !unmetSet.has(status)) {
+            errors.push(
+              `${id}: ${field} ${item} carries status ${status}, which is outside the declared status domain`,
+            );
+          } else if (metSet.has(status)) {
+            errors.push(
+              `${id}: ${field} ${item} is already ${status} — an entry that still waits on a met precondition is a stale claim`,
+            );
+          }
         }
       }
     }

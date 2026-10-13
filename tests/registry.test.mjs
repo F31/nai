@@ -27,6 +27,7 @@ import {
   validatePendingDecisions,
   baselineSections,
   baselineWorkItems,
+  baselineWorkItemAcceptance,
   shapeErrors,
   CITATION_FIELDS,
   ID_LIST_FIELDS,
@@ -40,6 +41,9 @@ import {
   DISPOSITIONS,
   DISPOSITION_COUNTS,
   REQUIRED_FIELD,
+  ACCEPTANCE_STATUSES,
+  MET_STATUSES,
+  UNMET_STATUSES,
 } from '../scripts/contracts/pending-decisions.mjs';
 import { readTrackedPaths } from '../scripts/contracts/git-index.mjs';
 import {
@@ -686,13 +690,19 @@ const readTrackedText = path => {
     return undefined;
   }
 };
+// W94：前置的「是否仍未达成」由**两张事实表**注入，判定由判据自己做——
+// 注入一个「这个前置达成了没有」的函数会让守卫自我满足（注入方算错时判据照样绿）。
+const acceptanceStatus = new Map((await readRegistry()).acceptance.map(item => [item.id, item.status]));
+const workItemAcceptance = baselineWorkItemAcceptance(baseline.text);
 const ledgerDeps = {
   baselineVersion: baseline.version,
   baselineText: baseline.text,
-  acceptanceIds: new Set((await readRegistry()).acceptance.map(item => item.id)),
+  acceptanceIds: new Set(acceptanceStatus.keys()),
   workItemIds: baselineWorkItems(baseline.text),
   repositoryFiles: tracked.paths,
   readTrackedText,
+  acceptanceStatus,
+  workItemAcceptance,
 };
 const ledgerErrors = ledger => validatePendingDecisions(ledger, ledgerDeps);
 
@@ -719,6 +729,9 @@ test('the pending-decision ledger classifies every item and every reference reso
     // W93：少了它，`landing_anchor` 的「内容真的在」会退化成恒真——
     // 与 `repositoryFiles` 是同一个陷阱的第二次出现。
     'readTrackedText',
+    // W94：少了这两张表，前置的「是否仍未达成」会退化成恒真——同一个陷阱的第三次出现。
+    'acceptanceStatus',
+    'workItemAcceptance',
   ]) {
     const partial = {...ledgerDeps};
     delete partial[key];
@@ -1117,11 +1130,166 @@ test('an id reference must resolve wherever its field appears, not only under it
   // 合法数据判红（假阳性方向，design 决策 4）。
   const legal = structuredClone(pendingLedger);
   const carrier = legal.entries.find(entry => entry.disposition !== 'needs_precondition');
-  carrier.precondition = [[...ledgerDeps.workItemIds][0]];
+  // W94 收紧了「可解析」的前提：原先本用例取 `workItemIds` 的第一个元素（实际是 `W00`），
+  // 而基线工作项表里有 **11 行（W00–W10）第 3 列是路径／包名、没有关联验收** ⇒ 它们的
+  // 达成状态**不可判定** ⇒ 现在 MUST 具名失败，MUST NOT 静默放行。
+  // ⇒ 本用例改用「有非空关联验收、且那些验收**全部仍未达成**」的工作项（实测 `W61` → H11／H12 均 `pending`）。
+  // 这不是放宽断言，而是把前提换成**本轮口径下真正还悬空**的那个样本。
+  const stillWaiting = [...ledgerDeps.workItemAcceptance].find(
+    ([, ids]) =>
+      ids.length > 0 &&
+      ids.every(item => UNMET_STATUSES.includes(ledgerDeps.acceptanceStatus.get(item))),
+  );
+  assert.ok(
+    stillWaiting,
+    'the baseline must name at least one work item whose acceptance ids are all still unmet',
+  );
+  carrier.precondition = [stillWaiting[0]];
   assert.deepEqual(
     ledgerErrors(legal),
     [],
     'a resolvable precondition outside its own disposition must not be reported',
+  );
+
+  // **不可判定 MUST NOT 被当成「仍未达成」而放行**（铁律二：「没看到」与「出错了」类型上分开）。
+  const undecidable = structuredClone(pendingLedger);
+  const noBacking = [...ledgerDeps.workItemAcceptance].find(([, ids]) => ids.length === 0);
+  assert.ok(noBacking, 'the baseline must carry a work item with no acceptance ids');
+  undecidable.entries.find(entry => entry.id === carrier.id).precondition = [noBacking[0]];
+  assert.ok(
+    ledgerErrors(undecidable).some(
+      error =>
+        error.includes(carrier.id) &&
+        error.includes('precondition') &&
+        error.includes(noBacking[0]) &&
+        error.includes('cannot be decided'),
+    ),
+    'a work item with no acceptance ids must be reported, not treated as still unmet',
+  );
+});
+
+test('a precondition must still be unmet — waiting on a met precondition is a stale claim', async () => {
+  // W94 探针实证：把 `PD-26.precondition` 换成 `["S03"]`（registry 里 `status: tested`）
+  // ⇒ 改前 **51/51 全绿**。即「还在等」是一条**判据放过的空声明**——等一个已经达成的前置，
+  // 与等一个真正悬空的前置，判据此前给的是同一个答案。
+  // 这条缝的代价是**遗忘**：前置一旦达成，台账不会有任何信号，条目会一直挂在"等前置"上，
+  // 而它实际上已经可以裁定了。六个态里只有这一个态的**有效期会随仓库自身进展而过期**。
+
+  // 非空洞自检：取值域 MUST 真的覆盖 registry 在用的取值，否则「已达成」恒不成立。
+  const inUse = new Set(acceptanceStatus.values());
+  assert.ok(inUse.size > 1, 'the registry must carry more than one status value');
+  for (const status of inUse) {
+    assert.ok(
+      ACCEPTANCE_STATUSES.includes(status),
+      `status ${status} is in use by the registry but is not declared in the status domain`,
+    );
+    assert.ok(
+      MET_STATUSES.includes(status) || UNMET_STATUSES.includes(status),
+      `status ${status} must be claimed by either MET or UNMET`,
+    );
+  }
+
+  // 本轮是**纯判据**改动 ⇒ 4 条前置 MUST 全部真的仍未达成（零数据改动的前提）。
+  const waiting = pendingLedger.entries.filter(entry => entry.disposition === 'needs_precondition');
+  assert.ok(waiting.length > 0, 'the ledger must carry entries that wait on preconditions');
+  for (const entry of waiting) {
+    for (const item of entry.precondition ?? []) {
+      const statuses = /^W\d{2}$/.test(item)
+        ? (workItemAcceptance.get(item) ?? []).map(id => acceptanceStatus.get(id))
+        : [acceptanceStatus.get(item)];
+      assert.ok(
+        statuses.length > 0 && statuses.every(value => UNMET_STATUSES.includes(value)),
+        `${entry.id}: precondition ${item} must still be unmet as committed`,
+      );
+    }
+  }
+
+  // ① **已达成 ⇒ 红**（探针 ① 的回归守卫）。
+  const metId = [...acceptanceStatus].find(([, status]) => MET_STATUSES.includes(status))?.[0];
+  assert.ok(metId, 'the registry must carry at least one met acceptance item');
+  const stale = structuredClone(pendingLedger);
+  const victim = stale.entries.find(entry => entry.disposition === 'needs_precondition');
+  victim.precondition = [metId];
+  assert.ok(
+    ledgerErrors(stale).some(
+      error =>
+        error.includes(victim.id) &&
+        error.includes('precondition') &&
+        error.includes(metId) &&
+        error.includes('already'),
+    ),
+    'a precondition that is already met must be reported as a stale claim',
+  );
+
+  // ② **W 系列经关联验收派生 ⇒ 红**。基线工作项表**没有状态列**，只有
+  // `编号 | 内容 | 关联验收 | 发布线` ⇒ 措辞只说到派生那一层，MUST NOT 冒充"工作项已完成"。
+  const backed = [...workItemAcceptance].find(([, ids]) => ids.length > 0);
+  assert.ok(backed, 'the baseline must name at least one work item with acceptance ids');
+  const fakeMet = new Map(acceptanceStatus);
+  for (const id of backed[1]) fakeMet.set(id, 'tested');
+  const derived = structuredClone(pendingLedger);
+  const withBacking = derived.entries.find(entry => entry.disposition === 'needs_precondition');
+  withBacking.precondition = [backed[0]];
+  assert.ok(
+    validatePendingDecisions(derived, {...ledgerDeps, acceptanceStatus: fakeMet}).some(
+      error =>
+        error.includes(withBacking.id) &&
+        error.includes(backed[0]) &&
+        error.includes('backed by') &&
+        error.includes('already met'),
+    ),
+    'a work item whose acceptance ids are all met must be reported through the derivation',
+  );
+
+  // ③ **触发条件按字段存在**：已达成的前置挂到**别的**处置上 ⇒ 一样红。
+  const ghost = structuredClone(pendingLedger);
+  const other = ghost.entries.find(entry => entry.disposition !== 'needs_precondition');
+  other.precondition = [metId];
+  assert.ok(
+    ledgerErrors(ghost).some(
+      error => error.includes(other.id) && error.includes(metId) && error.includes('already'),
+    ),
+    'a met precondition must be reported wherever its field appears, not only under its own disposition',
+  );
+
+  // ④ **反向（不该红时不红）：`not_applicable` 仍是未达成**。
+  // 依据是**实测反例**而非字面直觉：`S12` 的 `notes` 明写「依赖真实平台规则核对」⇒ 它**仍未闭合**。
+  // 把它算成已达成，会漏掉整整一类「不适用但仍悬空」的前置。
+  const unmetId = [...acceptanceStatus].find(([, status]) => status === 'not_applicable')?.[0];
+  assert.ok(unmetId, 'the registry must carry a not_applicable acceptance item as the counter-example');
+  const stillOk = structuredClone(pendingLedger);
+  stillOk.entries.find(entry => entry.id === victim.id).precondition = [unmetId];
+  assert.deepEqual(
+    ledgerErrors(stillOk),
+    [],
+    'not_applicable is still unmet — it must not be reported (counter-example: S12 depends on real platform rules)',
+  );
+
+  // ⑤ **取值域外的 `status` ⇒ 具名失败**，MUST NOT 被当成「仍未达成」而放行。
+  const domainBreach = new Map(acceptanceStatus);
+  domainBreach.set('H05', 'deferred');
+  const outside = structuredClone(pendingLedger);
+  outside.entries.find(entry => entry.id === victim.id).precondition = ['H05'];
+  assert.ok(
+    validatePendingDecisions(outside, {...ledgerDeps, acceptanceStatus: domainBreach}).some(
+      error => error.includes('outside the declared status domain'),
+    ),
+    'a status outside the declared domain must be reported, not silently treated as unmet',
+  );
+
+  // ⑥ **两张事实表的形状 MUST 被守住**：给了但给错形状 ⇒ 具名报，而不是在 `.get` 上抛异常。
+  // 只查 `undefined` 会放过「给了但给错形状」——那时判据会在判据内部崩掉而不是报一条错。
+  assert.ok(
+    validatePendingDecisions(pendingLedger, {...ledgerDeps, acceptanceStatus: {}}).some(
+      error => error.includes('acceptanceStatus must be a Map'),
+    ),
+    'a wrongly shaped acceptanceStatus must be reported',
+  );
+  assert.ok(
+    validatePendingDecisions(pendingLedger, {...ledgerDeps, workItemAcceptance: []}).some(
+      error => error.includes('workItemAcceptance must be a Map'),
+    ),
+    'a wrongly shaped workItemAcceptance must be reported',
   );
 });
 
