@@ -131,7 +131,26 @@ step 08 → `["check", "--profile", "full"]`；7 个 suite → `["test", "--work
 
 ## 七、CI
 
-<!-- CI_PLACEHOLDER -->
+CI 观测为**单次低频查询**（唯一查询参数破坏缓存 + `Cache-Control: no-cache` + 回读 `head_sha` == 推送 SHA）。
+
+| 项 | 值 |
+| --- | --- |
+| run | **38424170028（#122）** |
+| 回读 `head_sha` | `21a5ced770839fd896a28f37bdf7dce86b778c4d` == 推送 SHA（**MATCH**） |
+| 结论 | **completed / success**（`15:41:06Z → 15:54:00Z`，约 12 分 54 秒） |
+| 两个 job | 各 **26 步**：`foundation (ubuntu-24.04)` / `foundation (windows-latest)`，均 **success** |
+
+- Ubuntu 仅 step 11（`if: failure()` 的 annotation 通道）跳过；Windows 另跳过 step 8（Linux C++
+  protobuf runtime）与 step 20（Linux-only 三语言套件）——**平台分工，非缺失**。
+- **本机绿与 CI 绿同源**：CI **step 10 跑的就是 `cargo xtask check --profile full`**，与 §6.2 本机门控
+  **同一条命令、同一个 profile**，两平台都 `success` ⇒ 本轮新增的 `tests/contracts/workflow.test.mjs`
+  与改动的 `test-reachability` 站点表在 CI 侧**也真跑过**。
+- CI **step 9** 跑的正是 `cargo xtask schema --check`——**它就是本轮登记为 `ci-only`
+  （`host-subprocess`）的那一步**；本轮**没有删它**（探针 P2 只是临时删过并已 `sha256` 逐字还原）。
+- **自限声明**：观测为**作业/步骤级**（`/actions/jobs/{id}/logs` 需仓库 admin 权限，匿名不可读）
+  ⇒ 本报告**不**断言「CI 侧也是 91/862」，只断言上面那条同源关系。
+- 本轮 API 查询共 **5 次**（`runs?per_page=10` ×2、`runs/{id}/jobs` ×2、仅 jobs ×1），
+  远未触及匿名配额（60/h）。
 
 ## 八、遗留
 
