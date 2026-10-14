@@ -8,6 +8,7 @@
 //! remain engineering drills, not production playback.
 mod assembly;
 mod composition;
+mod memory;
 mod observation;
 mod ramp;
 pub mod supervisor;
@@ -17,6 +18,7 @@ pub use assembly::{
     LoggedCrop, LoggedSegmentBudget, LoggedSegmentUsage,
 };
 pub use composition::{BRINGUP_OPERATION, Composition, ControlAction, DutyEvent, ObservedFault};
+pub use memory::{MemoryWriteOutcome, MemoryWriteRefusal};
 pub use observation::{ObservationOutcome, ObservationRefusal};
 pub use ramp::{RampOutcome, RampRefusal};
 pub use supervisor::{

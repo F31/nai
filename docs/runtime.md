@@ -171,6 +171,43 @@ MUST NOT 补判定没输出的段——§41.2 判的是**调用方给的数**，
 「把九段片段**喂给模型**」这一半、**§41.2 分段预算初值标定**（§47.2 黄金集回放，§48.7 禁采外部观察值）
 与 **§47.2 六类回归的执行体**（**H16**，能力包）**未接线** ⇒ H01 仍 `pending`。
 
+## 记忆写入判定接线（W107，验收 H03）
+
+`Composition::write_memory(candidate, policy)` 是 §42.2 记忆写入的**唯一入口**，也是
+`nai_kernel::evaluate::memory::admit_write` 在生产代码里的**第一处**调用方（判定规则本身由 W57 落地、
+由 W89 补上观众开关的写侧，本轮**一行未改**）：
+
+- **放行** ⇒ `MemoryWriteOutcome::Written(record)`，记录落进**真实** `memory_records` 表；
+- **拒绝** ⇒ `MemoryWriteOutcome::Refused(MemoryWriteRefusal)`，携带**判定自己的**拒绝名
+  （`record_id` + `reason`），且**一列不落库**。
+
+**判定与落库是一处**，与 W103–W106 同形：拆成 `admit` 与 `persist` 两个出口会把
+「不许把未放行的写入落库」的责任推给每个调用方。
+
+**恰两态**（不是 W106 的四态）：H03 只有**一项**判定（§42.2 的来源门槛），只有一个「放行／不放行」的轴；
+多造一态会是**没有对应事实的空壳**。`Err` 留给真正的故障（主键冲突、缺权限、标识非法、存储故障）——
+**判定说「不」是一个结论，不是一个故障**。
+
+⚠️ **执行体是领域表，不是决策日志**：§42.2 的拒因后果原文是「MUST NOT **落库**」；记忆**观测**落链
+**已经**由 W103 的 `record_observation` 承担 ⇒ 此处再写一条决策日志条目就是**同一件事的第二处定义**，
+且需要一个新的 `DecisionKind` 变体。有一项测试专门钉这件事（写入后**决策日志零新增**）。
+
+⚠️ **九列逐字取自判定审过的输入**：`MemoryRecord` 九字段 ↔ `memory_records` 九列逐字对应
+（`viewer_scoped_id` → `viewer_scope`、`expires_at_utc_ms` → `expires_at_ms`）；runtime 是**传输**不是**加工**
+——MUST NOT 由 `content` 重算、MUST NOT 补默认值。
+⚠️ **判定还审过但表中无列的五个字段不落库**（`source`／`claim`／`source_ref`／`written_at_utc_ms`／
+`publish_ref`）：§42.2 把它们定为**判定输入**，多造列就是给这张表第二处定义（见 [存储](storage.md)）。
+⚠️ **判定一次**：`Store::record_memory` 不重跑 §42.2（一条门槛答两次会分家），也不自己复写
+能力开关（观众记忆开关的唯一应答点仍是 `viewer_memory_gate`，ADR 0067）。
+⚠️ **存储层不加写入面的时效规则**：§42.3 的时效判定在**读取**面；`record_memory` 因此**不**拒已过期记录
+（`record_candidate` 会——两者是**不同的**入口，规则不同是刻意的）。
+
+**边界（如实）**：写入面的接线已可测（**9** 项测试 + **七**组非空洞注入共 16 红），但
+**§42.3 的读取判定（H04）未接线**——`read_records` 的条目级输入 `revoked` 在 `memory_records` 里
+**没有承载列**，写死 `revoked: false` 就是**凭空断言一条判定输入** ⇒ 登记为具名开放问题，不假装已接。
+`Store::memory_records` 是**取数入口**（逐列还原、按作用域过滤、`ORDER BY record_id`），
+**不是** §42.3 的读取面，MUST NOT 被读作 H04 已接线。见 [ADR 0085](adr/0085-memory-write-gate-wiring.md)。
+
 ## 子进程监督（Supervisor）
 
 - 二进制路径由调用方显式传入（`Binaries::validate` 缺失即 `CapabilityNotReady`）；库内不用

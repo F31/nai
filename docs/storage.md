@@ -37,6 +37,37 @@ SQL 源位于 `migrations/sqlite/0001-foundation.sql` 至 `0007-decision-log-ass
 存储审批复检 hash/session/epoch、事实时效和当前批准权限；这不是 Guard 或媒体播放授权。
 outbox 的实际运行/媒体消费者已由 D06/D09 落地。
 
+## 记忆表（`memory_records`）
+
+`memory_records` 由 `0001-foundation.sql` 建立（九列 + 复合主键 `(workspace_id, record_id)`），
+其模式与 `MemoryRecord` 契约的九字段**逐字对应**：
+
+| `MemoryRecord` 字段 | 列 |
+|---|---|
+| `record_id` / `workspace_id` / `session_id` / `kind` / `purpose` / `content` / `authorization_ref` | 同名七列 |
+| `viewer_scoped_id` | `viewer_scope`（可空） |
+| `expires_at_utc_ms` | `expires_at_ms` |
+
+`Store::record_memory` 是写入入口：`id()` 校验作用域标识、`access()` 查权限（复用既有权限名
+`session.manage`，与同族的 `record_candidate` 一致）、写九列，主键冲突 ⇒ 具名 `Conflict`。
+**它不重跑 §42.2 的来源判定**——那是 `nai_kernel::evaluate::memory::admit_write` 的事，
+由 `Composition::write_memory` 在它**之前**跑完（一条门槛 MUST 只答一次）。
+**它也不加写入面的时效规则**：§42.3 的时效判定在**读取**面，存储层不另立一条判定面没声明的规则。
+
+`Store::memory_records` 是**取数入口**：按 `(workspace, session)` 读回九列，`ORDER BY record_id`
+（表里没有创建时间列，故**读回顺序 ≠ 写入顺序**）。它**不施加** §42.3 的任何条目级判定
+（越作用域／过期／撤销／权限／近似顶替／配额），**MUST NOT** 被读作记忆读取面已接线。
+
+⚠️ **判定审过但表中无列的五个字段不落库**：`source`（写入来源）、`claim`（叙述／权威事实）、
+`source_ref`、`written_at_utc_ms`、`publish_ref`。§42.2 把它们定为**判定输入**而非持久化字段。
+**后果如实登记**：「这条记录当时是从哪种来源写进来的」在库里**查不到**；若日后需要按来源审计记忆写入，
+那是**另一个对象**（新增列或新增审计面）。
+⚠️ **`expires_at_utc_ms` 与 `written_at_utc_ms` 不是同一个时间**：前者落库（`expires_at_ms`），
+后者只参与判定、不落库，两者 MUST NOT 互相顶替。
+⚠️ **撤销状态没有承载列**：§42.4 的遗忘链是一条真实状态，而本表无撤销列 ⇒ 依赖它的读取判定
+（H04）**未接线**，属具名开放问题。见 [运行期](runtime.md) 的 W107 段与
+[ADR 0085](adr/0085-memory-write-gate-wiring.md)。
+
 ## 不可变内容与快照
 
 `publish_artifact` 仅接受 knowledge/assets/models 类型，在允许根下使用 SHA-256 文件名，

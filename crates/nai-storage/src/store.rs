@@ -1,6 +1,7 @@
 use crate::{DataPaths, Operation, Result, error, hash, id, migration, sql_int, utc_ms};
 use nai_contracts::v1::{
-    Approval, AuthoritativeFact, ErrorCode, PerformanceCue, SessionSnapshot, authoritative_fact,
+    Approval, AuthoritativeFact, ErrorCode, MemoryRecord, PerformanceCue, SessionSnapshot,
+    authoritative_fact,
 };
 use prost::Message;
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
@@ -621,6 +622,113 @@ impl Store {
         tx.commit()?;
         Ok(candidate_hash)
     }
+
+    /// §42.2: persists one **already judged** memory record.
+    ///
+    /// The write gate is the kernel's `admit_write`; this method is the transport,
+    /// so it MUST NOT re-run that judgement — one gate, one answering point (W88).
+    /// All it adds is its own layer's work: validate the scope identifiers, check
+    /// the session permission, write the nine columns.
+    ///
+    /// `MemoryRecord`'s nine fields map one-to-one onto the table's nine columns
+    /// (`viewer_scoped_id` → `viewer_scope`, `expires_at_utc_ms` → `expires_at_ms`),
+    /// which is why this needs **no migration**. The gate also judges `source`,
+    /// `claim`, `source_ref`, `written_at_utc_ms` and `publish_ref`, but §42.2 makes
+    /// those *gate inputs*, not stored columns, and the table has no column for
+    /// them — so they are deliberately **not** persisted. Inventing columns to look
+    /// complete would give this table a second definition.
+    ///
+    /// No expiry check here on purpose: §42.3 puts the freshness judgement on the
+    /// **read** face, and a write-face rule the contract never stated would make
+    /// the gate and the store answer to two different criteria.
+    pub fn record_memory(
+        &mut self,
+        op: &Operation,
+        workspace: &str,
+        actor: &str,
+        record: &MemoryRecord,
+    ) -> Result<()> {
+        self.start(op)?;
+        for key in [&record.workspace_id, &record.record_id, &record.session_id] {
+            id(key)?;
+        }
+        if record.workspace_id != workspace {
+            return Err(error(
+                ErrorCode::InvalidArgument,
+                "memory record workspace mismatch",
+            ));
+        }
+        access(&self.conn, workspace, actor, "session.manage", "*")?;
+        let existing: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM memory_records WHERE workspace_id=?1 AND record_id=?2",
+            params![record.workspace_id, record.record_id],
+            |r| r.get(0),
+        )?;
+        if existing != 0 {
+            return Err(error(ErrorCode::Conflict, "memory record exists"));
+        }
+        let expires = sql_int(record.expires_at_utc_ms)?;
+        self.conn.execute(
+            "INSERT INTO memory_records(workspace_id,record_id,session_id,viewer_scope,kind,purpose,authorization_ref,content,expires_at_ms) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+            params![
+                record.workspace_id,
+                record.record_id,
+                record.session_id,
+                record.viewer_scoped_id,
+                record.kind,
+                record.purpose,
+                record.authorization_ref,
+                record.content,
+                expires
+            ],
+        )?;
+        op.check()?;
+        Ok(())
+    }
+
+    /// The memory records of one session, read back column by column in a
+    /// deterministic order.
+    ///
+    /// Read-only, and deliberately **not** the §42.3 read face: it applies no
+    /// scope-crossing, expiry, revocation, permission, substitution or budget
+    /// judgement. `memory_records` carries **no revocation column**, so a caller
+    /// cannot honestly derive the `revoked` input `read_records` needs — asserting
+    /// `false` here would fabricate a judgement input (W94's shape). The read
+    /// judgement's wiring is a registered open question, not something this
+    /// accessor may be read as having answered.
+    pub fn memory_records(
+        &self,
+        op: &Operation,
+        workspace: &str,
+        actor: &str,
+        session: &str,
+    ) -> Result<Vec<MemoryRecord>> {
+        self.start(op)?;
+        access(&self.conn, workspace, actor, "session.manage", "*")?;
+        let mut statement = self.conn.prepare(
+            "SELECT record_id,workspace_id,session_id,viewer_scope,kind,purpose,authorization_ref,content,expires_at_ms FROM memory_records WHERE workspace_id=?1 AND session_id=?2 ORDER BY record_id",
+        )?;
+        let rows = statement.query_map(params![workspace, session], |r| {
+            Ok(MemoryRecord {
+                record_id: r.get(0)?,
+                workspace_id: r.get(1)?,
+                session_id: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                viewer_scoped_id: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
+                kind: r.get(4)?,
+                purpose: r.get(5)?,
+                authorization_ref: r.get::<_, Option<String>>(6)?.unwrap_or_default(),
+                content: r.get(7)?,
+                expires_at_utc_ms: r.get::<_, i64>(8)? as u64,
+            })
+        })?;
+        let mut records = Vec::new();
+        for row in rows {
+            records.push(row?);
+        }
+        op.check()?;
+        Ok(records)
+    }
+
     pub fn approve(
         &mut self,
         op: &Operation,

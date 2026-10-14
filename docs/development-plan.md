@@ -1481,6 +1481,53 @@ passed **+13** = `tests/assembly.rs` 12 → 25）。⚠️ **门控共跑 3 次*
 见 [W106 报告](reports/2026-10-14-w106-assembly-judgement-wiring.md)、[ADR 0084](adr/0084-assembly-judgement-wiring.md)、
 `openspec/changes/archive/2026-10-14-w106-assembly-judgement-wiring/`。
 
+### W107 记忆写入判定接上真实记忆存储（H03 runtime 接线）
+
+**W107 交付 H03 的 runtime 接线：把 §42.2 的写入判定接上真实执行体**——`admit_write` 此前
+**在生产代码里零调用方**，而 `memory_records` 表（`0001-foundation.sql` 九列，与 `MemoryRecord`
+契约九字段逐字对应）**零生产读写**（全仓只有两条测试里的目录级断言）。判定面不落库、存储面不认识判定
+⇒「一次被拒绝的记忆写入到底有没有落库」在 runtime 上**不可表达**。
+与 W103／W104／W105／W106 **连续第五轮同型**，**不同点**：前四轮的执行体是**只追加哈希链**，本轮是**领域表**。
+
+**落点**：`crates/nai-runtime/src/memory.rs`（新模块）+ `crates/nai-storage/src/store.rs` 的两个访问器。
+`Composition::write_memory(candidate, policy)` **先**跑判定：放行 ⇒ `Written(record)` 并落
+`memory_records`；拒绝 ⇒ `Refused(MemoryWriteRefusal)`（判定自己的拒绝名）且**一列不落库**。
+**判定 + 落库是一处**（与 W103–W106 同形）；结局**恰两态**（H03 只有一项判定，多一态是无对应事实的空壳）。
+
+**零迁移**：不新增 `DecisionKind`（执行体是领域表不是决策日志——记忆**观测**落链已由 W103 承担，
+此处再写一条就是同一件事的第二处定义）、不改 `migrations/**`、`migration::VERSION` 保持 **7**、
+不改 `schemas/**` 与生成物、**零新增依赖**、**权限面零改动**（复用既有权限名 `session.manage`）。
+⇒ 本轮**不产生**任何只能在本机 `EBUSY` 路径（`cargo xtask schema --check`）上验证的改动面。
+
+**门控**：`cargo xtask check --profile full` ⇒ **`EXIT=0`**，计数**现测**：Rust `^test result:` **95**
+（`Running` **78** 含 1 行伪目标 + `Doc-tests` **18**）+ **914 passed / 0 failed**；Node TAP 根 **13** /
+`# tests` **317** / `# fail` **0**。对照 W106（94 目标 / 905 passed）⇒ **目标 +1、`passed` +9**，
+恰为新增 `crates/nai-runtime/tests/memory.rs` 的 **9** 项用例（由 `cargo test --workspace` 自动覆盖
+⇒ **无需** `engineering_checks` 登记）；Node 面与 W106 **逐项相同**。
+⚠️ **本轮共跑 5 次**（非一次即绿）：① ② 红在宿主 `LNK1104`（**每次点名的链接目标都不同**）、
+③ 红在宿主 `DeadlineExceeded`（`nai-runtime --test composition`；**本轮连单跑也红**、失败集合
+每次不同 ⇒ 判据改用「**限并发下 95 目标全绿** + 相关文件本轮一行未改」）⇒ **非代码缺陷、未改一行代码**；
+④ 绿（`RUST_TEST_THREADS=1`）、⑤ 归档后绿（计数与 ④ **逐项相同**）。
+`openspec validate`：变更级 `--strict` 报 `is valid`；归档前 `--specs --strict` **43/0**、
+`--all --strict` **44/0**、`--changes` **1/0**；归档后 `--archived` **105/0**、`--all --strict` **43/0**
+（归档 `runtime-composition` ⇒ **+2 added**）。
+
+**非空洞注入**：**七**组真改文件 + 真跑 + `sha256` 逐字节还原（基准 = 过完 `cargo fmt --all` 之后的那一份），
+**16 红**、每组 ≥1（I1 3 / I2 3 / I3 4 / I4 2 / I5 1 / I6 1 / I7 2）。
+其中 **I5／I6** 是新形状（取数入口的**过滤太松**与**判定太多**）、**I7** 把能力开关**答两次且答错**
+（只在调用侧换策略，判据仍看得见）。
+
+**明确不做 / 如实披露**：**H03 保持 `pending`**——本轮闭合的是「判定面 → 执行体」，不是验收达标。
+**H04（读取面）本轮不接线**：`read_records` 的条目级输入 `revoked` 在 `memory_records` 里
+**没有承载列**，写死 `revoked: false` 就是**凭空断言一条判定输入**（W94 的形状）⇒ 登记为**具名开放问题**。
+另：`MemoryCandidate` 的 `source`／`claim`／`source_ref`／`written_at_utc_ms`／`publish_ref`
+**不落库**（表中无列，§42.2 把它们定为判定输入）⇒ **「这条记录当时是从哪种来源写进来的」在库里查不到**，
+如实登记；`Store::memory_records` 是**取数入口**（`ORDER BY record_id`，读回顺序 ≠ 写入顺序），
+**不是** §42.3 的读取面。
+
+见 [W107 报告](reports/2026-10-14-w107-memory-write-gate-wiring.md)、[ADR 0085](adr/0085-memory-write-gate-wiring.md)、
+`openspec/changes/archive/2026-10-14-w107-memory-write-gate-wiring/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

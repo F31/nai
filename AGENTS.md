@@ -3171,3 +3171,70 @@ Rust **94 目标 / 905 passed / 0 failed**（= **76** `Running` + **18** `Doc-te
 见 [W106 报告](docs/reports/2026-10-14-w106-assembly-judgement-wiring.md)、
 [ADR 0084](docs/adr/0084-assembly-judgement-wiring.md)、
 `openspec/changes/archive/2026-10-14-w106-assembly-judgement-wiring/`。
+
+### W107 §42.2 记忆写入的判定面与执行体**分居两处、中间没有接线**（H03）
+
+**缝型**：`crates/nai-kernel/src/evaluate/memory.rs::admit_write`（W57 交付的 H03 写入门槛）在生产代码里
+**零调用方**，而 `memory_records` 表（`0001-foundation.sql:29`，九列与 `MemoryRecord` 契约九字段
+**逐字对应**）**零生产读写**——全仓仅两条命中，且都在测试里、都是**目录级**断言
+（「表在目录里」「新库这张表为空」）。判定面不落库、存储面不认识判定 ⇒
+「**一次被拒绝的记忆写入究竟有没有落库**」在 runtime 上**不可表达**，只能靠读源码回答。
+与 W103／W104／W105／W106 **连续第五轮同型**；**不同点**：前四轮的执行体是**只追加哈希链**，本轮是**领域表**
+⇒ 多出前四轮没有的一个选择面——**执行体到底是「落链」还是「落库」**，且**必须裁定**（见下）。
+
+**为什么 H03 不卡外部前置**（与 W105／W106 的判据**同一条**）：`admit_write` 的输入**全部来自调用方**
+（候选的 `record`／`source`／`claim`／`source_ref`／`written_at_utc_ms`／`publish_ref`，以及 `policy`）
+⇒ 判定面**不消费任何外部系统**，故「判定之后那一步」在仓库内**可判**。
+
+**实现**：`crates/nai-runtime/src/memory.rs` 新增 `Composition::write_memory(candidate, policy)`——
+**先**跑判定（判定规则一行未改），**放行** ⇒ `Written(record)` 并落 `memory_records`；
+**拒绝** ⇒ `Refused(MemoryWriteRefusal)`（**判定自己的**拒绝名 + `record_id`）且**一列不落库**。
+**判定 + 落库是一处**（与 W103–W106 同形：两个出口会把不变量推给每个调用方）。
+`crates/nai-storage/src/store.rs` 新增 `record_memory`（`id()` 校验 + `access()` 查权限 + 写九列 +
+主键冲突 ⇒ 具名 `Conflict`）与 `memory_records`（按 `(workspace, session)` 读回，`ORDER BY record_id`）。
+
+⚠️ **执行体是领域表，不是决策日志**：§42.2 的拒因后果原文是「MUST NOT **落库**」；记忆**观测**落链
+**已经**由 W103 的 `record_observation` 承担 ⇒ 此处再写一条决策日志条目就是**同一件事的第二处定义**，
+且需要一个新的 `DecisionKind` 变体。**有一项测试专门钉这件事**（写入后**决策日志零新增**）。
+⚠️ **结局恰两态**（不是 W106 的四态）：H03 只有**一项**判定 ⇒ 只有一个轴；多一态是**没有对应事实的空壳**
+（W92 教训的反向应用）。**`Err` 留给故障**（主键冲突／缺权限／标识非法／存储故障）——判定说「不」是结论、不是故障。
+⚠️ **判定一次**：存储层 MUST NOT 重跑 §42.2（一条门槛答两次会分家，W88），也 MUST NOT 自己复写
+能力开关（唯一应答点仍是 `viewer_memory_gate`，ADR 0067）。存储层也**不**加写入面的时效规则
+（§42.3 的时效在**读取**面；`record_candidate` 会拒已过期候选、`record_memory` **不**做，规则不同是刻意的）。
+
+**零迁移**：不新增 `DecisionKind`、不改 `migrations/**`、`migration::VERSION` 保持 **7**、
+不改 `schemas/**` 与生成物、**零新增依赖**、**权限面零改动**（写入面复用既有权限名 `session.manage`，
+⚠️ **如实披露**：这是**选择**不是「本来如此」——按 `memory.access@1` 的操作名对齐的 `memory.write` 也站得住，
+本轮刻意不扩张授权面）⇒ 本轮**不产生**任何只能在本机 `EBUSY` 路径上验证的改动面。
+
+**测试与非空洞守卫**：`crates/nai-runtime/tests/memory.rs`（**9** 项，新测试目标 ⇒ Rust 目标数 **+1**，
+由 `cargo test --workspace` 自动覆盖 ⇒ **无需** `engineering_checks` 登记）。
+守卫 `refusal_sample` 对 `MemoryRejection`（23 变体）**穷尽 `match`**：写入面八条各给样本、其余显式 `None`
+⇒ kernel 加变体而此处未决定归属 ⇒ **编译失败**（不静默丢覆盖）；断言可达的**恰为这八条**且全部**零落库**。
+
+**非空洞注入**：**七**组真改文件 + 真跑 + 备份拷回 + `sha256` 逐字节还原（基准 = 过完 `cargo fmt --all`
+之后的那一份），**16 红**、每组 ≥1 —— I1（跳过判定直接落库）**3 红**、I2（拒绝分支照旧落库）**3 红**、
+I3（`purpose` 由 `content` 重算）**4 红**、I4（`viewer_scope` 被常量填空）**2 红**、
+I5（读回丢掉会话过滤）**1 红**、I6（读回加上时效过滤）**1 红**、I7（写入面把开关答成「恒开」）**2 红**。
+其中 **I5／I6 是新形状**（取数入口的**过滤太松**与**判定太多**——后者尤其重要：一个「多加了一条检查」
+的实现看起来更安全，却让取数入口偷偷变成**第二个判定面**）；**I7** 是「开关答两次且答错」，
+它**不改被审对象**、只在**调用侧**换掉策略 ⇒ 印证「判据要能看见**调用方把判定用错了**」。
+
+**门控**：`cargo xtask check --profile full` ⇒ **`EXIT=0`**，计数**现测**：Rust **95** 目标
+（**78** `Running` 含 1 行伪目标 + **18** `Doc-tests`）/ **914 passed / 0 failed**；Node **13 / 317 / 0**。
+对照 W106（94 / 905）⇒ **目标 +1、`passed` +9**，恰为新增 `crates/nai-runtime/tests/memory.rs` 的 **9** 项
+⇒ 计数变化**逐项对得上**。归档（`openspec/specs/**` 被改动）后**复跑门控**：**`EXIT=0`**，计数**逐项相同**。
+⚠️ 本轮共跑 **5** 次（非一次即绿）：① ② 宿主 `LNK1104`（每次点名目标不同）、③ 宿主 `DeadlineExceeded`
+（`nai-runtime --test composition`，**本轮连单跑也红**、失败集合每次不同）⇒ 判据改用「**限并发下全绿**
++ 相关文件本轮一行未改」⇒ **非代码缺陷，未改一行代码**。
+
+**如实披露**：**H03 保持 `pending`**（本轮闭合的是「判定面 → 执行体」，不是验收达标）；
+**H04（读取面）本轮不接线**——`read_records` 的条目级输入 `revoked` 在 `memory_records` 里**没有承载列**
+（§42.4 的遗忘链是**真实状态**），写死 `revoked: false` 就是**凭空断言一条判定输入**（W94 的形状）
+⇒ 登记为**具名开放问题**，**不假装已接**；`Store::memory_records` 是**取数入口**（`ORDER BY record_id`
+⇒ 读回顺序 ≠ 写入顺序），**不是** §42.3 的读取面。
+另：`source`／`claim`／`source_ref`／`written_at_utc_ms`／`publish_ref` **不落库**（表中无列，
+§42.2 把它们定为**判定输入**）⇒ **「这条记录当时是从哪种来源写进来的」在库里查不到**，如实登记。
+见 [W107 报告](docs/reports/2026-10-14-w107-memory-write-gate-wiring.md)、
+[ADR 0085](docs/adr/0085-memory-write-gate-wiring.md)、
+`openspec/changes/archive/2026-10-14-w107-memory-write-gate-wiring/`。
