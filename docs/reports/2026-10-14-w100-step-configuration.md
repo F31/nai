@@ -152,7 +152,7 @@ workflowStepsOf(text)  → [{identity, condition, run, job, matrix, continueOnEr
 | **V10** | `continue-on-error: ${{ matrix.os }}` | R4（开关形状） | `0/0/0/0/0/0/3` |
 | **V11** | 步改名（**边界探针**） | **W100 沉默**（返回 `[]`） | `0/4/0/1†/0/0/1†` |
 
-**† = 夹具前提被扰动的假红，不是判据判定**（见 §2.4 陷阱 3 / §九 4）。V11 是本轮的**反向边界
+**† = 夹具前提被扰动的假红，不是判据判定**（见 §2.4 陷阱 3 / §九 7）。V11 是本轮的**反向边界
 证据**：`stepConfigErrors` 在该改动下返回 `[]`（W100 确实不读步身份），而 W95 的步集判据红 4 条。
 
 **独有覆盖**：
@@ -198,8 +198,20 @@ W100 判「条件形状表是否还有实例」（**冗余，不是重复定义*
 
 ## 七、CI
 
-（本节在推送后按**单次低频观测**回填：唯一查询参数 + `Cache-Control: no-cache` + 回读
-`head_sha` == 推送 SHA。）
+推送 `483b3db..7b2bf4e`（SSH 443）后的**单次低频观测**（唯一查询参数 `cb=<ns>` +
+`Cache-Control: no-cache` + 回读 `head_sha`，三个条件齐备）：
+
+- run **`#133`**（`id = 38499560309`，`head_sha = 7b2bf4e` **== 推送 SHA**）
+  `status = completed`、`conclusion = **success**`；`created_at = 02:09:34Z` →
+  `updated_at = 02:19:57Z`（**≈ 10m23s**）。
+- `foundation (ubuntu-24.04)`：**success**，`02:09:37Z → 02:15:36Z`（≈ 5m59s），**26 steps**。
+- `foundation (windows-latest)`：**success**，`02:09:37Z → 02:19:56Z`（≈ 10m19s），**26 steps**。
+- 观测纪律：本轮共 **5** 次 API 请求（1 次列表 + 4 次单查），**未用密集轮询**；
+  等待靠「先做别的事 + 单次查询」。⚠️ **未完成时 `/runs/{id}` 的 `updated_at` 停在起始时刻不推进**
+  （实测两次单查都是 `in_progress`、`updated_at` 恒为 `02:09:38Z`）——这是**正常的**，
+  MUST NOT 误判为代理缓存（W91 教训）。
+- **顺带观测**：`#132`（`483b3db` = W99 的回填提交）**success**，`#131`（`e075f9a` = W99 主提交）
+  **success**。
 
 ## 八、遗留
 
