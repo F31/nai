@@ -1381,6 +1381,48 @@ I4 载荷漏 `model_version` ⇒ **1 红**；I5 迁移 CHECK 去掉 `assembly` �
 见 [W104 报告](reports/2026-10-14-w104-assembly-log-wiring.md)、[ADR 0082](adr/0082-assembly-log-wiring.md)、
 `openspec/changes/archive/2026-10-14-w104-assembly-log-wiring/`。
 
+### W105 爬坡启用记录接上真实哈希链（H18 runtime 接线）
+
+**W105 交付 H18 的 runtime 接线：把 W67 的判定面接上真实执行体**——`evaluate_promotion` 此前**在生产代码里
+零调用方**（`grep -rn 'record_to_append' crates/ apps/` 只命中 `crates/nai-kernel/tests/ramp.rs`），
+而 W67 模块文档自己写着「把启用记录追加进 `nai-storage` 的哈希链……是 runtime 接线」；缝型比 W103/W104
+更刺眼：判定面**自带** `RampVerdict::record_to_append: Option<EnablementRecord>`（`ramp.rs:257`），
+`EnablementRecord` 是**拥有所有权**的类型 ⇒ 判定**已经把要落盘的记录算好了**，却没人落盘。
+于是①「放行的晋升算出的记录会不会照样进链」②「`record_to_append == None` 的两条原因（被拒 /
+放行但阶段不在门控内）在运行期不可区分」两条**无法被判**——缝型与 W103（H15）、W104（H02）、
+W54（桌面壳）、W68（讲品循环）同型：**判定面存在、执行体不存在**（本仓**第八次**）。
+
+**唯一入口**：`crates/nai-runtime/src/ramp.rs` 的 `Composition::record_promotion(request)`（判定 + 追加
+合并 ⇒ 不变量由结构保证）。**三态**结局：放行且有记录 ⇒ 追加 `DecisionKind::Approval`（**critical 级**）；
+放行但目标阶段在门控之前 ⇒ `NoRecordRequired{from,to}`（**不追加、非拒绝**）；拒绝 ⇒
+`RampRefusal{rejections, missing_categories, leaked_fields}`（逐条拒绝名 + **全部**缺失类别 + 凭据**字段名**）
+且**一字节不落盘**。载荷**恰为** `mechanism`/`from`/`to`/`fields` 四项，**不含** `req.touched`/`req.passed`。
+
+**为什么必须三态**：`record_to_append == None` 的两条原因塌成两态，无论塌向哪边都**说谎**（报「已落日志」
+而一个字节没落，或报「已拒绝」而它没被拒）；且**不可**用 `record_to_append.is_some()` 反推 `allowed`
+（kernel 模块文档开头警告的折叠）。**零迁移、零契约改动**：**复用** `DecisionKind::Approval`
+（在枚举与 `0005` 的 `kind CHECK` 两个闭世界里都已存在；`criticality()` 归 **Critical** ⇒ 写入失败
+**原样上报**而非静默进缓冲），`migration::VERSION` 保持 **7**，**不产生** W104 那种「本机不可再生的
+TS 生成物」面；代价如实披露为一个种类两种载荷形状（实测无读者按 kind 解析、无守卫枚举 `DecisionKind`）。
+**为什么先做 H18 而非 H01**：H01 的 runtime 步是「喂给模型」＝真实产生者（属 H16/外部），H18 的判定面
+**自证**无能力包亦保持可判定（INV-33）⇒ 更自主。
+
+**规格面**：`agent-harness` 那条爬坡需求**末句** 1:1 追加指向新落点的一句（其余正文与全部 5 个场景逐字不动）
+——**改前就实测**正文字符数（W104 归档当场被 `>500` 的 strict 规则红过一次）：**436 → 446**。
+
+**非空洞注入五组**（真改文件 + 真跑 + 逐字节还原 + `sha256` 一致 + 复跑基线 9/9 全绿）：
+I1 拒绝分支照旧追加 ⇒ **4 红**；I2 载荷漏 `record.fields` ⇒ **2 红**；I3 门控之前的阶段也追加 ⇒ **2 红**；
+I4 载荷夹带 `touched`/`passed` ⇒ **1 红**；I5 把 `allowed` 折进 `record_to_append.is_some()` ⇒ **5 红**。
+**宿主机实测**：`LNK1104` 在注入期间命中 **4** 次 ⇒ 判据＝**重试即可过**、**非代码缺陷**（重试、绝不改代码）。
+
+**明确不做 / 如实披露**：**H18 保持 `pending`**——本轮可测的是「判定**之后**那一步真的发生」，
+而**按阶段真正启用机制的机制侧**（属 H16/H01）与 **§47.2 六类回归的执行体**（**H16**，能力包）**仍未接线**
+⇒ 报告 MUST NOT 出现「爬坡机制已接入运行期」「六类回归已执行」这类运行期断言；不加便利谓词
+（枚举本身已可区分）。
+
+见 [W105 报告](reports/2026-10-14-w105-ramp-enablement-log-wiring.md)、[ADR 0083](adr/0083-ramp-enablement-log-wiring.md)、
+`openspec/changes/archive/2026-10-14-w105-ramp-enablement-log-wiring/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

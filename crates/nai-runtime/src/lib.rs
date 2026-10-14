@@ -9,11 +9,13 @@
 mod assembly;
 mod composition;
 mod observation;
+mod ramp;
 pub mod supervisor;
 
 pub use assembly::{AssemblyOutcome, AssemblyRebuild, AssemblyRefusal};
 pub use composition::{BRINGUP_OPERATION, Composition, ControlAction, DutyEvent, ObservedFault};
 pub use observation::{ObservationOutcome, ObservationRefusal};
+pub use ramp::{RampOutcome, RampRefusal};
 pub use supervisor::{
     Binaries, FramePoolArgs, RenderWorkerSpec, StandbyReason, Supervisor, SupervisorFault,
 };

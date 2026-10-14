@@ -77,6 +77,13 @@ reason 不携带 OS 本地化文本，因此跨机器可直接比对；确切类
 critical 可先于降级缓冲提交，seq 是持久化顺序，created_at_ms 保留原记录时间，不宣称跨分级的事件时间全序。
 缓冲统计经 `decision_buffer_stats` 暴露给诊断；持久失败的缓冲头仍可能阻止后续遥测，容量规则和丢弃计数继续可见，关键写入不受该缓冲头依赖。
 
+`approval` 类别**除审批后端的候选审批条目外**（载荷含 `candidate_hash`／`approval_id`／`epoch`／`actor_id`），
+**同时承载 §47.3 的爬坡启用记录**（W105，载荷为 `mechanism`／`from`／`to`／`fields`）——同一 `kind` 两种
+载荷形状。两者的 `trace_id` 前缀可区分（审批用 `approval_id`，本轮用 `ramp-N`）；既有审批读者读的是
+`approvals` **表**、**不**按 `decision_log.kind` 过滤，故互不干扰。选 `approval` 而非新种类是为了
+**零迁移**（它在枚举与 `0005` 的 `kind CHECK` 两个闭世界里都已存在），且它是 **critical** ⇒
+写入失败**原样上报**，与「启用记录已备」同向。见 [ADR 0083](adr/0083-ramp-enablement-log-wiring.md)。
+
 playback_ack 类别已定义但**无生产端**：无 output-keeper 与真实播放 ACK，R07 因此标 implemented 而非
 tested；桩 Provider 回放一致性与 ACK 生产端属 W17。哈希链只保证逻辑完整性，不防拥有写库权限者整体重写。
 

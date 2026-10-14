@@ -92,6 +92,40 @@ schema 拒绝、**静默落入遥测缓冲**（`ack.persisted == false`，不报
 （把九段片段喂给模型、§41.2 分段预算初值标定、§47.2 六类回归属 **H16**）**未接线** ⇒ H02 仍 `pending`。
 H17（`evaluate_degradation` → `CapabilityView` 与界面）亦未接线。
 
+## 爬坡启用记录落链（W105，验收 H18）
+
+`Composition::record_promotion(request)` 是 §47.3 爬坡晋升**进入只追加哈希链**的唯一入口：
+它先调 `nai_kernel::evaluate::ramp::evaluate_promotion` 判定（判定规则本身由 W67 落地，本轮**一行未改**），
+再按判定结果分**三**路：
+
+- **放行且产出了启用记录**（目标＝受监督自动）⇒ 追加一条 `DecisionKind::Approval` 条目（**critical 级**），
+  载荷**恰为**判定放行的那份材料四项：`mechanism`、`from`、`to`、`fields`。
+- **放行但目标阶段在门控之前** ⇒ 返回 `RampOutcome::NoRecordRequired{from, to}`，**不追加**；
+  §47.3 对非门控阶段**没有**启用要求，故这**不是**拒绝。
+- **拒绝** ⇒ 返回 `RampOutcome::Refused(RampRefusal{rejections, missing_categories, leaked_fields})`——
+  逐条拒绝名 + **全部**缺失回归类别 + 值内含凭据的**字段名**（只报名字、不报值），**一个字节都不落盘**。
+
+⚠️ **为什么是三态而不是两态**：`record_to_append == None` 有**两条**原因——被判拒绝、或放行但无需记录。
+塌成 `Logged`/`Refused` 两态，无论塌向哪一边都会**说谎**：报「已落日志」而一个字节没落，或报「已拒绝」
+而它根本没被拒。⚠️ 且**不可**用 `record_to_append.is_some()` 反推 `allowed`——那正是 kernel 模块文档
+开头警告的折叠（「refused because it is not enabled by default, or because a condition was missed」）。
+运行期 MUST **各读一次**：先 `verdict.allowed`，再 `verdict.record_to_append`。
+
+⚠️ **载荷 MUST NOT 夹带 `req.touched` / `req.passed`**：判定**消费**这两份回归类别集是为了**决定**，
+它**没有**为落盘审过它们；把它们一并落账，就是把 runtime 从**传输者**改成**加工者**，也把会随修订变化
+的回归状态钉进链。
+
+⚠️ **`approval` 是复用既有种类、不是新增**（故**零迁移、零契约改动**）：它在 Rust 枚举与
+`migrations/sqlite/0005-decision-log.sql` 的 `kind CHECK(kind IN(…))` **两个闭世界里都已存在**；
+`criticality()` 把它归 **Critical** ⇒ 写入失败**原样上报**，而不是像 telemetry 那样静默进有界缓冲
+（`ack.persisted == false`）——启用记录是「要么落地、要么被报告」的决定，不是可丢遥测。
+**代价如实披露**：一个种类承载两种载荷形状（审批后端的 `candidate_hash` 组 与 本轮的 `mechanism/from/to/fields`）；
+既有审批读者读的是 `approvals` **表**（`approval_valid`／`list_pending_approvals`／`read_approval`），
+**不**按 `decision_log.kind` 过滤，故两者互不干扰。见 [ADR 0083](adr/0083-ramp-enablement-log-wiring.md)。
+
+**边界（如实）**：落链路径已可测（九项测试 + 五组非空洞注入），但**按阶段真正启用机制的机制侧**与
+**§47.2 六类回归的执行体**（**H16**，能力包）**未接线** ⇒ H18 仍 `pending`。
+
 ## 子进程监督（Supervisor）
 
 - 二进制路径由调用方显式传入（`Binaries::validate` 缺失即 `CapabilityNotReady`）；库内不用

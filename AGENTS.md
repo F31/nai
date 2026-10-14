@@ -3041,3 +3041,57 @@ I4 载荷漏 `model_version` ⇒ **1 红**；I5 迁移 CHECK 去掉 `assembly` �
 见 [W104 报告](docs/reports/2026-10-14-w104-assembly-log-wiring.md)、
 [ADR 0082](docs/adr/0082-assembly-log-wiring.md)、
 `openspec/changes/archive/2026-10-14-w104-assembly-log-wiring/`。
+
+### W105 H18 的 runtime 接线：判定面**自己算好了记录**，却没人落盘
+
+**缝型**：`crates/nai-kernel/src/evaluate/ramp.rs::evaluate_promotion`（W67 交付的 H18 判定）在
+**生产代码里零调用方**，而该模块文档自己写着「appending the record to the hash chain in `nai-storage`,
+is wiring and is **not** claimed here」。这比 W103/W104 更刺眼：判定面**自带**
+`RampVerdict::record_to_append: Option<EnablementRecord>`（`ramp.rs:257`）——它已经把「允许时要追加的那份
+记录」算成了一个**拥有所有权、可直接序列化进链**的值，`:322` 的构造分支专为此写，**唯一消费者是测试**。
+⇒ 两条**无法被判**的命题：①放行的晋升算出的记录会不会照样进链；②`record_to_append == None` 的**两条**
+原因（被拒 / 放行但阶段不在门控内）在运行期**不可区分**——把后者折进「拒绝」或折进「已落日志」的实现
+**都能通过全部 13 项 kernel 测试**。与 W103（H15）、W104（H02）**完全同型**，是本仓「**判定面存在、
+执行体不存在**」的**第八次**现身。
+
+**实现**：新增 `crates/nai-runtime/src/ramp.rs`——`record_promotion(request)` 是「判定 + 追加」的**唯一**
+入口（不暴露两个出口 ⇒ 不变量由结构保证）；**三态**结局 `RampOutcome`：放行且有记录 ⇒ 追加一条
+`DecisionKind::Approval` 条目（**critical 级**）／放行但目标阶段在门控之前 ⇒ `NoRecordRequired{from,to}`
+（**不追加、非拒绝**）／拒绝 ⇒ `RampRefusal`（逐条拒绝名 + **全部**缺失回归类别 + 值内含凭据的**字段名**）
+且**一个字节都不落盘**。载荷**恰为**四项 `mechanism`/`from`/`to`/`fields`，**不含** `req.touched`/`req.passed`。
+
+⚠️ **为什么必须三态**：`record_to_append == None` 有两条原因，塌成两态无论塌向哪边都**说谎**
+（报「已落日志」而一个字节没落，或报「已拒绝」而它没被拒）。⚠️ 且**不可**用 `record_to_append.is_some()`
+**反推** `allowed`——那正是 kernel 模块文档开头警告的折叠；运行期 MUST **各读一次**（注入 I5 实测：反推
+让 **5** 个用例变红）。
+
+**零迁移、零契约改动**（与 W104 的关键不同）：**复用** `DecisionKind::Approval`——它在 Rust 枚举与
+`migrations/sqlite/0005-decision-log.sql` 的 `kind CHECK(kind IN(…))` **两个闭世界里都已存在**，
+故**不新增种类、不加迁移**、`migration::VERSION` 保持 **7**、不改 `schemas/**` 与任何生成物、
+**不产生** W104 那种「本机不可再生的 TS 生成物」面。选它而非 telemetry 类：`criticality()` 把它归
+**Critical** ⇒ 写入失败**原样上报**，而不是像 telemetry 那样**静默进有界缓冲**——启用记录是
+「要么落地、要么被报告」的决定。**代价如实披露**：一个种类承载两种载荷形状（审批后端的 `candidate_hash`
+组 与 本轮的 `mechanism`/`from`/`to`/`fields`）；**实测**既有审批读者读的是 `approvals` **表**
+（`approval_valid`/`list_pending_approvals`/`read_approval`）、**不**按 `decision_log.kind` 过滤，
+全仓也没有守卫枚举 `DecisionKind`（`grep -rln 'DecisionKind' scripts/ tests/contracts/` 空）。
+
+**为什么先做 H18 而不是 H01**：H01 的 runtime 步是「把九段片段**喂给模型**」＝**真实产生者**（属 H16/外部）；
+H18 的 runtime 步只是「把判定**已经算好**的记录追加进链」，而判定面**自证**无能力包也保持可判定
+（`ramp.rs:28-30` 的 INV-33 原话）⇒ **H18 严格更自主**。
+
+**规格面（W104 归档教训的前置化）**：`agent-harness` 那条爬坡需求**末句** 1:1 追加一句指向新落点
+（其余正文与全部 **5** 个场景逐字不动）。**改前就实测**其正文字符数（`>500` 的 strict 规则在 W104
+归档当场红过一次）：改前 **436** → 改后 **446**。
+
+**非空洞注入五组**（真改文件、真跑、逐字节还原、`sha256` 一致，复跑基线 **9/9** 全绿）：
+I1 拒绝分支照旧追加 ⇒ **4 红**；I2 载荷漏 `record.fields` ⇒ **2 红**；I3 门控之前的阶段也追加 ⇒ **2 红**；
+I4 载荷夹带 `touched`/`passed` ⇒ **1 红**；I5 把 `allowed` 折进 `record_to_append.is_some()` ⇒ **5 红**。
+**宿主机实测**：`LNK1104`（`link.exe` exit 1104）在注入期间命中 **4** 次 ⇒ 判据＝**重试即可过**、
+**非代码缺陷**，处置是**重试、绝不改代码**。
+
+**如实披露**：**H18 保持 `pending`**。本轮可测的是「判定**之后**那一步真的发生」；**按阶段真正启用机制
+的机制侧**（属 H16/H01）与 **§47.2 六类回归的执行体**（**H16**，能力包）**仍未接线** ⇒ 报告 MUST NOT
+出现「爬坡机制已接入运行期」「六类回归已执行」这类运行期断言。
+见 [W105 报告](docs/reports/2026-10-14-w105-ramp-enablement-log-wiring.md)、
+[ADR 0083](docs/adr/0083-ramp-enablement-log-wiring.md)、
+`openspec/changes/archive/2026-10-14-w105-ramp-enablement-log-wiring/`。
