@@ -260,7 +260,26 @@ C1 的两处 `step-target` 红**全部是前提**：
 
 ## 七、CI
 
-（本节在推送后按单次低频观测**回填**；回填提交自身不回填。）
+推送 `759a26c` 后做**单次低频观测**（唯一查询参数破坏代理缓存 + `Cache-Control: no-cache` +
+回读 `head_sha` 与本地 `HEAD` 比对）：
+
+- run **#135** `Engineering foundation`，`id=38505704125`；
+  `head_sha=759a26c06d225a51c553e18c52062cdae2d84203` == 本地 `HEAD`（逐字一致）；
+  `status=completed`，`conclusion=success`；`run_started_at=2026-10-14T03:20:04Z` →
+  `updated_at=2026-10-14T03:32:04Z`。
+- 两个 job 均 `completed / success`：
+  - `foundation (windows-latest)`：03:20:08Z → 03:32:03Z；
+  - `foundation (ubuntu-24.04)`：03:20:08Z → 03:25:58Z。
+- 两条腿的各判定步（`Storage and credential boundary` / `Kernel registration and binding` /
+  `Plugin hosts and IPC` / `Session leases and independent cancellation` /
+  `Scheduling and shared budget ledger` / `API Provider transport and retry` /
+  `Knowledge algorithms …` / `Validate schemas and API contract`）**逐条 step 皆 success**，
+  即本轮 `target` 绑定的那 13 条在册判定步在 CI 上**确实跑的是它们各自声明的目标**。
+  ⚠️ `Install Linux C++ protobuf runtime` 与 `Full three-language contract suite` 在 Windows 腿
+  为 `skipped`（平台专属，**预期内**，非本轮引入）；失败摘要 annotation 步同样 `skipped`
+  （因为**没有失败**）。
+- 观测共 12 次 API 请求（1 次列表 + 10 次 run + 1 次 jobs），间隔 ≥75s，**未轮询**；
+  `resources.core` 未打满。
 
 ## 八、遗留
 
