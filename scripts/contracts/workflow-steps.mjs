@@ -1,4 +1,5 @@
 import YAML from 'yaml';
+import {reasonPaymentErrors} from './cause-payment.mjs';
 
 /// CI 工作流的**文件层 + 步层**闭世界。
 ///
@@ -21,8 +22,9 @@ import YAML from 'yaml';
 ///
 /// ⚠️ **分类是静态声明，MUST NOT 由运行时探测得出**（铁律二）：`EBUSY` 是**宿主事实**，
 /// 换一台机器会对同一个仓库得出不同分类 ⇒ 判据不再可复现。而且「能跑但没接进门控」
-/// （`pnpm spec:validate`）与「根本跑不了」（`schema --check`）**风险不同、成因不同**，
-/// 运行时探测区分不出这两者。⇒ 分类是人的主张，逐条在册；判据负责验「主张有没有付代价」。
+/// （`pnpm spec:validate`）与「工具链前提超出本机门控」（`schema --check` 要 protoc）
+/// **风险不同、成因不同**，运行时探测区分不出这两者。⇒ 分类是人的主张，逐条在册；
+/// 判据负责验「主张有没有付代价」——W108 起，这后半句是一条**真的**判据（`CI_ONLY_REASON_PAYMENTS`）。
 
 /// workflow 文件住的目录。文件层闭世界按它取「已跟踪的 workflow 文件」。
 export const WORKFLOW_DIR = '.github/workflows';
@@ -39,17 +41,72 @@ export const WORKFLOW_FILES = ['.github/workflows/foundation.yml'];
 export const STEP_KINDS = ['infra', 'local', 'ci-only', 'diagnostic'];
 
 /// `ci-only` 的**成因闭集**。域外取值 ⇒ 具名失败（W90：一个未知成因是一个标签，不是一个理由）。
-/// 四个取值按**实测**区分——「跑不了」有四种不同的成因，混成一个会让理由不可读：
-/// - `host-subprocess`：需要派生子进程，宿主对该步 `EBUSY`（`schema --check`）；
+/// 三个取值按**实测**区分——「跑不了」有三种不同的成因，混成一个会让理由不可读：
 /// - `compiled-artifact`：需要编译产物（`descriptor.test.mjs` 要 protoc + 生成物）；
 /// - `platform-toolchain`：需要特定平台工具链（`--suite contracts` 要 Linux C++）；
 /// - `not-in-profile`：本机**能**跑，但没接进 `check` profile（`spec:validate`／`openspec --archived`）。
+///
+/// ⚠️ 上面每一点都 MUST 在 `CI_ONLY_REASON_PAYMENTS` 里有**凭据**。原有的第四个取值
+/// `host-subprocess` 已**逐出**（W108 / ADR 0086）：它是**宿主/机器事实**，而宿主瞬态 MUST NOT
+/// 成为判定输入（铁律二）⇒ **它不可能有凭据**——它是这条规则里一个**永久无法兑付的空格**。
+/// 逐出的理由**不引用任何发生过的瞬态**：即使本机从未跑通那条命令，结论相同。
 export const CI_ONLY_REASONS = [
-  'host-subprocess',
   'compiled-artifact',
   'platform-toolchain',
   'not-in-profile',
 ];
+
+/// **成因兑付规格**（W108）：每条 `ci-only` 成因 MUST 付代价——给出一条**可从仓库自证**的凭据。
+///
+/// 形状：`{evidence: [{file, marker, why}, …]}`，每格**至少一条**。凭据的 `marker` MUST 在该
+/// `file` 的内容里**逐字存在**，`file` MUST 已被 git 跟踪，且 MUST NOT 落在 `scripts/contracts/`
+/// 之下（被审注册表自己写的凭据对表恒真）。`why` MUST 非空。
+///
+/// ⚠️ **为什么 `platform-toolchain` 的凭据指向执行体而不是 workflow 自身**：后者是**被审宿主**里的
+/// 另一个步，用它做凭据会让两个在册条目互为证据；指向执行体（`xtask/src/schema.rs` 里那条
+/// `cmake -S tests/contracts/cpp`）才是真正的外部兑付。
+///
+/// ⚠️ **为什么 `host-subprocess` 不在这张表里**：它**不可能**有凭据——它的成因是**宿主/机器事实**，
+/// 而宿主瞬态 MUST NOT 成为判定输入（铁律二）⇒ 它是这条规则里一个**永久无法兑付的空格**，
+/// 因此从成因闭集**逐出**（W108 / ADR 0086）。逐出的理由**不引用任何发生过的瞬态**。
+///
+/// ⚠️ **同一执行体在两层的成因可以不同**（如实披露，不改变）：`test --suite contracts` 在**命令层**
+/// 归 `requires-compiled-artifact`（依赖 protoc），在 **step 层**归 `platform-toolchain`（CI 上要
+/// `Install Linux C++ protobuf runtime` 那一步）。两层回答的是「谁的范围」（命令面 / workflow 步面）。
+export const CI_ONLY_REASON_PAYMENTS = {
+  'compiled-artifact': {
+    evidence: [
+      {
+        file: 'tests/contracts/descriptor.test.mjs',
+        marker: 'needs protoc, so these belong to the contracts suite',
+        why: '那个测试直接解码生成物（`target/contracts/descriptor.bin`）⇒ 它要 protoc 与编译产物，MUST NOT 进本机门控（同一段注释还写明「静态的那一半留在 schema.test.mjs」）',
+      },
+    ],
+  },
+  'platform-toolchain': {
+    evidence: [
+      {
+        file: 'xtask/src/schema.rs',
+        marker: '"tests/contracts/cpp"',
+        why: '该套件要 `cmake` 构建 `tests/contracts/cpp` 里的 C++ 往返夹具 ⇒ 需要 Linux C++ 工具链；凭据指向**执行体**，不是 workflow 里那个装 protobuf 运行时的步（后者是被审宿主的另一条目）',
+      },
+    ],
+  },
+  'not-in-profile': {
+    evidence: [
+      {
+        file: 'package.json',
+        marker: '"spec:validate": "openspec validate --all --strict --no-interactive"',
+        why: '该脚本**真实存在、能跑**——「不在 profile 里」说的是接入方式，不是「跑不了」',
+      },
+      {
+        file: 'package.json',
+        marker: '"@fission-ai/openspec"',
+        why: '第二条实例（`pnpm exec openspec validate --archived`）用的 CLI 装在依赖里 ⇒ 它同样是一条能跑的判定',
+      },
+    ],
+  },
+};
 
 /// **看起来像判定**的命令形状。`infra` 的 `run` MUST NOT 命中任何一条——否则「把判定步骤标成
 /// 环境准备」就成了绕过整套检查的后门（**自我满足**的典型形态）。
@@ -100,7 +157,11 @@ export const WORKFLOW_STEPS = [
     host: '.github/workflows/foundation.yml',
     identity: 'Check generated contracts without modifying consumers',
     kind: 'ci-only',
-    reason: 'host-subprocess',
+    // W108：原为 `host-subprocess`。该成因是**宿主事实**（能不能派生子进程），宿主瞬态 MUST NOT
+    // 成为判定输入（铁律二），因此它**不可能有凭据**、已从闭集逐出。此处按**今日实测的**事实
+    // 重归类：这条命令要 `protoc` 3.21.12（`xtask/src/schema.rs:207-217` 硬校验），与
+    // `Validate schemas and API contract` 同因。⚠️ 这个理由**不随宿主变化**。
+    reason: 'compiled-artifact',
     target: [{shape: 'xtask', value: 'schema --check'}],
   },
   {
@@ -298,8 +359,18 @@ export function workflowFileErrors(tracked, declared = WORKFLOW_FILES) {
 }
 
 /// **步层**判据。`registered` 为在册条目，`gateSources` 是 `Map<path, text>`（门控源，显式注入——
-/// 少了它，「本机也跑」的凭据会退化成恒真）。
-export function workflowStepErrors(host, text, registered = WORKFLOW_STEPS, gateSources = new Map()) {
+/// 少了它，「本机也跑」的凭据会退化成恒真）；`reasonInput` 是 `{sources: Map<path, text>,
+/// tracked: Set<string>}`（`ci-only` 的**成因凭据**所指文件的内容与跟踪状态，显式注入——
+/// 少了它，「这条成因凭什么成立」同样会退化成恒真）。可选带 `payments`：**兑付表本身**的注入位，
+/// 缺省用 `CI_ONLY_REASON_PAYMENTS`——没有它，「表少一格 / 多一格 / 凭据指错」这几种缺陷
+/// **无法被测试构造**（守卫都要注入验证）。
+export function workflowStepErrors(
+  host,
+  text,
+  registered = WORKFLOW_STEPS,
+  gateSources = new Map(),
+  reasonInput,
+) {
   const errors = [];
   let parsed;
   try {
@@ -386,5 +457,23 @@ export function workflowStepErrors(host, text, registered = WORKFLOW_STEPS, gate
       }
     }
   }
+
+  // ---------- 成因兑付（W108）：每条 `ci-only` 成因 MUST 付代价——一条可从仓库自证的凭据，
+  // 或从闭集逐出。成因格 MUST ≥1 实例（没有实例的规则对空集恒真）。
+  // ⚠️ 「格非空洞」按**整张注册表**算，不按本 host 的 `entries` 算：成因闭集是**全局**的，
+  // 实例也应全局非空洞。将来若有多个 workflow 文件，同一句话会在每个 host 上各报一次——
+  // 宁可重复，不可漏报（按 host 算会让「另一个文件里有实例」变成假阳性）。
+  errors.push(
+    ...reasonPaymentErrors({
+      label: host,
+      where: 'step',
+      closedSet: CI_ONLY_REASONS,
+      payments: (reasonInput ?? {}).payments ?? CI_ONLY_REASON_PAYMENTS,
+      reasons: registered.map(entry => entry.reason).filter(reason => typeof reason === 'string'),
+      sources: (reasonInput ?? {}).sources,
+      tracked: (reasonInput ?? {}).tracked,
+    }),
+  );
+
   return errors;
 }

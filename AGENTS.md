@@ -849,9 +849,13 @@ W51 补齐 **O02** 的「审批按钮显示最终文本」（§662／§425）在
 （命令也以哈希为准）；**缺文本具名缺口**（`FINAL_TEXT_GAP`）而非用空串/哈希冒充；`display_text` 在哈希覆盖范围内
 （`candidate_hash` 对整个 cue 含该列做 SHA-256）但存储只留哈希与文本两列、**无法**由文本重算哈希本地核对
 ⇒ **不声称「文本已被哈希校验」**，文本被篡改不会让审批绑定到另一候选、但**可能误导操作员**（**剩余风险**）。
-**本机边界**：Node 同步子进程创建被阻断（`spawnSync`/`execSync` 一律 `EBUSY`，managed/system node 均如此，
-`sandbox:false` 亦然；**异步 `spawn` 正常**）⇒ `scripts/contracts/generate.mjs`（三处 `spawnSync`）本机必败；
+**本机边界（⚠️ 这是**一次宿主观测**，MUST NOT 被读作仓库约束——见 W108 段的集中说明）**：
+W51 当时实测 Node 同步子进程创建被阻断（`spawnSync`/`execSync` 一律 `EBUSY`，managed/system node 均如此，
+`sandbox:false` 亦然；**异步 `spawn` 正常**）⇒ `scripts/contracts/generate.mjs`（三处 `spawnSync`）当时本机必败；
 处理是**临时**换异步 shim 跑一次生成、**随后还原脚本**（`git diff` 为空），**不**为主机限制永久改源码。
+⚠️ 该阻断是**宿主侧瞬态**（换一台机器、甚至换一次会话都可能不同）⇒ 它**不是**「这条命令为什
+么不在本机门控里」的**成因**，**MUST NOT** 作为任何判据的输入（铁律二）；W108 起，凡「成因」类判定
+MUST 由**可从仓库自证**的凭据兑付，`host-subprocess` 因**不可能有凭据**已从两处成因闭集**逐出**。
 实测：`check-deps` **18 包**、`check --registry`、`cargo xtask schema` 生成成功；`cargo check --workspace` EXIT=0；
 **`check --profile portable` EXIT=0（83 目标 = 66 `Running` + 17 `Doc-tests`、726 passed/0 failed**；W49 为 725，
 **+1 本轮新增存储测试**）；`tests/ui` **37/37**（W49 后 34，**+3 本轮**）；两包 `tsc --noEmit`、`@nai/contracts` build、
@@ -2486,8 +2490,9 @@ W95 换了一层对象：`cargo xtask check --profile full`（本机门控）与
 判据：**文件层 + 步层两层闭世界**。步的**身份**由解析得出（有 `name` 用 `name`，否则 `uses`／
 `run` 首行）且 MUST 唯一；每步 MUST 归入闭集四类之一——`infra`／`local`／`ci-only`／`diagnostic`。
 四处设计取舍：**`local` 必须付代价**（引出的 `{file, marker}` MUST 在门控源里逐字存在——W75
-「已声明 ≠ 已执行」）、**`ci-only` 必须付代价且双向**（成因 ∈ 闭集四格：`host-subprocess`／
-`compiled-artifact`／`platform-toolchain`／`not-in-profile`；且 MUST NOT 同时挂本机凭据）、
+「已声明 ≠ 已执行」）、**`ci-only` 必须付代价且双向**（成因 ∈ 闭集：`compiled-artifact`／
+`platform-toolchain`／`not-in-profile`；且 MUST NOT 同时挂本机凭据。⚠️ **W108 就地订正**：原文写
+「四格」并含 `host-subprocess`，该成因已逐出，见 W108 段）、
 **`infra` MUST NOT 是后门**（`run` 命中判定命令形状 ⇒ 红）、**`diagnostic` 由结构认出**
 （`if` MUST 含 `failure`——`runner.os == 'Linux'` 过不了这条）。
 
@@ -2540,9 +2545,10 @@ W96 管「**本机门控的入口面**」——`xtask/src/lib.rs` 的 `execute()
 内逐字存在。只要求「在文件里逐字存在」的话，marker 就能填 **arm 自己**的文本，把「本机门控
 真的跑它」偷换成「这条命令自己存在」——**自我满足**的典型形态。这是本项目「注入事实而非判定」
 这一族的**第五次出现**（`repositoryFiles` → `readTrackedText` → W94 两张表 → W95 `gateSources`
-→ 本轮 `gateRegions`）。`standalone` 的成因取自闭集四格：`host-subprocess`／
-`requires-compiled-artifact`／**`superseded-by-workspace-run`（本轮新增**：这 8 条不是「跑不了」，
+→ 本轮 `gateRegions`）。`standalone` 的成因取自闭集：`requires-compiled-artifact`／
+**`superseded-by-workspace-run`（本轮新增**：这 8 条不是「跑不了」，
 而是「门控跑的是它们的**超集**」）／`deliberate-on-demand`（ADR 0043）。
+⚠️ **W108 就地订正**：原文写「四格」并含 `host-subprocess`，该成因已逐出，见 W108 段。
 
 **分类是静态声明，MUST NOT 由运行时探测得出**（铁律二）；**不可解析 ⇒ 具名失败**；dispatch／
 usage／某一类为空 ⇒ **显式报错**（空态 MUST 被显式断言，W92 同族）。
@@ -2721,7 +2727,7 @@ MUST NOT 带 `continue-on-error`（判定的结论必须能红，否则是**装�
 （诊断的问题不得**替换**它所转译的那次失败的结论）；仓库里「保证诊断自身的问题不会掩盖或替换
 原始失败的结论」那句是**散文**——**注释不执行任何东西，判据才是兑付**；④ **成因与条件 MUST
 互相兑现（双向）**——`platform-toolchain` 若没有平台限制，「它需要特定平台」在 CI 上**没有任何
-可见后果**；反过来给与平台无关的成因（`host-subprocess` 等）加平台条件，会让该步在别的平台
+可见后果**；反过来给与平台无关的成因（`deliberate-on-demand` 等）加平台条件，会让该步在别的平台
 **静默不跑**；比较用 **OS 族**而非标签计数（`runner.os == X` 筛的就是族）；⑤ **形状的支持集 MUST
 按实测的平台事实写**——`sudo` 的支持集**不是** `['Linux']`（macOS runner 也有 `sudo`，只有
 Windows 没有），写成 `['Linux']` 会在 macOS 矩阵下**误报一个正确的配置**；⑥ **`run` 要扫整段，
@@ -3238,3 +3244,86 @@ I5（读回丢掉会话过滤）**1 红**、I6（读回加上时效过滤）**1 
 见 [W107 报告](docs/reports/2026-10-14-w107-memory-write-gate-wiring.md)、
 [ADR 0085](docs/adr/0085-memory-write-gate-wiring.md)、
 `openspec/changes/archive/2026-10-14-w107-memory-write-gate-wiring/`。
+
+### W108 成因 MUST 付代价：`ci-only`／`standalone` 的每一格都要有**仓库内凭据**
+
+**缝型**：W95（workflow step 的 `ci-only` 成因闭集 `CI_ONLY_REASONS`）与 W96（`cargo xtask` 命令面的
+`standalone` 成因闭集 `STANDALONE_REASONS`）给「为什么它不在本机门控闭包里」建了闭集，但判据对闭集
+**之内**的每一格**只做一次 `includes()`**——它答「这个成因**在不在**表里」，**不答**「这个成因**凭什么
+成立**」。两处闭集各有一格（`host-subprocess`）**零实例**，且两处测试只宣布闭集**非空**
+（`assert.ok(CI_ONLY_REASONS.length > 0, …)`）。⇒ 一个**错填的成因**、或一个**早已失效**的成因，
+与正确的成因在判据眼里**完全一样**。这是本仓母题之一（W78 的规则表、W95 的 `CONDITION_SHAPES`）：
+**规则表没有实例 ⇒ 规则恒真**。
+
+**触发 = 一条 ADR 的遗留预言真的应验**：ADR 0073 遗留 1 逐字写「`schema --check` 哪天在本机变得可跑，
+判据不会有信号（`reason` 仍写着 `host-subprocess`）」。**2026-10-14 侦察实测** `cargo xtask schema
+--check` **跑通**（退出码 `0`，输出 `Rust/TS/C++/JSON Schema/OpenAPI generation checked with no drift`），
+而注册表那条 `reason` **逐字未变** ⇒ **全部判据零信号**——一条**会随仓库自身进展而过期**的声明，
+没有任何判据盯着它（**遗忘的形状**，§6.17 同族）。
+
+**决策**：① 两处各建一张**兑付规格表**（每格 **≥1** 条凭据 `{file, marker, why}`），共用核验
+`scripts/contracts/cause-payment.mjs`；**6 条判据**——双向键集（**欠付**／**空规格**各报一次）／
+`marker` **逐字存在**于 `file` 内容／`file` **已被 git 跟踪**（能读到的工作树文件不是仓库事实，W75）／
+`file` MUST NOT 落在 `scripts/contracts/`（**防自引**）／**格非空洞**（每个成因取值 ≥1 在册条目）／
+`why` 非空。② **逐出 `host-subprocess`**（两处闭集 **4 → 3**）——理由是「它的成因是**宿主/机器事实**，
+而**宿主瞬态 MUST NOT 成为判定输入** ⇒ 它**不可能**有凭据」，**不引用任何发生过的瞬态**
+（引用瞬态 ⇒ 换一台机器结论就变 ⇒ 判据不可复现）。③ 两条实例按**不随宿主变化**的事实重分类：
+命令层 `schema --check` → `requires-compiled-artifact`、step 层
+`Check generated contracts without modifying consumers` → `compiled-artifact`——依据是
+`xtask/src/schema.rs::generate()` 在编译 proto 前**硬校验** `libprotoc 3.21.12`，而 portable 门控的
+前提是「**只需 Rust 工具链**」（ADR 0041）⇒ 与 `test --suite contracts` **同因**。④ 活规格里
+「成因是其余**三因**之一」的**计数**改为「成因**不是** `platform-toolchain`」（**易漂移的计数 MUST NOT
+进活文档**）。
+
+**刻意不加第七条**（「逐条遍历在册条目的成因必须有规格」）：既有 `entry.reason ∈ 成因闭集` 加第 1 条
+⇒ 是**纯集合论蕴含**（**能由结构蕴含的 MUST NOT 再具名一次**）；反过来说第 5 条（格非空洞）
+**不被蕴含**（既有断言只从条目**指向**闭集，推不出闭集每格都有实例）。
+
+**零 Rust 改动、零迁移**：只改 `.mjs`／`.md`／活 spec；`scripts/contracts/step-config.mjs` **一行不改**
+（立证：`git diff --stat` 空输出——它按闭集 `includes()` 分派，收缩**自动**正确）。
+
+**先测后设计的实证（含一次自查纠错）**：第一次改 `xtask-commands.mjs` 时**同时**改了闭集 ⇒ 违规。
+纠错：把闭集**恢复为 4 值**，先让判据在**最原始的数据**上真红——命令层 `pass 15 / fail 2`、
+step 层 `pass 10 / fail 3`，红的**原因唯一**（`the cause "host-subprocess" is in the closed set but no
+payment says what it stands on`）⇒ **判据自己推出了那个设计决定**，**然后**才执行收缩。
+扩面后**既有用例逐项全绿**（命令层 16/17、step 层 12/13）⇒ 扩面带回归断言。
+
+**非空洞注入**：**10** 组真改文件 + 真跑 + `sha256sum` 逐字节还原（基准 = 过完 `cargo fmt --all`
+之后的那一份），每组 ≥1 命中（I1 3 / I2 3 / I3 3 / I4 4 / I5 3 / I6 3 / I7 3 / **I8 3** / I9 3 / I10 4）。
+**I8 是最强的一条**：删掉门控里那条 `--workspace` 调用 ⇒ 凭据的 `marker` 在文件里**不再存在** ⇒ 红；
+它的被审对象不是凭据表，而是**被凭据指向的那条仓库事实**——正是「会随仓库自身进展而过期」的判据形状。
+⚠️ **I2 暴露一处真测试缺陷**：输入构造在读不到凭据文件时抛 `ENOENT`，把「**判据该报的缺陷**」伪装成
+「**测试自己坏了**」（`pass 3 / fail 15` 而专有消息**零命中**）⇒ 修法是让输入构造**不抛**，
+由**判据**具名报告；五个测试文件的输入构造同步加固，修完 `15/3` 且命中 6、`was not provided` **0** 次
+（**顺序正确**）。⇒ **「测试的输入构造」也是判据链的一环，它的失败会盖住判据该说的话。**
+
+**门控**：`cargo xtask check --profile full` ⇒ **`EXIT=0`**，计数**现测**：Rust **95** 目标
+（**78** `Running` 含 1 行伪目标 + **18** `Doc-tests`）/ **914 passed / 0 failed**；
+Node **13** 套件 / **319** / **0**。对照 W107（95 / 914、13 / 317）⇒ Rust **逐项相同**
+（零 Rust 改动）、Node **+2**（恰为两个既有套件各 +1）⇒ **计数变化逐项对得上**。
+归档后**复跑门控**（`openspec/specs/**` 已被改动）：**`EXIT=0`**，计数**逐项相同**。
+⚠️ 本轮**共跑 5 次、非一次即绿**：多轮红在宿主 `LNK1104`（**每次点名的链接目标都不同**：
+`pipeline-…exe` → `engine-…exe` → `nai-engine` lib test），并有一次 `rustc` **挂死**
+（33 分钟零输出、累计 CPU 仅 2.4 s）⇒ 判据 = **逐目标能过**（`--no-run` 预热一次即过）；
+⇒ **环境级瞬态、非代码缺陷**，处置 = **重试、绝不改代码**。
+
+**订正分布（全仓扫描，区分同形不同义）**：活文档**就地订正**——本文件 `:852-858`（宿主瞬态归因）、
+本文件 W95／W100 段的两处成因枚举、`scripts/contracts/git-index.mjs`、`scripts/contracts/openapi-ops.mjs`、
+`tests/contracts/schema.test.mjs`、`docs/development-plan.md` 的 W100 段两处、
+`.workbuddy/memory/KNOWLEDGE.md` §6.2 与 §6.33；**历史记录追加勘误段**（原文保留）——
+[ADR 0073](docs/adr/0073-workflow-step-closure.md)（遗留 1 已关闭）、
+[ADR 0078](docs/adr/0078-step-configuration.md)（决策 5 枚举收缩）；
+⚠️ **同形不同义、不订正**——`docs/development-plan.md` 与五份历史报告里各轮段中关于宿主瞬态的叙述是
+**那一轮的记录**（既非当前的仓库约束，也非当前的成因形状），**原文保留**。
+
+**如实披露**：① 判据验的是「凭据**存在**」，**不是**「凭据与成因**语义**一致」——后者是**人的判断**
+且成因是三合一的（仓库事实 + 跨仓库契约 + 触发方式），本轮兑付面**只覆盖第一项** ⇒ `why` 字段是
+披露载体：**判据读 `marker`，人读 `why`**；② **同一执行体在两层的成因不同**（`test --suite contracts`
+命令层 `requires-compiled-artifact`、step 层 `platform-toolchain`），这是**已存在**的事实，
+本轮**如实登记、不改变**它；③ 本机这次能跑 `schema --check` **只作侦察见证，MUST NOT 出现在任何断言
+输入里**（铁律二），本轮**没有**把它接进 `engineering_checks`（那会让 portable 门控多一个 protoc 前置，
+破坏 ADR 0041 的既有不变式，且那是**另一件事**）。
+
+见 [W108 报告](docs/reports/2026-10-14-w108-cause-payment.md)、
+[ADR 0086](docs/adr/0086-cause-payment.md)、
+`openspec/changes/archive/2026-10-14-w108-cause-payment/`。

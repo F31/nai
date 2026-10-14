@@ -10,7 +10,7 @@ import {
   declaredMarkerPaths,
   reachabilityErrors,
 } from '../../scripts/contracts/test-reachability.mjs';
-import { WORKFLOW_STEPS, workflowStepErrors } from '../../scripts/contracts/workflow-steps.mjs';
+import { WORKFLOW_STEPS, CI_ONLY_REASON_PAYMENTS, workflowStepErrors } from '../../scripts/contracts/workflow-steps.mjs';
 import { stepConfigErrors } from '../../scripts/contracts/step-config.mjs';
 import { stepTargetErrors } from '../../scripts/contracts/step-target.mjs';
 import {
@@ -29,6 +29,20 @@ import {
 const HOST = '.github/workflows/foundation.yml';
 const GATE = 'xtask/src/lib.rs';
 
+/// 凭据文件的**内容**从兑付表自己派生（不写第二份文件清单）。读不到的不抛——
+/// 让判据具名报告缺输入，而不是让 `ENOENT` 把「判据该报的缺陷」伪装成「测试自己坏了」。
+const paymentSources = payments => {
+  const sources = new Map();
+  for (const file of new Set(Object.values(payments).flatMap(p => p.evidence.map(i => i.file)))) {
+    try {
+      sources.set(file, readFileSync(file, 'utf8'));
+    } catch {
+      // 判据会具名报告它。
+    }
+  }
+  return sources;
+};
+
 /// 判据的输入**全部显式注入**：本模块自己不读磁盘（遍历工作区是 W75 的 F2 根因）。
 async function load() {
   const index = await readTrackedPaths('.');
@@ -37,6 +51,9 @@ async function load() {
     tracked: index.paths,
     workflowText: await readFile(HOST, 'utf8'),
     gateSources: new Map([[GATE, readFileSync(GATE, 'utf8')]]),
+    // `ci-only` 的成因凭据（W108）：两个必填输入从**兑付表自己派生**——表改了输入自动跟上，
+    // 不写第二份文件清单。读不到的不抛：让**判据**去具名报告缺输入，而不是让 `ENOENT` 掩盖它。
+    reasonInput: {sources: paymentSources(CI_ONLY_REASON_PAYMENTS), tracked: index.paths},
   };
 }
 
@@ -402,11 +419,11 @@ test('the shipped workflow pays for its trigger surface', async () => {
 });
 
 test('the trigger judge is orthogonal to W95, W100 and W101', async () => {
-  const { workflowText, gateSources } = await load();
+  const { workflowText, gateSources, reasonInput } = await load();
   // 只改触发面。步集、执行配置、目标绑定一个字都没动 ⇒ 它们必须全部沉默。
   const dropPr = withoutPullRequest(workflowText);
   assert.deepEqual(
-    workflowStepErrors(HOST, dropPr, WORKFLOW_STEPS, gateSources),
+    workflowStepErrors(HOST, dropPr, WORKFLOW_STEPS, gateSources, reasonInput),
     [],
     'the step-set judge must not read the trigger surface',
   );

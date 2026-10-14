@@ -307,8 +307,9 @@ test('the operation tables are disjoint, closed and non-empty', () => {
 ///
 /// W85 修好了「哪些**操作**被校验」，但「哪些**文档**被校验」仍是一张手写清单：
 /// `apiDocument()` 把路径硬编码成 `control.yaml`。同目录的 `remote-knowledge.yaml` 是它的补集
-/// ——**本地门控从不读它**（唯一读它的 `generate.mjs` 只在 CI-only 的 `cargo xtask schema --check`
-/// 里跑，而本机对该步 `EBUSY`），它自己的权限检查又是**同一件事的第二处定义**。
+/// ——**本地门控从不读它**（唯一读它的 `generate.mjs` 只在 CI 的 `cargo xtask schema --check`
+/// 里跑，而 `schema --check` **不在本机门控闭包里**——它的工具链前提是 `protoc`，超出 portable 门控
+/// 「只需 Rust 工具链」的既有不变式；成因见 W108 / ADR 0086），它自己的权限检查又是**同一件事的第二处定义**。
 /// W86 探针实测：往 remote 加一个无权限的 `patch`，`SwaggerParser` 放行、本机门控全绿。
 ///
 /// 补法仍是闭世界（同族第七处）：文档集由**已跟踪路径**派生，逐文档声明是**单一来源**，

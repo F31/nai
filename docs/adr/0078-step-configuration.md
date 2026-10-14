@@ -212,3 +212,18 @@ reason ∈ 其余三因                → 执行平台族集 MUST 等于 job �
   ADR 0077（站点层级声明）；本 ADR 补的是它们都够不着的**执行配置面**。
 - 母题第九次：`repositoryFiles` → `readTrackedText` → W94 两张事实表 → W95 `gateSources`
   → W96 门控闭包区域 → W97 包集合 → W98 脚本执行面 → W99 站点层级声明 → **W100 执行配置面**。
+
+## 勘误（W108）
+
+**决策 5 的成因枚举收缩 4 → 3**：`host-subprocess` 从 `CI_ONLY_REASONS` 逐出。理由是**它不可能有
+凭据**——它的成因是宿主/机器事实，而宿主瞬态 MUST NOT 成为判定输入（铁律二）⇒ 它是这条规则里一个
+**永久无法兑付的空格**（同轮新增的规则：「规则表每格 MUST ≥1 实例」，与本文决策 7 的
+「规则表 MUST ≥1 实例」同族）。详见 [ADR 0086](0086-cause-payment.md)。
+
+**决策 5 的规则本身不变**：`platform-toolchain` 仍 SHALL 由**真子集**平台条件兑付，其余成因仍
+SHALL NOT 被平台限定。实现侧无需改动——`step-config.mjs` 的分派本来就是按闭集
+（`CI_ONLY_REASONS.includes(entry.reason) && restricted`），收缩**自动**正确
+（已核对立证：`git diff --stat scripts/contracts/step-config.mjs` 空输出）。
+
+规格里那句「成因是其余**三因**之一却带了平台限定条件」同时改为「成因**不是** `platform-toolchain`
+却带了平台限定条件」——**计数是易漂移的，MUST NOT 进活文档**。本文原文保留在上面，不改写。

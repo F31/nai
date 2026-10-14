@@ -1229,14 +1229,14 @@ W78 §九第 8 条撞上后者并作了**就地订正**，W76 §九第 6 条则�
 **零数据改动**（纯判据）：4 条前置当前全部 `pending`（H05/06/07/08/13/14/16 与 W61 的 H11/H12）⇒ 补判据后仍全绿；`tests/registry.test.mjs` **51 → 52**、必填依赖 **6 → 8**、`LEDGER_FIELDS` 仍 12（不新增字段类别——达成状态是**同一字段的第二条断言**）、Rust 零改动；**另两个候选实测无可做的事**：21 条 `closure` 确实闭合在仓外，`question` 逐字对账**过脆**（34 条中 11 条未命中 ⇒ 会造 11 条假阳性）。
 见 [W94 报告](reports/2026-10-13-w94-precondition-freshness.md)、[ADR 0072](adr/0072-precondition-freshness.md)、`openspec/changes/archive/2026-10-13-w94-precondition-freshness/`）；
 **W95 换了一层对象**——本机门控（`cargo xtask check --profile full`）与 CI（`.github/workflows/foundation.yml`）是判定的两个执行入口，而后者**多跑一批判定步**（`schema --check`、8 个 `test --suite`、含 `descriptor.test.mjs` 的契约步、`spec:validate`、`openspec validate --archived`），**这个集合没有任何在册台账**（它只存在于 `schema.test.mjs` 那句「本地门控从不读它」的注释里，是一句**解释**不是判据），两个探针实证：**往 workflow 插一个 step ⇒ 本机 3 套件（schema 30／platform 22／registry 52）全绿、零信号**，**删掉 `schema --check` 这个判定步 ⇒ 同样全绿**（一个判定**静默消失**），而 `grep -rn foundation.yml crates/ xtask/` 为空、`test-reachability` 只从 workflow 读**一个 marker**（`descriptor.test.mjs`）⇒ 无替代守卫（与 W84「测试文件静默不跑」同族）；
-判据是**文件层 + 步层两层闭世界**：步的**身份**由解析得出（有 `name` 用 `name`，否则 `uses`／`run` 首行）且 MUST 唯一，每步 MUST 归入闭集四类之一（`infra`／`local`／`ci-only`／`diagnostic`），四处取舍是 **`local` 必须付代价**（引出的 `{file, marker}` MUST 在门控源里**逐字存在**——W75「已声明 ≠ 已执行」）、**`ci-only` 必须付代价且双向**（成因 ∈ 闭集四格 `host-subprocess`／`compiled-artifact`／`platform-toolchain`／`not-in-profile`，且 MUST NOT 同时挂本机凭据）、**`infra` MUST NOT 是后门**（`run` 命中判定命令形状 ⇒ 红，否则「把判定标成环境准备」就绕开了整套检查）、**`diagnostic` 由结构认出**（`if` MUST 含 `failure`——`runner.os == 'Linux'` 过不了这条）；
+判据是**文件层 + 步层两层闭世界**：步的**身份**由解析得出（有 `name` 用 `name`，否则 `uses`／`run` 首行）且 MUST 唯一，每步 MUST 归入闭集四类之一（`infra`／`local`／`ci-only`／`diagnostic`），四处取舍是 **`local` 必须付代价**（引出的 `{file, marker}` MUST 在门控源里**逐字存在**——W75「已声明 ≠ 已执行」）、**`ci-only` 必须付代价且双向**（成因 ∈ 闭集 `compiled-artifact`／`platform-toolchain`／`not-in-profile`，且 MUST NOT 同时挂本机凭据；⚠️ **W108 就地订正**：原文写「四格 `host-subprocess`／…」，`host-subprocess` 已由 W108 逐出 ⇒ 现为**三格**，见 §W108）、**`infra` MUST NOT 是后门**（`run` 命中判定命令形状 ⇒ 红，否则「把判定标成环境准备」就绕开了整套检查）、**`diagnostic` 由结构认出**（`if` MUST 含 `failure`——`runner.os == 'Linux'` 过不了这条）；
 **分类是静态声明，MUST NOT 由运行时探测得出**（铁律二：`EBUSY` 是宿主事实，换一台机器会对同一个仓库得出不同分类；且「能跑但没接进门控」（`spec:validate`）与「根本跑不了」（`schema --check`）风险不同、成因不同，运行时探测区分不出）；
 **非空洞注入 P1/P2 + F1–F8**（真实文件 + sha256 还原校验 **ALL-OK**）：**P1（加法）与 P2（减法）由绿转红是本轮成果**，F1 未登记判定步／F2 删已登记步／F3 改名（两侧同时报）／F4 凭据指向不存在的串／F5 成因域外／F6 ci-only 挂凭据 ⇒ **红**，F7 换成另一处**真实存在**的落点 ⇒ **不红**，F8 新增一份未登记 workflow 文件（真文件 + `git add`）⇒ **红**；**与 `test-reachability` 的边界实测**：删它的站点 ⇒ workflow 判据 **0 红**／registry **2 红**，删一条 `WORKFLOW_STEPS` ⇒ workflow **5 红**／registry **0 红** ⇒ 二者**互不顶替**（前者管「workflow 的 step」，后者管「测试文件的可达性」）；
 `tests/contracts/workflow.test.mjs` **13 个用例**（新增套件）、`xtask/src/lib.rs` 只加一行登记（**Rust 零行为改动**）、`test-reachability` 站点 **7 → 8**（新增测试文件时 W84 的闭世界与 `registry.test.mjs` 的逐字清单**同时红**——这正是它该有的行为）；**明确不做**：不验「CI 真的跑了某步」、不验 `ci-only` 的成因是否成立（语义，仍由人读）、不改 `foundation.yml` 一个字符。
 见 [W95 报告](reports/2026-10-13-w95-workflow-step-closure.md)、[ADR 0073](adr/0073-workflow-step-closure.md)、`openspec/changes/archive/2026-10-13-w95-workflow-step-closure/`）；
 **W96 接着 W95 换另一层对象**——W95 管「**CI 侧**的执行面」（`foundation.yml` 的 step 集合），W96 管「**本机门控的入口面**」：`xtask/src/lib.rs` 的 `execute()` 这个 `match args…as_slice()` 的 **24 条臂**，它**住在同一个文件里**、与 `check --profile full` 的门控闭包相隔几十行却**无在册台账**，而同文件里的 `Usage: cargo xtask …` 字符串是命令集合的**第二次书写**（两处无任何机制要求一致），三个探针实证（改真实 `lib.rs` → 跑本机 4 套件 → `git checkout --` 还原 → `sha256` 逐字校验，改前 `bfdd6d2e…`）：①插一条臂 `["check", "--audit"] => Ok(())` ⇒ registry **52**／schema **30**／platform **22**／workflow **13** **全绿、零信号**，②**删掉** `["check", "--secrets"] => secrets::check(root)` 这条判定命令 ⇒ **同样全绿**（一条判定**静默消失**），③usage 字符串追加 `| check --audit` ⇒ **同样全绿**（usage 与 dispatch **分家**），而 `grep -rn "Usage:" tests/` 为空 ⇒ 无替代守卫（与 W84「测试文件静默不跑」、W95「判定步静默消失」同族）；
 判据是**命令面闭世界 + usage 双向对账 + `gate` 付代价**：判定单元 MUST 是**命令签名**（空格连接的顶层字面量序列），MUST NOT 是裸命令名（W91「同名」≠「同一个」——`check --golden` 与 `check --golden --dir` 是**两条**命令；匹配锚是整条签名，不是 `"--secrets"`，后者会在 `secrets::check` 这类**别的对象**上命中），**usage 与 dispatch 对账**（不是消除第二处：usage 是自然语言，不可能由 match 臂渲染，同 W93「无法消除第二处时改为断言一致」）即 `usage ⊆ dispatch` 且 `dispatch \ usage ⊆ HELP_SIGNATURES`（三条**具名**豁免 `help`／`--help`／空串——少写一条**判定命令**是缺陷、少写 `help` 不是，混进同一个「其余」里就会溜过去），四类闭集 `gate`／`standalone`／`artifact`／`help`（触发条件只由「字段存在」决定，W83；`artifact`／`help` 两个维度都不适用——**不合并维度**）；
-**`gate` 的代价是「落在门控闭包内」而不是一个「逐字存在」的串**：`evidence.marker` MUST 在**门控区域**（`engineering_checks` 的函数体 1898 字符 ∪ `check --profile` 两条 arm 体 403／277 字符，由**解析**得出）内逐字存在——只要求「在文件里逐字存在」的话 marker 就能填 **arm 自己**的文本，把「本机门控真的跑它」偷换成「这条命令自己存在」（**自我满足**的典型形态），这是本项目「注入事实而非判定」这一族的**第五次出现**（`repositoryFiles` → `readTrackedText` → W94 两张表 → W95 `gateSources` → 本轮 `gateRegions`）；`standalone` 的成因取自闭集四格 `host-subprocess`／`requires-compiled-artifact`／**`superseded-by-workspace-run`（本轮新增**，记录一个真实且容易误判的事实：`test --suite ×8` 不是「跑不了」，而是「门控跑的是它们的**超集**」）／`deliberate-on-demand`（ADR 0043 有文档依据）；
+**`gate` 的代价是「落在门控闭包内」而不是一个「逐字存在」的串**：`evidence.marker` MUST 在**门控区域**（`engineering_checks` 的函数体 1898 字符 ∪ `check --profile` 两条 arm 体 403／277 字符，由**解析**得出）内逐字存在——只要求「在文件里逐字存在」的话 marker 就能填 **arm 自己**的文本，把「本机门控真的跑它」偷换成「这条命令自己存在」（**自我满足**的典型形态），这是本项目「注入事实而非判定」这一族的**第五次出现**（`repositoryFiles` → `readTrackedText` → W94 两张表 → W95 `gateSources` → 本轮 `gateRegions`）；`standalone` 的成因取自闭集 `requires-compiled-artifact`／**`superseded-by-workspace-run`（本轮新增**，记录一个真实且容易误判的事实：`test --suite ×8` 不是「跑不了」，而是「门控跑的是它们的**超集**」）／`deliberate-on-demand`（ADR 0043 有文档依据）；⚠️ **W108 就地订正**：原文写「四格 `host-subprocess`／…」，`host-subprocess` 已由 W108 逐出 ⇒ 现为**三格**，见 §W108；
 **非空洞注入 P1–P6**（真实文件 + `sha256` 逐字还原 **ALL-OK**，每个注入都产生**具名**错误）：P1 未登记臂 ⇒ `dispatches the command "check --audit", which nobody declares — an unregistered command is not judged`＋`dispatched but never appears in the usage string`，P2 删命令 ⇒ `a registered command that vanished is a judgement that silently disappeared`＋`usage must not promise what does not exist`，P3 usage 漂移 ⇒ `the usage string advertises "check --audit", which the dispatch does not implement`，P4 把 `check-deps` 的落点移出门控闭包 ⇒ `which is not inside the local gate closure (engineering_checks, arm@…)`，P5 删 `windows-local` arm 的独有落点 ⇒ 同上，P6 usage 少写 `sbom [--out <path>]` ⇒ `dispatched but never appears in the usage string`（`sbom` 与 `sbom --out` 两条同时报）；另有 17 个用例内的 F 级注入（未登记/消失/改名两侧/usage 两个方向/凭据不存在/凭据在文件里但在闭包外/凭据指向未注入的文件/无凭据/成因域外/standalone 挂凭据/artifact 挂凭据/help 挂成因/空 dispatch/duplicate 签名/不可解析），其中**「凭据在文件里逐字存在却不在门控闭包内」是本层独有的覆盖**（只验「逐字存在」的判据会放它过去）；
 **与 W95／W84 的边界实测**（改真实表 → 跑两个套件 → 还原）：删一条 `WORKFLOW_STEPS` ⇒ workflow **2 红**／xtask-commands **0 红**，删一条 `XTASK_COMMANDS` ⇒ xtask-commands **4 红**／workflow **0 红**，删新增的 `test-reachability` 站点 ⇒ registry **2 红**／xtask-commands **0 红** ⇒ 三者**互不顶替**（分别管「workflow 的 step」／「`execute()` 的 CLI 命令」／「测试文件的可达性」）；`tests/contracts/xtask-commands.test.mjs` **17 个用例**（新增套件）、`test-reachability` 站点 **8 → 9**、**Node 套件 6 → 7**、门控目标数不变、`xtask/src/lib.rs` 只加一行登记（**Rust 零行为改动**，`execute()` 与 usage 一个字符未动）；**明确不做**：不验「CI 真的跑了某条命令」、不验 `standalone` 的成因是否成立（语义，仍由人读）、不验「`check --profile portable` 的证据专属于它」（如实披露：`engineering_checks(root)?` 同时出现在 `full` 的 arm 里，是**假阴性方向**的宽松）、不改 `execute()` 与 usage 一个字符。
 见 [W96 报告](reports/2026-10-14-w96-xtask-command-surface.md)、[ADR 0074](adr/0074-xtask-command-surface.md)、`openspec/changes/archive/2026-10-14-w96-xtask-command-surface/`）；
@@ -1527,6 +1527,70 @@ passed **+13** = `tests/assembly.rs` 12 → 25）。⚠️ **门控共跑 3 次*
 
 见 [W107 报告](reports/2026-10-14-w107-memory-write-gate-wiring.md)、[ADR 0085](adr/0085-memory-write-gate-wiring.md)、
 `openspec/changes/archive/2026-10-14-w107-memory-write-gate-wiring/`。
+
+### W108 成因 MUST 付代价：仓库内凭据，或从闭集逐出
+
+**W108 让「成因」这句话本身也要付代价**：W95（workflow step 的 `CI_ONLY_REASONS`）与 W96
+（`cargo xtask` 命令面的 `STANDALONE_REASONS`）给「为什么它不在本机门控闭包里」建了闭集，但判据对闭集
+**之内**的每一格只做一次 `includes()`——它答「成因**在不在**表里」，**不答**「成因**凭什么成立**」。
+两处闭集各有一格（`host-subprocess`）零实例，两处测试只宣布闭集非空 ⇒ **错填的成因与正确的成因在判据
+眼里完全一样**。与 W103–W107 **不同型**：那五轮找的是「判定面存在、执行体不存在」，本轮找的是
+「**成因存在、凭据不存在**」。
+
+**触发 = ADR 0073 遗留 1 的预言应验**：该 ADR 逐字写「`schema --check` 哪天在本机变得可跑，判据不会有
+信号」。2026-10-14 侦察实测 `cargo xtask schema --check` **跑通**（退出码 0），而注册表那条 `reason`
+**逐字未变** ⇒ 全部判据**零信号**（**遗忘**的形状）。
+
+**落点**：新建 `scripts/contracts/cause-payment.mjs`（两处成因闭集不同、核验同一套 ⇒ 只写一次）；
+`xtask-commands.mjs` 与 `workflow-steps.mjs` 各加一张兑付规格表（每格 ≥1 条 `{file, marker, why}`）、
+各加一个**必填** `reasonInput` 参数、两处闭集 **4 → 3**（逐出 `host-subprocess`）。
+6 条判据：双向键集（欠付／空规格各报一次）、`marker` 逐字存在于 `file` 内容、`file` 已被 git 跟踪、
+`file` 不在 `scripts/contracts/`（防自引）、格非空洞、`why` 非空。**刻意不加第七条**（逐条遍历在册条目
+的成因必须有规格）——它被既有断言**蕴含**（**能由结构蕴含的 MUST NOT 再具名一次**）。
+
+**逐出的理由（是决定性的）**：❌ 不能写「实测本机现在能跑所以它不成立」（**引用宿主瞬态** ⇒ 判据不可
+复现）；✅ 必须写「它的成因是**宿主/机器事实**，宿主瞬态 MUST NOT 成为判定输入 ⇒ 它**不可能**有凭据
+⇒ 一个**永久无法兑付**的空格」。正确理由**不引用任何发生过的瞬态**。两条实例按**不随宿主变化**的事实
+重分类：`schema --check` → `requires-compiled-artifact`、step 层 → `compiled-artifact`（依据
+`xtask/src/schema.rs::generate()` 硬校验 `libprotoc 3.21.12` + portable 门控「只需 Rust 工具链」）。
+
+**零 Rust 改动、零迁移**：只改 `.mjs`／`.md`／活 spec；`step-config.mjs` **一行不改**
+（立证：`git diff --stat` 空输出——它按闭集 `includes()` 分派，收缩自动正确）。
+
+**门控**：`cargo xtask check --profile full` ⇒ **`EXIT=0`**，计数**现测**：Rust `^test result:` **95**
+（`Running` **78** 含 1 行伪目标 + `Doc-tests` **18**）+ **914 passed / 0 failed**；Node TAP 根 **13** /
+`# tests` **319** / `# fail` **0**。对照 W107（95 / 914、13 / 317）⇒ Rust **逐项相同**（零 Rust 改动）、
+Node **+2**（恰为两个既有套件各 +1）⇒ **计数变化逐项对得上**。
+⚠️ **非一次即绿**：多轮红在宿主 `LNK1104`（**每次点名的链接目标都不同**：`pipeline-…exe` →
+`engine-…exe` → `nai-engine` bin/lib test），并有一次 `rustc` **挂死**（33 分钟零输出、CPU 仅 2.4s）
+⇒ 判据 = **逐目标能过**（`--no-run` 预热一次即过）⇒ **环境级瞬态、非代码缺陷**，
+处置 = **重试、绝不改代码**（本轮门控共跑 **5** 次：① `rustc` **挂死**（33 分钟零输出、CPU 2.4s）
+⇒ 终止后重跑；② LNK1104 `pipeline-…exe`；③ LNK1104 `engine-…exe`；④ LNK1104 `nai-engine` lib test；
+⑤ **绿**）。
+`openspec validate`：变更级 `--strict` 报 `is valid`；归档前 `--specs --strict` **43/0**、
+`--all --strict` **44/0**、`--changes` **1/0**；归档后 `--archived` **106/0**（W107 为 105 ⇒ +1）、
+`--all --strict` **43/0**；归档 `engineering-foundation` ⇒ **+1 added / ~1 modified**；归档后**复跑门控**
+`EXIT=0`、计数**逐项相同**（95 / 914、13 / 319 / 0）。
+
+**非空洞注入**：**10** 组真改文件 + 真跑 + `sha256sum` 逐字节还原，每组 ≥1 命中
+（I1 3 / I2 3 / I3 3 / I4 4 / I5 3 / I6 3 / I7 3 / **I8 3** / I9 3 / I10 4）。
+**I8 最强**：删掉门控里那条 `--workspace` 调用 ⇒ 凭据 `marker` 不再存在 ⇒ 红。⚠️ **I2 暴露一处真测试
+缺陷**：输入构造在 `ENOENT` 时抛错，把「判据该报的缺陷」伪装成「测试自己坏了」⇒ 修法是让输入构造
+**不抛**，由判据具名报告（五个测试文件同步加固）。
+
+**如实披露**：① 判据验「凭据**存在**」而非「凭据与成因**语义**一致」（后者是人的判断）⇒
+**判据读 `marker`，人读 `why`**；② **同一执行体在两层成因不同**（`test --suite contracts` 命令层
+`requires-compiled-artifact`／step 层 `platform-toolchain`），**如实登记、不改变**；③ 本机这次能跑
+`schema --check` **只作侦察见证、MUST NOT 进任何断言输入**（铁律二），本轮**没有**把它接进
+`engineering_checks`。
+
+**订正分布**：活文档就地订正（`AGENTS.md`、`scripts/contracts/git-index.mjs`、`openapi-ops.mjs`、
+`tests/contracts/schema.test.mjs`、本文件 W100 段两处成因枚举、`KNOWLEDGE.md` §6.2／§6.33）；
+ADR 0073／0078 **追加勘误段**（原文保留）；⚠️ **同形不同义、不订正**——本文件与历史报告里各轮段中
+关于宿主瞬态的叙述是**那一轮的记录**。
+
+见 [W108 报告](reports/2026-10-14-w108-cause-payment.md)、[ADR 0086](adr/0086-cause-payment.md)、
+`openspec/changes/archive/2026-10-14-w108-cause-payment/`。
 
 ## 任务依赖与状态
 

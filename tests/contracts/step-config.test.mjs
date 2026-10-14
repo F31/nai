@@ -12,6 +12,7 @@ import {
 } from '../../scripts/contracts/test-reachability.mjs';
 import {
   WORKFLOW_STEPS,
+  CI_ONLY_REASON_PAYMENTS,
   workflowJobsOf,
   workflowStepsOf,
   workflowStepErrors,
@@ -33,6 +34,20 @@ const HOST = '.github/workflows/foundation.yml';
 const GATE = 'xtask/src/lib.rs';
 
 /// 判据的输入**全部显式注入**：本模块自己不读磁盘（遍历工作区是 W75 的 F2 根因）。
+/// 凭据文件的**内容**从兑付表自己派生（不写第二份文件清单）。读不到的不抛——
+/// 让判据具名报告缺输入，而不是让 `ENOENT` 把「判据该报的缺陷」伪装成「测试自己坏了」。
+const paymentSources = payments => {
+  const sources = new Map();
+  for (const file of new Set(Object.values(payments).flatMap(p => p.evidence.map(i => i.file)))) {
+    try {
+      sources.set(file, readFileSync(file, 'utf8'));
+    } catch {
+      // 判据会具名报告它。
+    }
+  }
+  return sources;
+};
+
 /// 真实仓库那一组在文件末尾，它读真 workflow 与真 `lib.rs`。
 async function load() {
   const index = await readTrackedPaths('.');
@@ -42,6 +57,9 @@ async function load() {
     workflowText: await readFile(HOST, 'utf8'),
     gateText: await readFile(GATE, 'utf8'),
     gateSources: new Map([[GATE, readFileSync(GATE, 'utf8')]]),
+    // `ci-only` 的成因凭据（W108）：两个必填输入从**兑付表自己派生**——表改了输入自动跟上，
+    // 不写第二份文件清单。读不到的不抛：让**判据**去具名报告缺输入，而不是让 `ENOENT` 掩盖它。
+    reasonInput: {sources: paymentSources(CI_ONLY_REASON_PAYMENTS), tracked: index.paths},
   };
 }
 
@@ -401,7 +419,7 @@ test('the real workflow keeps the failure switch off the judged steps only', asy
 });
 
 test('the judge is orthogonal to W95, which reads the step set rather than its configuration', async () => {
-  const { workflowText, gateSources } = await load();
+  const { workflowText, gateSources, reasonInput } = await load();
   // 只改**配置**：把一个步的平台条件指到一个不存在的平台。步集、身份、kind 全都没动。
   const reconfigured = patch(
     workflowText,
@@ -409,7 +427,7 @@ test('the judge is orthogonal to W95, which reads the step set rather than its c
     "        if: runner.os == 'FreeBSD'\n        run: cargo xtask test --suite contracts",
   );
   assert.deepEqual(
-    workflowStepErrors(HOST, reconfigured, WORKFLOW_STEPS, gateSources),
+    workflowStepErrors(HOST, reconfigured, WORKFLOW_STEPS, gateSources, reasonInput),
     [],
     'the W95 step-set judge must not read the platform condition of a non-diagnostic step',
   );
@@ -421,7 +439,7 @@ test('the judge is orthogonal to W95, which reads the step set rather than its c
   // 反向：只改**身份**（步改名）。配置一个字没动 ⇒ 配置判据沉默，步集判据具名。
   const renamed = patch(workflowText, '      - name: Kernel registration and binding\n', '      - name: Kernel registration and naming\n');
   assert.ok(
-    workflowStepErrors(HOST, renamed, WORKFLOW_STEPS, gateSources).length > 0,
+    workflowStepErrors(HOST, renamed, WORKFLOW_STEPS, gateSources, reasonInput).length > 0,
     'the step-set judge must notice a rename',
   );
   assert.deepEqual(
@@ -456,11 +474,11 @@ test('the judge is orthogonal to W84 and W99, which read the tracked set and the
 });
 
 test('the judge shares the condition field with W95 without duplicating its verdict', async () => {
-  const { workflowText, gateSources } = await load();
+  const { workflowText, gateSources, reasonInput } = await load();
   // 删掉诊断步的失败条件：两条判据都会红，但**断言不同**——
   // W95 判「该步的角色与它的条件是否一致」，W100 判「条件形状表是否还有实例」。
   const dropped = patch(workflowText, '      - name: Publish the gate failure summary as annotations\n        if: failure()\n', '      - name: Publish the gate failure summary as annotations\n');
-  const w95 = workflowStepErrors(HOST, dropped, WORKFLOW_STEPS, gateSources);
+  const w95 = workflowStepErrors(HOST, dropped, WORKFLOW_STEPS, gateSources, reasonInput);
   const w100 = stepConfigErrors({host: HOST, workflowText: dropped});
   assert.ok(
     w95.some(error => error.includes('diagnostic step but') || error.includes('failure condition')),

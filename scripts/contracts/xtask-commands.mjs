@@ -1,3 +1,5 @@
+import {reasonPaymentErrors} from './cause-payment.mjs';
+
 /// `cargo xtask` 的**命令面闭世界**：`execute()` 的每一条命令 MUST 具名在册，
 /// 且 `Usage:` 字符串 MUST 与它**对账**。
 ///
@@ -40,20 +42,72 @@ export const XTASK_HOST = 'xtask/src/lib.rs';
 export const COMMAND_KINDS = ['gate', 'standalone', 'artifact', 'help'];
 
 /// `standalone` 的**成因闭集**。域外取值 ⇒ 具名失败（W90：一个未知成因是一个标签，不是一个理由）。
-/// 四个取值按**实测**区分——「不在门控里」有四种不同的成因，混成一个会让理由不可读：
-/// - `host-subprocess`：需要派生子进程，宿主对该步 `EBUSY`（`schema --check`）；
-/// - `requires-compiled-artifact`：需要 protoc／编译产物（`test --suite contracts`）；
+/// 三个取值按**实测**区分——「不在门控里」有三种不同的成因，混成一个会让理由不可读：
+/// - `requires-compiled-artifact`：需要 protoc／编译产物（`schema --check`、`test --suite contracts`）；
 /// - `superseded-by-workspace-run`：门控跑的是**全 workspace** 测试（`run(root, &["test",
 ///   "--workspace", …])`），覆盖同一批包，但**不走这个入口**（`test --suite ×8`）；
 /// - `deliberate-on-demand`：有意按需，**不并入**常规门控（`check --golden`／`check --secrets`。
 ///   依据 ADR 0043：`cargo xtask sbom` 是生成命令，与 `check --secrets` 同类，暂不并入
 ///   `engineering_checks`——portable 门控须保持「只需 Rust 工具链」不变）。
+///
+/// ⚠️ 上面每一点都 MUST 在 `STANDALONE_REASON_PAYMENTS` 里有**凭据**。原有的第四个取值
+/// `host-subprocess` 已**逐出**（W108 / ADR 0086）：它是**宿主/机器事实**，而宿主瞬态 MUST NOT
+/// 成为判定输入（铁律二）⇒ **它不可能有凭据**——它是这条规则里一个**永久无法兑付的空格**。
+/// 逐出的理由**不引用任何发生过的瞬态**：即使本机从未跑通 `schema --check`，结论相同。
 export const STANDALONE_REASONS = [
-  'host-subprocess',
   'requires-compiled-artifact',
   'superseded-by-workspace-run',
   'deliberate-on-demand',
 ];
+
+/// **成因兑付规格**（W108）：每条 `standalone` 成因 MUST 付代价——给出一条**可从仓库自证**的凭据。
+///
+/// 形状：`{evidence: [{file, marker, why}, …]}`，每格**至少一条**。凭据的 `marker` MUST 在该
+/// `file` 的内容里**逐字存在**，`file` MUST 已被 git 跟踪，且 MUST NOT 落在 `scripts/contracts/`
+/// 之下（被审注册表自己写的凭据对表恒真）。`why` MUST 非空——它答「这条凭据回答了哪个问题」，
+/// 判据验不了它，但人读它。
+///
+/// ⚠️ **为什么不强制成对**：强制成对会逼出**凑数的第二条**。为凑成对而补一条「看起来相关」的
+/// 文本，正是本项目禁止的**装饰** ⇒ 形状定为「至少一条」，条数由成因自己决定。
+///
+/// ⚠️ **为什么 `host-subprocess` 不在这张表里**：它**不可能**有凭据——它的成因是**宿主/机器事实**
+/// （能不能派生子进程），而宿主瞬态 MUST NOT 成为判定输入（铁律二）⇒ 它是这条规则里一个
+/// **永久无法兑付的空格**，因此从成因闭集**逐出**。逐出的理由**不引用任何发生过的瞬态**：
+/// 即使本机从未跑通 `schema --check`，逐出结论相同。
+export const STANDALONE_REASON_PAYMENTS = {
+  'requires-compiled-artifact': {
+    evidence: [
+      {
+        file: 'xtask/src/schema.rs',
+        marker: 'generation requires exactly protoc 3.21.12',
+        why: '生成器在编译 proto 前**硬校验** protoc 版本 ⇒ 这条命令的工具链前提超出 portable 门控「只需 Rust 工具链」的既有不变式（ADR 0041 / 0043）',
+      },
+    ],
+  },
+  'superseded-by-workspace-run': {
+    evidence: [
+      {
+        file: 'xtask/src/lib.rs',
+        marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
+        why: '门控用**一条**全 workspace 测试覆盖同一批包 ⇒ 这些 suite 的判定面不因它们不进门控而消失（把这条调用换成显式包列表，本仓会立刻**静默牺牲包**，W97 已实测）',
+      },
+    ],
+  },
+  'deliberate-on-demand': {
+    evidence: [
+      {
+        file: 'xtask/src/golden.rs',
+        marker: 'pub fn check(',
+        why: '这些命令有**真实执行体**——它们是能跑的判定，不是禁用项；「按需」说的是接入方式，不是「跑不了」',
+      },
+      {
+        file: 'docs/adr/0043-sbom-generation-and-scope.md',
+        marker: '暂不并入 `engineering_checks`',
+        why: 'ADR 0043 具名裁决「暂不并入 engineering_checks：portable 门控须保持『只需 Rust 工具链』不变」——「有意按需」是一条**人的决定**，凭据就是那条决定的记录',
+      },
+    ],
+  },
+};
 
 /// **usage 里被具名豁免的三条**。它们本就不该出现在 `Usage:` 里——因为它们**就是**
 /// 「打印 usage」那件事本身。
@@ -66,7 +120,8 @@ export const HELP_SIGNATURES = ['help', '--help', ''];
 /// - `signature`：命令的**签名**，由 `execute()` 的臂**解析**得出（空格连接的顶层字面量序列）；
 /// - `kind`：∈ `COMMAND_KINDS`；
 /// - `gate` MUST 带 `evidence: {file, marker}`——「本机门控真的跑它」的**凭据**；
-/// - `standalone` MUST 带 `reason`（∈ `STANDALONE_REASONS`），且 MUST NOT 带 `evidence`。
+/// - `standalone` MUST 带 `reason`（∈ `STANDALONE_REASONS`），且 MUST NOT 带 `evidence`；
+///   它的成因 MUST 在 `STANDALONE_REASON_PAYMENTS` 里有凭据（W108）。
 ///
 /// **逐字写死**：这份表是「有哪些命令」的**独立声明**，不是从 `execute()` 派生的——
 /// 派生出的「现有集合 == 清单」是恒真式，一个字都没说。
@@ -126,7 +181,12 @@ export const XTASK_COMMANDS = [
   {
     signature: 'schema --check',
     kind: 'standalone',
-    reason: 'host-subprocess',
+    // W108：原为 `host-subprocess`。该成因是**宿主事实**（能不能派生子进程），宿主瞬态 MUST NOT
+    // 成为判定输入（铁律二），因此它**不可能有凭据**、已从闭集逐出。此处按**今日实测的**事实重归类：
+    // `generate()` 在编译 proto 前硬校验 `protoc` 3.21.12（`schema.rs:207-217`）⇒ 这条命令的工具链
+    // 前提超出 portable 门控「只需 Rust 工具链」的既有不变式（ADR 0041 / 0043），与 `test --suite
+    // contracts` 同因。⚠️ 这个理由**不随宿主变化**：本机恰巧装了 protoc，不代表门控可以依赖它。
+    reason: 'requires-compiled-artifact',
   },
   {
     signature: 'test --suite contracts',
@@ -339,8 +399,17 @@ export function registryShapeErrors(registered = XTASK_COMMANDS) {
 /// `text`：`xtask/src/lib.rs` 全文；
 /// `registered`：在册命令表（默认 `XTASK_COMMANDS`）；
 /// `gateSources`：`Map<path, text>`——`gate` 的证据所指文件必须在这里，**显式注入**
-/// （少了它，「本机门控真的跑它」的凭据会退化成恒真）。
-export function commandErrors(text, registered = XTASK_COMMANDS, gateSources = new Map()) {
+/// （少了它，「本机门控真的跑它」的凭据会退化成恒真）；
+/// `reasonInput`：`{sources: Map<path, text>, tracked: Set<string>}`——`standalone` 的**成因凭据**
+/// 所指文件的内容与跟踪状态，**显式注入**（少了它，「这条成因凭什么成立」会退化成恒真）。
+/// 可选带 `payments`：**兑付表本身**的注入位，缺省用 `STANDALONE_REASON_PAYMENTS`——
+/// 没有它，「表少一格 / 多一格 / 凭据指错」这几种缺陷**无法被测试构造**（守卫都要注入验证）。
+export function commandErrors(
+  text,
+  registered = XTASK_COMMANDS,
+  gateSources = new Map(),
+  reasonInput,
+) {
   const errors = [];
   if (typeof text !== 'string' || text === '') {
     return ['the harness source was not provided, so no command can be judged'];
@@ -348,6 +417,7 @@ export function commandErrors(text, registered = XTASK_COMMANDS, gateSources = n
   if (!(gateSources instanceof Map)) {
     return ['the gate sources were not provided as a map, so gate coverage cannot be judged'];
   }
+  const causeInput = reasonInput ?? {};
 
   errors.push(...registryShapeErrors(registered));
 
@@ -461,6 +531,20 @@ export function commandErrors(text, registered = XTASK_COMMANDS, gateSources = n
       }
     }
   }
+
+  // ---------- 成因兑付（W108）：每条成因 MUST 付代价——一条可从仓库自证的凭据，
+  // 或从闭集逐出。成因格 MUST ≥1 实例（没有实例的规则对空集恒真）。 ----------
+  errors.push(
+    ...reasonPaymentErrors({
+      label: XTASK_HOST,
+      where: 'command',
+      closedSet: STANDALONE_REASONS,
+      payments: causeInput.payments ?? STANDALONE_REASON_PAYMENTS,
+      reasons: registered.map(entry => entry.reason).filter(reason => typeof reason === 'string'),
+      sources: causeInput.sources,
+      tracked: causeInput.tracked,
+    }),
+  );
 
   // ---------- 类别都非空：某一类被合法清空 ⇒ 它的规则对空集恒真 ⇒ 显式处置 ----------
   const kinds = new Set(registered.map(entry => entry.kind));

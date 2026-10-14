@@ -28,8 +28,9 @@
 /// **W86（ADR 0064）补的是同一句话的上一层**：上面整段说完的是「**哪些操作**被校验」，
 /// 而「**哪些文档**被校验」仍然是一张手写清单——`apiDocument()` 把路径硬编码成
 /// `schemas/openapi/control.yaml`。清单的补集就是盲区：同目录的 `remote-knowledge.yaml`
-/// **本地门控从不读它**（唯一读它的 `generate.mjs` 只在 CI-only 的 `cargo xtask schema --check`
-/// 里跑，本机对该步 `EBUSY`），而它对「操作不声明权限」**放行**。实测：往 remote 文档加一个
+/// **本地门控从不读它**（唯一读它的 `generate.mjs` 只在 CI 的 `cargo xtask schema --check` 里跑，
+/// 而 `schema --check` **不在本机门控闭包里**——它的工具链前提是 `protoc`，超出 portable 门控
+/// 「只需 Rust 工具链」的既有不变式；成因见 W108 / ADR 0086），而它对「操作不声明权限」**放行**。实测：往 remote 文档加一个
 /// 无权限的 `patch`，`SwaggerParser` 通过、本机门控全绿。
 ///
 /// 于是补法仍是闭世界，只是对象换成了**文档集**：
