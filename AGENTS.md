@@ -3108,3 +3108,66 @@ passed +9 恰为其 9 条）。`fmt` 与 `clippy -D warnings` 均在门控内**�
 见 [W105 报告](docs/reports/2026-10-14-w105-ramp-enablement-log-wiring.md)、
 [ADR 0083](docs/adr/0083-ramp-enablement-log-wiring.md)、
 `openspec/changes/archive/2026-10-14-w105-ramp-enablement-log-wiring/`。
+
+### W106 §41 装配判定的**两半**都必须在 runtime 上发生（H01）
+
+**缝型**：`crates/nai-kernel/src/evaluate/assembly.rs::evaluate_assembly`（W69 交付的 H01 判定）在生产代码里
+**零调用方**（`grep -rn '\bevaluate_assembly\b' --include=*.rs crates apps | grep -v /tests/ | grep -v src/evaluate/`
+空），而 W104 的写入口 `record_assembly(record, fragments)` **不接收 plan**。后果是两条**同时**成立的缺口：
+① §41.1 的硬规则「不可裁段（1–3）缺失时 MUST 拒绝调用」**在 runtime 上不可表达**；
+② §41.5 要求落链**四项**，而 W104 的载荷只有**三键**——「各段预算占用」与「裁剪项与原因」**住在 plan 上**、
+没有承载物。与 W103／W104／W105 **连续第四轮同型**，但**不同点**在前三轮是「判定面完全没有调用方」，
+本轮是**同一个判定面只接了一半线** ⇒ 新判据：一个模块把**两件事**判在一处时，接线要问
+「**这两件事是不是都真有调用方**」。
+
+**本轮的核心论证（为什么 H01 现在可自主推进）**：W105 判「H01 卡外部前置」**成立**，但只对**其中一件事**成立
+——依据是 `assembly.rs` 模块文档那句话的**标点**：`feeding the model` / `appending the record to the hash chain`
+/ `executing the six §47.2 regression classes` 三件事**逗号并列**。卡外部的是**喂模型**；而 H01 判定面
+**不消费模型**（九段／用量／配额／裁剪／来源标注全来自调用方）⇒「追加进链」与「喂模型」**可分**。
+
+**实现**：`record_assembly(plan, record, fragments)` **收下第一份输入** `plan`；两次判定**都跑、都不短路**；
+结局**四态** `Logged`／`NotCallable`／`NotRebuildable`／`Neither`（拒绝侧带**两张**拒绝名表
+`rejections`(`assembly.*`) + `rebuild_rejections`(`rebuild.*`) + `missing_segments`）。**入口一致性前置**：
+`plan` 片段**序列** != `record.fragment_ids` ⇒ `Err(assembly.input_ids_differ)`（**调用方错误**，**不是**结局
+——任何结局都会**指错拒绝者**）。载荷**补齐** §41.5 四项：新增 `segment_usage`（每段 tokens/chars/items
+与自有 `budget`）与 `crops`（每段 `dropped` 与 `reason`），取值**照抄判定输入**（MUST NOT 由正文重算、
+MUST NOT 夹带 `scope`／`age_ms`／`trust`／`source` 与判定诊断清单）。新增 `read_logged_assemblies(limit)`
+**逐行**读回（不可解析 ⇒ **具名失败**；W104 旧形状行缺两键 ⇒ 两项读作**空列表**、**不是**损坏）。
+
+⚠️ **为什么必须四态**：把「两侧都拒」折进任一单侧会**丢掉另一侧的拒绝名**——「不许调用」与
+「不许声称可重建」是**两个不同的禁令**（注入 I3／I4 实测各 **2** 红）。**零迁移**：复用
+`DecisionKind::Assembly`（W104 已付迁移代价；它在 Rust 枚举与 `0005` 的 `kind CHECK` 两个闭世界里都已存在），
+`migration::VERSION` 保持 **7**，**不产生** W104 那种「本机不可再生的 TS 生成物」面。**代价如实披露**：
+`Assembly` 属 **Telemetry** 类 ⇒ 写入失败**静默进有界缓冲**；本轮**不重复** W105「必须落 Critical」的论证，
+因为装配记录本就是**可丢遥测**（不是授权，也不是「要么落地要么被报告」的决定）。
+
+⚠️ **既有弱化（具名登记、本轮不修）**：`rebuild_assembly_from_log` 的片段池**跨行合并**（W104 语义）⇒ 比
+§41.5 的「日志能否重建**这一次**装配」**弱**（反例：record 声明 `[A,B]`、链上两行分别只有 `A`／`B`
+⇒ 池化报可重建，而**没有任何一行**能单独重建它）。修它＝改 **H02 read 侧**语义、属**另一个对象**
+⇒ 留给新的一轮。
+
+**非空洞注入八组**（真改文件、真跑、逐字节还原、`sha256` 一致，复跑基线 **25/25** 全绿；
+基准＝**过完 `cargo fmt --all` 之后**的那一份 `ad0adc451d02df0c7c0c1afa183c5b8f2f7d546af95e47ab6b9ee6fcf8fb421b`）：
+I1 只跑 H02 不跑 H01 ⇒ **4 红**；I2 载荷仍只落三键 ⇒ **4 红**；I3 H01 拒绝时短路 H02 ⇒ **2 红**；
+I4 把 `Neither` 折进 `NotCallable` ⇒ **2 红**；I5 `segment_usage` 由正文重算 ⇒ **3 红**；
+I6 一致性前置删掉 ⇒ **1 红**；I7 逐行读回改池化 ⇒ **1 红**；I8 旧形状行当成解析失败 ⇒ **1 红**
+（共 **18** 红 ⇒ **无一组空洞**）。
+
+**门控实测（现测，非推断）**：`cargo xtask check --profile full` 末次 **EXIT = 0** ——
+Rust **94 目标 / 905 passed / 0 failed**（= **76** `Running` + **18** `Doc-tests`；`Running` 原始 **77**
+须减 **1** 行伪目标 ``Running `…\nai-xtask.exe check --profile full` ``）；Node TAP 根 **13** / **317** 用例 /
+**0 fail**；`error[`／`LNK1104`／OOM **0**。与 W105（94/892）的差**逐项对得上**（目标数**不变** = 未新增
+测试文件；`passed` **+13** = `crates/nai-runtime/tests/assembly.rs` 12 → 25）。
+⚠️ **门控共跑 3 次**：①首轮 + ②重试**全红在宿主瞬态**——`nai-runtime --test composition` 的
+`StorageError{DeadlineExceeded, "operation stopped"}`（**两轮换了一个用例**）；判据＝**逐目标 3/3 能过** +
+**整包 3/3 能过**（56/0）+ **该文件本轮一行未改** ⇒ **非代码缺陷**；**处置＝限并发**（`RUST_TEST_THREADS=1`）
+→ ③绿。**这条瞬态 W84 已登记过**（同一目标、同一错误类，见 `KNOWLEDGE.md` §10）⇒ 是既有宿主坑再次现身。
+
+**如实披露**：**H01 保持 `pending`**。本轮可测的是「§41.1 的拒绝**在 runtime 上有表达**」与
+「§41.5 的**四项**真的落盘、且能逐行读回」；**把九段片段真正喂给模型**这一半（属 **H16**／仓库外）、
+**§41.2 分段预算初值标定**（§47.2 黄金集回放，§48.7 禁采外部观察值）与 **§47.2 六类回归的执行体**
+（**H16**，能力包）**仍未接线** ⇒ 报告 MUST NOT 出现「装配器已接入运行期」「已不依赖当时内存」这类
+运行期断言。
+见 [W106 报告](docs/reports/2026-10-14-w106-assembly-judgement-wiring.md)、
+[ADR 0084](docs/adr/0084-assembly-judgement-wiring.md)、
+`openspec/changes/archive/2026-10-14-w106-assembly-judgement-wiring/`。

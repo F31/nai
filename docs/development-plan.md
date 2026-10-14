@@ -1432,6 +1432,55 @@ I4 载荷夹带 `touched`/`passed` ⇒ **1 红**；I5 把 `allowed` 折进 `reco
 见 [W105 报告](reports/2026-10-14-w105-ramp-enablement-log-wiring.md)、[ADR 0083](adr/0083-ramp-enablement-log-wiring.md)、
 `openspec/changes/archive/2026-10-14-w105-ramp-enablement-log-wiring/`。
 
+### W106 装配判定接上 runtime 装配入口（H01 runtime 接线）
+
+**W106 交付 H01 的 runtime 接线：把 W69 判定面的**另一半**接上真实执行体**——`evaluate_assembly` 此前
+**在生产代码里零调用方**（`grep -rn '\bevaluate_assembly\b' --include=*.rs crates apps | grep -v /tests/ | grep -v src/evaluate/`
+空），而 W104 的写入口 `record_assembly(record, fragments)` **不接收 plan**。两条**同时**成立的缺口：
+① §41.1 的硬规则「不可裁段（1–3）缺失时 MUST 拒绝调用」**在 runtime 上不可表达**；
+② §41.5 要求落链**四项**，而 W104 的载荷只有**三键**——「各段预算占用」与「裁剪项与原因」**住在 plan 上**。
+缝型与 W103（H15）／W104（H02）／W105（H18）**连续第四轮同型**；**不同点**在前三轮是「判定面完全没有调用方」，
+本轮是**同一个判定面只接了一半线**。
+
+**为什么 H01 现在可自主推进**：W105 判过「H01 卡外部前置」且**成立**——但只对**其中一件事**成立。依据是
+`assembly.rs` 模块文档那句话的**标点**：`feeding the model` / `appending the record to the hash chain` /
+`executing the six §47.2 regression classes` 三件事**逗号并列**。卡外部的是**喂模型**；H01 判定面
+**不消费模型**（输入全来自调用方）⇒「追加进链」与「喂模型」**可分**。
+
+**唯一入口**：`crates/nai-runtime/src/assembly.rs` 的 `Composition::record_assembly(plan, record, fragments)`
+——**收下 `plan`**、两次判定**都跑**、结局**四态** `Logged`／`NotCallable`／`NotRebuildable`／`Neither`
+（拒绝侧带**两张**拒绝名表 + `missing_segments`）。**入口一致性前置**：`plan` 片段**序列** != `record.fragment_ids`
+⇒ `Err(assembly.input_ids_differ)`（**调用方错误**、不是结局）。载荷**补齐** §41.5 四项：新增 `segment_usage`
+与 `crops`，取值**照抄判定输入**（MUST NOT 由正文重算、MUST NOT 夹带未审字段）。新增
+`read_logged_assemblies(limit)` **逐行**读回（不可解析 ⇒ 具名失败；W104 旧形状行缺两键 ⇒ 空列表）。
+**零迁移、零契约改动**：复用 `DecisionKind::Assembly`（W104 已付迁移代价），`migration::VERSION` 保持 **7**，
+**不产生** W104 那种「本机不可再生的 TS 生成物」面。
+
+**规格面**：`runtime-composition` **+4 added / 1 modified**（**不改** `agent-harness`——其 H01 需求正文已
+**472** 字符、门限 500、余量太薄）；改的 5 条 delta 全部 **< 500**（332／277／167／266／**385**）。
+
+**非空洞注入八组**（真改文件 + 真跑 + 逐字节还原 + `sha256` 一致 + 复跑基线 25/25 全绿）：
+I1 只跑 H02 不跑 H01 ⇒ **4 红**；I2 载荷仍只落三键 ⇒ **4 红**；I3 H01 拒绝时短路 H02 ⇒ **2 红**；
+I4 把 `Neither` 折进 `NotCallable` ⇒ **2 红**；I5 `segment_usage` 由正文重算 ⇒ **3 红**；I6 一致性前置删掉 ⇒ **1 红**；
+I7 逐行读回改池化 ⇒ **1 红**；I8 旧形状行当成解析失败 ⇒ **1 红**（共 **18** 红）。
+
+**门控实测（现测）**：`check --profile full` 末次 **EXIT = 0**——Rust **94 目标 / 905 passed / 0 failed**
+（**76** `Running` + **18** `Doc-tests`，`Running` 原始 77 减 1 行伪目标）；Node TAP 根 **13** / **317** 用例 /
+**0 fail**；`error[`／`LNK1104`／OOM **0**。与 W105（94/892）逐项对得上（目标数不变 = 未新增测试文件；
+passed **+13** = `tests/assembly.rs` 12 → 25）。⚠️ **门控共跑 3 次**：①首轮 + ②重试**全红在宿主瞬态**
+（`nai-runtime --test composition` 的 `DeadlineExceeded`，两轮**换了一个用例**）；判据＝**逐目标 3/3 能过** +
+**整包 3/3 能过**（56/0）+ **该文件一行未改** ⇒ **非代码缺陷**；处置＝**限并发**（`RUST_TEST_THREADS=1`）→ ③绿。
+**这条瞬态 W84 已登记过**（`KNOWLEDGE.md` §10）⇒ 既有宿主坑再次现身。
+
+**明确不做 / 如实披露**：**H01 保持 `pending`**——本轮可测的是「§41.1 的拒绝**在 runtime 上有表达**」与
+「§41.5 的**四项**真的落盘、且能逐行读回」；**喂模型**这一半（属 **H16**／仓库外）、**§41.2 分段预算初值标定**
+（§47.2 黄金集回放，§48.7 禁采外部观察值）与 **§47.2 六类回归的执行体**（**H16**）**仍未接线**。
+另：`rebuild_assembly_from_log` 的片段池**跨行合并**（W104 语义）⇒ 比 §41.5 的「日志能否重建**这一次**装配」**弱**，
+**具名登记、本轮不修**（修它＝改 H02 read 侧语义、属另一个对象）。
+
+见 [W106 报告](reports/2026-10-14-w106-assembly-judgement-wiring.md)、[ADR 0084](adr/0084-assembly-judgement-wiring.md)、
+`openspec/changes/archive/2026-10-14-w106-assembly-judgement-wiring/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

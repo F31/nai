@@ -252,9 +252,9 @@ H01/H02 是 W56 立的项目标（§47.6 的 W56 行写的正是「上下文装�
 | 重建时先按记录顺序排序 | `a_log_whose_order_differs_from_the_record_is_refused` 等 2 项 |
 | 悄悄改一个字段名 | `the_assembly_record_fields_match_the_harness_l1_table` |
 
-**边界（如实）**：H01/H02 **保持 `pending`**——本轮交付的是**判定面**。把预算初值真正回放调优并记入 ADR、
-把装配记录追加进 `nai-storage` 的哈希链**已由 W104 落地**（`crates/nai-runtime/src/assembly.rs` 的 `record_assembly`／`rebuild_assembly_from_log`，见 [ADR 0082](adr/0082-assembly-log-wiring.md)）；执行 §47.2 的六类回归（能力包 **H16**）仍属证据生产侧；
-故报告 MUST NOT 出现「装配器已接入」「已不依赖当时内存」这类运行期断言。
+**边界（如实）**：H01/H02 **保持 `pending`**——W69 交付的是**判定面**。把预算初值真正回放调优并记入 ADR、
+把装配记录追加进 `nai-storage` 的哈希链**已由 W104 落地**、把 §41.1 的**判定**接上同一入口并补齐 §41.5 的**四项**（`segment_usage`／`crops`）**已由 W106 落地**（`crates/nai-runtime/src/assembly.rs` 的 `record_assembly`／`rebuild_assembly_from_log`／`read_logged_assemblies`，见 [ADR 0082](adr/0082-assembly-log-wiring.md)、[ADR 0084](adr/0084-assembly-judgement-wiring.md)）；
+执行 §47.2 的六类回归（能力包 **H16**）与把九段片段**喂给模型**仍属证据生产侧 ⇒ 报告 MUST NOT 出现「装配器已接入运行期」「已不依赖当时内存」这类运行期断言。
 
 **复核方法上的一处坑（本轮实测）**：注入脚本用 `fs.copyFileSync` 复原源码时，**Windows 会连同 mtime 一起复制**
 ⇒ 复原后的源码 mtime 比注入构建更旧，cargo 判定「未变更」而**复用上一次注入的二进制**，

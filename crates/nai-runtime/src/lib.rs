@@ -12,7 +12,10 @@ mod observation;
 mod ramp;
 pub mod supervisor;
 
-pub use assembly::{AssemblyOutcome, AssemblyRebuild, AssemblyRefusal};
+pub use assembly::{
+    AssemblyOutcome, AssemblyRebuild, AssemblyRefusal, LoggedAssembly, LoggedAssemblyFragment,
+    LoggedCrop, LoggedSegmentBudget, LoggedSegmentUsage,
+};
 pub use composition::{BRINGUP_OPERATION, Composition, ControlAction, DutyEvent, ObservedFault};
 pub use observation::{ObservationOutcome, ObservationRefusal};
 pub use ramp::{RampOutcome, RampRefusal};

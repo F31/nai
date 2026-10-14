@@ -126,6 +126,51 @@ H17（`evaluate_degradation` → `CapabilityView` 与界面）亦未接线。
 **边界（如实）**：落链路径已可测（九项测试 + 五组非空洞注入），但**按阶段真正启用机制的机制侧**与
 **§47.2 六类回归的执行体**（**H16**，能力包）**未接线** ⇒ H18 仍 `pending`。
 
+## 装配判定接线与四项落链（W106，验收 H01）
+
+`Composition::record_assembly(plan, record, fragments)` 仍是 §41.5 上下文装配**进入只追加哈希链**的唯一入口，
+但**多收下第一份输入** `plan: &AssemblyPlan`：它先调 `nai_kernel::evaluate::assembly::evaluate_assembly`
+判 §41.1–§41.3 的**可调用性**（判定规则本身由 W69 落地，本轮**一行未改**），再调 `rebuild_assembly` 判
+§41.5 的**可重建性**；**两项判定都跑、都不短路**，按两个真值的四种组合给出**四态**结局：
+
+- **都放行** ⇒ 追加一条 `DecisionKind::Assembly` 条目（telemetry 级），载荷**恰为** §41.5 的**四项**：
+  按**记录进入顺序**排列的片段（`id`、来源标识 `source_ref`、**字面正文**）、**各段预算占用**
+  （`segment_usage`：每段 tokens／chars／items 与自有 `budget`）、**裁剪项与原因**（`crops`：每段
+  `dropped` 与 `reason`）、模型与提示词版本。
+- **仅 §41.1–§41.3 拒绝** ⇒ `AssemblyOutcome::NotCallable(AssemblyRefusal)`——§41.1 的硬规则
+  「不可裁段缺失时 MUST 拒绝调用」在 runtime 上**已有表达**。
+- **仅 §41.5 拒绝** ⇒ `AssemblyOutcome::NotRebuildable(AssemblyRefusal)`。
+- **两侧都拒绝** ⇒ `AssemblyOutcome::Neither(AssemblyRefusal)`。
+
+`AssemblyRefusal` 同时携带**两张**拒绝名表（`rejections` 的 `assembly.*` 与 `rebuild_rejections` 的
+`rebuild.*`）、`missing_segments`（§41.1「按名列出缺了哪几段」）与既有的三类可疑 id。任一拒绝
+**一个字节都不落盘**；返回类型是枚举 ⇒「已落账」与「已拒绝」**类型上**可分。
+
+`Composition::read_logged_assemblies(limit)` 是**只读**的读回入口：**每行一条** `LoggedAssembly`，
+四项**逐字**带出；不可解析的行 ⇒ `ErrorCode::Internal` **具名失败**（静默跳过会让「读回 N 行」与
+「链上就有 N 行」不可区分）。`rebuild_assembly_from_log` 的 payload **解析**改为复用同一路径，
+**判定语义不变**。
+
+⚠️ **载荷取值照抄判定输入**：`segment_usage`／`crops` MUST NOT 由 `content` 重算、MUST NOT 补零、
+MUST NOT 补判定没输出的段——§41.2 判的是**调用方给的数**，一个悄悄把数改对的传输者写出的不是被审过的那本账。
+⚠️ **载荷 MUST NOT 夹带未审字段**：片段的 `scope`／`age_ms`／`trust`／`source` 与判定诊断清单
+（`missing_segments`／`over_budget`／…）**都不落**——§41.5 只列四项。
+⚠️ **两份输入必须描述同一次装配**：`plan` 各段片段标识的**序列**（不是集合）MUST 等于 `record.fragment_ids`，
+否则返回 `Err(assembly.input_ids_differ)`——那是**调用方错误**，没有任何结局能诚实承载它。
+⚠️ **四态不是两态**：把「两侧都拒」折进任一单侧会**丢掉另一侧的拒绝名**——「不许调用」与
+「不许声称可重建」是两个不同的禁令。见 [ADR 0084](adr/0084-assembly-judgement-wiring.md)。
+
+⚠️ **历史行兼容**：W104 落的行**没有** `segment_usage`／`crops` 两键 ⇒ 读回时两项为**空列表**、
+**不是**解析失败；「键不存在」（旧行）与「键存在但不是数组」（损坏）被分开处置。
+
+⚠️ **既有弱化（具名登记，本轮不修）**：`rebuild_assembly_from_log` 的片段池是**跨行合并**的
+（W104 语义）⇒ 它比 §41.5 的「日志能否重建**这一次**装配」**弱**：record 声明 `[A, B]` 而链上第 1 行只有
+`A`、第 2 行只有 `B` 时，池化报可重建，而**没有任何一行**能单独重建它。本轮只统一了解析路径，语义留待新的一轮。
+
+**边界（如实）**：判定接线与四项落链已可测（**25** 项测试 + **八**组非空洞注入），但 `H01` 中
+「把九段片段**喂给模型**」这一半、**§41.2 分段预算初值标定**（§47.2 黄金集回放，§48.7 禁采外部观察值）
+与 **§47.2 六类回归的执行体**（**H16**，能力包）**未接线** ⇒ H01 仍 `pending`。
+
 ## 子进程监督（Supervisor）
 
 - 二进制路径由调用方显式传入（`Binaries::validate` 缺失即 `CapabilityNotReady`）；库内不用
