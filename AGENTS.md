@@ -2922,3 +2922,57 @@ W100 / W101 / W102）：**每一条注入都是 `W95=0 / W100=0 / W101=0 / W102�
 见 [W102 报告](docs/reports/2026-10-14-w102-workflow-trigger-surface.md)、
 [ADR 0080](docs/adr/0080-workflow-trigger-surface.md)、
 `openspec/changes/archive/2026-10-14-w102-workflow-trigger-surface/`。
+
+### W103 H15 的 runtime 接线：判定面之后的**那一步**必须有执行体
+
+W66 把 §47.1 的观测判定落成 `crates/nai-kernel/src/evaluate/harness.rs::evaluate_observation`，
+并在模块文档里写死「Appending it to the actual hash chain in `nai-storage` is runtime wiring and is
+**not** claimed here」。这句话当时**诚实**，同时**不可核实**：
+`grep -rn 'evaluate_observation\|ObservationRecord\|ObservationPolicy' crates/ apps/` 只命中
+`crates/nai-kernel/tests/*.rs` ⇒ 生产代码**零调用方**。于是两条命题**无法被判**：
+① 一条被判**不可落日志**的记录会不会**照样**进链；② 进链的载荷是不是判定输出的**脱敏材料**。
+⇒ 母题「**有判定面 ≠ 有执行体**」的又一次现身（W54 桌面壳、W68 讲品循环同型）；
+「有判定面」是「有执行体」的必要条件，**不是**充分条件。
+
+**落点是推出来的**：接线必须同时看见 `nai-kernel` 的判定与 `nai-storage` 的只追加链，
+而 `crates/nai-runtime` 同时依赖两者；放 kernel 会引入 kernel→storage 越界依赖、放 storage
+会让存储层认识 harness 领域类型 ⇒ `cargo xtask check-deps` 会红。**零新增依赖**。
+
+**决策一：判定与追加合并为一个入口**。`Composition::record_observation(record, policy)`——
+不暴露「先 `evaluate` 再 `append`」两个出口：那会把「不许追加未判定的记录」**推给每个调用方**，
+一个人忘了就破了，而**测试看不出来**（不变量 MUST 由**结构**保证，不是由纪律保证；
+W92/W93「把门槛交给被审者自己填」在**接口层**的又一实例）。
+
+**决策二：runtime 是传输者，不是加工者**。可落日志 ⇒ 追加载荷**恰为**判定输出的脱敏材料
+（层标签 + `verdict.redacted` + `verdict.redacted_viewer`），MUST NOT 取 `record.fields`、
+MUST NOT 添加任何判定**没审过**的字段 ⇒ **不带** `record.subject`。⚠️ 判定只扫 `fields`，
+`subject` **永不被审** ⇒ 把它塞进载荷就是一条「凭据从 `subject` 溜进日志」的旁路，而判定
+**永远发现不了**它。把未审的部分补进结果不是「补全」，是把判定**扩不到的地方**变成**默认可信**。
+
+**决策三：不可落日志 ⇒ 具名拒绝且一个字节都不落盘**。`ObservationOutcome` 是枚举 ⇒
+「已落日志」与「已拒绝」**类型上**可分，不可能被读成同一个 `Ok`（铁律二）。
+
+**决策四：本轮避开先做 O05（升级数据源）**。O05 体量更小、还能解锁 O02，但接数据源**必然改
+OpenAPI 契约** ⇒ 必然触发 `scripts/contracts/generate.mjs` 再生三语言产物，而校验入口
+`cargo xtask schema --check` 在宿主机**跑不了**（`spawnSync(process.execPath)` 报 `EBUSY`，
+managed/system node 均复现）——**CI-only**。⇒ **「本机验不了的改动」不满足「可自主推进」的定义**
+（「小」不是判据，「本机可验证」才是）。
+
+**非空洞注入四组**（真改 `crates/nai-runtime/src/observation.rs`、真跑、逐字节还原、`sha256` 一致）：
+I1 载荷改取 `record.fields` ⇒ **1 条红**；I2 拒绝分支不再早退 ⇒ **4 条红**；
+I3 只接一类 layer ⇒ **5 条红**；I4 载荷被 `record.subject` 富化 ⇒ **1 条红**。
+⚠️ **I3 的样本定位 MUST NOT 按「态」定位**（W92 的教训）：五类的断言**遍历 `OBSERVATION_LAYERS`
+自己**，MUST NOT 遍历手写的层名清单。⚠️ **I4 是设计选择带出来的守卫**：样本不是「凭据藏在字段里」
+（那会被判定拦住、与 runtime 无关），而是**凭据藏在 `subject` 里而字段干净**——判定放行、
+runtime 若富化就泄漏，正是能**区分两种实现**的那一例。
+
+另：`composition.rs` 的 `next_trace` 只**放宽可见性**到 `pub(crate)`，**不**复制一份格式
+（ADR 0064「一处定义、两处使用」）；`DecisionKind::Observation` 用既有的 telemetry 级口径，未改。
+
+**如实披露**：**H15 保持 `pending`**。本轮可测的是「判定**之后**那一步真的发生且形态正确」；
+**五类观测的真实产生者**（装配裁剪、意图判定、记忆读写、工具调用、缓存命中）**仍未接线**，
+属 **H01/H02/H03/H04/B07** ⇒ 报告 MUST NOT 出现「五类观测已进决策日志」的措辞。
+降级侧（`evaluate_degradation` → `CapabilityView` 与界面）**不做**，属 H17 的另一轮。
+见 [W103 报告](docs/reports/2026-10-14-w103-observation-log-wiring.md)、
+[ADR 0081](docs/adr/0081-observation-log-wiring.md)、
+`openspec/changes/archive/2026-10-14-w103-observation-log-wiring/`。

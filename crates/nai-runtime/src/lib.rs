@@ -7,9 +7,11 @@
 //! Windows/hardware path. The `--watchdog-drill`/`--render-drill` subprocesses
 //! remain engineering drills, not production playback.
 mod composition;
+mod observation;
 pub mod supervisor;
 
 pub use composition::{BRINGUP_OPERATION, Composition, ControlAction, DutyEvent, ObservedFault};
+pub use observation::{ObservationOutcome, ObservationRefusal};
 pub use supervisor::{
     Binaries, FramePoolArgs, RenderWorkerSpec, StandbyReason, Supervisor, SupervisorFault,
 };

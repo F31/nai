@@ -41,6 +41,28 @@ schema 的 `required` 键的**消费状态**由 `scripts/contracts/config-consum
 - `record` 按 `DecisionKind::criticality()` 分级：critical 失败直接返回错误，telemetry 允许缓冲。
 - `rehearsal_lease` 只产出 Rehearsal 模式有界租约（TTL ≤600ms）；生产播放租约需审批与事实，不在此生成。
 
+## harness 观测落链（W103，验收 H15）
+
+`Composition::record_observation(record, policy)` 是 §47.1 五类观测**进入只追加哈希链**的唯一入口：
+它先调 `nai_kernel::evaluate::harness::evaluate_observation` 判定（判定规则本身由 W66 落地，本轮**一行未改**），
+再按判定结果分两路：
+
+- **可落日志** ⇒ 追加一条 `DecisionKind::Observation` 条目（telemetry 级），载荷**恰为**判定输出的
+  脱敏材料三项：层标签、`verdict.redacted`、`verdict.redacted_viewer`。
+- **不可落日志** ⇒ 返回 `ObservationRefusal{layer, rejections, redacted}`，**一个字节都不落盘**；
+  返回类型是枚举 ⇒ 「已落日志」与「已拒绝」**类型上**可分。
+
+⚠️ **runtime 是传输者，不是加工者**：载荷 MUST NOT 取 `record.fields`，也 MUST NOT 添加任何判定没审过的
+字段——故**不带** `record.subject`（判定只扫 `fields`，`subject` 永不被审）。把未审的部分补进结果不是
+「补全」，而是把判定**扩不到的地方**变成默认可信。见 [ADR 0081](adr/0081-observation-log-wiring.md)。
+
+⚠️ **判定与追加合并为一个入口**：不暴露「先 `evaluate` 再 `append`」两个出口，否则「不许追加未判定的记录」
+会退化成每个调用方的纪律，而不是结构保证。
+
+**边界（如实）**：落链路径已可测（八项测试 + 四组非空洞注入），但**五类观测的真实产生者**
+（装配裁剪、意图判定、记忆读写、工具调用、缓存命中）**未接线**，属 H01/H02/H03/H04/B07
+⇒ H15 仍 `pending`。降级侧（`evaluate_degradation` → `CapabilityView` 与界面）亦未接线，属 H17 的另一轮。
+
 ## 子进程监督（Supervisor）
 
 - 二进制路径由调用方显式传入（`Binaries::validate` 缺失即 `CapabilityNotReady`）；库内不用

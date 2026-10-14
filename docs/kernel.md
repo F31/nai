@@ -131,9 +131,9 @@ Pro 跨会话）未建；本轮交付的是判定面。§42.5 的跨会话边界
 最后一条是本轮**补出来的缺口**：在此之前 `required_fields()` 的内容没有任何测试钉住 §47.1，
 删一项不会有任何测试失败；故新增一条把五类字段表**逐项写死**的断言。
 
-**边界（如实）**：H15/H17 **保持 `pending`**——本轮交付的是**判定面**，
-把记录真正追加进 `nai-storage` 的哈希链、以及把 `DegradeVerdict` 渲染进 `CapabilityView` 与界面，
-都属 runtime 与呈现层接线；故报告 MUST NOT 出现「已进决策日志」的措辞。
+**边界（如实）**：H15/H17 **保持 `pending`**——W66 交付的是**判定面**；观测侧的**落链**已由 W103 补上
+（[ADR 0081](adr/0081-observation-log-wiring.md)：`crates/nai-runtime/src/observation.rs` 判定后追加脱敏载荷或具名拒绝），
+但五类观测的**真实产生者**与把 `DegradeVerdict` 渲染进 `CapabilityView`／界面仍属接线，故未达标的措辞只对后者成立。
 
 ## W67 harness 爬坡门控（V3.11 §5.9、§47.2、§47.3；验收 H18）
 

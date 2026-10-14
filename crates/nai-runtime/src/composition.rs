@@ -507,7 +507,10 @@ impl Composition {
         Ok(Some(ObservedFault { fault, ack }))
     }
 
-    fn next_trace(&mut self, prefix: &str) -> String {
+    /// The **one** trace-id generator for this composition. Widened to
+    /// `pub(crate)` so the observation surface reuses it rather than minting a
+    /// second, drifting format (ADR 0027, one definition).
+    pub(crate) fn next_trace(&mut self, prefix: &str) -> String {
         self.trace_seq += 1;
         format!("{prefix}-{}", self.trace_seq)
     }
