@@ -347,6 +347,29 @@ Totals: + 2, ~ 0, - 0, → 0
 
 ## 九、CI（**回填**）
 
+**推送 SHA**：`14e99641cb27b980358d29b306c15b3340180e18`（`5eeff2a..14e9964`）。
+
+**观测纪律**：**不轮询**、**单次低频**。两次查询各带唯一查询参数（`&cb=<ns>`）+
+请求头 `Cache-Control: no-cache`，并**回读 `head_sha` 是否等于本次推送的 SHA**；
+`curl` 带 `--max-time 45 --tlsv1.2 --tls-max 1.2`（后两个是本机 `schannel` 的既有坑）。
+
+| 次 | 回读 `head_sha` | `status` | `conclusion` |
+| --- | --- | --- | --- |
+| ①（推送后约 8 min） | `14e9964` **== 推送 SHA** ✓ | `in_progress` | `null` |
+| ②（推送后约 14 min） | `14e9964` **== 推送 SHA** ✓ | `completed` | **`success`** |
+
+- run id **`38585097662`**（workflow `Engineering foundation`，创建 `2026-10-14T14:57:11Z`）：
+  `https://github.com/F31/nai/actions/runs/38585097662`
+- **双平台矩阵**（`/jobs`，`total_count=2`，两者皆 `success`）：
+  - `foundation (ubuntu-24.04)` ⇒ `success`（`14:57:17Z` → `15:03:25Z`）
+  - `foundation (windows-latest)` ⇒ `success`（`14:57:16Z` → `15:10:04Z`）
+
+**⚠️ 这条结论回答了 §8.1 最重要的那条披露**：CI **不带** `RUST_TEST_THREADS=1` 旋钮，
+而本机第三次门控（**默认并发**）红在 `DeadlineExceeded`、且**连单跑也红**。CI 的
+**`windows-latest` 与 `ubuntu-24.04` 两平台都过** ⇒ 这是比 W106 更强的证据，支持
+「本机那几次红确属**本机负载下的瞬态**、**非代码缺陷**」，也印证「**本机绿 ≠ CI 绿**、
+**本机红亦 ≠ CI 红**」是对称的两条。
+
 （本节由回填提交填写；回填提交**自身不回填**。）
 
 ## 十、遗留与边界
