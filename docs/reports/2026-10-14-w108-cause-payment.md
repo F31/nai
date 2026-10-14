@@ -283,7 +283,44 @@ Node **+2**（恰为两个既有套件各 +1：命令层 17 → 18、workflow 13
 
 ## 九、CI（**回填**）
 
-⟦CI⟧
+**推送 SHA**：`f40a65edbd7978e3e96c122391262d6c475ecb56`（`f02a061..f40a65e`）。
+
+**观测纪律**：**不轮询**、**单次低频**。三次查询各带唯一查询参数（`&cb=<ns>`）+
+请求头 `Cache-Control: no-cache`，并**回读 `head_sha` 是否等于本次推送的 SHA**；
+`curl` 带 `--max-time 40 --tlsv1.2 --tls-max 1.2`（后两个是本机 `schannel` 的既有坑）。
+
+| 次 | 回读 `head_sha` | `status` | `conclusion` |
+| --- | --- | --- | --- |
+| ①（推送后即刻） | `f40a65e` **== 推送 SHA** ✓ | `in_progress` | `null` |
+| ②（约 +4 min） | `f40a65e` **== 推送 SHA** ✓ | `in_progress` | `null` |
+| ③（约 +11 min） | `f40a65e` **== 推送 SHA** ✓ | `completed` | **`success`** |
+
+- run id **`38607744868`**（`run_number` **149**、workflow `Engineering foundation`，
+  创建 `2026-10-14T17:34:07Z`，终态 `2026-10-14T17:44:00Z`）：
+  `https://github.com/F31/nai/actions/runs/38607744868`
+- **双平台矩阵**（`/jobs`，`total_count=2`，两者皆 `success`）：
+  - `foundation (ubuntu-24.04)` ⇒ `success`（`17:34:11Z` → `17:40:23Z`）
+  - `foundation (windows-latest)` ⇒ `success`（`17:34:11Z` → `17:43:59Z`）
+
+**⚠️ 本轮 CI 的 skip 形状恰好落在 W108 自己的题目上，须如实分辨「旁证」与「判据输入」。**
+两平台共三处 `skipped`，**全部是条件性步骤**（无一处失败）：
+
+| 步骤 | ubuntu | windows | 成因 |
+|---|---|---|---|
+| `Install Linux C++ protobuf runtime` | `success` | **`skipped`** | `platform-toolchain` |
+| `Full three-language contract suite (Linux C++ toolchain)` | `success` | **`skipped`** | `platform-toolchain` |
+| `Publish the gate failure summary as annotations` | **`skipped`** | **`skipped`** | 无失败即无注解（条件式） |
+
+- 这与成因闭集**不矛盾、且形状一致**：`platform-toolchain` 的语义就是「**只在某个平台上具备前提**」，
+  CI 上的 skip 正是该语义的**外部投影**。
+- **但它是旁证，不是判据的输入**（铁律二）：判据读的是**仓库内凭据**（`file` + 逐字 `marker`），
+  CI 运行结果是**宿主/平台事实**，MUST NOT 出现在判定输入里。本轮**没有**把它写进任何凭据。
+- 同理需分辨 **ADR 0073 遗留 1 的预言**：`Check generated contracts without modifying consumers`
+  在**两平台都 `success`**（CI 装了 pinned `protoc` = `libprotoc 3.21.12` 这个**编译产物前提**）。
+  这正是它被归为 `compiled-artifact` 的形状——**前提在则有、本机缺则无**；
+  它**不**构成「本机也应能跑」（本机缺的恰是那条前提，见 §10.3）。
+
+（本节由回填提交填写；回填提交**自身不回填**。）
 
 ## 十、如实披露、遗留与边界
 
