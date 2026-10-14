@@ -61,7 +61,8 @@ MUST NOT 取得指令权。装配 SHALL 落决策日志（片段标识、各段�
 装配 SHALL 可由决策日志的片段引用重建，MUST NOT 依赖当时的内存状态。
 来源标识 MUST NOT 为空白，作用域 MUST 携带（「时效」原文自带「如适用」，故其缺失 MUST NOT 被读作违规）。
 重建 MUST **只**消费日志：日志缺该片段、或该片段的正文不在日志里而只存在于当时的内存，MUST 分别具名拒绝；
-被引用片段在日志中的顺序与记录中的进入顺序不一致时，MUST 具名拒绝。
+被引用片段在日志中的顺序与记录中的进入顺序不一致时，MUST 具名拒绝。判定的是「能否只靠日志重建」；
+落链与运行期重建由 `runtime-composition` 承担，本需求 MUST NOT 被读作「已落链」。
 
 #### Scenario: A fragment arrives without provenance
 

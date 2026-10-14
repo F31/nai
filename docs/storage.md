@@ -27,7 +27,7 @@ SQLite bounded busy/progress handler 和备份循环复检期限；同步 OS 调
 
 ## 迁移与事实
 
-SQL 源位于 `migrations/sqlite/0001-foundation.sql` 至 `0005-decision-log.sql`，当前 schema 5。
+SQL 源位于 `migrations/sqlite/0001-foundation.sql` 至 `0007-decision-log-assembly-kind.sql`，当前 schema 7。
 基础表、知识准备/发布副本、决策日志及索引/触发器由事务迁移建立；打开时检查版本、checksum 与实际 DDL。
 未知未来 schema、缺表/改 DDL、未版本化旧数据库均拒绝，不伪报健康。
 
@@ -46,7 +46,7 @@ outbox 的实际运行/媒体消费者已由 D06/D09 落地。
 `backup` 用 SQLite online backup，复制快照本身的登记清单而非活跃库的另一个版本。
 限制：每文件16MiB，最多512项，总256MiB；这是初始上限，未来调整需匹配配置和测试。
 数据库/文件哈希、schema、运行版本、契约目录 hash 和敏感范围存于 `manifest.json`。
-备份声明从 migration::VERSION 取实际 schema，当前生成契约要求 db_schema_version=5；不把新数据库伪标为旧版本。
+备份声明从 migration::VERSION 取实际 schema，当前生成契约要求 db_schema_version=7；不把新数据库伪标为旧版本。
 密钥本体不在该数据根或备份内；记录的 credential_ref 不是可恢复的密钥。
 快照未加密/签名，不对未知来源保证真实性；保护其中的原文/事实/审计。
 
@@ -71,7 +71,7 @@ reason 不携带 OS 本地化文本，因此跨机器可直接比对；确切类
 一切 UPDATE/DELETE，恢复流程不触碰该表；`verify_decision_chain` 逐条重算并报告首个不一致位置。
 
 `append_decision` 按类别分级（ADR 0015 勘误）：critical（approval/cue/cancellation/duty_lease）
-独立事务先持久化，失败原样报错，不先冲刷遥测；telemetry（event/observation/decision/guard/synthesis/playback_ack/expiry/usage）
+独立事务先持久化，失败原样报错，不先冲刷遥测；telemetry（event/observation/assembly/decision/guard/synthesis/playback_ack/expiry/usage）
 失败进入容量 1024 的有界缓冲，满则丢弃最旧并累加 dropped 计数。后续遥测写入时将旧缓冲与新条目按序在同一事务重新链接，
 任一失败完整回滚，提交成功才清缓冲；新遥测不能越过失败的缓冲独立落盘。`flush_decisions` 也使用整批事务。
 critical 可先于降级缓冲提交，seq 是持久化顺序，created_at_ms 保留原记录时间，不宣称跨分级的事件时间全序。

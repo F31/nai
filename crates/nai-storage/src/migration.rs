@@ -2,14 +2,15 @@ use crate::{Operation, Result, error, hash, utc_ms};
 use nai_contracts::v1::ErrorCode;
 use rusqlite::{Connection, TransactionBehavior};
 
-pub(crate) const VERSION: i64 = 6;
-const SQL: [&str; 6] = [
+pub(crate) const VERSION: i64 = 7;
+const SQL: [&str; 7] = [
     include_str!("../../../migrations/sqlite/0001-foundation.sql"),
     include_str!("../../../migrations/sqlite/0002-authority.sql"),
     include_str!("../../../migrations/sqlite/0003-knowledge-index.sql"),
     include_str!("../../../migrations/sqlite/0004-knowledge-publication.sql"),
     include_str!("../../../migrations/sqlite/0005-decision-log.sql"),
     include_str!("../../../migrations/sqlite/0006-utterance-display-text.sql"),
+    include_str!("../../../migrations/sqlite/0007-decision-log-assembly-kind.sql"),
 ];
 
 pub(crate) fn verify(connection: &Connection) -> Result<i64> {
@@ -172,5 +173,55 @@ mod tests {
                 .unwrap(),
             1
         );
+    }
+
+    /// W104: the assembly kind widens the decision-log CHECK, and the only way to do that in
+    /// SQLite is a table rebuild. This exercises the **upgrade** path (not the fresh install): a
+    /// version-6 database with a row already in the chain must come out with its rows verbatim
+    /// and with the new kind accepted. Without this the rebuild's `INSERT ... SELECT` would only
+    /// ever run on an empty table.
+    #[test]
+    fn version_six_upgrade_preserves_the_decision_chain_and_accepts_the_assembly_kind() {
+        let mut db = Connection::open_in_memory().unwrap();
+        for (index, sql) in SQL.iter().take(VERSION as usize - 1).enumerate() {
+            apply(&mut db, &op(), index as i64 + 1, sql).unwrap();
+        }
+        assert_eq!(verify(&db).unwrap(), VERSION - 1);
+        db.execute(
+            "INSERT INTO workspaces(workspace_id,name) VALUES('w','legacy')",
+            [],
+        )
+        .unwrap();
+        let row = |kind: &str| {
+            format!(
+                "INSERT INTO decision_log(workspace_id,session_id,kind,criticality,payload_json,payload_hash,prev_hash,entry_hash,created_at_ms,trace_id) VALUES('w',NULL,'{kind}','telemetry','{{}}','h','p','e',1,'t')"
+            )
+        };
+        db.execute(&row("observation"), []).unwrap();
+        // The pre-W104 CHECK is a closed set of twelve: the new kind is refused by the schema,
+        // which is exactly the silent-drop trap this migration closes.
+        assert!(db.execute(&row("assembly"), []).is_err());
+
+        migrate(&mut db, &op()).unwrap();
+        assert_eq!(verify(&db).unwrap(), VERSION);
+
+        // The row already in the chain survives the rebuild verbatim, and the widened CHECK now
+        // takes the new kind.
+        let (kind, payload): (String, String) = db
+            .query_row("SELECT kind,payload_json FROM decision_log", [], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })
+            .unwrap();
+        assert_eq!(kind, "observation");
+        assert_eq!(payload, "{}");
+        db.execute(&row("assembly"), []).unwrap();
+        assert_eq!(
+            db.query_row("SELECT COUNT(*) FROM decision_log", [], |row| row
+                .get::<_, i64>(0))
+                .unwrap(),
+            2
+        );
+        // The append-only triggers come back with the rebuilt table.
+        assert!(db.execute("DELETE FROM decision_log", []).is_err());
     }
 }

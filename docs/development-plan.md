@@ -836,7 +836,7 @@ W70 **不落新功能线**，而是处理 W69 收尾时登记的两族 CI 红—
   耗尽仍是**显式 `Conflict`**（**要么落地、要么被报告，绝不静默跳过**）；epoch 轮询用 `SESSION_POLL_BUDGET` = **5 ms**，
   耗尽返回 **`Ok(None)` = 「本 tick 未观测到」而非故障**；`live_epoch()` 签名变 `Result<Option<u64>>`
   （`Some` 正常／`None` 竞争／**`Err` 仅锁中毒**），把「没看到」与「出错了」在**类型上**分开。
-- **缺口二（预算与工作量不匹配）**：`Store::open` 在**全新数据根**上跑**全链迁移**（`VERSION = 6`，6 个脚本，
+- **缺口二（预算与工作量不匹配）**：`Store::open` 在**全新数据根**上跑**全链迁移**（`VERSION = 7`，7 个脚本，
   每段 `BEGIN IMMEDIATE`+`COMMIT`），连接以 **`synchronous=FULL`** 打开，却曾用**逐次调用**的 `SHORT_OPERATION` = 5 s
   ⇒ 慢盘上 `DEADLINE_EXCEEDED`。ADR 0004 的**上界是 30 s**、ADR 0038 称其为**安全层不变量**，同仓同类迁移工作一律 30 s
   ⇒ 新增 `BRINGUP_OPERATION` = **30 s**（`pub`，`apps/engine` 的 `--provision` 复用**同一常量**）；`SHORT_OPERATION` 保持 5 s；
@@ -1320,6 +1320,66 @@ windows 那族**是预算与工作量不匹配**（全新数据根上的全链�
 [W70 报告](reports/2026-10-12-w70-transient-host-conditions.md)。
 **把前端纳入工程门控**已由 W41 关闭（`check --profile full` 覆盖两包 typecheck/build、桌面包单测与 `tests/ui`），
 其**流水线接线**已由 W42 关闭（CI 两个 job 统一执行 `full`，此前 20 项前端测试在 CI 中从不运行）。
+
+### W104 装配判定接上真实哈希链（H02 runtime 接线）
+
+**W104 交付 H02 的 runtime 接线：把 W69 的判定面接上真实执行体**——`rebuild_assembly` 此前**在生产代码里零调用方**
+（`grep -rn 'rebuild_assembly\|AssemblyRecord\|LoggedFragment' crates/ apps/` 只命中 `crates/nai-kernel/tests/*.rs`），
+而 W69 模块文档与 `docs/kernel.md` 自己写着「把装配记录追加进 `nai-storage` 的哈希链……是 runtime 与证据生产侧的事」；
+于是「一次被判可重建的装配会不会照样被写进链」「进链的载荷能否**只靠链**重排出同一段片段序列」两条**无法被判**
+——缝型与 W103（H15）、W54（桌面壳）、W68（讲品循环）同型：**判定面存在、执行体不存在**。
+
+**实现**：新增 `crates/nai-runtime/src/assembly.rs`——`record_assembly` 是「判定 + 追加」的**唯一**入口
+（不暴露两个出口，否则不变量退化成调用方的纪律）；可重建 ⇒ 追加一条 `DecisionKind::Assembly` 条目，
+载荷**恰为**判定放行的那一份（按**记录进入顺序**的片段 `id`／来源标识／**字面正文** + 模型/提示词版本），
+`content` MUST NOT 为空、MUST NOT 是「指向当时内存的指针」；不可重建 ⇒ `AssemblyRefusal` 具名拒绝、
+**一个字节都不落盘**。`rebuild_assembly_from_log` 是**只读**的另一半：读回 `assembly` 条目、按**日志自身顺序**
+解出片段、交给**同一个** `rebuild_assembly`（判定是**调用**、不是复写），映射为 owned 的 `AssemblyRebuild`。
+`tests/assembly.rs` **12 项**，含**遍历 `RebuildRejection::ALL`** 的非空洞守卫（样本构造函数对拒绝枚举
+**穷尽 match** ⇒ kernel 加变体而 runtime 未覆盖即**编译失败**）。
+
+**本轮最重要的实测发现——种类是两处定义**：`migrations/sqlite/0005-decision-log.sql` 把种类写成
+`CHECK(kind IN(…12 个…))`，与 Rust 的 `DecisionKind` 枚举构成**同一件事的两处定义**。只改枚举不改 CHECK ⇒
+插入被 schema 拒绝，且**不响亮**：telemetry 的「写失败 ⇒ 进有界缓冲」策略让条目静静躺在内存里
+（`ack.persisted == false`）。**首跑即复现**（3 个用例红在 `persisted` 与「日志里没有 assembly 行」）。
+⇒ 新增迁移 `0007-decision-log-assembly-kind.sql`：SQLite 不能就地改 CHECK，故**逐列重建**该表、
+`INSERT … SELECT` **逐字复制**既有行（含四个哈希列与 `seq`）、`DROP` 旧表、`ALTER … RENAME` 回原名、
+重建索引与两个只追加触发器；链不受影响（`entry_hash` 的 preimage 不含表名）。`migration::VERSION` 6 → 7。
+**升级路径实测**：`migration::tests::version_six_upgrade_preserves_the_decision_chain_and_accepts_the_assembly_kind`
+先在 v6 库上**证明旧 CHECK 拒绝 `assembly`**，再升级，然后断言既有行逐字保留 + 新种类被接受 + `DELETE` 仍被拒。
+
+**连带的版本号面**：`backup.schema.json` 的 `db_schema_version` 与 `migration::VERSION` 成对（ADR 0045）⇒
+同步 schema const、其 TS 生成物、本地契约测试样本（并把「紧邻上一版」负例由 5 改 6）、清单断言，共四处。
+⚠️ **如实披露**：`db_schema_version` 属 `TS_GENERATED_SOURCES`，再生入口 `cargo xtask schema --check`
+（→ `scripts/contracts/generate.mjs`，内部 `spawnSync(process.execPath)`）在宿主机 `EBUSY`、**本机跑不了**。
+生成物手工同步**一个 token**，依据是**已提交的一对**（schema 的 `const: 6` 与 `backup.ts` 的
+`db_schema_version: 6;` 逐字对应）⇒ 该不变量当前成立，手工同步保持它成立；由 CI 的 `schema --check` 复核。
+这不是把本机验不了的改动当成已达标，而是**把不可再生面压缩到一个 token 并明说**。
+
+**非空洞注入五组**（真改文件、真跑、逐字节还原、`sha256` 一致、复跑基线 4/4 与 12/12 全绿）：
+I1 载荷 `content` 落 `null` ⇒ **5 红**；I2 拒绝分支不再早退 ⇒ **7 红**；I3 片段按 id 排序落盘 ⇒ **1 红**；
+I4 载荷漏 `model_version` ⇒ **1 红**；I5 迁移 CHECK 去掉 `assembly` ⇒ storage **1 红** + runtime **4 红**。
+⚠️ **两组注入逼出了两处测试缺口并已补齐**：I3——原往返用例用**升序** id，排序实现与忠实实现不可分
+⇒ 新增 `the_log_preserves_the_entry_order_rather_than_re_sorting_it`（非升序 id）；I4——原先**无断言**
+钉住载荷携带版本号 ⇒ 在载荷形状用例补两条断言。**没有这两处修补，I3/I4 都会是零信号。**
+
+⚠️ **归档当场逼出一个真实缺陷——校验面错位**：`openspec validate <change>` **只**校验变更自身的 delta 结构，
+**不施加** spec 级的「需求正文 **> 500 字符**」规则 ⇒ `agent-harness` 那条 MODIFIED 需求被追加句从 **424**
+推到 **652**，**归档前照样报 `is valid`**，归档后第一条 `validate --specs` 立刻 **1 红**。
+根因：`pnpm spec:validate`（= `openspec validate --all --strict`）与 `openspec validate --archived` 在本仓属
+**`not-in-profile`**（`scripts/contracts/workflow-steps.mjs` 明写「本机能跑、没接进 `check` profile」）——
+**门控不跑、CI 跑**（`.github/workflows/foundation.yml`）⇒ 不补跑就会红在 CI。
+处置＝把追加句压到房风格最短形式，**活 spec 与归档 delta 两处 1:1**（归档目录本轮未提交 ⇒ 就地订正）；
+复跑四条 validate 全绿（`--specs` 43/0、`--changes` 无、`--all` 43/0、`--archived` 102/0），
+并**复跑第三次门控 EXIT = 0**（计数现测不变 93/883）。
+
+**明确不做 / 如实披露**：**H02 保持 `pending`**——本轮可测的是「判定**之后**那一步真的发生、且只靠链可重建」，
+而**装配器的真实产生者**（把九段片段喂给模型、§41.2 分段预算初值标定、§47.2 六类回归属 **H16**）**仍未接线**
+⇒ 报告 MUST NOT 出现「装配器已接入」「已不依赖当时内存」这类运行期断言；H17（`evaluate_degradation` →
+`CapabilityView` 与界面）**不做**；不加便利谓词（枚举本身已可区分）。
+
+见 [W104 报告](reports/2026-10-14-w104-assembly-log-wiring.md)、[ADR 0082](adr/0082-assembly-log-wiring.md)、
+`openspec/changes/archive/2026-10-14-w104-assembly-log-wiring/`。
 
 ## 任务依赖与状态
 

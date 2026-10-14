@@ -542,7 +542,10 @@ fn bootstrap_owner(
     Ok(())
 }
 
-fn short() -> Result<Operation> {
+/// One short read-or-write operation for a call that touches rows. Widened to
+/// `pub(crate)` so the assembly-log read surface reuses this budget rather than
+/// minting a second, drifting one (ADR 0027, one definition).
+pub(crate) fn short() -> Result<Operation> {
     Operation::new(SHORT_OPERATION)
         .map_err(|_| err(ErrorCode::Internal, "operation budget rejected"))
 }

@@ -28,6 +28,8 @@ impl Criticality {
 pub enum DecisionKind {
     Event,
     Observation,
+    /// §41.5: a context assembly, logged as its own ingestible fragments (W104).
+    Assembly,
     Decision,
     Guard,
     Cue,
@@ -44,6 +46,7 @@ impl DecisionKind {
         match self {
             Self::Event => "event",
             Self::Observation => "observation",
+            Self::Assembly => "assembly",
             Self::Decision => "decision",
             Self::Guard => "guard",
             Self::Cue => "cue",

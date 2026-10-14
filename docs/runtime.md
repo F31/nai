@@ -63,6 +63,35 @@ schema 的 `required` 键的**消费状态**由 `scripts/contracts/config-consum
 （装配裁剪、意图判定、记忆读写、工具调用、缓存命中）**未接线**，属 H01/H02/H03/H04/B07
 ⇒ H15 仍 `pending`。降级侧（`evaluate_degradation` → `CapabilityView` 与界面）亦未接线，属 H17 的另一轮。
 
+## 装配落链与只读重建（W104，验收 H02）
+
+`Composition::record_assembly(record, fragments)` 是 §41.5 上下文装配**进入只追加哈希链**的唯一入口：
+它先调 `nai_kernel::evaluate::assembly::rebuild_assembly` 判定（判定规则本身由 W69 落地，本轮**一行未改**），
+再按判定结果分两路：
+
+- **可重建** ⇒ 追加一条 `DecisionKind::Assembly` 条目（telemetry 级），载荷**恰为**判定放行的那一份材料：
+  按**记录进入顺序**排列的片段（`id`、来源标识 `source_ref`、**字面正文**）、模型版本、提示词版本。
+- **不可重建** ⇒ 返回 `AssemblyRefusal{rejections, unlogged_ids, contentless_ids, credential_ids}`，
+  **一个字节都不落盘**；返回类型是枚举 ⇒「已落日志」与「已拒绝」**类型上**可分。
+
+`Composition::rebuild_assembly_from_log(record, limit)` 是**只读**的另一半：读回 `assembly` 条目、
+按**日志自身顺序**解出被引用片段，再交给**同一个** `rebuild_assembly`，结果映射为拥有所有权的
+`AssemblyRebuild`。判定是**调用**、不是复写第二份；读回 SHALL NOT 追加、修改或重排链。
+
+⚠️ **正文 MUST 落字面**：载荷里的 `content` MUST NOT 为空、MUST NOT 是「指向当时内存的指针」——
+H02 的判据正是「日志**自己**能不能重排出同一段序列」。把正文留在内存、只存引用，就是它要禁的那一种。
+
+⚠️ **顺序 MUST 落成记录顺序、重建 MUST 取日志顺序**：`rebuild_assembly` 的比较基准是「日志自身顺序 vs
+记录顺序」。写侧若按 id 排序落盘，读侧的比较就**恒真**，`RebuildOrderDiffers` 成空话。
+
+⚠️ **`assembly` 是存储 schema 的**第二个**闭世界**：`decision_log` 的 `kind` 有 `CHECK(kind IN(…))`，
+与 Rust 的 `DecisionKind` 枚举并存（迁移 `0007` 逐列重建该表以容纳新种类）。只改枚举而不改 CHECK ⇒ 插入被
+schema 拒绝、**静默落入遥测缓冲**（`ack.persisted == false`，不报错）。见 [ADR 0082](adr/0082-assembly-log-wiring.md)。
+
+**边界（如实）**：落链路径与只读重建已可测（十二项测试 + 五组非空洞注入），但**装配器的真实产生者**
+（把九段片段喂给模型、§41.2 分段预算初值标定、§47.2 六类回归属 **H16**）**未接线** ⇒ H02 仍 `pending`。
+H17（`evaluate_degradation` → `CapabilityView` 与界面）亦未接线。
+
 ## 子进程监督（Supervisor）
 
 - 二进制路径由调用方显式传入（`Binaries::validate` 缺失即 `CapabilityNotReady`）；库内不用

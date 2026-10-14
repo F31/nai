@@ -6,10 +6,12 @@
 //! real device/window/audio output, produces no PlaybackAck and certifies no
 //! Windows/hardware path. The `--watchdog-drill`/`--render-drill` subprocesses
 //! remain engineering drills, not production playback.
+mod assembly;
 mod composition;
 mod observation;
 pub mod supervisor;
 
+pub use assembly::{AssemblyOutcome, AssemblyRebuild, AssemblyRefusal};
 pub use composition::{BRINGUP_OPERATION, Composition, ControlAction, DutyEvent, ObservedFault};
 pub use observation::{ObservationOutcome, ObservationRefusal};
 pub use supervisor::{

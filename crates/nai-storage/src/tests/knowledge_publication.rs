@@ -727,7 +727,7 @@ fn consistent_backup_restores_published_knowledge_but_not_output_authority() {
     let backup = storage.backup(&op()).unwrap();
     let manifest: serde_json::Value =
         serde_json::from_slice(&fs::read(backup.join("manifest.json")).unwrap()).unwrap();
-    assert_eq!(manifest["db_schema_version"], 6);
+    assert_eq!(manifest["db_schema_version"], 7);
     let mut restored = Store::restore(
         &backup,
         DataPaths::at(parent.path().join("restored")).unwrap(),

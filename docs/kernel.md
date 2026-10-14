@@ -250,7 +250,7 @@ H01/H02 是 W56 立的项目标（§47.6 的 W56 行写的正是「上下文装�
 | 悄悄改一个字段名 | `the_assembly_record_fields_match_the_harness_l1_table` |
 
 **边界（如实）**：H01/H02 **保持 `pending`**——本轮交付的是**判定面**。把预算初值真正回放调优并记入 ADR、
-把装配记录追加进 `nai-storage` 的哈希链、以及执行 §47.2 的六类回归（能力包 **H16**），都是 runtime 与证据生产侧的事；
+把装配记录追加进 `nai-storage` 的哈希链**已由 W104 落地**（`crates/nai-runtime/src/assembly.rs` 的 `record_assembly`／`rebuild_assembly_from_log`，见 [ADR 0082](adr/0082-assembly-log-wiring.md)）；执行 §47.2 的六类回归（能力包 **H16**）仍属证据生产侧；
 故报告 MUST NOT 出现「装配器已接入」「已不依赖当时内存」这类运行期断言。
 
 **复核方法上的一处坑（本轮实测）**：注入脚本用 `fs.copyFileSync` 复原源码时，**Windows 会连同 mtime 一起复制**
@@ -279,7 +279,7 @@ H01/H02 是 W56 立的项目标（§47.6 的 W56 行写的正是「上下文装�
   **绝不静默跳过**）；epoch 轮询用 `SESSION_POLL_BUDGET` = **5 ms**，耗尽返回 **`Ok(None)` = 「本 tick 未观测到」**，
   **不是故障**。`live_epoch()` 签名变 `Result<Option<u64>>`：`Some` 正常／`None` 竞争／**`Err` 仅锁中毒**；
   `SessionLockMiss { Busy, Poisoned }` 就是为此存在。
-- **bring-up 期限要按工作量标定**：`Store::open` 在**全新数据根**上跑**全链迁移**（`VERSION = 6`，6 个脚本，
+- **bring-up 期限要按工作量标定**：`Store::open` 在**全新数据根**上跑**全链迁移**（`VERSION = 7`，7 个脚本，
   每段 `BEGIN IMMEDIATE`+`COMMIT`），连接以 **`synchronous=FULL`** 打开，却曾用**逐次调用**的 `SHORT_OPERATION` = 5 s
   ⇒ 慢盘上 `DEADLINE_EXCEEDED`。ADR 0004 的**上界是 30 s**（`Operation::new` 拒绝 `> 30s`），
   同仓同类迁移工作一律 30 s ⇒ 新增 `BRINGUP_OPERATION` = **30 s**（`pub`，`apps/engine` 的 `--provision` 复用同一常量，
