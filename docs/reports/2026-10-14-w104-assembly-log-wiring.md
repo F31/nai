@@ -257,7 +257,19 @@ Totals: 42 passed, 1 failed (43 items)
 
 ## 九、CI
 
-（见下方「回填」小节。）
+**结论：run #141（id `38551222001`）—— `completed / success`，`head_sha a99df8bd3` == 本次推送 SHA。**
+
+- **观测纪律**：推送后按 SHA 查询共 **3 次**（间隔约 **5.5 min** 与 **9 min**，**非轮询**）；匿名配额 **60/h 按 IP**，
+  单轮观测**控制在个位数请求**。
+- **三件齐**（判 CI 结论的硬要求）：①URL 带唯一查询参数 `&cb=<ns>` 破坏沙箱代理缓存；②请求头
+  `Cache-Control: no-cache`；③回读 `head_sha` **== 本次推送 SHA**（`a99df8bd3…`，与 `git rev-parse origin/main` 一致）。
+- **平台面**：唯一 workflow `Engineering foundation`，`strategy.fail-fast: false` + 矩阵
+  `os: [ubuntu-24.04, windows-latest]` ⇒ 运行级 `success` 即两个 job 都过（**双平台 success**）。
+- **耗时**：`created 2026-10-14T10:40:32Z` → `updated 10:52:36Z` ≈ **12 分钟**（job 级 `timeout-minutes: 20`）。
+- ⭐ **CI 恰好覆盖了本机门控不跑的那三条**（正是 §8.5 教训的落点）：
+  `pnpm spec:validate`（= `openspec validate --all --strict`）、`openspec validate --archived`、
+  以及 `cargo xtask schema --check`（本机 `EBUSY`）——
+  **它们绿 ⇒ §8.5 的就地订正、§五 `db_schema_version` 的手工同步，都被 CI 独立复核通过。**
 
 ## 十、遗留
 
