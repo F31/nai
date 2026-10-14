@@ -208,18 +208,50 @@ export function stepIdentity(step) {
   return '';
 }
 
-/// 解析一份 workflow 的全部 step（**跨 job**）。产出 `{identity, condition, run}`。
-/// 不可解析 ⇒ 抛（由 `workflowStepErrors` 转成一条具名错误，**不静默降级**）。
-export function workflowStepsOf(text) {
+/// 解析一份 workflow 的**全部 job**。产出 `{id, matrix, runsOn, steps}`，其中每个 step 是
+/// `{identity, condition, run, continueOnError}`。
+///
+/// **为什么是 job 视图**（W100）：`matrix` 是 **job 的属性**，不是 step 的；而「这一步会不会跑」
+/// 只有在「矩阵的腿 × 这一步的条件」上才可判。W95 的扁平视图丢掉了 job 这一层，
+/// 于是执行配置面**根本进不了判定域**。
+///
+/// 不可解析 ⇒ 抛（由调用方转成一条具名错误，**不静默降级**）。
+export function workflowJobsOf(text) {
   const doc = YAML.parse(text);
   const out = [];
-  for (const job of Object.values(doc?.jobs ?? {})) {
+  for (const [id, job] of Object.entries(doc?.jobs ?? {})) {
+    const steps = [];
     for (const step of job?.steps ?? []) {
-      out.push({
+      steps.push({
         identity: stepIdentity(step),
         condition: typeof step?.if === 'string' ? step.if.trim() : '',
         run: typeof step?.run === 'string' ? step.run : '',
+        // `continue-on-error` 原样带出（**不**在这里解释真假：形状的闭世界属于 W100 的判据面）。
+        continueOnError: step?.['continue-on-error'],
       });
+    }
+    out.push({
+      id,
+      matrix: job?.strategy?.matrix,
+      runsOn: typeof job?.['runs-on'] === 'string' ? job['runs-on'].trim() : '',
+      steps,
+    });
+  }
+  return out;
+}
+
+/// 解析一份 workflow 的全部 step（**跨 job**）。产出 `{identity, condition, run, matrix, continueOnError}`。
+///
+/// W95 既有的 `{identity, condition, run}` 语义**一字不动**；新字段是**增补**，
+/// 因此 `workflowStepErrors` 的既有用例全部不变。`matrix` 与同 job 的步**共享同一份对象**
+/// ——拷贝会让「同一个矩阵」变成若干份可分别篡改的副本，「同一件事 MUST NOT 两处定义」。
+///
+/// 两个视图来自**同一次** `YAML.parse`：单一解析器，MUST NOT 让第二份解析器去追第一份的漂移。
+export function workflowStepsOf(text) {
+  const out = [];
+  for (const job of workflowJobsOf(text)) {
+    for (const step of job.steps) {
+      out.push({...step, job: job.id, matrix: job.matrix});
     }
   }
   return out;

@@ -74,6 +74,13 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
     // workflow 与三份 `package.json`，不需要 protoc。★ 副作用：本函数体正是 portable 面的**判定域**，
     // 把上面任一行搬出本函数就会让对应站点立刻失去兑付。
     schema::node(root, &["--test", "tests/contracts/tier-payment.test.mjs"])?;
+    // 在册判定步的**执行配置面**（`matrix` × `if:` × `continue-on-error`）的兑付守卫（W100）：
+    // 每个步的**执行平台集合**由 job 的矩阵与步的条件**静态求值**得出，MUST 非空（一条「永不跑」的
+    // 判定就是一条静默消失的判定）；产生判定的步 MUST NOT 带 `continue-on-error`（判定不可被吞），
+    // 诊断步 MUST 带（诊断不得替换原始结论）；`ci-only` 的成因与平台条件 MUST 一致（双向）；
+    // 矩阵形状、条件形状、`continue-on-error` 形状、runner 标签与 `runner.os` 取值 MUST 落在各自的
+    // 闭集里；平台专属命令 MUST 被平台条件兑付。同样纯静态：解析 workflow 文本，不需要 protoc。
+    schema::node(root, &["--test", "tests/contracts/step-config.test.mjs"])?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,

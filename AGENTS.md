@@ -2698,3 +2698,72 @@ P1 `0/0/0/0/0/3`、P2 `1/0/0/0/0/3`、P3 `0/0/2/0/0/3`、P4 `0/0/0/0/0/3`、P5 `
 见 [W99 报告](docs/reports/2026-10-14-w99-tier-payment.md)、
 [ADR 0077](docs/adr/0077-tier-payment.md)、
 `openspec/changes/archive/2026-10-14-w99-tier-payment/`。
+
+### W100 判定步的**执行配置面** MUST 由解析出的平台集合兑付
+
+W100 换**第九层对象**：前八轮各补**一个字段或一个集合**（`repositoryFiles` → `readTrackedText`
+→ W94 两张事实表 → W95 `gateSources` → W96 `gateRegions` → W97 包集合 → W98 npm 脚本执行面
+→ W99 站点层级声明）；本轮补的是一个**二维面**（`matrix` 的轴 × 每步的 `if:`）**加**一个**开关**
+（`continue-on-error`）。W95 的解析器只产 `{identity, condition, run}`，`matrix`／`continue-on-error`
+**根本不进判定域**，`condition` 只被 `diagnostic` 分支读过一次（`condition.includes('failure')`）
+⇒ **一整个面没有人读**。六个探针（P-A1／A2／A3／A4／A6／B1）8 套件**全 `[0,…]` 零信号**；
+P-A5（删诊断步 `if: failure()`）红 **2** 条作**对照组**，证明那些「零信号」不是判据整体失效。
+
+**最危险的一个是矩阵**：`os: [a, b]` → `[b]` 之后，两条 Linux-only 步（其中一条就是三语言契约
+套件）**永远不会跑**，而「21 个步都在册、身份都在、`kind` 都在闭集里」——**每一格都还是绿的**，
+CI 也照样绿。八条纪律：① **可达性 MUST 是集合级，MUST NOT 是字段级**——`platformLegsOf` 返回
+**执行平台腿列表**，`if: runner.os == 'macOS'` 在矩阵没有 macOS 时返回**空列表**（「写了条件」与
+「会跑」是两回事；只问「有没有 `if:`」会把它放过去）；② **两层取值域拒否合并不了一处**——
+`runner.os == 'FreeBSD'` ⇒ **取值域**（GitHub runner 只报三值）、`runner.os == 'macOS'` 而矩阵
+没有它 ⇒ **集合为空**、`matrix.os: []` ⇒ **声明本身空洞**；合并后错误消息就分不清「不存在的平台」
+与「矩阵里没有这个平台」；③ **失败语义 MUST 与角色一致，且是双向的**——`local`／`ci-only`
+MUST NOT 带 `continue-on-error`（判定的结论必须能红，否则是**装饰**），`diagnostic` MUST 带
+（诊断的问题不得**替换**它所转译的那次失败的结论）；仓库里「保证诊断自身的问题不会掩盖或替换
+原始失败的结论」那句是**散文**——**注释不执行任何东西，判据才是兑付**；④ **成因与条件 MUST
+互相兑现（双向）**——`platform-toolchain` 若没有平台限制，「它需要特定平台」在 CI 上**没有任何
+可见后果**；反过来给与平台无关的成因（`host-subprocess` 等）加平台条件，会让该步在别的平台
+**静默不跑**；比较用 **OS 族**而非标签计数（`runner.os == X` 筛的就是族）；⑤ **形状的支持集 MUST
+按实测的平台事实写**——`sudo` 的支持集**不是** `['Linux']`（macOS runner 也有 `sudo`，只有
+Windows 没有），写成 `['Linux']` 会在 macOS 矩阵下**误报一个正确的配置**；⑥ **`run` 要扫整段，
+不是首行**——`sudo apt-get update && sudo apt-get install …` 里 `apt-get` 在 `&&` 之后，只用首行
+会让 `debian-package-manager` 这一格**零实例**，与「每个形状 MUST 有实例」冲突；⑦ **非空洞要求
+刻意不同（规则表 vs 字典）**——`CONDITION_SHAPES`／`PLATFORM_COMMAND_SHAPES` 是**规则表**
+（每格 MUST ≥ 1 实例，同 W99 的 `TIER_PAYMENTS`），`RUNNER_OS_VALUES`／`RUNNER_LABEL_PREFIXES`
+是**平台事实的字典**（只要求矩阵里出现过的标签可分类，要求「所有平台都出现在矩阵里」等于把字典
+当断言）；⑧ **一处刻意的非对称**——一个在册步在 workflow 里**不存在**时本判据**沉默**，
+那是 W95「a registered step that vanished」的判定域。
+
+**两条判据都读 `condition` 但不重复判决**：W95 判「该步的**角色**与条件是否一致」（`diagnostic`
+必须带失败条件），W100 判「**条件形状表**是否还有实例」；`if: failure()` → `always()` 会让两条
+**同时**红，**消息与判定域都不同**（冗余，不是重复定义）。
+
+解析器**只留一份定义却产出两个视图**：`workflowJobsOf` 给 job 视图（`matrix` 是 **job 的属性**，
+不是 step 的——W95 的扁平视图把它丢掉了）；`workflowStepsOf` 在原有三字段上**增补**
+`matrix`／`continueOnError`，W95 的 37 个用例**全部不变**。
+
+`tests/contracts/step-config.test.mjs` **15 个用例**、`test-reachability` 站点 **12 → 13**、
+**Node 套件 10 → 11**（portable 面 **214 → 229**）、`xtask/src/lib.rs` **+1 行登记 + 一段注释**
+（Rust 零行为改动，**被审对象 `foundation.yml` 与 `WORKFLOW_STEPS` 的 21 条一个字符未动**）。
+注入 **V1–V11** 全部真改文件、真跑 9 套件、逐字节还原（`foundation.yml` `2f46d5f5…8c1c`
+前后一致），边界（W84／W95／W96／W97／W98／W99／W100）= V1 `0/0/0/0/0/0/3`、V2 `0/0/0/0/0/0/3`、
+V3 `0/0/0/0/0/0/4`、V4 `0/0/0/0/0/0/2`、V5 `0/0/0/0/0/0/2`、V6 `0/0/0/0/1†/0/2`、
+V7 `0/0/0/0/0/0/2`、V8 `0/2/0/0/0/0/3`、V9 `0/0/0/0/0/0/2`、V10 `0/0/0/0/0/0/3`、
+V11 `0/4/0/1†/0/0/1†`（† = **夹具前提被扰动**的假红，非判据判定）。
+
+**本轮新增两条探针陷阱、并印证一条旧教训**：① **Python `Path.write_text` 在 Windows 上把 `\n`
+翻成 `\r\n`** ⇒ 破坏夹具里所有含 `\n` 的字面锚点，探针**自己制造红**（首轮实测得
+`[0,0,0,4,0,1,0,0]`，排查后确认无信号）⇒ **修法 = `read_bytes`／`write_bytes` 逐字节写入，
+并断言「`\r` 计数与原文一致」**；② **某些步名被测试当作夹具锚点**（`Kernel registration and
+binding` 在 `workflow.test.mjs` 里出现 **11** 次）⇒ 对它们注入会**扰动夹具**、产生假红
+⇒ **修法 = 探针选零命中的步**（先统计命中次数再选）；③ **跨套件红 MUST 先确认前提**——
+V6／V11 除本判据外还打红了别的套件，根因是**那些用例的 `replace` 锚点已被探针改掉**
+（注入变成 no-op ⇒ 断言前提没了）——**不是判据在响**（V11 上 `stepConfigErrors` 返回 `[]`，
+本判据确实沉默）⇒ **`patch()` 必须自带「改不到就断言失败」**。
+
+**如实披露**：`if:` 的求值是**形状级**的（只认 `runner.os == '<os>'` 与 `failure()`，其余
+**具名拒绝**，拒否方向落在**假阳性**）；R5 是形状级且会扫到 `run` 里的注释文本；
+**「步身份 ↔ 判定目标」的绑定仍未管**（P-B1：把一个判定步的 `run` 换成另一条**同样像判定**的
+命令零信号，ADR 0075 只做形状级判定、不绑定「这一步该跑哪个目标」）。
+见 [W100 报告](docs/reports/2026-10-14-w100-step-configuration.md)、
+[ADR 0078](docs/adr/0078-step-configuration.md)、
+`openspec/changes/archive/2026-10-14-w100-step-configuration/`。
