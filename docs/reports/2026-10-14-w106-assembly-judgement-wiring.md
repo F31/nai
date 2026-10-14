@@ -334,6 +334,38 @@ Totals: + 4, ~ 1, - 0, → 0
 
 （本节由回填提交填写；回填提交**自身不回填**。）
 
+- 提交：`cb410ef` `feat(w106)：把 §41 装配判定接上 runtime 装配入口（H01 runtime 接线）`（**15 文件**）；
+  已 push（`119d5ec..cb410ef  main -> main`，SSH 443）。
+- **run [#145](https://github.com/F31/nai/actions/runs/38566320199)（id `38566320199`，workflow
+  `Engineering foundation`，event `push`）`completed / success`，`run_attempt 1`**；
+  `head_sha cb410ef10d8fac1a4acfeee1f77b58be892e1692` == **推送 SHA**、`head_commit.message` 首行
+  == **本提交标题**（**三件齐**：唯一查询参数 `&cb=<ns>` + 请求头 `Cache-Control: no-cache` + 回读 `head_sha`）。
+- ⚠️ **run 序号现测 = `145`**（W105 为 `#142`）⇒ **不是 +1**，期间另有 run（re-run 或其它推送）
+  ⇒ 又一次印证「**计数 MUST 现测、MUST NOT 靠上一轮 +1 推断**」（若按 +1 写 `#143` 就是**不实陈述**）。
+- **矩阵双平台 success**：`foundation (ubuntu-24.04)` **success**（`12:45:57Z → 12:50:34Z`，≈**4.6 min**）
+  + `foundation (windows-latest)` **success**（`12:45:57Z → 12:54:55Z`，≈**9.0 min**）。
+- **观测 3 次、非轮询**：①发布时 run 列表（`in_progress`，`created 12:45:53Z`）→ ②本次 run 列表
+  （`completed/success`，`updated 12:54:55Z`）→ ③本次 jobs 矩阵。
+  ⚠️ **宿主瞬态（非 CI 侧问题）**：②的首次尝试所用 `curl` **漏了 `--max-time`** ⇒ 无界等待、挂起约 30 min；
+  复跑加 `--max-time 45` 立即返回。**这是本机观测工具的缺陷，不是被观测系统的现象**，故不计入 CI 结论。
+- ⚠️ **CI 真的跑了三条「本机门控不跑」的检查，且双平台都是 success**（**直接读 CI 步骤集**，非从
+  workflow 文件推断）：
+
+| CI 步骤 | 名称 | ubuntu | windows | 面 |
+|---|---|---|---|---|
+| 9 | `Check generated contracts without modifying consumers` | **success** | **success** | `schema --check` 面 |
+| 21 | `Run pnpm spec:validate` | **success** | **success** | `not-in-profile`（§8.6 ③） |
+| 22 | `Run pnpm exec openspec validate --archived --no-interactive` | **success** | **success** | `not-in-profile`（§8.6 ②） |
+| 20 | `Full three-language contract suite (Linux C++ toolchain)` | success | **skipped** | 平台专属（正确） |
+| 8 | `Install Linux C++ protobuf runtime` | success | **skipped** | 平台专属（正确） |
+| 11 | `Publish the gate failure summary as annotations` | **skipped** | **skipped** | 正确：只在失败时发布 |
+
+  ⇒ 本机 `--specs` / `--archived` / `--all` 的绿与 CI 的绿是**同向的独立复核**，而不是「本机绿代替 CI 绿」。
+- ⚠️ **§8.2 的宿主瞬态在 CI 侧得到回答**：CI **不带** `RUST_TEST_THREADS=1` 这个限并发旋钮，
+  而 `nai-runtime` 的集成测试（含本轮 **12 → 25** 的 `tests/assembly.rs`）在**双平台**均 **success**
+  ⇒ 更强的证据指向「本机那次 `DeadlineExceeded` 确实是**本机负载下的瞬态**，**不是代码缺陷**」。
+- 回填提交（`docs(w106)：回填报告 CI 结论`）**自身不回填**。
+
 ## 十、遗留与边界
 
 - **接线核实**：Rust 集成测试由 `cargo test --workspace` 自动覆盖 ⇒ **无需**新增登记
