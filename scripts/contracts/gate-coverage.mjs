@@ -306,19 +306,29 @@ export function functionBody(text, name) {
   throw new Error(`\`fn ${name}\` carries an unbalanced body`);
 }
 
+/// 剥掉一条命令里的 shell 语法成分，归一成可比较的签名。
+///
+/// **单一真源**：W97 的 `ciXtaskCommands` 与 W101 的 `targetsOf` 都从这里取——
+/// 「什么算 shell 语法」只有一处定义，MUST NOT 让第二份实现去追第一份的漂移。
+/// `2>&1`、`| tee …`、`&&`、`;`、换行都要剥掉，否则一条合法命令会以**不存在的签名**
+/// 去对账，制造假阳性。
+export function stripShellSyntax(command) {
+  return command
+    .replace(/\s*2>&1[\s\S]*$/, '')
+    .replace(/\s*\|\s*tee[\s\S]*$/, '')
+    .replace(/\s*&&[\s\S]*$/, '')
+    .replace(/;\s*[\s\S]*$/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /// 从 CI 执行面的文本里抽出**全部** `cargo xtask <…>` 命令，归一成命令签名。
 /// shell 语法成分（`2>&1`、`| tee …`、`&&`、`;`、行续符）必须被剥掉，否则一条合法命令
 /// 会以**不存在的签名**落到 dispatch 台账上对账，制造假阳性。
 export function ciXtaskCommands(workflowText) {
   const out = [];
   for (const match of workflowText.matchAll(/cargo\s+xtask\s+([^\n]+)/g)) {
-    let command = match[1]
-      .replace(/\s*2>&1[\s\S]*$/, '')
-      .replace(/\s*\|\s*tee[\s\S]*$/, '')
-      .replace(/\s*&&[\s\S]*$/, '')
-      .replace(/;\s*[\s\S]*$/, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    const command = stripShellSyntax(match[1]);
     if (command === '') continue;
     out.push(command);
   }

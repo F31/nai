@@ -436,9 +436,19 @@ test('shapes alone: a normalised CI command must be comparable with the dispatch
   for (const command of commands) {
     assert.ok(!/2>&1|\|\s*tee|&&|;/.test(command), `${command} must carry no shell syntax`);
   }
+  // ⚠️ **W101 就地订正**：这里原先钉的是两个**具体串**
+  // （`commands.includes('check --profile full') && commands.includes('schema --check')`）。
+  // 那条断言既**假阳性**（把 `full` 合法改成别的 profile 就红），又**假阴性**
+  // （换一条同形状的目标它看不见 —— W101 探针 W4 实测零信号）；而且它**违背 W97 自己的边界声明**
+  // （「不验签名的取值」）。按对象性质分：**W97 管形状，W101 管取值绑定**
+  // （`scripts/contracts/step-target.mjs` 把「这一步跑的是哪个目标」钉死在在册条目上）。
   assert.ok(
-    commands.includes('check --profile full') && commands.includes('schema --check'),
-    'the gate commands must be recognised after normalisation',
+    commands.some(command => /^check --profile \S+$/.test(command)),
+    'the gate-command shape must be recognised after normalisation',
+  );
+  assert.ok(
+    commands.some(command => /^schema(?: --check)?$/.test(command)),
+    'the schema-command shape must be recognised after normalisation',
   );
   assert.ok(
     commands.some(command => command.startsWith('test --suite ')),

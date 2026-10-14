@@ -67,8 +67,15 @@ export const JUDGE_COMMAND_SHAPES = [
 /// **步层在册**：一条「某个 step 属于哪一类」的独立声明。每条 `{host, identity, kind, …}`：
 /// - `identity`：步的**身份**，由解析得出（有 `name` 用 `name`，否则 `uses` 或 `run` 首行）。逐字；
 /// - `kind`：∈ `STEP_KINDS`；
+/// - `target`：**这一步跑的到底是哪个目标**（W101）。`local` / `ci-only`（**产生判定**）MUST 带，
+///   形状 ∈ `TARGET_SHAPES`，且 MUST 与从该步 `run` **解析**出的目标集合双向相等；
+///   `infra` / `diagnostic` MUST NOT 带。**身份是名字，不是目标**——这一项才是目标；
 /// - `local` MUST 带 `localEvidence: {file, marker}`——「本机也跑」的**凭据**；
 /// - `ci-only` MUST 带 `reason`（∈ `CI_ONLY_REASONS`），且 MUST NOT 带 `localEvidence`。
+///
+/// **为什么 `target` 住在这里而不是另开一张表**（W101 决定 1）：一个 step 是**一个对象**，
+/// 身份／类别／目标／凭据都是它的属性。另开一张 `step → target` 的表就是**同一件事的第二处
+/// 定义**——两张表会各自漏掉对方的新增，而闭世界（未在册 / 已消失）已经长在本表上。
 export const WORKFLOW_STEPS = [
   {host: '.github/workflows/foundation.yml', identity: 'actions/checkout@v4', kind: 'infra'},
   {host: '.github/workflows/foundation.yml', identity: 'actions/setup-node@v4', kind: 'infra'},
@@ -94,12 +101,14 @@ export const WORKFLOW_STEPS = [
     identity: 'Check generated contracts without modifying consumers',
     kind: 'ci-only',
     reason: 'host-subprocess',
+    target: [{shape: 'xtask', value: 'schema --check'}],
   },
   {
     host: '.github/workflows/foundation.yml',
     identity: 'Complete engineering foundation (portable steps + frontend workspace)',
     kind: 'local',
     localEvidence: {file: 'xtask/src/lib.rs', marker: '["check", "--profile", "full"]'},
+    target: [{shape: 'xtask', value: 'check --profile full'}],
   },
   {
     host: '.github/workflows/foundation.yml',
@@ -114,6 +123,7 @@ export const WORKFLOW_STEPS = [
       file: 'xtask/src/lib.rs',
       marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
     },
+    target: [{shape: 'xtask', value: 'test --suite storage'}],
   },
   {
     host: '.github/workflows/foundation.yml',
@@ -123,6 +133,7 @@ export const WORKFLOW_STEPS = [
       file: 'xtask/src/lib.rs',
       marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
     },
+    target: [{shape: 'xtask', value: 'test --suite kernel'}],
   },
   {
     host: '.github/workflows/foundation.yml',
@@ -132,6 +143,7 @@ export const WORKFLOW_STEPS = [
       file: 'xtask/src/lib.rs',
       marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
     },
+    target: [{shape: 'xtask', value: 'test --suite hosts'}],
   },
   {
     host: '.github/workflows/foundation.yml',
@@ -141,6 +153,7 @@ export const WORKFLOW_STEPS = [
       file: 'xtask/src/lib.rs',
       marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
     },
+    target: [{shape: 'xtask', value: 'test --suite session'}],
   },
   {
     host: '.github/workflows/foundation.yml',
@@ -150,6 +163,7 @@ export const WORKFLOW_STEPS = [
       file: 'xtask/src/lib.rs',
       marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
     },
+    target: [{shape: 'xtask', value: 'test --suite scheduler'}],
   },
   {
     host: '.github/workflows/foundation.yml',
@@ -159,6 +173,7 @@ export const WORKFLOW_STEPS = [
       file: 'xtask/src/lib.rs',
       marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
     },
+    target: [{shape: 'xtask', value: 'test --suite provider'}],
   },
   {
     host: '.github/workflows/foundation.yml',
@@ -168,6 +183,7 @@ export const WORKFLOW_STEPS = [
       file: 'xtask/src/lib.rs',
       marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
     },
+    target: [{shape: 'xtask', value: 'test --suite knowledge'}],
   },
   {
     host: '.github/workflows/foundation.yml',
@@ -176,24 +192,30 @@ export const WORKFLOW_STEPS = [
     identity: 'Validate schemas and API contract',
     kind: 'ci-only',
     reason: 'compiled-artifact',
+    target: [
+      {shape: 'node-test', value: '--test tests/contracts/schema.test.mjs tests/contracts/descriptor.test.mjs'},
+    ],
   },
   {
     host: '.github/workflows/foundation.yml',
     identity: 'Full three-language contract suite (Linux C++ toolchain)',
     kind: 'ci-only',
     reason: 'platform-toolchain',
+    target: [{shape: 'xtask', value: 'test --suite contracts'}],
   },
   {
     host: '.github/workflows/foundation.yml',
     identity: 'pnpm spec:validate',
     kind: 'ci-only',
     reason: 'not-in-profile',
+    target: [{shape: 'pnpm', value: 'spec:validate'}],
   },
   {
     host: '.github/workflows/foundation.yml',
     identity: 'pnpm exec openspec validate --archived --no-interactive',
     kind: 'ci-only',
     reason: 'not-in-profile',
+    target: [{shape: 'pnpm', value: 'exec openspec validate --archived --no-interactive'}],
   },
 ];
 

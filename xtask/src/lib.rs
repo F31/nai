@@ -81,6 +81,14 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
     // 矩阵形状、条件形状、`continue-on-error` 形状、runner 标签与 `runner.os` 取值 MUST 落在各自的
     // 闭集里；平台专属命令 MUST 被平台条件兑付。同样纯静态：解析 workflow 文本，不需要 protoc。
     schema::node(root, &["--test", "tests/contracts/step-config.test.mjs"])?;
+    // 在册判定步的**目标绑定**（W101）：这一步跑的到底是哪个目标。`identity` 是**名字**，
+    // 不是目标——把两个 suite 步的目标互换、或把一个判定步整条换成另一条合法判定命令，
+    // 在 W95/W97/W100 三层上**全绿零信号**（W101 探针 W1–W4）。本步要求每个判定步的在册条目
+    // 声明 `target`，并把它与从该步 `run` 文本**解析**出的目标集合**双向对账**；`infra`/`diagnostic`
+    // MUST NOT 带目标（也不许解析出目标——把判定塞进「环境准备」是整条检查的后门）；
+    // 目标的**形状**落在闭集里，域外取值具名失败。同样纯静态：解析本文件与 workflow 文本，
+    // 不需要 protoc。★ 副作用：这一行是本步的受审对象之一——把它删掉，站点就失去兑付。
+    schema::node(root, &["--test", "tests/contracts/step-target.test.mjs"])?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,

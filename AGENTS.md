@@ -2762,8 +2762,77 @@ V6／V11 除本判据外还打红了别的套件，根因是**那些用例的 `r
 
 **如实披露**：`if:` 的求值是**形状级**的（只认 `runner.os == '<os>'` 与 `failure()`，其余
 **具名拒绝**，拒否方向落在**假阳性**）；R5 是形状级且会扫到 `run` 里的注释文本；
-**「步身份 ↔ 判定目标」的绑定仍未管**（P-B1：把一个判定步的 `run` 换成另一条**同样像判定**的
-命令零信号，ADR 0075 只做形状级判定、不绑定「这一步该跑哪个目标」）。
+**「步身份 ↔ 判定目标」的绑定**在本轮**仍未管**（P-B1 零信号）——**W101 已就地订正为「已兑付」**
+（`target` 与 `run` 解析的双向对账；见下文 W101 段）。
 见 [W100 报告](docs/reports/2026-10-14-w100-step-configuration.md)、
 [ADR 0078](docs/adr/0078-step-configuration.md)、
 `openspec/changes/archive/2026-10-14-w100-step-configuration/`。
+
+### W101 在册判定步的**目标绑定** MUST 由 `run` 解析兑付
+
+W101 换**第十层对象**，而这一次换的不是又一个字段或集合，而是**一条声明与它实际跑的对象的配对**：
+前九轮（`repositoryFiles` → `readTrackedText` → W94 两张事实表 → W95 `gateSources` → W96
+`gateRegions` → W97 包集合 → W98 脚本执行面 → W99 站点层级声明 → W100 执行配置面）补的全是**集合层**，
+而**集合层对「配对」是瞎的**。W95 的在册条目只声明 `{host, identity, kind}`，其中
+**`identity` 是名字，不是目标**——`- name: API Provider transport and retry…` 与
+`run: cargo xtask test --suite provider` 之间**没有任何断言**。
+
+**实测（改真文件、真跑 9 个 portable 套件、逐字节还原、`sha256` 逐字一致，基线 229/0）**：
+`--suite hosts` 与 `--suite session` **互换** ⇒ 全 `0`；`Scheduling…` 改跑 `--suite provider`
+（scheduler 在 CI 消失、provider 跑两遍）⇒ 全 `0`；`Knowledge…` 改跑 `--suite storage` ⇒ 全 `0`；
+**把 provider 判定步整条改跑 `cargo xtask check --secrets`（目标性质整个换掉）⇒ 全 `0`**。
+两个「看似有信号」的探针（改 profile、`schema --check` → `schema`）红的其实是 W97 的一条**越界断言**
+（`commands.includes('check --profile full') && …('schema --check')`）——它钉**具体串**，
+与 W97 **自己的边界声明**（「不验签名的取值」）矛盾，既**假阳性**（合法改 profile 即红）
+又**假阴性**（同形状替换看不见）。
+
+八条纪律：① **集合层对「配对」是瞎的**——两轮都能说出「有 21 个步、8 个 suite 各跑一次」，
+却说不出一句「这个步跑的是哪个目标」；② **`target` 住条目自己身上，MUST NOT 另开一张表**——
+一个 step 是**一个对象**，另开表就是同一件事的第二处定义，两张表会各自漏掉对方的新增；
+③ **钉取值不等于钉形状**——W96 管「入口的**形状**」（`check --profile <P>` 是一条签名，不含值），
+W101 管「这一步调用的是哪一个**入口实例**」；对象不同，两个答案都必要；④ **判据的输入 MUST 是
+「这一步自己的 `run`」，且 MUST 先按 shell 段界（`&&`／`||`／`;`／`|`／换行）拆段**——
+`cargo xtask test --suite kernel && cargo xtask check --secrets` 里两条命令**都会被执行**，
+「一行取一条」只会看到第一条 ⇒ 第二条判定**静默逃出**目标绑定（**假阴性方向，危险**）；
+⑤ **`infra`／`diagnostic` MUST 双向**（不声明目标 **且** 解析出**零个**目标）——单向是装饰，
+真正的后门是「把一条判定塞进环境准备」；W95 也有一条同目的检查，但它**只看首行**、只认 5 个正则，
+本条是**整段解析**（实测两条**都**红，但断言不同）；⑥ **对账 MUST 是双向集合相等**——
+解析出而没声明（目标被悄悄换掉）与声明了而没解析出（凭据是空话）都具名，
+且判定单元是 **`(shape, value)`** 而非裸值（W91：同名 ≠ 同一个）；⑦ **判分由在册条目驱动、
+不重复报 W95 的判决**——未知 `kind`、已消失的步、重复身份一律跳过 ⇒ 本判据对**改步名是沉默的**
+（实测 C1：`stepTargetErrors` 返回 `[]`，W95 报 2 条）；⑧ **越界断言就地收回形状级**——
+W97 那条具体串断言改为 `/^check --profile \S+$/`、`/^schema(?: --check)?$/`，
+取值绑定只留 W101 一处（「同一件事 MUST NOT 两处定义」+「按对象性质分」）。
+
+**同族用例的前提构造 MUST 遍历**站点表**自己的键**：本轮新增一个站点，一次让**三条既有用例**
+变红（`registry`／`tier-payment`／`step-config` 的可达性正向前提）——根因是 W99／W100 把前提写成
+`new Set([...tracked, '<自己那一轮的文件>'])`，**前提跟着轮次走而不是跟着站点表走**。
+修法是导出 `declaredMarkerPaths()`（遍历站点表、取无通配的 marker）并让前提改用它。
+
+解析器**只留一份**：`targetsOf` 的 `xtask` 那一支**调用** W97 的 `ciXtaskCommands`（剥壳规则抽成
+共享的 `stripShellSyntax`，行为一字不变），MUST NOT 写第二份剥壳逻辑。
+
+`tests/contracts/step-target.test.mjs` **16 个用例**、`test-reachability` 站点 **13 → 14**、
+**Node 套件 11 → 12**（portable 面 **229 → 245**）、`xtask/src/lib.rs` **+1 行登记 + 一段注释**
+（Rust 零行为改动、**被审对象 `foundation.yml` 一个字符未动**、`WORKFLOW_STEPS` 只**增补** `target`）。
+注入 **V1–V11** 全部真改文件、真跑 10 套件、逐字节还原（`foundation.yml` `2f46d5f5…8c1c` 前后一致），
+边界（W84／W95／W96／W97／W98／W99／W100／W101）= V1 `0/0/0/0/0/0/0/0/0/2`、
+V2 `0/0/0/0/0/0/0/0/0/2`、V3 `0/0/0/0/0/0/0/0/0/2`、V4 `0/0/0/0/0/0/0/0/0/2`、
+V5 `0/0/0/0/0/0/0/0/0/2`、V6 `0/0/0/2/0/0/0/0/2/2`、V7 `0/0/0/2/0/0/5/0/1/2`、
+V8–V10 同为 `0/0/0/0/0/0/0/0/0/2`、V11 `0/0/0/0/0/1/0/0/0/3`、
+C1（改步名，**对照组**）`0/0/0/2/0/0/0/0/1/2`（**本判据 `[]` 沉默**，其余全是「前提：W95 一致」被扰动）。
+
+**探针方法论（本轮踩到并写下来）**：① **第一轮探针的红大多不是判据在响，是夹具锚点被扰动**——
+选探针样本前 MUST 先统计该文本被多少夹具锚定（`Kernel registration and binding` 那一整段
+`name+run` 就是 `workflow.test.mjs` 的锚点；一改它，`.replace()` 匹配不到、注入变 no-op，
+用例因**前提没了**而红）；② **别把「身份被顺带改掉」当成「目标被改」**——无 `name` 的步
+（`- run: pnpm spec:validate`）其身份**就是** `run` 首行 ⇒ 改它会**同时**触发 W95 的两条，
+实测 V7 的 W101 判据返回 `[]`（沉默），红的是 W95 与 W98；③ **跨套件红 MUST 逐条读
+`not ok` 与它的 assertion message**，才知道红的是「判据」「夹具前提」还是「上游级联」。
+
+**如实披露**：不剥 `run` 里的 shell 注释（W97 的既有边界，假阳性方向安全）；不实现 shell 语义
+（变量展开、条件分支 ⇒ `if`/`for` 包裹的命令被当成**无条件目标**）；不判目标在矩阵各腿上的等价性
+（W100 的对象）；每个形状的**实例数不钉**（W92 的教训：一次合法的目标收敛不该让判据变红）。
+见 [W101 报告](docs/reports/2026-10-14-w101-step-target-binding.md)、
+[ADR 0079](docs/adr/0079-step-target-binding.md)、
+`openspec/changes/archive/2026-10-14-w101-step-target-binding/`。

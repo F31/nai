@@ -205,6 +205,10 @@ reason ∈ 其余三因                → legs MUST === platformsOf(job)       
 4. **不判「步身份 ↔ 判定目标」的绑定**：P-B1 显示把一个判定步的 `run` 换成另一条**同样像判定**
    的命令（`cargo xtask check --registry`）零信号。W97 只做**形状级**判定（「是不是一条判定命令」），
    **不**绑定「这一步该跑哪个目标」。这是**独立的**一层，记入 §八 遗留。
+
+> **勘误（W101，2026-10-14）**：上面第 4 条**已由 W101 关闭**——`scripts/contracts/step-target.mjs`
+> 把「这一步跑的是哪个目标」钉在在册条目上（`target` 与 `run` 解析双向对账）。**原文保留**
+> （`openspec/changes/archive/` 属**历史记录**）。
 5. **R5 是形状级且会扫到 `run` 里的注释文本**（决定 6 末段）：假阳性方向。
 6. **不改任何被审对象**（除 `lib.rs` 加一行登记、`test-reachability.mjs` 加一条站点）：
    `foundation.yml` 与 `WORKFLOW_STEPS` 的 21 条**一字不动**。

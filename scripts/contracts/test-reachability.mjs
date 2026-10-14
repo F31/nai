@@ -109,6 +109,13 @@ export const TEST_REGISTRATION_SITES = [
     tier: 'portable',
   },
   {
+    id: 'xtask-engineering-step-target',
+    host: 'xtask/src/lib.rs',
+    marker: 'tests/contracts/step-target.test.mjs',
+    base: '.',
+    tier: 'portable',
+  },
+  {
     id: 'xtask-contracts-suite',
     host: 'xtask/src/schema.rs',
     marker: 'tests/contracts/descriptor.test.mjs',
@@ -148,6 +155,32 @@ export const TEST_REGISTRATION_SITES = [
 /// 空台账是**合法**的，但它使「两集不相交」退化成恒真——因此本条**必须**与
 /// 「覆盖集非空」这条断言**成对**存在（否则「全不覆盖」也能过）。
 export const LOCALLY_UNREACHABLE = [];
+
+/// 站点表里**无通配**的 marker 所指向的路径（已按 `base` 还原成仓库相对路径）。
+///
+/// **为什么它在这里**：站点表是「某个测试文件在哪里被登记」的**单一真源**。用例若想构造一个
+/// 「站点表已被完全兑付」的已跟踪路径集，就必须**遍历站点表自己的键**（W101 纪律：
+/// 「同族手写清单 ⇒ 判据 MUST 遍历对象自己的键、覆盖全部在册对象」），
+/// MUST NOT 只补自己那一轮新增的那一个文件。
+///
+/// **实证**：W99 / W100 / W101 三轮各自都踩过这个坑——每新增一个站点，就会让**上一轮**用例
+/// 手写构造的前提**失效**（W101 实测一次让三条既有用例变红：`registry` / `tier-payment` /
+/// `step-config` 的可达性正向前提）。跟着站点表走，这类失效就不会再发生。
+///
+/// ⚠️ **它不是判据、也不自我满足**：「一个站点覆盖不到任何已跟踪文件 = 谎言」这条由
+/// `tests/registry.test.mjs` 的 F0 用**真实** `.git/index` 验，构造出来的集合只用于
+/// 「判据 A 不读对象 B」这类**正交性**用例的前提。
+export function declaredMarkerPaths(sites = TEST_REGISTRATION_SITES) {
+  const out = new Set();
+  for (const site of sites) {
+    const marker = site?.marker;
+    if (typeof marker !== 'string' || marker === '') continue;
+    if (marker.includes('*') || marker.includes('?')) continue;
+    const base = typeof site.base === 'string' && site.base !== '.' && site.base !== '' ? `${site.base}/` : '';
+    out.add(`${base}${marker}`);
+  }
+  return [...out];
+}
 
 /// 「看起来像测试」的判定：路径里含 `.test.` 或 `.spec.` 段。
 ///

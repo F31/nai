@@ -8,6 +8,7 @@ import {
   TEST_TIERS,
   TEST_REGISTRATION_SITES,
   LOCALLY_UNREACHABLE,
+  declaredMarkerPaths,
   reachabilityErrors,
 } from '../../scripts/contracts/test-reachability.mjs';
 import { gateRegions } from '../../scripts/contracts/xtask-commands.mjs';
@@ -372,8 +373,9 @@ test('the real repository pays for every tier declaration', async () => {
 test('the tier judge is orthogonal to the reachability judge', async () => {
   const inputs = await load();
   // 铁律一：本用例的断言依赖「本轮新测试文件在册」，而提交前它还没进 `.git/index`
-  // ⇒ 由**构造**使前提成立（并集），不依赖提交顺序。
-  const tracked = new Set([...inputs.tracked, 'tests/contracts/tier-payment.test.mjs']);
+  // ⇒ 由**构造**使前提成立（并集），不依赖提交顺序。**构造 MUST 遍历站点表自己的键**
+  // （W101 订正）：原先只补自己那一轮新增的那一个文件，于是每加一个站点就让上一轮的用例失效。
+  const tracked = new Set([...inputs.tracked, ...declaredMarkerPaths()]);
   // 只改 `tier`，可达性一个字都不该动——`reachabilityErrors` 根本不读这个字段。
   const flipped = inputs.sites.map(site => ({ ...site, tier: site.tier === 'portable' ? 'full' : 'portable' }));
   assert.deepEqual(

@@ -7,6 +7,7 @@ import { readTrackedPaths, describeFailure } from '../../scripts/contracts/git-i
 import {
   TEST_REGISTRATION_SITES,
   LOCALLY_UNREACHABLE,
+  declaredMarkerPaths,
   reachabilityErrors,
 } from '../../scripts/contracts/test-reachability.mjs';
 import {
@@ -433,8 +434,9 @@ test('the judge is orthogonal to W95, which reads the step set rather than its c
 test('the judge is orthogonal to W84 and W99, which read the tracked set and the run text', async () => {
   const { tracked, workflowText } = await load();
   // 铁律一：本用例的断言依赖「本轮新测试文件在册」，而提交前它还没进 `.git/index`
-  // ⇒ 由**构造**使前提成立（并集），不依赖提交顺序。
-  const withNew = new Set([...tracked, 'tests/contracts/step-config.test.mjs']);
+  // ⇒ 由**构造**使前提成立（并集），不依赖提交顺序。**构造 MUST 遍历站点表自己的键**
+  // （W101 订正）：原先只补自己那一轮新增的那一个文件，于是每加一个站点就让上一轮的用例失效。
+  const withNew = new Set([...tracked, ...declaredMarkerPaths()]);
   const reconfigured = patch(workflowText, 'os: [ubuntu-24.04, windows-latest]', 'os: [windows-latest]');
   // W84 只看 `.git/index` 上的文件覆盖，不读 workflow 正文的一个字符。
   assert.deepEqual(
