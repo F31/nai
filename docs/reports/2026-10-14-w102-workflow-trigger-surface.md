@@ -251,7 +251,30 @@ node 侧三段（TAP `# pass` 逐段现测）：
 
 ## 七、CI
 
-（本节在 push 后单次低频观测并回填。）
+**推送**：`41fdf61 → eb9c8b5`（`eb9c8b5e66a8fd025e90aa59b1ed46cb3a0a1009`），
+`GIT_SSH_COMMAND` 经 `ssh.github.com:443` 推送 `main`。
+
+**单次低频观测**（唯一查询参数破坏代理缓存 + `Cache-Control: no-cache` + 回读 `head_sha`）：
+
+| 项 | 值 |
+| --- | --- |
+| run | **#137**（id `38517660655`） |
+| `head_sha` | `eb9c8b5e66a8fd025e90aa59b1ed46cb3a0a1009` —— **== 本次推送 SHA** |
+| 结论 | **status = completed / conclusion = success** |
+| 墙钟 | `created 05:37:49Z → updated 05:48:16Z`（约 10m27s） |
+
+**双平台逐 job**：
+
+| job | 结论 | 起止 |
+| --- | --- | --- |
+| `foundation (ubuntu-24.04)` | **success** | `05:37:52Z → 05:42:30Z`（≈4m38s） |
+| `foundation (windows-latest)` | **success** | `05:37:52Z → 05:48:15Z`（≈10m23s） |
+
+**观测纪律**：本轮不做轮询——首次查得 run 处于 `in_progress` 后，按「等到有结论再单次查询」执行，
+全程 **3 次请求**（runs 列表 1 + run 详情 2 + jobs 1），远低于匿名配额 60/h。
+**`head_sha` 回读 == 推送 SHA** 是「看到的是本次推送的那条 run」的唯一凭据（W89 教训）。
+
+> 本节的 CI 结论与本报告其余部分在同一次 commit 中提交；「回填提交自身不回填」。
 
 ## 八、遗留
 
