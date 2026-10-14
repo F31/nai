@@ -185,7 +185,26 @@ I2 的信号最能说明问题：守卫**还在**，但它守的对象已被上�
 
 ## 八、CI（**回填**）
 
-待推送后回填：run id、`head_sha` 与推送 SHA 的核对、双平台矩阵结论。
+**单次低频观测，三件齐**：① URL 带唯一 `cb` 参数；② 请求头 `Cache-Control: no-cache`；
+③ 回读的 `head_sha` 用**完整 40 位** SHA 过滤并核对。
+
+- run **`38624907754`**（run_number **#151**）⇒ **`completed` / `success`**
+- `head_sha` = `120254865eb8f951b836015f583554be52187371` **==** `git rev-parse HEAD`（推送 SHA）✓
+- 起止：`2026-10-14T19:35:06Z → 19:47:08Z`（≈ **12 min**）
+- `/jobs` `total_count` = **2**，两平台**均 success**，各 **26 steps**：
+
+| job | 起止 | 结论 |
+|---|---|---|
+| `foundation (ubuntu-24.04)` | 19:35:09Z → **19:41:18Z** | success |
+| `foundation (windows-latest)` | 19:35:09Z → **19:47:07Z** | success |
+
+两平台内**没有任何** step 的 `conclusion` 落在 `success`／`skipped` 之外（无失败项）。
+⚠️ 与 W108 一致：`skipped` 的步骤是**条件性**步骤，属**旁证**，**MUST NOT** 进判定输入（铁律二）。
+
+⚠️ **本机绿 ≠ CI 绿**是两件事；本轮二者**都**绿。本轮 API 查询共 **5 次**
+（runs 列表 ×1、run 详情 ×3、jobs ×1），**非轮询**（等待靠「先做别的事再单查」），未触及匿名配额 60/h。
+⚠️ 未完成时 `/runs/<id>` 的 `updated_at` **停在起始时刻不推进**（本轮前 3 次单查都是 `in_progress`）
+——这**是正常**的，MUST NOT 误判为「代理缓存」。
 
 ## 九、如实披露、遗留与边界
 
