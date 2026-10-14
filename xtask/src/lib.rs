@@ -67,6 +67,13 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
     // 文档里的命令不算调用，自引用不算消费者。同样纯静态：读三份 `package.json`、解析驱动表、
     // 扫引用、读 `pnpm-workspace.yaml`，不需要 protoc。
     schema::node(root, &["--test", "tests/contracts/npm-scripts.test.mjs"])?;
+    // 站点图层声明（`tier`）的兑付守卫（W99）：每个登记站点声明的「跑它的最低一层」由**宿主解析出的
+    // 区域**核验——`portable` 靠本函数的 `engineering_checks` 区域（**剥注释后**），`full` 靠前端门控
+    // 驱动表的 STEP 脚本体，`ci` 靠某个具名 workflow step 的 `run` 文本；且 `full`/`ci` 的 marker
+    // MUST NOT 落回本区域（声明不得少报本机门控真正跑到的东西）。同样纯静态：解析本文件、驱动表、
+    // workflow 与三份 `package.json`，不需要 protoc。★ 副作用：本函数体正是 portable 面的**判定域**，
+    // 把上面任一行搬出本函数就会让对应站点立刻失去兑付。
+    schema::node(root, &["--test", "tests/contracts/tier-payment.test.mjs"])?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,

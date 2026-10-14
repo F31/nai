@@ -2653,3 +2653,48 @@ Rust 侧的包集合，而**npm 脚本的执行面**完全在外面——3 份 `
 `openspec/changes/archive/2026-10-14-w98-npm-script-surface/`。
 （W98 就地订正：W97 段与 W98 段原写 `openspec/changes/<name>/`，归档后真路径在 `archive/` 下；
 全仓扫描后仅此两处失效，`reports/`／`adr/`／`archive/` 属历史记录，未动。）
+
+### W99 站点图层声明（`tier`）MUST 由宿主解析出的区域兑付
+
+W99 接着 W95–W98 换**第五层对象**：前几轮管 CI 的 step 集合、`cargo xtask` 的命令面、Rust 侧的
+包集合、npm 脚本的执行面；本轮管 `TEST_REGISTRATION_SITES` 每条站点的 **`tier`**——「**在哪一层跑**」。
+W84 把 `host`／`marker` 那一面管住了（逐字验、覆盖集非空、闭世界双向），而 `tier` **只有形状检查**
+（`siteShapeErrors` 里的 `TEST_TIERS.includes(site.tier)`）⇒ 一个**未付代价的声明**。探针 P-A 实证
+（改真文件 → 真跑 7 个 portable 套件 → 备份拷回 → `sha256` 逐字还原 `f61b2c73…728c`）：把
+`tests/contracts/npm-scripts.test.mjs` 的注册从 `engineering_checks` **移进**
+`["check","--profile","full"]` arm、站点仍声明 `tier: 'portable'` —— **192 passed / 0 failed，零信号**。
+P-A 顺带证明第二件事：**注册点位置本身也没有守卫**（portable 面少跑一个套件，无人发现）。
+
+**`tier` 的语义 MUST 先定死 =「跑它的最低一层门控」**——语义不定，反向断言就无从写起。四条纪律：
+① **兑付面由解析得出，MUST NOT 是站点自己那段文本**（`gateRegions`／`driverSteps`＋`packageScripts`／
+`workflowStepsOf`）；② **兑付形状由 host 派生，MUST NOT 留可选字段**——`portable` 有两种形态：
+host 是宿主文件本身 ⇒ 兑付串 = marker（内联注册），否则 ⇒ `/<module>::\w+\(root/`
+（`registry::check(root)?;` 是实例，而 marker 的字面量在 `registry.rs` 里）；**不给 `via`**
+（「可选」就是判据的缝，一个可省的字段会让站点悄悄走默认分支）；③ **「出现过」≠「被调用」**——
+`apps/desktop` 在驱动表里有 3 个 STEP，只有 `test` 的**脚本值**含 `tests/*.test.mjs`
+⇒ `full` 的兑付 MUST 用**脚本体**；④ **反向断言不可省**——`full`／`ci` 的 marker MUST NOT 落在
+portable 区域里，否则「把 marker 混进 portable 面、站点仍声明 `ci`」成了一条**合法的逃离路径**
+（「最低一层」的语义恰好定义了这个方向）。
+
+**注释陷阱本轮换一层、再实测一次**：`lib.rs` 第 46 行的**注释**里写着
+`tests/contracts/descriptor.test.mjs` ⇒ `gateRegions` 的 `engineering_checks` 区域**原文含**、
+**剥后不含**（实测 `raw=true / stripped=false`）⇒ **消费 `gateRegions` 的一方 MUST 自己
+`stripRustComments`**（`gateRegions` 有意不剥），否则两个 `ci` 站点会被这条注释**自我满足**、
+反向断言同时失效。取值域闭世界**两道**：`Object.keys(TIER_PAYMENTS)` MUST 等于 `TEST_TIERS`
+（新增取值而不归类 ⇒ 静默地不认识它）＋ 每个取值 MUST 至少有一个站点（无实例的规则恒真）。
+
+`tests/contracts/tier-payment.test.mjs` **22 个用例**、`test-reachability` 站点 **11 → 12**、
+**Node 套件 9 → 10**（portable 面 **192 → 214**）、`xtask/src/lib.rs` **+1 行登记 + 一段注释**
+（Rust 零行为改动，**被审对象一个字符未动**：`frontend-gate.mjs`、workflow、`package.json`×3、
+既有 11 条站点）。注入 **P1–P6** 全红且逐字还原（`lib.rs` `4ac2bbc1…9e05`、
+`foundation.yml` `2f46d5f5…8c1c`）；边界（W84／W95／W96／W97／W98／W99）=
+P1 `0/0/0/0/0/3`、P2 `1/0/0/0/0/3`、P3 `0/0/2/0/0/3`、P4 `0/0/0/0/0/3`、P5 `0/0/0/0/0/3`、P6 `0/2/0/0/0/0`。
+**另记一条流程缺陷（本轮踩到并当场修掉）**：探针循环若在**上一次被中断的**残留改动上取备份，
+`RESTORE OK` 会退化成「把坏状态备份拷回」的**假绿** ⇒ **每轮 MUST 先按索引复原并断言干净，再取备份**。
+**如实披露**：`portable` 的拒否靠**剥离注释后的文字域**，不是「marker 是否为一次真实调用」
+⇒ 把某个 `ci`／`full` 站点的 marker 放进 `engineering_checks` 调用脚本的字符串字面量里，T2／T5 会放行
+（**有意的宽松**）；且 `stepIdentity` 对只有 `run` 的步回落为 run 首行 ⇒ `ci` 的「具名 step」近乎恒真，
+其实质约束是「某个 step 的 `run` 文本逐字提到它」。
+见 [W99 报告](docs/reports/2026-10-14-w99-tier-payment.md)、
+[ADR 0077](docs/adr/0077-tier-payment.md)、
+`openspec/changes/archive/2026-10-14-w99-tier-payment/`。
