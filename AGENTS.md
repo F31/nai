@@ -2836,3 +2836,89 @@ C1（改步名，**对照组**）`0/0/0/2/0/0/0/0/1/2`（**本判据 `[]` 沉默
 见 [W101 报告](docs/reports/2026-10-14-w101-step-target-binding.md)、
 [ADR 0079](docs/adr/0079-step-target-binding.md)、
 `openspec/changes/archive/2026-10-14-w101-step-target-binding/`。
+
+### W102 workflow 的**触发面**（`on:`）MUST 由解析兑付
+
+W102 换**第十一层对象**，而这一次换的是一个**前提**：前十一轮补的全是「workflow **里面**」的层
+（步集 W95 → 命令面 W96 → 包集合 W97 → npm 脚本执行面 W98 → 站点层级 W99 → 执行配置 W100 →
+目标绑定 W101），而「这个 workflow **什么时候会跑**」——`on:` ——**不在任何判定域内**。
+`workflowJobsOf(text)` **只读 `doc?.jobs`，从不读 `doc?.on`**；全仓 `grep`
+「`.on` / `trigger` / `pull_request` / `branches:`」在 `scripts/contracts/*.mjs` 与 `tests/**` 下
+**零命中** ⇒ 它是 W95–W101 **全部判定的前提**，而这个前提**没有任何判据**。
+
+**实测（改真文件、真跑 10 个 portable 套件、逐字节还原、`sha256` 逐字一致，基线 245/0）**：
+删掉 `pull_request`（PR 不再被门控，P-C）⇒ 全 `0`；把整个 `on:` 缩成仅 `workflow_dispatch`
+（push/PR 都不再触发，P-D）⇒ 全 `0`；把 `push` 限定到一个**不存在**的分支（P-E）⇒ 全 `0`。
+这三条不是「漏了一个字段」——**它们让整套门控静默地不再运行**，而所有步层判据照样全绿，
+因为「有人会跑这个 workflow」从来没被兑付过。仓库里对此**只有一句散文**
+（「workflow 有 `on: push`，每次 push 都已自动触发」，本文件 `:651`、`docs/development-plan.md:541`）。
+**散文不是判据。**
+
+九条纪律：① **「前提」是判据的补集**——七轮判据能说出「有 21 个步、8 个 suite 各跑一次、
+每步跑哪个目标」，却说不出一句「这个 workflow 会不会被跑起来」；② **在册表 `WORKFLOW_TRIGGERS`
+单独一份，MUST NOT 塞进 `WORKFLOW_STEPS`**——触发器**不是任何一个 step 的属性**，而是整个 job 集的
+**前置条件**（W101 决定 1 的判据是「它是不是**这个对象**的属性」，此处答案为否 ⇒ 另立一表；
+「同一件事 MUST NOT 两处定义」在这里的正确形式是**只有本表**声明有哪些触发器）；
+③ **判定单元 MUST 是 `(event, filter-key)`，MUST NOT 是裸键名**——`branches` 在 `push` 与
+`pull_request` 上是**两个可分别篡改的过滤器**，按裸名比较看不见互换（W91：同名 ≠ 同一个）；
+④ **至少一条自动触发 MUST 在在册侧与解析侧各自断言**——双向闭世界让两侧**大多数情况**同真同假，
+但**不是所有情况**：补上 `workflow_dispatch` 同时删掉 `push` ⇒ 事件集对账成立而解析侧仍须红；
+⑤ **事件名是闭世界**（`AUTOMATIC_EVENTS` ∪ `MANUAL_EVENTS`、**不相交**），**`kind` 由事件表推导、
+MUST NOT 成为在册字段**（能由结构蕴含的 MUST NOT 再具名一次；手写一定会漂移，而漂移方向恰好是
+「把手动触发当成自动触发」⇒ **假阴性，最危险**）；⚠️ **「除手动表以外都算自动」是错的**——
+那样一个**拼错的事件名**（`pus`）会被推导成自动触发 ⇒「至少一个自动触发」在一个**永不触发**的
+workflow 上通过；⑥ **过滤器键闭集**＋取值 MUST 是非空字符串数组；⑦ **解析侧只认形状、判定侧才认域**
+（域检查塞进解析器会让一个笔误 `branch:` 少个 `s` 把**整个触发面**判成「读不懂」，丢失粒度）；
+⑧ **缺输入／空注册表／`on:` 缺失或空／事件重名／不可解析 ⇒ 具名失败**；
+⑨ **条目字段集闭世界**——「`kind` 不存」这条决定的**兑现物**是「键集 MUST 恰好等于
+`TRIGGER_FIELDS = ['host','event','filters']`」：探针 **P-B5** 实测，给一个条目**手写**
+`kind: 'automatic'` 时判据**一个字都不说**（它不读 `kind`）——那不是少报，而是**一条没人会读的
+声明静静地挂在表上**，正是母题「声明 MUST 付代价」的反面（错拼的 `filter` 同理）。
+
+⚠️ **层级差是立论核心**：W100 已经在「**步**」这一层判了「会不会跑」，但它的输入是
+`job.strategy.matrix` × `step.if` ⇒ **它读不到 `on:`**。一个 workflow 可以**每个步都「会跑」**，
+而整个 workflow **永不触发**——两层对象不同，**不可互推**。
+
+**形状域（实测，`yaml` v2.9.1）**：`on:` 三写法（`on: push`／`on: [push, pull_request]`／映射）
+都归一化；⚠️ **`on` 是字符串键、不是布尔 `true`**（`yaml` v2 默认 YAML 1.2 core schema，
+实测 `Object.keys(doc)` 为 `['on']` ⇒ `doc.on` 可靠，**不需要**防御 `doc.true`）；事件配置 MUST 是
+`null` 或「值为**非空字符串数组**的映射」，`schedule: [{cron}]`（值=数组）与
+`workflow_dispatch: {inputs: …}`（值=对象）⇒ 解析器**抛具名错误**（域外 ⇒ 具名，MUST NOT 静默降级）。
+
+`tests/contracts/workflow-triggers.test.mjs` **15 个用例**、`test-reachability` 站点 **14 → 15**、
+**Node 套件 12 → 13**（portable 面 **245 → 260**）、`xtask/src/lib.rs` **+11 行**（4 行登记 + 7 行注释；
+登记行超出 rustfmt 行宽 ⇒ 由 `cargo fmt` 折行，见 W102 报告 §六.1）
+（Rust 零行为改动、**被审对象 `foundation.yml` 一个字符未动**）。
+注入 **P-A1–P-A8 + P-B1–P-B5（13 条）+ 1 条等价改写对照** 全部真改文件、真跑 **11** 套件、
+逐字节还原（`foundation.yml` `2f46d5f5…8c1c`、`workflow-triggers.mjs` `ddb0c886…e67b` 前后一致、
+两文件 `CR=0` 不变）；**判据直调**（不依赖测试管线）边界矩阵（W84 / W95 / W96 / W97 / W98 / W99 /
+W100 / W101 / W102）：**每一条注入都是 `W95=0 / W100=0 / W101=0 / W102≥1`**
+（P-A2 4 条、P-A4／P-B3／P-B4 2 条、其余 1–3 条）——**只有 W102 一个判据在响**，
+这是「本轮补的确实是一层新对象」的直接证据；**P-A8（`on:` 等价改写为列表写法）
+四个判据全 `0`**（A 组改 `.github/workflows/foundation.yml`、B 组改 `scripts/contracts/workflow-triggers.mjs`）。
+
+**探针方法论（W101 的同型教训在本轮再次踩到并写下来）**：⚠️ **夹具锚点脆 ⇒ 假红**。P-A8
+第一次跑出 2 条红，读 `not ok` 后确认**不是判据在响**——两条正交性用例的锚点是字面串
+`'  pull_request:\n'`，`on:` 一换成列表写法就**匹配不到** ⇒ 用例因**前提没了**而红。
+**处置 = 修前提**（写一个覆盖两种写法的 `withoutPullRequest()`，第三种写法出现时**具名失败**）、
+**MUST NOT 改断言**（铁律一：断言对、前提错 ⇒ 修前提）。修后 P-A8 `0`。
+另：**bash 内联 `\n` 不可靠**（本轮一次 `python -c "…'on:\n  push:\n'…"` 的锚点计数判错、
+一次 `node -e` 把 `\n` 当字面）⇒ **探针一律写进文件再跑**。
+
+**就地订正（活文档）**：`scripts/contracts/test-reachability.mjs` 的台账注释原文写
+「实测 **9** 个测试文件全部落在某个站点的覆盖集里」——随站点增补**早已不实**，且正是
+「**易漂移的计数 MUST NOT 进活文档**」的禁令 ⇒ 改为**不钉数字**的表述并写明理由。
+⚠️ **同形不同义**：[ADR 0062](docs/adr/0062-test-reachability-closure.md)／本文件与
+`docs/development-plan.md` 的 **W84 段**里的「**七个站点**」是**关于 W84 那一轮**的记录，**不订正**。
+
+**如实披露**：当前仓库的 `on:` **没有任何过滤器** ⇒ 过滤器对账的单元集合在真实仓库上是**空集**，
+其非空洞由**合成世界**（覆盖一个带过滤器的单元 + 一个裸事件）与**注入用例**（P-A3／P-A4／P-B2）
+共同证明；**不判事件配置**（`workflow_dispatch.inputs`／`schedule.cron`，出现即具名失败）；
+**不判分支/路径是否真的存在**（那要读 refs，且宿主瞬态 MUST NOT 改变结论）；**不判
+`permissions:`／`concurrency:`／`env:`**（workflow 头部是各自独立的一层）。
+**遗留**：P-A／P-B／P-F 实测零信号的**跨步数据传递**缝（门控日志的写方
+`tee "$RUNNER_TEMP/nai-gate.log"` 与读方 `ci-diagnose.mjs "$RUNNER_TEMP/nai-gate.log"`
+是**两处独立字符串、无对账**）本轮**不裁**——「一条待裁定项只在本轮裁一个」。
+见 [W102 报告](docs/reports/2026-10-14-w102-workflow-trigger-surface.md)、
+[ADR 0080](docs/adr/0080-workflow-trigger-surface.md)、
+`openspec/changes/archive/2026-10-14-w102-workflow-trigger-surface/`。

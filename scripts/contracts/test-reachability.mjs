@@ -116,6 +116,13 @@ export const TEST_REGISTRATION_SITES = [
     tier: 'portable',
   },
   {
+    id: 'xtask-engineering-workflow-triggers',
+    host: 'xtask/src/lib.rs',
+    marker: 'tests/contracts/workflow-triggers.test.mjs',
+    base: '.',
+    tier: 'portable',
+  },
+  {
     id: 'xtask-contracts-suite',
     host: 'xtask/src/schema.rs',
     marker: 'tests/contracts/descriptor.test.mjs',
@@ -151,7 +158,9 @@ export const TEST_REGISTRATION_SITES = [
 /// `reachabilityErrors` 会验证每条**确实**未被覆盖——一条已经可达的条目会**立刻红**
 /// （否则台账会变成「加进去就再也不用管」的垃圾桶）。
 ///
-/// 当前**为空**：实测 9 个测试文件全部落在某个站点的覆盖集里。
+/// 当前**为空**：实测每个在册测试文件都落在某个站点的覆盖集里。（此处 MUST NOT 写「N 个测试文件」——
+/// 站点与测试文件每一轮都在增，写死一个数字就是一条**会自己过期**的断言，而它并不比下面那句
+/// 「覆盖集非空」多说什么。W102 订正：原文写「实测 9 个测试文件」，随站点增补早已不实。）
 /// 空台账是**合法**的，但它使「两集不相交」退化成恒真——因此本条**必须**与
 /// 「覆盖集非空」这条断言**成对**存在（否则「全不覆盖」也能过）。
 export const LOCALLY_UNREACHABLE = [];

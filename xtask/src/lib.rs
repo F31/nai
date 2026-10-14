@@ -89,6 +89,17 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
     // 目标的**形状**落在闭集里，域外取值具名失败。同样纯静态：解析本文件与 workflow 文本，
     // 不需要 protoc。★ 副作用：这一行是本步的受审对象之一——把它删掉，站点就失去兑付。
     schema::node(root, &["--test", "tests/contracts/step-target.test.mjs"])?;
+    // workflow 的**触发面**（W102）：`on:` 里有哪些事件、每个事件施加了哪些过滤器。它是上面
+    // 全部判定的**前提**——`workflowJobsOf` 只读 `jobs`，从不读 `on:`，于是「门控什么时候跑」
+    // 从来没被兑付过：删掉 `pull_request`、把 `on:` 缩成仅 `workflow_dispatch`、或把 `push` 限定到
+    // 一个不存在的分支，都会让整套门控**静默地不再运行**而所有步层判据照样全绿（W102 探针
+    // P-C/P-D/P-E）。本步要求触发面与在册触发器清单**双向相等**（判定单元 `(event, filter-key)`）、
+    // 至少一条**自动触发**、事件名与过滤器键各有闭集（域外 ⇒ 具名失败）。同样纯静态：解析
+    // workflow 文本，不需要 protoc。★ 副作用：这一行是本步的受审对象之一——把它删掉，站点就失去兑付。
+    schema::node(
+        root,
+        &["--test", "tests/contracts/workflow-triggers.test.mjs"],
+    )?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,
