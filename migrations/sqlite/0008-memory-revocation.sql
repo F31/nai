@@ -1,0 +1,16 @@
+-- §42.3 / §42.4: a memory record needs a state that says "this one has been revoked", so the read
+-- face can refuse it *by name* instead of asserting `revoked: false` at the call site. A judgement
+-- input that no repository fact stands behind is a verdict injected as a fact (W94's shape), which
+-- is what kept §42.3's read face unwired in W107.
+--
+-- Revocation cannot be expressed by deleting the row: §42.4 requires blocking retrieval and reads
+-- *before* asynchronously purging copies, so "blocked" and "erased" have to stay distinguishable
+-- across two different moments. Nor can it reuse `expires_at_ms`: that would make `Revoked` and
+-- `Expired` indistinguishable and would discard the original expiry.
+--
+-- Added as a new migration rather than editing 0001: verify() checks the SHA-256 of each applied
+-- migration file, so editing 0001 would invalidate every existing database.
+--
+-- NULL means "not revoked" — the same nullable-revocation shape `permission_grants`, `approvals`
+-- and `devices` already use, so this introduces no second convention for the same thing.
+ALTER TABLE memory_records ADD COLUMN revoked_at_ms INTEGER;

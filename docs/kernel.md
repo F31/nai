@@ -98,13 +98,18 @@ D06还必须复检epoch、审批hash、事实和媒体lease。
 （合规候选零拒绝）与**顺序断言**（同时越作用域又过期的记录报 `out_of_scope` ⇒「先作用域后时效」不是注释）。
 
 **边界（如实）**：H03/H04 **保持 `pending`**——判据描述的是**运行时行为**，本轮交付的是判定面。
-⚠️ **已由 W107 部分订正**：`admit_write`（H03 写入面）**已接上真实存储**——
-`crates/nai-runtime/src/memory.rs` 的 `Composition::write_memory` 先跑判定，放行才落 `memory_records`、
-拒绝则具名且一列不落（`Store::record_memory` 只做存储层的事，不重跑判定）；记忆**持久化**这一格
-（上句原文的「持久化…未建」）因此**已经落地**（写入面）。**仍未接线**的是：控制面接线、§42.4 遗忘链的执行体、
-Pro 跨会话（§42.5：授权/审批/租约/设备身份不跨场继承）**未覆盖**，以及 **H04 读取面**——
-`read_records` 的条目级输入 `revoked` 在 `memory_records` 里**没有承载列**，写死 `revoked: false` 就是
-凭空断言一条判定输入 ⇒ 登记为具名开放问题，**不假装已接**。见 [ADR 0085](adr/0085-memory-write-gate-wiring.md)。
+⚠️ **已由 W107／W109 订正（写入面与读取面均已接上真实存储）**：
+`admit_write`（H03 写入面）由 W107 接上 `Composition::write_memory`——先跑判定，放行才落 `memory_records`、
+拒绝则具名且一列不落（`Store::record_memory` 只做存储层的事，不重跑判定）。
+`read_records`（H04 读取面）与 §42.4 遗忘链的**阻断**落点由 W109 接上：`Composition::read_memory`
+**先**取数、**再**逐条**诚实派生**三个条目级输入——`revoked` ← `memory_records.revoked_at_ms`
+（`0008-memory-revocation.sql` 新增的可空列，NULL = 未撤销）、`permitted` ← 该记录**所属类别**要求的
+授权是否在场（观众记忆看记录自己的 `authorization_ref`，其余类别 §42.3 无记录级授权要求 ⇒ 结构蕴含）、
+`approximate_of` ← 恒 `None`（存储里结构上不存在顶替条目）；`Composition::forget_memory` 则
+**先**写撤销列阻断读取、**再**判这次遗忘的**陈述**是否如实。
+**仍未接线**的是：控制面接线、§42.4 的**清除副本**一侧（W109 只到阻断，清除需要另一条工作）、
+Pro 跨会话（§42.5：授权/审批/租约/设备身份不跨场继承）。
+见 [ADR 0085](adr/0085-memory-write-gate-wiring.md)、[ADR 0087](adr/0087-memory-read-surface.md)。
 
 ## W66 harness 观测与逐层具名降级（V3.11 §47.1、§47.4；验收 H15/H17）
 

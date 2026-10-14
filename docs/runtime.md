@@ -202,11 +202,44 @@ MUST NOT 补判定没输出的段——§41.2 判的是**调用方给的数**，
 ⚠️ **存储层不加写入面的时效规则**：§42.3 的时效判定在**读取**面；`record_memory` 因此**不**拒已过期记录
 （`record_candidate` 会——两者是**不同的**入口，规则不同是刻意的）。
 
-**边界（如实）**：写入面的接线已可测（**9** 项测试 + **七**组非空洞注入共 16 红），但
-**§42.3 的读取判定（H04）未接线**——`read_records` 的条目级输入 `revoked` 在 `memory_records` 里
-**没有承载列**，写死 `revoked: false` 就是**凭空断言一条判定输入** ⇒ 登记为具名开放问题，不假装已接。
-`Store::memory_records` 是**取数入口**（逐列还原、按作用域过滤、`ORDER BY record_id`），
-**不是** §42.3 的读取面，MUST NOT 被读作 H04 已接线。见 [ADR 0085](adr/0085-memory-write-gate-wiring.md)。
+**边界（如实）**：写入面的接线已可测（**9** 项测试 + **七**组非空洞注入共 16 红）。
+⚠️ **已由 W109 订正**：读取判定（H04）与 §42.4 的**阻断**落点**已接线**，见下一节；此处原文登记的
+具名开放问题（「`revoked` 在 `memory_records` 里没有承载列」）**已闭合**——承载列是
+`0008-memory-revocation.sql` 新增的 `memory_records.revoked_at_ms`。
+`Store::memory_records` 仍是**取数入口**（逐列还原、按 `(workspace, session)` 过滤、`ORDER BY record_id`），
+**不是** §42.3 的读取面，MUST NOT 被读作 H04 已接线。见 [ADR 0085](adr/0085-memory-write-gate-wiring.md)、
+[ADR 0087](adr/0087-memory-read-surface.md)。
+
+## 记忆读取判定与遗忘阻断落点（W109，验收 H04）
+
+`Composition::read_memory(query, policy, now_ms)` 是 §42.3 记忆读取的**唯一**运行时入口，也是
+`read_records` 在生产代码里的**第一处**调用方（判定规则本身由 W57 落地、由 W89 补上开关的读侧，本轮**一行未改**）。
+
+**先取数、再派生、最后判定**——三步不可合并：
+
+1. `Store::memory_scoped` 取一个工作区里的**全部**记忆行，只按 `workspace_id` 过滤。
+   ⚠️ **刻意不按会话预筛**：`out_of_scope` 这条守卫需要有**对象**可拒；若取数阶段就按会话把别的
+   作用域筛掉，那条守卫还在、但它守的东西已被上游先拿走（**假阴性**，最危险的方向——已由注入 I2 实测）。
+2. 逐条**诚实派生** `ScopedRecord` 的三个条目级输入（见 [kernel](kernel.md) 的 W57 段）：
+   每一项都取自一个**事实**，MUST NOT 写死默认值——写死任何一项都是**注入判定而非注入事实**（W94 的形状，已由注入 I1 实测）。
+3. 交给 `read_records` 判定一次。请求级违规 ⇒ `MemoryReadError::Rejected`（**整个读取不成立**，
+   MUST NOT 折成一次「空读取」——否则「这次读取不成立」与「读出来零条」不可区分）；
+   条目级违规 ⇒ 逐条进 `outcome.refused` 并**具名**。
+
+⚠️ **`permitted` 刻意不查 `permission_grants`**：取数入口**已经**要求 actor 持有一条
+`session.manage` 授权，条目级若再查**同一条** grant，二者**恒一致** ⇒ `PermissionDenied` 将永远
+**不可达**——守卫还在，却没有任何对象可供它守卫（本项目明令禁止的形状）。记录级授权要求只针对
+观众长期记忆，其承载物是记录**自己**的 `authorization_ref`；而 `admit_write` 不要求观众记录的授权引用
+⇒ 缺授权引用的观众记录**可入库但读不出来**，`PermissionDenied` **可达**（有用例专门钉它）。
+
+`Composition::forget_memory(trigger, record_id, purge_state, third_party_retention, claims_fully_erased)`
+是 §42.4 遗忘链的**阻断**落点：**先**把该行标为已撤销，**再**判这次遗忘的**陈述**是否如实。
+
+⚠️ **`read_side_blocked` 不是调用方字段**：它由「阻断真的发生了」这一事实得出。若让调用方填，
+本入口就会自己构造一个恒真的 `ForgetOutcome`，判定变成装饰；代价是 `ReadSideNotBlocked`
+经本入口**结构上不可达**（其覆盖在内核 `forget()` 直连的用例里，已在守卫的闭世界里**具名登记**）。
+⚠️ **阻断 ≠ 清除**：行仍在库里，只是撤销列有了时刻；重复阻断返回**原有**时刻，MUST NOT 覆盖
+（撤销时刻是一条事实，重写它等于篡改——已由注入 I3 实测）。**清除副本不在此处**，那是另一条工作。
 
 ## 子进程监督（Supervisor）
 

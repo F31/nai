@@ -40,13 +40,20 @@ outbox 的实际运行/媒体消费者已由 D06/D09 落地。
 ## 记忆表（`memory_records`）
 
 `memory_records` 由 `0001-foundation.sql` 建立（九列 + 复合主键 `(workspace_id, record_id)`），
-其模式与 `MemoryRecord` 契约的九字段**逐字对应**：
+W109 的 `0008-memory-revocation.sql` 再加**一列**可空的 `revoked_at_ms`（⇒ 现**十**列）。
+其中九列的模式与 `MemoryRecord` 契约的九字段**逐字对应**：
 
 | `MemoryRecord` 字段 | 列 |
 |---|---|
 | `record_id` / `workspace_id` / `session_id` / `kind` / `purpose` / `content` / `authorization_ref` | 同名七列 |
 | `viewer_scoped_id` | `viewer_scope`（可空） |
 | `expires_at_utc_ms` | `expires_at_ms` |
+| （非契约字段） | `revoked_at_ms`（可空，§42.4 阻断落点） |
+
+⚠️ **撤销列 MUST 由新增迁移加，MUST NOT 编辑 `0001`**：`migration::verify()` 校验**每个已应用迁移文件**
+的 SHA-256，编辑 0001 会让**所有既有库**失效。列形 `INTEGER` **可空**与 `permission_grants`／
+`approvals`／`devices` 三处既有撤销列**同族同形**；与 0006 的 `NOT NULL DEFAULT ''` **不同**
+（0006 的默认值承担「标记老行」的职责，本列不需要——NULL 即「未撤销」）。
 
 `Store::record_memory` 是写入入口：`id()` 校验作用域标识、`access()` 查权限（复用既有权限名
 `session.manage`，与同族的 `record_candidate` 一致）、写九列，主键冲突 ⇒ 具名 `Conflict`。
@@ -58,15 +65,30 @@ outbox 的实际运行/媒体消费者已由 D06/D09 落地。
 （表里没有创建时间列，故**读回顺序 ≠ 写入顺序**）。它**不施加** §42.3 的任何条目级判定
 （越作用域／过期／撤销／权限／近似顶替／配额），**MUST NOT** 被读作记忆读取面已接线。
 
+`Store::memory_scoped`（W109）是给 §42.3 读取面用的取数入口：**只按 `workspace_id` 过滤**，
+并带出每行的 `revoked_at_ms`。
+⚠️ **刻意不按会话预筛**：`out_of_scope` 这条守卫需要有**对象**可拒；若取数阶段就按会话把别的
+作用域筛掉，那条守卫还在、但它守的东西已被上游先拿走（**假阴性**）。既有 `memory_records`
+保留它的会话过滤**一字不改**（有测试钉它「已过期记录仍被读回」）——本入口存在的理由正是
+让读取面**有东西可判**。它也**不施加** §42.3 的任何判定。
+
+`Store::block_memory_read`（W109）是 §42.4 的**阻断**落点：写 `revoked_at_ms`，
+**只置一次、不覆盖**已撤销行（返回**生效中的**时刻）。
+⚠️ **阻断 MUST NOT 用删除行表达**：否则「已阻断」与「已清除」无法区分，而 §42.4 要求
+「**先**阻断检索与读取，**再**异步清除副本」。清除侧不在此处。
+
 ⚠️ **判定审过但表中无列的五个字段不落库**：`source`（写入来源）、`claim`（叙述／权威事实）、
 `source_ref`、`written_at_utc_ms`、`publish_ref`。§42.2 把它们定为**判定输入**而非持久化字段。
 **后果如实登记**：「这条记录当时是从哪种来源写进来的」在库里**查不到**；若日后需要按来源审计记忆写入，
 那是**另一个对象**（新增列或新增审计面）。
 ⚠️ **`expires_at_utc_ms` 与 `written_at_utc_ms` 不是同一个时间**：前者落库（`expires_at_ms`），
 后者只参与判定、不落库，两者 MUST NOT 互相顶替。
-⚠️ **撤销状态没有承载列**：§42.4 的遗忘链是一条真实状态，而本表无撤销列 ⇒ 依赖它的读取判定
-（H04）**未接线**，属具名开放问题。见 [运行期](runtime.md) 的 W107 段与
-[ADR 0085](adr/0085-memory-write-gate-wiring.md)。
+⚠️ **撤销状态已有承载列（W109 起）**：`revoked_at_ms` 可空，**NULL = 未撤销**。
+⚠️ **老行的取值必须是 NULL，MUST NOT 是 0**：0 会被 `revoked_at_ms.is_some()` 读成
+「1970 年就已撤销」，把**每一行老记忆**一次性判死。升级路径由
+`version_eight_upgrade_preserves_memory_rows_and_defaults_the_revocation_column_to_null`
+在一个**已有行**的 v7 库上实测（空表上的 `ALTER TABLE` 什么也证明不了）。
+见 [运行期](runtime.md) 的 W109 段与 [ADR 0087](adr/0087-memory-read-surface.md)。
 
 ## 不可变内容与快照
 

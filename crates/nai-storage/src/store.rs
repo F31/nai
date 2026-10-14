@@ -22,6 +22,19 @@ pub enum ConfigKind {
     Runtime,
     Provider,
 }
+
+/// 一条记忆记录在库里的样子：契约九字段 **加上** 撤销时刻。
+///
+/// 撤销时刻是**存储态**，不是契约字段 ⇒ 它 MUST NOT 被塞进 `MemoryRecord`
+/// （那会给契约九字段第二处定义）。分开返回，是为了让「记录是什么」与
+/// 「这条记录在库里处于什么状态」保持**两件不同的事**。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoredMemoryRecord {
+    /// 契约九字段，逐列还原。
+    pub record: MemoryRecord,
+    /// §42.4: 该行被阻断读取的时刻。`None` = 未被撤销。
+    pub revoked_at_ms: Option<i64>,
+}
 pub use nai_contracts::candidate_hash;
 pub(crate) fn validate_json(kind: ConfigKind, value: &serde_json::Value) -> Result<()> {
     let source = match kind {
@@ -727,6 +740,89 @@ impl Store {
         }
         op.check()?;
         Ok(records)
+    }
+
+    /// §42.3: 一个工作区里的**全部**记忆记录，连同每条的撤销时刻，且**不施加** §42.3 的任何判定。
+    ///
+    /// 唯一的过滤是工作区——那是硬边界，不是 §42.3 的判定对象。
+    /// **刻意不按会话过滤**：`read_records` 的越作用域拒绝需要**有对象可拒**；
+    /// 若取数阶段就按会话把别的作用域筛掉，那条守卫还在、但它守的东西已经被上游先拿走了
+    /// （**假阴性**，是最危险的方向）。既有 `memory_records` 保留它的会话过滤不动，
+    /// 本入口存在的理由正是让读取面**有东西可判**。
+    ///
+    /// 撤销时刻是**存储态**、不是契约字段，故单列返回，MUST NOT 被塞进 `MemoryRecord`
+    /// （那会给契约九字段第二处定义）。
+    pub fn memory_scoped(
+        &self,
+        op: &Operation,
+        workspace: &str,
+        actor: &str,
+    ) -> Result<Vec<StoredMemoryRecord>> {
+        self.start(op)?;
+        access(&self.conn, workspace, actor, "session.manage", "*")?;
+        let mut statement = self.conn.prepare(
+            "SELECT record_id,workspace_id,session_id,viewer_scope,kind,purpose,authorization_ref,content,expires_at_ms,revoked_at_ms FROM memory_records WHERE workspace_id=?1 ORDER BY record_id",
+        )?;
+        let rows = statement.query_map(params![workspace], |r| {
+            Ok(StoredMemoryRecord {
+                record: MemoryRecord {
+                    record_id: r.get(0)?,
+                    workspace_id: r.get(1)?,
+                    session_id: r.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                    viewer_scoped_id: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
+                    kind: r.get(4)?,
+                    purpose: r.get(5)?,
+                    authorization_ref: r.get::<_, Option<String>>(6)?.unwrap_or_default(),
+                    content: r.get(7)?,
+                    expires_at_utc_ms: r.get::<_, i64>(8)? as u64,
+                },
+                revoked_at_ms: r.get::<_, Option<i64>>(9)?,
+            })
+        })?;
+        let mut records = Vec::new();
+        for row in rows {
+            records.push(row?);
+        }
+        op.check()?;
+        Ok(records)
+    }
+
+    /// §42.4: 遗忘链的**阻断**落点——把一条记录标为已撤销（读取侧先失效）。
+    ///
+    /// 返回**生效中的**撤销时刻：若该行本就已被撤销，返回它**原有**的时刻，
+    /// MUST NOT 覆盖——撤销时刻是一条事实，重写它等于篡改。
+    /// §42.4 要求「**先**阻断检索与读取，**再**异步清除副本」，故阻断 MUST NOT
+    /// 用删除行来表达：那样「已阻断」与「已清除」将无法区分。清除侧不在此处。
+    pub fn block_memory_read(
+        &mut self,
+        op: &Operation,
+        workspace: &str,
+        actor: &str,
+        record_id: &str,
+    ) -> Result<i64> {
+        self.start(op)?;
+        id(record_id)?;
+        access(&self.conn, workspace, actor, "session.manage", "*")?;
+        let existing: Option<i64> = self
+            .conn
+            .query_row(
+                "SELECT revoked_at_ms FROM memory_records WHERE workspace_id=?1 AND record_id=?2",
+                params![workspace, record_id],
+                |r| r.get(0),
+            )
+            .optional()?
+            .ok_or_else(|| error(ErrorCode::InvalidArgument, "memory record missing"))?;
+        if let Some(revoked) = existing {
+            op.check()?;
+            return Ok(revoked);
+        }
+        let now = utc_ms()?;
+        self.conn.execute(
+            "UPDATE memory_records SET revoked_at_ms=?1 WHERE workspace_id=?2 AND record_id=?3 AND revoked_at_ms IS NULL",
+            params![now, workspace, record_id],
+        )?;
+        op.check()?;
+        Ok(now)
     }
 
     pub fn approve(

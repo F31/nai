@@ -1525,6 +1525,15 @@ passed **+13** = `tests/assembly.rs` 12 → 25）。⚠️ **门控共跑 3 次*
 如实登记；`Store::memory_records` 是**取数入口**（`ORDER BY record_id`，读回顺序 ≠ 写入顺序），
 **不是** §42.3 的读取面。
 
+⚠️ **【W109 勘误：上一段的具名开放问题已闭合；原文是已提交的历史叙述，故保留并在此勘误】**
+「H04（读取面）本轮不接线」是 W107 那一轮的**决定**（历史事实，不改）；但其**理由**
+「`revoked` 在 `memory_records` 里**没有承载列**」**已不成立**——W109 新增
+`0008-memory-revocation.sql` 加上可空的 `revoked_at_ms`（`migration::VERSION` 7 → **8**），
+并据此接上了读取面（`Composition::read_memory`）与 §42.4 的**阻断**落点（`Composition::forget_memory`）。
+另：本段「`0001-foundation.sql` **九列**」一句自 W109 起应读作「0001 建的九列 + 0008 加的一列
+（现**十**列）」；「`Store::memory_records` 是取数入口、不是读取面」两句**不变**。
+见 [ADR 0087](adr/0087-memory-read-surface.md)。
+
 见 [W107 报告](reports/2026-10-14-w107-memory-write-gate-wiring.md)、[ADR 0085](adr/0085-memory-write-gate-wiring.md)、
 `openspec/changes/archive/2026-10-14-w107-memory-write-gate-wiring/`。
 
@@ -1591,6 +1600,57 @@ ADR 0073／0078 **追加勘误段**（原文保留）；⚠️ **同形不同义
 
 见 [W108 报告](reports/2026-10-14-w108-cause-payment.md)、[ADR 0086](adr/0086-cause-payment.md)、
 `openspec/changes/archive/2026-10-14-w108-cause-payment/`。
+
+### W109 §42.3 记忆读取判定与 §42.4 遗忘阻断接上真实存储（H04 runtime 接线）
+
+**W109 闭合 W107 登记的具名开放问题：把 §42.3 的读取判定与 §42.4 的遗忘链接上真实存储。**
+改动前（`HEAD`）**现测**：`read_records` 与 `forget` 在生产代码里**都是零调用方**（只有定义与注释），
+`memory_records` **无撤销列**（`store.rs` 的注释原文即「carries **no revocation column**」），
+`migration::VERSION = 7` ⇒ 三条命题在 runtime 上**不可表达**：已撤销的记忆会不会进上下文、
+遗忘后读取侧是否真的先失效、越作用域的记录是被具名拒绝还是被悄悄筛掉。
+
+与 W103／W104／W105／W106／W107 **连续第六轮同型**（判定面存在、执行体不存在），
+**不同点**：**前五轮执行体已存在**（只需接上），本轮**连判定的输入都不存在** ⇒ 必须先**造承载物**
+⇒ 本轮**必须付一次迁移**（这是与 W107「零迁移」轮的实质差别）。
+
+**落点**：`0008-memory-revocation.sql`（`ALTER TABLE memory_records ADD COLUMN revoked_at_ms INTEGER;`
+可空、NULL = 未撤销；MUST NOT 编辑 `0001`——`verify()` 校验每个迁移文件的 SHA-256）；
+`Store::memory_scoped`（**只按 `workspace_id` 过滤**，刻意**不**按会话预筛，否则 `out_of_scope`
+**失去对象**＝假阴性）+ `Store::block_memory_read`（只置一次、不覆盖）；
+`Composition::read_memory`（取数 → 诚实派生 → 判定一次）与 `Composition::forget_memory`
+（**先**阻断 → **再**判陈述；`read_side_blocked` **不是**调用方字段）。
+
+⚠️ **`permitted` 刻意不查 `permission_grants`**：取数入口已要求同一条 `session.manage`，
+条目级再查一次则二者**恒一致** ⇒ `PermissionDenied` 永不可达＝守卫无对象可守（明令禁止的形状）；
+可达性由「`admit_write` 不要求观众记录带授权引用 ⇒ 缺授权引用的观众记录可入库但读不出来」保证。
+
+**门控**：`cargo xtask check --profile full` ⇒ **`EXIT=0`**，计数**现测**：Rust `^test result:` **95**
+（`Running` **78** 含 1 行伪目标 + `Doc-tests` **18**）+ **924 passed / 0 failed**；Node TAP 根 **13** /
+`# tests` **319** / `# fail` **0**；`error[`／`LNK1104`／`out of memory`／`DeadlineExceeded` 均 **0**。
+对照 W108（95 / 914、13 / 319）⇒ Node **逐项相同**、`passed` **+10**（`tests/memory.rs` +9、
+`migration.rs` +1，均落在既有目标内 ⇒ **无需** `engineering_checks` 登记）。
+⚠️ **归档前共跑 3 次**（非一次即绿；归档后另有 1 次复跑）：① **真回归**——`backup.schema.json` 的 const 升到 8 而
+**Node 备份契约样本**仍是 `7` ⇒ 改样本为 8 并把「钉上一个版本必被拒」从 6 改为 **7**
+（⇒ 版本号成套是**五**处不是四处，W51 的教训以第五处的形式复现、被门控抓出来）；
+② 红在宿主 `DeadlineExceeded`（`nai-runtime --test composition` 的 `prepare_without_profile_is_rejected`，
+与 W107 记录的**同一用例同一症状**；相关文件本轮一行未改）⇒ **限并发**（`RUST_TEST_THREADS=1`）重跑即绿，
+**未改一行代码**；③ 绿。
+
+**非空洞注入**：**3** 组真改文件 + 真跑 + `sha256` **逐字节**还原，**5 红**、每组 ≥1
+（I1 派生写死 `revoked: false` ⇒ 2；I2 取数按 session 预筛 ⇒ 2，实测集合里 `OutOfScope`
+**整个消失**；I3 阻断改覆盖写 ⇒ 1，差值 22 ms）。
+⚠️ **坑**：注入 **MUST** 用编辑工具做，**MUST NOT** 用 Python 读写往返——Python 会把整文件换行符统一
+（原本 LF 新行与 CRLF 旧行**混排**），`sha256` 还原校验随之失效（I2 已改用编辑工具重做一遍）。
+
+**明确不做 / 如实披露**：**H03/H04 保持 `pending`**——本轮闭合的是「判定面 → 执行体」，不是验收达标。
+⚠️ **§42.4 只到阻断、未到清除** ⇒ 一条被遗忘的记录**仍在库里**，只是读不出来。
+`ApproximateSubstitution` 与 `ReadSideNotBlocked` 经本入口**结构上不可达**，在守卫闭世界里具名登记，
+MUST NOT 读作「已覆盖」。另：VERSION 7→8 带出一处**回归**已修——既有 `version_six_upgrade_...`
+用 `SQL.iter().take(VERSION-1)`，版本号一升就自动前移、实际改测 v7→v8 而**用例名变成不实陈述**、
+0007 那条升级路径失去覆盖且零信号 ⇒ 钉住 `const ASSEMBLY_KIND: usize = 7`。
+
+见 [W109 报告](reports/2026-10-15-w109-memory-read-surface.md)、[ADR 0087](adr/0087-memory-read-surface.md)、
+`openspec/changes/archive/2026-10-15-w109-memory-read-surface/`。
 
 ## 任务依赖与状态
 

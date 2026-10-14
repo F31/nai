@@ -2,8 +2,8 @@ use crate::{Operation, Result, error, hash, utc_ms};
 use nai_contracts::v1::ErrorCode;
 use rusqlite::{Connection, TransactionBehavior};
 
-pub(crate) const VERSION: i64 = 7;
-const SQL: [&str; 7] = [
+pub(crate) const VERSION: i64 = 8;
+const SQL: [&str; 8] = [
     include_str!("../../../migrations/sqlite/0001-foundation.sql"),
     include_str!("../../../migrations/sqlite/0002-authority.sql"),
     include_str!("../../../migrations/sqlite/0003-knowledge-index.sql"),
@@ -11,6 +11,7 @@ const SQL: [&str; 7] = [
     include_str!("../../../migrations/sqlite/0005-decision-log.sql"),
     include_str!("../../../migrations/sqlite/0006-utterance-display-text.sql"),
     include_str!("../../../migrations/sqlite/0007-decision-log-assembly-kind.sql"),
+    include_str!("../../../migrations/sqlite/0008-memory-revocation.sql"),
 ];
 
 pub(crate) fn verify(connection: &Connection) -> Result<i64> {
@@ -180,13 +181,20 @@ mod tests {
     /// version-6 database with a row already in the chain must come out with its rows verbatim
     /// and with the new kind accepted. Without this the rebuild's `INSERT ... SELECT` would only
     /// ever run on an empty table.
+    ///
+    /// ⚠️ **钉住具体版本号，MUST NOT 写 `VERSION - 1`**（W109 实测回归）：本用例验的是
+    /// `0007-decision-log-assembly-kind` **这一次**升级，而 `VERSION - 1` 会随后续每次升版本
+    /// 自动前移——VERSION 7 → 8 时它悄悄改测了 v7→v8，用例名随之变成不实陈述，而 0007
+    /// 那条升级路径**失去覆盖**却零信号。钉住之后，后续升版本不会再改变这里被测的对象。
     #[test]
     fn version_six_upgrade_preserves_the_decision_chain_and_accepts_the_assembly_kind() {
+        /// `0007-decision-log-assembly-kind` 的版本号。改它 MUST 同时改用例名。
+        const ASSEMBLY_KIND: usize = 7;
         let mut db = Connection::open_in_memory().unwrap();
-        for (index, sql) in SQL.iter().take(VERSION as usize - 1).enumerate() {
+        for (index, sql) in SQL.iter().take(ASSEMBLY_KIND - 1).enumerate() {
             apply(&mut db, &op(), index as i64 + 1, sql).unwrap();
         }
-        assert_eq!(verify(&db).unwrap(), VERSION - 1);
+        assert_eq!(verify(&db).unwrap(), (ASSEMBLY_KIND - 1) as i64);
         db.execute(
             "INSERT INTO workspaces(workspace_id,name) VALUES('w','legacy')",
             [],
@@ -223,5 +231,77 @@ mod tests {
         );
         // The append-only triggers come back with the rebuilt table.
         assert!(db.execute("DELETE FROM decision_log", []).is_err());
+    }
+
+    /// W109: `0008-memory-revocation.sql` 给 `memory_records` 加一列。加列本身不会丢行，
+    /// 但「老行的新列是什么」才是要钉的事实：它 MUST 是 NULL（未撤销），MUST NOT 是 0——
+    /// 0 会被 `revoked_at_ms.is_some()` 读成「1970 年就已撤销」，把**每一行老记忆**一次性
+    /// 判死。这条升级路径 MUST 在一个**已有行**的库上跑：空表上的 `ALTER TABLE` 什么也证明不了。
+    #[test]
+    fn version_eight_upgrade_preserves_memory_rows_and_defaults_the_revocation_column_to_null() {
+        let mut db = Connection::open_in_memory().unwrap();
+        for (index, sql) in SQL.iter().take(VERSION as usize - 1).enumerate() {
+            apply(&mut db, &op(), index as i64 + 1, sql).unwrap();
+        }
+        assert_eq!(verify(&db).unwrap(), VERSION - 1);
+        db.execute(
+            "INSERT INTO workspaces(workspace_id,name) VALUES('w','legacy')",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            "INSERT INTO sessions(session_id,workspace_id) VALUES('session-1','w')",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            "INSERT INTO memory_records VALUES('w','memory-legacy','session-1',NULL,'session','order_status','auth-1','body',4102444800000)",
+            [],
+        )
+        .unwrap();
+
+        migrate(&mut db, &op()).unwrap();
+        assert_eq!(verify(&db).unwrap(), VERSION);
+
+        // 既有行**逐字**保留：新增一列没有改写任何一列。
+        let row = db
+            .prepare(
+                "SELECT workspace_id,record_id,session_id,kind,purpose,authorization_ref,content,expires_at_ms,viewer_scope FROM memory_records",
+            )
+            .unwrap()
+            .query_row([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, String>(5)?,
+                    row.get::<_, String>(6)?,
+                    row.get::<_, i64>(7)?,
+                    row.get::<_, Option<String>>(8)?,
+                ))
+            })
+            .unwrap();
+        assert_eq!(row.0, "w");
+        assert_eq!(row.1, "memory-legacy");
+        assert_eq!(row.2, "session-1");
+        assert_eq!(row.3, "session");
+        assert_eq!(row.4, "order_status");
+        assert_eq!(row.5, "auth-1");
+        assert_eq!(row.6, "body");
+        assert_eq!(row.7, 4_102_444_800_000);
+        assert_eq!(
+            row.8, None,
+            "观众作用域是**可空**列：老行的 NULL MUST 保持 NULL"
+        );
+
+        // 新列可读，且老行取值是 NULL——不是 0，也不是「未知」。
+        let revoked: Option<i64> = db
+            .query_row("SELECT revoked_at_ms FROM memory_records", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(revoked, None);
     }
 }
