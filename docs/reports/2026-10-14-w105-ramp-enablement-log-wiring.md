@@ -296,9 +296,30 @@ TAP 根 **13**、`# tests` **317**、`# fail` **0**、`error[`/`LNK1104`/OOM **0
 
 ⇒ **本轮门控共跑 6 次**（①首轮 + ②③④ 三次重试全红在宿主 `LNK1104` → ⑤绿；⑥归档后复跑绿）。
 
-## 九、CI
+## 九、CI（**回填**）
 
-见 §十一 回填。
+- 提交：`ff7937e` `feat(w105)：把爬坡启用记录接上真实哈希链（H18 runtime 接线）`（**18 文件**）；已 push
+  （`5ebe5f4..ff7937e  main -> main`，SSH 443）。
+- **run [#142](https://github.com/F31/nai/actions/runs/38556615666)（id `38556615666`，workflow
+  `Engineering foundation`）`completed / success`，`run_attempt 1`**；
+  `head_sha ff7937eae7c07e2463ceec4695594bab8a021779` == **推送 SHA**（**三件齐**：唯一查询参数 `&cb=<ns>`
+  + 请求头 `Cache-Control: no-cache` + 回读 `head_sha`）。
+- **矩阵双平台 success**：`foundation (ubuntu-24.04)` **success** + `foundation (windows-latest)` **success**。
+- **观测 3 次、非轮询**（间隔 ≈6.7min / ≈8min）：①run 列表（`in_progress`，`created 11:26:48Z`）
+  → ②单 run（`completed/success`，`updated 11:38:02Z`，耗时 ≈**11.2 min**）→ ③jobs 矩阵。
+  第 ④ 次（读 ubuntu job 的**步骤集**）为**核实 CI 独有的校验面**，见下。
+- ⚠️ **CI 真的跑了三条「本机门控不跑」的检查，且都是 success**（**直接读 CI 步骤集**，非从 workflow 文件推断）：
+
+| CI 步骤 | 名称 | 结论 |
+|---|---|---|
+| 9 | `Check generated contracts without modifying consumers` | **success**（`schema --check` 面） |
+| 10 | `Complete engineering foundation (portable steps + frontend workspace)` | **success**（完整门控） |
+| 21 | `Run pnpm spec:validate` | **success**（`not-in-profile`，§8.6 ③） |
+| 22 | `Run pnpm exec openspec validate --archived --no-interactive` | **success**（`not-in-profile`，§8.6 ②） |
+| 11 | `Publish the gate failure summary as annotations` | **skipped**（正确：只在失败时发布） |
+
+  ⇒ 本机 `--specs`/`--archived`/`--all` 的绿与 CI 的绿是**同向的独立复核**，而不是「本机绿代替 CI 绿」。
+- 回填提交（`docs(w105)：回填报告 CI 结论`）**自身不回填**。
 
 ## 十、遗留与边界
 
