@@ -212,7 +212,22 @@ cargo test --locked --package nai-xtask --lib                       52 passed
 
 ## 七、CI
 
-待提交推送后回填（单次低频观测，带唯一查询参数 + `Cache-Control: no-cache` + 回读 `head_sha`）。
+单次低频观测（**唯一查询参数**破坏缓存 + `Cache-Control: no-cache` + **回读 `head_sha`**，**不轮询**；
+全程 6 次请求，远低于匿名配额 60/h）。
+
+- 推送：`edbd906fb552577d343d08f5c4abc32537299352`（`HEAD == origin/main`）
+- run：**#139**（id `38526858347`，`Engineering foundation`，event `push`）
+- **结论：`completed` / `success`**；回读 `head_sha` == 推送 SHA ✅
+- 双平台：`foundation (ubuntu-24.04)` **success**；`foundation (windows-latest)` **success**
+- 与本轮相关的关键步骤（两平台）：
+  `Check generated contracts without modifying consumers` ✓、
+  `Complete engineering foundation (portable steps + frontend workspace)` **✓ 两平台均过**
+  （⇒ 本轮新增的 Rust 集成测试、`fmt --check`、`clippy -D warnings` 在 CI 侧同样通过）、
+  `Validate schemas and API contract` ✓、`Full three-language contract suite (Linux C++ toolchain)` ✓、
+  `pnpm spec:validate` ✓、`pnpm exec openspec validate --archived --no-interactive` ✓
+- ⚠️ **本机绿 ≠ CI 绿**：CI 的两个步骤本机跑不了（`schema --check` 与 `contracts` 三语言套件，
+  宿主 `node` 派生 `EBUSY`／不在 portable 面内），故上面以 **CI 为准**；本机的 `92 目标 / 870 passed`
+  是 portable 面的口径，与 CI 的步集合**不同**，两者**不互相代替**。
 
 ## 八、遗留
 
