@@ -1729,6 +1729,40 @@ I2 控制面重新接受结论字段 ⇒ 3；I3 登记一个不存在的清除�
 见 [W111 报告](reports/2026-10-15-w111-memory-purge-surface.md)、[ADR 0089](adr/0089-memory-purge-surface.md)、
 `openspec/changes/2026-10-15-w111-memory-purge-surface/`。
 
+### W112（2026-10-15）：§42.5 跨会话边界在 memory 面的判定面闭合
+
+**缝（现测，不是推断）**：§42.5 在 memory 面**从未建判据**——只靠设计意图断言「授权/审批/租约/
+设备身份不跨场继承」，无守卫。`scope_matches`（`nai-kernel/src/evaluate/memory.rs:619`）按
+session / viewer_scoped_id 隔离、`MemoryQuery.scope.session_id` 来自控制面绑定
+（`nai-control-api/src/lib.rs:708-712`）、memory 路由鉴权走 `self.access`（绑定 session+device）、
+`memory_records` 按 `expires_at_ms` 保留无 session-end 清除——行为都在，但无判据钉死，回归即可
+悄悄改坏。
+
+**裁定**：**判定面闭合，零生产代码改动**——只把既有两个机制（runtime `scope_matches`、ControlApi
+`self.access`）变成显式可测判据，不引入新执行体。作用域是事实不是参数（请求伪造同名字段被忽略，
+3.3 归属既有测试）。场次记忆跨会话保留钉死（2.3）。观众 `authorization_ref` 只查非空不验属于当前
+session ⇒ **如实披露为遗留**（决策 4）。跨设备 token 拒与跨 session 同一条 `self.access` 绑定，
+不单列测试（决策 5）。
+
+**判据落点**：runtime 新增 2（`a_viewer_record_outside_its_viewer_scope_is_refused_by_name` 跨
+viewer_scoped_id ⇒ `OutOfScope`；`session_scoped_memory_survives_session_end_and_stays_out_of_scope_for_others`
+场次记忆跨会话保留）；control-api 新增 1（`memory_route_rejects_a_token_issued_by_another_control_surface`
+跨场 token ⇒ 401）；2.1／3.3 归属既有测试（显式闭合）。
+
+**测试先跑红 → 纠正（如实）**：2.2 首版用默认写策略（观众记忆关）写入观众记录，写入面以
+`ViewerMemoryDisabled` 拒、记录不入库存 ⇒ 越作用域拒绝无可守对象；纠正为用 `open_policy()` 写入
+并断言 `Written`。门控前自检还修复了自身误插属性导致 `the_read_back_does_not_cross_scopes` 与
+`the_third_party_retention_fact_is_forwarded_verbatim` 被静默取消标记——已实测确认两者恢复运行。
+
+**计数（现测）**：`cargo test` 实测（门控给权威总数）：runtime `memory.rs` +2、control-api `tests.rs`
++1；两条既有测试属性修复后恢复运行（非新增）。
+
+**如实披露**：观众 `authorization_ref` 当场绑定仍遗留；H03/H04 `status` 仍 `pending`——判定面闭合
+≠ 验收达标；Pro 跨会话运营（§14.1）未建。
+
+见 [W112 报告](reports/2026-10-15-w112-memory-cross-session-boundary.md)、[ADR 0090](adr/0090-memory-cross-session-boundary.md)、
+`openspec/changes/2026-10-15-w112-memory-cross-session-boundary/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

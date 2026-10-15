@@ -120,8 +120,11 @@ D06还必须复检epoch、审批hash、事实和媒体lease。
 `ErasedClaimWithoutCompletePurge` 不可达。清除执行体 `Composition::purge_memory`
 先阻断、再清载荷、最后清点副本清单 `COPY_SITES`（**当前为空集**，且由代码派生的落点集合钉住）。
 
-**仍未接线**的是：Pro 跨会话（§42.5：授权/审批/租约/设备身份不跨场继承）；
-远端留存清除（§24.4 知识链那套 `RemoteRetention`，与记忆记录不共用落点）。
+**§42.5 在 memory 面的判定面已由 W112 闭合**（runtime `scope_matches` 的 session /
+viewer_scoped_id 跨场隔离、ControlApi `self.access` 的跨场 token 拒、场次记忆跨会话保留均已有
+显式可测判据，回归即可被抓）；**但「Pro 跨会话运营能力（§14.1）」本身未建**——那是个独立大能力，
+不在 W112。观众 `authorization_ref` 当场绑定仍遗留（决策 4，如实披露：只查非空、不验属于当前
+session）。仍未接线的是：远端留存清除（§24.4 知识链那套 `RemoteRetention`，与记忆记录不共用落点）。
 见 [ADR 0085](adr/0085-memory-write-gate-wiring.md)、[ADR 0087](adr/0087-memory-read-surface.md)、
 [ADR 0088](adr/0088-memory-control-surface.md)、[ADR 0089](adr/0089-memory-purge-surface.md)。
 

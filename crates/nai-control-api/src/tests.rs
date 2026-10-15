@@ -944,6 +944,7 @@ async fn memory_explicit_empty_kinds_is_an_empty_set_not_all_three() {
     );
 }
 
+// W112：§42.5 跨会话边界——作用域来自控制面绑定，请求伪造被忽略（3.3 归属）。
 #[tokio::test]
 async fn memory_scope_comes_from_the_control_surface_and_the_request_cannot_pick_it() {
     let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
@@ -1192,6 +1193,41 @@ async fn a_caller_supplied_conclusion_field_is_refused_before_the_seam() {
         0,
         "被拒的请求 MUST NOT 到达后端——否则「拒」只是装饰"
     );
+}
+
+// W112：§42.5 跨会话边界——授权不跨场继承（3.1 新增判据）。
+#[tokio::test]
+async fn memory_route_rejects_a_token_issued_by_another_control_surface() {
+    // §42.5：授权不跨场继承。别的场（不同 Access token）MUST NOT 读/忘本场的记忆。
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
+    let h = memory_harness(&["memory.read", "memory.forget"], Some(surface.clone())).await;
+
+    let foreign = h
+        .client
+        .post(format!("{}/api/v1/memory/read", h.url))
+        .bearer_auth("token-issued-by-another-control-surface")
+        .json(&json!({}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(foreign.status(), 401, "跨场 token MUST 被拒（W112：§42.5）");
+
+    let foreign_forget = h
+        .client
+        .post(format!("{}/api/v1/memory/forget", h.url))
+        .bearer_auth("token-issued-by-another-control-surface")
+        .json(&json!({"record_id": "r"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(
+        foreign_forget.status(),
+        401,
+        "跨场 token MUST 被拒（W112：§42.5）"
+    );
+
+    assert_eq!(surface.reads(), 0, "跨场 token MUST NOT 到达后端");
+    assert_eq!(surface.forgets(), 0);
 }
 
 #[tokio::test]

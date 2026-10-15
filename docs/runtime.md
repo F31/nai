@@ -302,7 +302,11 @@ fn forget(&self, request: &MemoryForgetRequest) -> MemoryControlResult<i64>;
 阻断后重读 ⇒ `revoked`、重复遗忘时刻**不变**、三态映射不丢维度。
 ⚠️ 「装配根忙」用**另一条线程持锁**触发——同线程 `try_lock` 在 Windows 上是未定义形状，MUST NOT 依赖它。
 
-**明确不做（如实）**：`MemoryPolicy` 仍**无配置项**（来源是装配点）；Pro 跨会话（§42.5）未覆盖。
+**明确不做（如实）**：`MemoryPolicy` 仍**无配置项**（来源是装配点）；「Pro 跨会话运营能力
+（§14.1）」未建。⚠️ **已由 W112 订正**：§42.5 在 memory 面的**判定面**已闭合——跨场读取靠
+`scope_matches` 的 session / viewer_scoped_id 隔离、跨场 token 靠 `self.access` 场绑定鉴权、
+场次记忆按保留期跨会话保留均已有显式判据（runtime + control-api 测试钉死）；观众
+`authorization_ref` 当场绑定仍遗留（决策 4，如实披露）。
 见 [ADR 0088](adr/0088-memory-control-surface.md)、[ADR 0089](adr/0089-memory-purge-surface.md)。
 
 ## 子进程监督（Supervisor）

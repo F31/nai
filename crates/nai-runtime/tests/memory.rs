@@ -381,6 +381,83 @@ fn a_duplicate_record_id_is_a_named_conflict_and_adds_no_second_row() {
 // 读回访问器是取数入口，不是 §42.3 的读取面
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// W112：§42.5 跨会话边界在 memory 面的判定面闭合（runtime 侧）
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_viewer_record_outside_its_viewer_scope_is_refused_by_name() {
+    // §42.5 / §42.3：观众长期记忆按**观众作用域**隔离（不是按会话）。
+    // 一条 viewer_scoped_id=VIEWER_SCOPE 的记录，用 FOREIGN_VIEWER_SCOPE 查询 ⇒ OutOfScope 具名。
+    let root = tempdir().unwrap();
+    let mut composition = prepared(root.path());
+    // §42.2 不要求写入面开观众记忆；但观众记录入库 MUST 显式开（默认关）。
+    // 用 open_policy() 写入，并断言它真的落库——否则下面的越作用域拒绝无可守对象。
+    let candidate = admissible("memory-viewer-in-scope", VIEWER_KIND);
+    match composition
+        .write_memory(&candidate, &open_policy())
+        .unwrap()
+    {
+        MemoryWriteOutcome::Written(_) => {}
+        MemoryWriteOutcome::Refused(r) => panic!("该记录不该被写入面拒绝：{r:?}"),
+    }
+
+    let foreign = MemoryQuery::new(
+        MemoryScope::new(WORKSPACE, SESSION, FOREIGN_VIEWER_SCOPE),
+        vec![MemoryKind::Viewer],
+        8,
+    )
+    .with_viewer_grant("authorization-ref-1", "order_status");
+    let outcome = read(&mut composition, &foreign, &open_policy());
+    assert!(outcome.records.is_empty(), "越观众作用域 MUST NOT 读回");
+    assert_eq!(
+        outcome.refused_for(MemoryRejection::OutOfScope).len(),
+        1,
+        "越观众作用域 MUST 具名拒绝（W112：§42.5 跨会话边界）"
+    );
+}
+
+#[test]
+fn session_scoped_memory_survives_session_end_and_stays_out_of_scope_for_others() {
+    // §42.5：会话结束不清空场次记忆（按保留期）；旧场记录物理保留，
+    // 对新场 OutOfScope，但 MUST NOT 被删除。
+    let root = tempdir().unwrap();
+    let mut composition = prepared(root.path());
+    open_session(&composition, OTHER_SESSION);
+    write(
+        &mut composition,
+        &admissible("memory-this-session", SESSION_KIND),
+    );
+
+    // 旧场（SESSION）的读取仍成立——记录物理在。
+    let same_session = read(
+        &mut composition,
+        &session_query(SESSION, 8),
+        &MemoryPolicy::default(),
+    );
+    assert_eq!(ids(&same_session.records), vec!["memory-this-session"]);
+
+    // 新场（OTHER_SESSION）查询：记录 MUST NOT 被读回，且以具名 OutOfScope 拒绝。
+    let other_session = read(
+        &mut composition,
+        &session_query(OTHER_SESSION, 8),
+        &MemoryPolicy::default(),
+    );
+    assert!(other_session.records.is_empty());
+    assert_eq!(
+        other_session.refused_for(MemoryRejection::OutOfScope).len(),
+        1,
+        "新场 MUST 以 OutOfScope 拒绝旧场记录（W112：§42.5 跨会话边界）"
+    );
+
+    // 物理保留：存储层仍按 SESSION 持有这条记录，无任何「会话结束即清」发生。
+    assert_eq!(
+        stored(&composition, SESSION).len(),
+        1,
+        "会话结束 MUST NOT 清空场次记忆（W112：§42.5 跨会话边界）"
+    );
+}
+
 #[test]
 fn the_read_back_does_not_cross_scopes() {
     let root = tempdir().unwrap();
@@ -533,6 +610,7 @@ fn observe_forget(
 }
 
 #[test]
+// W112：§42.5 跨会话边界——越作用域 MUST 具名拒绝（2.1 归属，判定面显式闭合）。
 fn a_record_outside_the_scope_is_refused_by_name_and_not_filtered_away() {
     let root = tempdir().unwrap();
     let mut composition = prepared(root.path());
