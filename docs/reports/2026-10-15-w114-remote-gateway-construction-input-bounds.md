@@ -58,14 +58,23 @@ W113 闭合了 `RemoteGateway::delete` 传输契约判定面。用户经 AskUser
 - **Remote sync rejects malformed documents without network**（Malformed sync documents are rejected without network）；
 - **Remote capabilities requires a search or answer first operation**（Capabilities requires a search or answer first operation）。
 
-## 六、门控（全量 `cargo xtask check --profile full`，待 #443 跑后回填）
+## 六、门控（全量 `cargo xtask check --profile full`）
 
-- 待全量门控后填 `GATE_EXIT`、各测试 bin `fail` 计数、本机 LNK1104 瞬态处置与最终结论。
+- `GATE_EXIT=0`：`PREBUILD_OK at attempt 1` → `GATE_OK at attempt 1`（重跑 attempt 1 全绿；首跑因两处真实失败提前结束，非 LNK1104 瞬态）。
+- **LNK1104 瞬态：0 次**（grep 计数 0；本轮未触发 Defender 持锁，无需限并发复跑）。
+- 全 workspace `cargo xtask check --profile full`：52 tests passed / 0 failed（含 knowledge-core 16 个 `#[tokio::test]`，其中 W114 新增 4 条覆盖远端网关构造期与输入边界）。clippy `-D warnings` 零警告，`cargo fmt --all --check` 全绿。
+- 首跑暴露的两处**真实失败**（已在本机修复、零生产改动）：① `cargo fmt --all --check` 在 W114 测试长表达式失败（已 `cargo fmt` 折行）；② `clippy::cmp_owned` —— 测试3 的 `request.url().to_string() == "/sync"` 多余 owned 比较（已改 `request.url() == "/sync"`，`Url: PartialEq<&str>` 成立，无 clippy 风险）。两处均为测试代码，不影响 `src/remote.rs` 任何生产路径。
 
-## 七、提交 / 推送（待 #444 归档 + 提交后回填）
+## 七、提交 / 推送（归档 + 一次 commit + push，SSH 443）
 
-- 待归档 + 一次 commit + push（SSH 443）后填提交 SHA 与 push 区间、改动文件清单。
+- 提交 SHA：`989791e86d749c64ee747f5d00d08fecebdc7271`。
+- push 区间：`f2fbd9e..989791e`，分支 `main`，SSH 443（`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）。
+- 改动文件（10 文件，+514）：`crates/nai-knowledge-core/tests/remote.rs`（+4 测试）、`docs/adr/0092-remote-gateway-construction-input-bounds.md`（新建）、`docs/reports/2026-10-15-w114-remote-gateway-construction-input-bounds.md`（新建）、`docs/development-plan.md`（W114 段）、`docs/knowledge.md`（订正注记）、`openspec/specs/knowledge-pipeline/spec.md`（合入 4 条 Requirement，83–104 行）、`openspec/changes/archive/2026-10-15-w114-remote-gateway-construction-input-bounds/`（归档目录）。
+- openspec 三连：`validate w114-remote-gateway-construction-input-bounds --strict` → valid；`archive --yes` → 4 条 Requirement 合入基线；`validate --archived --strict` → 全绿（112 项，含 w114）。`target-check/` 按纪律排除暂存。
 
-## 八、CI 观测（待 #445 推送后回填）
+## 八、CI 观测（主提交 + 回填提交各一次双平台观测）
 
-- 待主提交与回填提交各一次 CI 双平台观测后填 run id / `head_sha` / `conclusion` / 双平台结论。
+- **主提交** run id `38706760713`：`head_sha = 989791e86d749c64ee747f5d00d08fecebdc7271`（与推送 SHA 完整 40 位一致）；双平台 `foundation` job 均 `completed success`：
+  - `foundation (ubuntu-24.04)` → success；
+  - `foundation (windows-latest)` → success。
+- **回填提交**（docs-only，本报告的 §六/§七/§八 回填 + memory 日志）：CI 双平台观测待回填提交推送后补（见下方追加）。
