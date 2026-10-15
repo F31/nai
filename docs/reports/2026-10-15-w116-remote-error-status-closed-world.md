@@ -77,4 +77,7 @@ W115 闭合了检索链路进入「证据」后的闭世界守卫（rerank + to_
   - `foundation (windows-latest)` — completed / **success**
   - `foundation (ubuntu-24.04)` — completed / **success**
   - 本机门控绿（`GATE_EXIT=0`）与 CI 双平台绿一致；判定面闭合经端到端 CI 复核。
-- **回填提交**（docs-only）自身 CI 双平台观测：run TBD，回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`。回填提交 CI 自身绿（先例 run 109 failure ⇒ 本次实测 success，不赌）；不为回填提交写 §九，仅做 1 次观测。
+- **回填提交**（SHA `1be198495ab51e477a3c306ced820d6b241f30f5`，docs-only）自身 CI 双平台观测：run **38739436452**，回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`：
+  - `foundation (windows-latest)` — completed / **success**
+  - `foundation (ubuntu-24.04)` — completed / **success**
+  - 回填提交 CI 自身绿（先例 run 109 failure ⇒ 本次实测 success，不赌）；不为回填提交写 §九，仅做 1 次观测。
