@@ -73,12 +73,15 @@ W113–W116 的归属项已在各自报告标为既有）。本地复跑：`runn
 
 ## 七、提交 / 推送（归档 + 一次 commit + push，SSH 443）
 
-- 提交 SHA：TBD（主提交，归档后回填）。
-- push 区间：TBD，分支 `main`，SSH 443（`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）。
-- 改动文件：`crates/nai-knowledge-core/tests/remote.rs`（+4 测试）、`docs/adr/0095-retrieval-top-k-closed-world.md`（新建）、`docs/reports/2026-10-15-w117-retrieval-top-k-closed-world.md`（新建）、`docs/development-plan.md`（W117 段）、`docs/knowledge.md`（订正注记）、`openspec/specs/knowledge-pipeline/spec.md`（合入 4 条 Requirement）、`openspec/changes/archive/2026-10-15-w117-retrieval-top-k-closed-world/`（归档目录）。
-- openspec 三连：`validate w117-retrieval-top-k-closed-world --strict` → valid；`archive --yes` → 4 条 Requirement 合入基线；`validate --archived --strict` → 全绿（**115 项，含 w117**，0 failed）。`target-check/` 按纪律排除暂存。
+- 提交 SHA：**`a48e177861456e2f89be5ea5d8ebc3fab93469b4`**（主提交）。
+- push 区间：**`ae9ab9c..a48e177`**，分支 `main`，SSH 443（`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）。
+- 改动文件：`crates/nai-knowledge-core/tests/remote.rs`（+4 测试）、`docs/adr/0095-retrieval-top-k-closed-world.md`（新建）、`docs/reports/2026-10-15-w117-retrieval-top-k-closed-world.md`（新建）、`docs/development-plan.md`（W117 段）、`docs/knowledge.md`（订正注记）、`openspec/specs/knowledge-pipeline/spec.md`（合入 4 条 Requirement）、`openspec/changes/archive/2026-10-15-w117-retrieval-top-k-closed-world/`（归档目录）。共 10 文件、+396 行。
+- openspec 三连：`validate w117-retrieval-top-k-closed-world --strict` → valid；`archive --yes` → 4 条 Requirement 合入基线（`+ 4, ~ 0, - 0`）；`validate --archived --strict` → 全绿（**115 项，含 w117**，0 failed）。`target-check/` 按纪律排除暂存（显式 `git add -- <path>` 逐个暂存）。
 
 ## 八、CI 观测（主提交 + 回填提交各一次双平台观测）
 
-- **主提交** run id：TBD（workflow `Engineering foundation`）。回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`。本机门控绿与 CI 双平台绿一致；判定面闭合经端到端 CI 复核。
-- **回填提交**（docs-only）自身 CI 双平台观测：run TBD，回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`。回填提交 CI 自身绿（先例 run 109 failure ⇒ 本次实测 success，不赌）；不为回填提交写 §九，仅做 1 次观测。
+- **主提交** run id：**38745838707**（workflow `Engineering foundation`，event `push`）。回读 `head_sha` = `a48e177861456e2f89be5ea5d8ebc3fab93469b4`，与推送 SHA **完整 40 位一致**：
+  - `foundation (ubuntu-24.04)` — completed / **success**
+  - `foundation (windows-latest)` — completed / **failure**（step 12 `Storage and credential boundary (Windows native vault only on Windows)` = `cargo xtask test --suite storage`；后续 step 13–22 全部 `skipped`）
+  - **判定 windows step 12 为 CI runner 瞬态、非本变更回归**，依据（四条）：① `--suite storage` 只含 `nai-storage` + `nai-security`（`xtask/src/lib.rs:212-222`），本变更仅动 `crates/nai-knowledge-core/tests/remote.rs` + 文档 + openspec，`git status` **未触碰这两个包**；② 同代码 `a48e177` ubuntu step 12（同 suite）**success**；③ 本机 Windows `cargo xtask test --suite storage` → **55 passed / 0 failed**（host 侧同 suite 全绿）；④ 该 step 名明标「Windows native vault only on Windows」，天然依赖 runner 的凭据保管库状态。铁律二：宿主瞬态 MUST NOT 改变被测系统结论。
+- **回填提交**（docs-only）自身 CI 双平台观测：run TBD，回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`（含 windows step 12 —— 若绿则坐实主提交 step 12 瞬态判定）。回填提交 CI 自身绿（先例 run 109 failure ⇒ 本次实测 success，不赌）；不为回填提交写 §九，仅做 1 次观测。
