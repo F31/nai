@@ -92,6 +92,33 @@ session / viewer_scoped_id 隔离；(b) ControlApi `self.access` 的场绑定鉴
   （§14.1）均未建。
 - 生产代码**零改动**：本次只补可测判据 + 修复自身误插的属性。
 
+## 七、门控（全量 `cargo xtask check --profile full`）
+
+- 首次 r1 在 `crates/nai-runtime/tests/composition.rs` 两用例（`invalid_runtime_config_is_rejected_at_provision`、`prepare_without_profile_is_rejected`）报 `StorageError { code: DeadlineExceeded, reason: "operation stopped" }` —— **宿主 IO 瞬态**，与 W112 无关（`composition.rs` 不在本轮回改集）。
+- 复跑 r2：失败集合**漂移**（一例恢复、一例仍红），印证 W107「失败集合漂移、不绑定用例」+「相关文件本轮 git status 为空」+「同族 DeadlineExceeded」。
+- 按 W110 已验证缓解手段，复跑 r3 加 `RUST_TEST_THREADS=1`（消除测试期存储 IO 争用）⇒ `GATE_EXIT=0`。
+
+实测计数（r3）：
+
+- `cargo test --workspace --locked --exclude nai-xtask` **953 passed / 0 failed**（W111 为 950 ⇒ **+3** = 2 runtime + 1 control-api，逐项吻合）；其中 `composition.rs` 12/0（r1/r2 的瞬态在 r3 消失）。
+- `cargo fmt --all --check` 通过；`cargo clippy --workspace --all-targets --locked -- -D warnings` 通过；`cargo test --locked --package nai-xtask --lib` 通过；`node scripts/frontend-gate.mjs`（contracts-ts typecheck/build）通过。
+- `openspec validate --archived --strict` **110/0**（`--changes` 含本变更）。
+- ⚠️ `cargo xtask schema --check`（protoc 3.21.12）是 CI 第 9 步，**不在本地 `--profile full`**；W112 零 schema / 契约改动 ⇒ 该步对本轮**不适用**（非「本地已验证」，如实记为 N/A，由 CI 复核；CI 双平台 success 已间接覆盖）。
+
+## 八、提交 / 推送
+
+- 提交 `d472818`（17 文件，+544/−5），`git -c core.editor=true commit -F .commitmsg_w112.txt`（`COMMIT_EXIT=0`，无 128 竞态）。
+- 显式路径暂存（排除 `target-check` 与 `.commitmsg_*.txt`），未用 `git add -A`。
+- push `5f912e6..d472818`（`origin/main`，SSH 443：`GIT_SSH_COMMAND="ssh ... -p 443"`），`PUSH_EXIT=0`。
+- 完整 SHA `d472818c61c55fedb8d49b83ac0867aa69b92f0f`。
+
+## 九、CI 观测（回填提交前对主提交的一次观测）
+
+- run **`38684479058`**：`status=completed` / `conclusion=success`；回读 `head_sha` == `d472818c61c55fedb8d49b83ac0867aa69b92f0f`（完整 40 位一致）✓。
+- 双平台：`foundation (ubuntu-24.04)` **success** + `foundation (windows-latest)` **success**。
+- 查询纪律：单次 + `Cache-Control: no-cache` + 缓存破坏参数 `cb`；本轮 GitHub API 调用 < 10，未触限流。
+- 回填提交（docs-only）本身 MUST 另做 1 次观测（先例 run 109 回填提交曾 failure ⇒ 不观测就是赌）。
+
 见 [ADR 0090](adr/0090-memory-cross-session-boundary.md)、
 [kernel.md](kernel.md)、[runtime.md](runtime.md)、
-`openspec/changes/2026-10-15-w112-memory-cross-session-boundary/`。
+`openspec/changes/archive/2026-10-15-w112-memory-cross-session-boundary/`。
