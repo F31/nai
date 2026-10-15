@@ -56,12 +56,19 @@ passed through and never claims erasure），把 §24.4 delete 契约纳入基�
 
 ## 六、门控（全量 `cargo xtask check --profile full`）
 
-（门控完成后回填）
+- `GATE_EXIT=0`（日志 `target-check/w113-gate-final.log`）。
+- 三步全绿：`cargo fmt --all --check`、`cargo clippy --workspace --all-targets --locked -- -D warnings`、整 workspace 测试套件（`--profile full` 含前端门控，前端 `全部步骤通过`）。
+- 实跑确认：W113 两项新测试均 `ok`（`remote_delete_rejects_malformed_document_ids`、`remote_delete_receipt_is_passed_through_and_never_claims_erasure`）；整 workspace 各测试 bin `fail 0`（24 / 34 / 22 / 15 / 16 / 15 / 5 / 52 等）。
+- **门控瞬态与处置（如实）**：本机初跑命中间歇 `LNK1104`（Defender 实时扫描持锁刚写出的测试 exe，os error 5），且 `~/.cargo/bin/cargo.exe` 此前后被 Defender 在 rustup 操作中改名成 `*.zero-byte-backup`（零字节，代理损坏）。二者**均非 W113 代码回归**（W113 仅改测试文件 `remote.rs`）。处置：直接用 toolchain 内真实 `cargo.exe`（`~/.rustup/toolchains/1.96.0-x86_64-pc-windows-msvc/bin`）绕过损坏代理 + `CARGO_BUILD_JOBS=1` + 预构建重试循环（每次 LNK1104 删除被锁 stale exe 后复跑），最终 `PREBUILD_OK at attempt 1` 且 `GATE_OK`。环境脚本 `target-check/msvc-env.sh` / `gate-w113.sh` 不纳入提交。
 
 ## 七、提交 / 推送
 
-（主提交后回填）
+- 主提交 `803924f35f062fa033ee4db41299aff57faeb363`（`W113：§24.4 远端留存清除 delete 传输契约判定面闭合`），10 文件 +315/−2：`remote.rs` 测试 +2、ADR 0091、W113 报告、development-plan W113 段、knowledge.md §24.4 订正、spec 合入 `openspec/specs/knowledge-pipeline/spec.md`、归档目录。
+- 推送 `bcca316..803924f` → `main`（SSH 443，`git@github.com:F31/nai.git`）。
 
 ## 八、CI 观测
 
-（回填）
+- run `38695867812`，`head_sha` 完整匹配 `803924f35f062fa033ee4db41299aff57faeb363`，`conclusion: success`。
+- 双平台 job 均 `success`：`foundation (ubuntu-24.04)`、`foundation (windows-latest)`。
+- 观测时间 2026-10-15 ~07:12 UTC；查询带 `Cache-Control: no-cache` + 缓存破坏参数，`head_sha` 与推送 SHA 一致，非代理缓存过期响应。
+- 本机门控绿 + CI 双平台绿 ⇒ W113 闭环达成；判定面闭合（零生产改动），**不**声称验收达标（§24.4 保留期执行 / 介质级擦除仍如实记为遗留，见 §四）。
