@@ -23,7 +23,7 @@ use nai_kernel::evaluate::memory::{
     VIEWER_KIND, WriteSource,
 };
 use nai_runtime::{
-    Composition, MemoryAdapter, MemoryForgetError, MemoryReadError, MemoryWriteOutcome,
+    COPY_SITES, Composition, MemoryAdapter, MemoryForgetError, MemoryReadError, MemoryWriteOutcome,
 };
 use nai_storage::{DataPaths, DecisionEntryView};
 use std::time::Duration;
@@ -169,6 +169,7 @@ fn refusal_sample(rejection: MemoryRejection) -> Option<MemoryCandidate> {
         | MemoryRejection::ApproximateSubstitution
         | MemoryRejection::OverBudget
         | MemoryRejection::ReadSideNotBlocked
+        | MemoryRejection::ErasedClaimWithoutPurge
         | MemoryRejection::ErasedClaimWithoutCompletePurge
         | MemoryRejection::ErasedClaimWithThirdPartyRetention
         | MemoryRejection::ThirdPartyRetentionUndisclosed => return None,
@@ -752,7 +753,7 @@ const NOT_CONSTRUCTED_HERE: [MemoryRejection; 3] = [
 ];
 
 /// 读取面 + 遗忘面上**可达**的十三个拒因，按 `MemoryRejection::ALL` 顺序。
-const READ_FORGET_FACE: [MemoryRejection; 13] = [
+const READ_FORGET_FACE: [MemoryRejection; 14] = [
     MemoryRejection::InvalidScope,
     MemoryRejection::ViewerMemoryDisabled,
     MemoryRejection::ViewerReadWithoutAuthorization,
@@ -763,6 +764,7 @@ const READ_FORGET_FACE: [MemoryRejection; 13] = [
     MemoryRejection::Revoked,
     MemoryRejection::PermissionDenied,
     MemoryRejection::OverBudget,
+    MemoryRejection::ErasedClaimWithoutPurge,
     MemoryRejection::ErasedClaimWithoutCompletePurge,
     MemoryRejection::ErasedClaimWithThirdPartyRetention,
     MemoryRejection::ThirdPartyRetentionUndisclosed,
@@ -780,6 +782,7 @@ fn cover(rejection: MemoryRejection) -> Cover {
         | MemoryRejection::Revoked
         | MemoryRejection::PermissionDenied
         | MemoryRejection::OverBudget
+        | MemoryRejection::ErasedClaimWithoutPurge
         | MemoryRejection::ErasedClaimWithoutCompletePurge
         | MemoryRejection::ErasedClaimWithThirdPartyRetention
         | MemoryRejection::ThirdPartyRetentionUndisclosed => Cover::Reached,
@@ -863,6 +866,12 @@ fn the_read_and_forget_face_is_reachable_end_to_end() {
         .write_memory(&unauthorized, &open_policy())
         .unwrap();
     write(&mut composition, &admissible("memory-kept", SESSION_KIND));
+    // W111: 「已完全擦除」而载荷没被清过 —— 这条拒因的对象必须是一条**真实存在**的记录，
+    // 否则入口会先以「记录不存在」故障掉，守卫就失去了它的对象。
+    write(
+        &mut composition,
+        &admissible("memory-unpurged", SESSION_KIND),
+    );
 
     let mut observed: Vec<MemoryRejection> = Vec::new();
     // 配额 1：场次记忆里只留最先的一条（同优先级先到先得），另一条**具名**落选。
@@ -931,6 +940,25 @@ fn the_read_and_forget_face_is_reachable_end_to_end() {
     );
     observe_forget(
         &mut composition,
+        "memory-unpurged",
+        PurgeState::Complete,
+        None,
+        true,
+        MemoryRejection::ErasedClaimWithoutPurge,
+        &mut observed,
+    );
+    // 这条要走到「有第三方留存 ⇒ 不得宣称已擦除」，前提是**载荷真的被清过**
+    // ——`body_purged` 由存储派生（W111），不是判定自己相信的。W111 之前没有这个前提，
+    // 于是这条拒因是靠一个恒真的字段守着的。
+    composition
+        .purge_memory(
+            ForgetTrigger::UserRequest,
+            "memory-kept",
+            Some("云端副本保留 30 天".to_owned()),
+        )
+        .expect("已明示政策的留存 MUST 被接受");
+    observe_forget(
+        &mut composition,
         "memory-kept",
         PurgeState::Complete,
         Some("云端副本保留 30 天"),
@@ -982,9 +1010,7 @@ fn forget_request(record_id: &str) -> MemoryForgetRequest {
     MemoryForgetRequest {
         record_id: record_id.to_owned(),
         trigger: ForgetTrigger::UserRequest,
-        purge_state: PurgeState::NotStarted,
         third_party_retention: None,
-        claims_fully_erased: false,
     }
 }
 
@@ -1092,4 +1118,219 @@ fn the_request_level_refusal_survives_the_seam_as_a_refusal() {
         }
         _ => panic!("请求级拒绝 MUST 经接缝后仍是 Rejected"),
     }
+}
+
+// ---------------------------------------------------------------------------
+// §42.4 清理侧（W111）：**清除是动作，结论由执行得出**
+// ---------------------------------------------------------------------------
+
+/// W111 的**起点判据**，现改为钉住修复后的行为。
+///
+/// 立项时它先红过（`FAILED`，实测载荷仍是
+/// `"the record body that MUST be persisted verbatim, not a pointer"`）：
+/// 调用方自称「副本已清、已完全擦除」时判定**接受**，而清除一次都没发生。
+///
+/// 现在它钉两件事，缺一不可：
+/// 1. 零执行的宣称被**具名拒绝**（不是被静默接受，也不是被静默忽略）；
+/// 2. 拒绝之后，载荷**仍在**库里——因为确实没人清过它（这正是拒绝的诚实之处）。
+#[test]
+fn claiming_fully_erased_without_a_purge_is_refused_by_name_and_changes_nothing() {
+    let root = tempdir().unwrap();
+    let mut composition = prepared(root.path());
+    let candidate = admissible("memory-erased-claim", SESSION_KIND);
+    write(&mut composition, &candidate);
+
+    let rejection = match composition.forget_memory(
+        ForgetTrigger::UserRequest,
+        "memory-erased-claim",
+        PurgeState::Complete,
+        None,
+        true,
+    ) {
+        Err(MemoryForgetError::Rejected(rejection)) => rejection,
+        other => panic!("零执行的「已完全擦除」 MUST 被具名拒绝，实际是 {other:?}"),
+    };
+    assert_eq!(
+        rejection,
+        MemoryRejection::ErasedClaimWithoutPurge,
+        "「已完全擦除」而载荷没被清过 MUST 是它自己的拒因，MUST NOT 折进别的名字"
+    );
+
+    let rows = stored(&composition, SESSION);
+    assert_eq!(rows.len(), 1);
+    assert_eq!(
+        rows[0].content, candidate.record.content,
+        "既然拒绝且确实没清，载荷 MUST 原样还在——判据不许靠「顺手清了」变绿"
+    );
+}
+
+/// §42.4 清除执行体：阻断、清载荷、清点副本**在一次调用里先后发生**，
+/// 且结论（完成状态、清除时刻、是否物理擦除）全部由**执行**得出。
+#[test]
+fn purging_clears_the_payload_keeps_the_row_and_derives_its_own_conclusion() {
+    let root = tempdir().unwrap();
+    let mut composition = prepared(root.path());
+    let candidate = admissible("memory-purge", SESSION_KIND);
+    write(&mut composition, &candidate);
+
+    let report = composition
+        .purge_memory(ForgetTrigger::UserRequest, "memory-purge", None)
+        .expect("清除 MUST 成功");
+
+    // ① 载荷真的不在库里了（事实，取自库里那一列）。
+    let rows = stored(&composition, SESSION);
+    assert_eq!(rows.len(), 1, "行 MUST 保留为 tombstone（§24.4）");
+    assert!(
+        rows[0].content.is_empty(),
+        "清除后载荷 MUST 为空；实测仍读到 {:?}",
+        rows[0].content
+    );
+    // ② 结论由执行得出，且**不**宣称介质级擦除。
+    assert_eq!(report.purge_state, PurgeState::Complete);
+    assert!(report.payload_cleared);
+    assert!(
+        !report.physical_bytes_erased,
+        "本仓未做介质级擦除（SQLite 页与 WAL 可能留有字节），MUST NOT 宣称完全擦除"
+    );
+    assert_eq!(report.copy_sites_cleared, COPY_SITES.len());
+    assert!(
+        report.payload_purged_at_ms > 0,
+        "清除时刻 MUST 由执行给出，而不是沿用调用方的说法"
+    );
+}
+
+/// §42.4: 「只置一次、不覆盖」——重复清除返回**同一个**时刻。
+#[test]
+fn purging_twice_keeps_the_first_purge_instant() {
+    let root = tempdir().unwrap();
+    let mut composition = prepared(root.path());
+    write(&mut composition, &admissible("memory-twice", SESSION_KIND));
+
+    let first = composition
+        .purge_memory(ForgetTrigger::UserRequest, "memory-twice", None)
+        .unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    let second = composition
+        .purge_memory(ForgetTrigger::UserRequest, "memory-twice", None)
+        .unwrap();
+
+    assert_eq!(
+        first.payload_purged_at_ms, second.payload_purged_at_ms,
+        "清除时刻 MUST 只置一次；被覆盖就意味着「什么时候清的」不再可验证"
+    );
+    assert_eq!(first.revoked_at_ms, second.revoked_at_ms);
+}
+
+/// §24.4: 存在无法删除的第三方留存时，副本侧 MUST **如实**记为受阻，
+/// 且政策必须已明示——此时**不得**宣称完全擦除。
+#[test]
+fn a_third_party_retention_blocks_the_purge_state_instead_of_being_waved_through() {
+    let root = tempdir().unwrap();
+    let mut composition = prepared(root.path());
+    write(
+        &mut composition,
+        &admissible("memory-retained", SESSION_KIND),
+    );
+
+    let report = composition
+        .purge_memory(
+            ForgetTrigger::UserRequest,
+            "memory-retained",
+            Some("provider-retains-for-30d".to_owned()),
+        )
+        .expect("已明示政策的留存 MUST 被接受");
+
+    assert_eq!(
+        report.purge_state,
+        PurgeState::BlockedThirdParty,
+        "有未清除的第三方留存时 MUST 记为受阻，MUST NOT 报「已清完」"
+    );
+    assert!(stored(&composition, SESSION)[0].content.is_empty());
+}
+
+/// §42.4 顺序不可交换：读取侧先失效。**载荷清不掉**时，阻断**已经**发生。
+///
+/// 这条不是「防御性测试」而是顺序的**可观测形状**：若实现先清后阻断，
+/// 清除失败就会把读取侧的阻断一起丢掉——那条记录会重新变得可读。
+#[test]
+fn the_read_side_is_already_blocked_when_the_purge_fails() {
+    let root = tempdir().unwrap();
+    let mut composition = prepared(root.path());
+    write(&mut composition, &admissible("memory-order", SESSION_KIND));
+
+    // 第二步失败：记录不存在（第一条对 'memory-order' 成功，第二条对幽灵记录失败）。
+    composition
+        .purge_memory(ForgetTrigger::UserRequest, "memory-order", None)
+        .expect("第一次清除成功");
+    let missing = composition.purge_memory(ForgetTrigger::UserRequest, "memory-ghost", None);
+    assert!(
+        missing.is_err(),
+        "清除一条不存在的记录 MUST 是具名故障，MUST NOT 静默成功"
+    );
+
+    // 阻断早于清除：第一次清除之后该行已撤销且载荷已空。
+    let row = stored(&composition, SESSION)[0].clone();
+    assert!(row.content.is_empty());
+    let outcome = read(
+        &mut composition,
+        &session_query(SESSION, 8),
+        &MemoryPolicy::default(),
+    );
+    assert_eq!(
+        ids(&outcome.records),
+        Vec::<&str>::new(),
+        "已清除的记录 MUST NOT 出现在读取结果里"
+    );
+    assert_eq!(outcome.refused[0].reason, MemoryRejection::Revoked);
+}
+
+/// 副本清单是**闭世界**：在册为空集这件事 MUST 由**代码派生**的事实支撑，
+/// 而不是「还没查」。判据扫的是存储层真正写记忆载荷的落点。
+#[test]
+fn the_copy_site_ledger_is_a_closed_world_derived_from_the_store() {
+    // ① 每个在册点 MUST 有逐字存在的清除体（登记了却没写清除代码 ⇒ 红）。
+    let runtime_source = include_str!("../src/memory.rs");
+    for site in COPY_SITES {
+        assert!(
+            runtime_source.contains(site.clears),
+            "副本点 `{}` 登记的清除体 `{}` MUST 在实现里逐字存在",
+            site.site,
+            site.clears
+        );
+        assert!(
+            !site.carrier.trim().is_empty(),
+            "副本点 `{}` MUST 写明承载物",
+            site.site
+        );
+    }
+
+    // ② 记忆载荷的落点由**代码**派生：把存储层所有写语句的目标表扫出来，
+    // 其中属于记忆的 MUST 恰为 `memory_records`——**本体**。本体不是「副本」，
+    // 它由清除执行体直接清（`purge_memory_body`），不进副本清单。
+    let store_source = include_str!("../../nai-storage/src/store.rs");
+    let mut tables: Vec<&str> = Vec::new();
+    for marker in ["INSERT INTO ", "UPDATE "] {
+        let mut rest = store_source;
+        while let Some(at) = rest.find(marker) {
+            rest = &rest[at + marker.len()..];
+            let name: String = rest
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            if name.starts_with("memory") && !tables.contains(&name.as_str()) {
+                tables.push(Box::leak(name.into_boxed_str()));
+            }
+        }
+    }
+    assert_eq!(
+        tables,
+        vec!["memory_records"],
+        "记忆载荷的落点集合变了（新增记忆表）⇒ MUST 登记清除路径或改判据；实测 {tables:?}"
+    );
+
+    // ③ 空集 MUST 被**清点**而不是被短路：清点结果照实报 `0`（上面两条用例已钉 `0`）。
+    assert!(
+        COPY_SITES.is_empty(),
+        "本轮断言的是「无副本残留」这个事实；若确有副本点，先在此登记再改本断言"
+    );
 }

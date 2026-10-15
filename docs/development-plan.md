@@ -1692,6 +1692,43 @@ I2 取数按 session 预筛 ⇒ 3（越作用域**失去对象**）；I3 `impl` 
 见 [W110 报告](reports/2026-10-15-w110-memory-control-surface.md)、[ADR 0088](adr/0088-memory-control-surface.md)、
 `openspec/changes/archive/2026-10-15-w110-memory-control-surface/`。
 
+### W111（2026-10-15）：清除副本从「字段」变成「动作」（§42.4 清理侧）
+
+**缝（现测，先跑红再设计）**：新增判据 `claiming_fully_erased_must_leave_no_payload_in_the_store`
+**立项即红**——请求体给 `purge_state: "complete"` + `claims_fully_erased: true`，系统**接受**，
+而 `memory_records.content` 原文**一字未动**。⇒ §42.4 两条同时落空：「清理侧给出完成状态」
+的状态是**调用方给的**；「MUST NOT 宣称已完全擦除」被一个**零执行支撑**的宣称穿透。
+⚠️ W110 报告如实写着「副本清除未执行」，而端点却允许宣称已清完 ⇒ **交付面自相矛盾**。
+
+**裁定**：**结论不进请求体**（`purge_state`/`claims_fully_erased` 删除，留同名按未知字段拒 `400`，
+MUST NOT 静默忽略——那等于把缺陷换位置）；`third_party_retention` **保留**（它是**事实**，
+只有调用方知道）。`body_purged` **从存储读**（`Store::memory_body_purged_at`），
+新增拒因 `ErasedClaimWithoutPurge`（「已完全擦除」而载荷一次都没清过）。
+**判定顺序（Complete → body_purged → 留存）由可达性决定**：反过来排会让
+`ErasedClaimWithoutCompletePurge` **不可达**，用例当场红。
+
+**执行体** `Composition::purge_memory`：先阻断 → 再清载荷（`content=''` + `purged_at_ms`，
+**只置一次**、**行保留**为 tombstone）→ 再清点副本清单。已撤销的记录**照样能清**。
+**副本清单 `COPY_SITES` 是闭世界、当前为空集**（读取面直扫表、零缓存、零远端、零日志留痕），
+由**代码派生**的落点集合钉住；空集 MUST 被**清点并报 0**（W92 的 `continue` 陷阱）。
+**口径写进形状**：`physical_bytes_erased` **恒 `false`**——置空一列不是介质级擦除。
+
+**顺带兑现一条旧规则**：`version_eight_upgrade_...` 原写 `VERSION - 1`，`VERSION` 升到 9 之后
+它**悄悄改测了 v8→v9**、用例名成了不实陈述 ⇒ 已钉死 `const MEMORY_REVOCATION: usize = 8`。
+⇒ **「钉住具体版本号、MUST NOT 写 `VERSION - 1`」这条硬规则第二次兑现**（第一次是 W109 的回归）。
+
+**注入 3 组 7 红**，每组 ≥1、`sha256` **逐字节**还原（**用编辑工具**）：I1 只记时刻不清载荷 ⇒ 3；
+I2 控制面重新接受结论字段 ⇒ 3；I3 登记一个不存在的清除体 ⇒ 1。
+⚠️ I3 的信号：清点**照报** `copy_sites_cleared = 1`（它数清单长度），只有闭世界判据抓住
+⇒ **计数正确 ≠ 清单正确**。
+
+**如实披露**：只承诺**逻辑**擦除（`physical_bytes_erased` 恒 `false`）；远端留存清除未做
+（属知识链那套 `RemoteRetention`）；介质级擦除**明确不做**。
+**H03/H04 `status` 仍 `pending`**——闭合的是「清除侧：字段 → 动作」，**不是验收达标**。
+
+见 [W111 报告](reports/2026-10-15-w111-memory-purge-surface.md)、[ADR 0089](adr/0089-memory-purge-surface.md)、
+`openspec/changes/2026-10-15-w111-memory-purge-surface/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

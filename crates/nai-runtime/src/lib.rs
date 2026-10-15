@@ -19,7 +19,8 @@ pub use assembly::{
 };
 pub use composition::{BRINGUP_OPERATION, Composition, ControlAction, DutyEvent, ObservedFault};
 pub use memory::{
-    MemoryAdapter, MemoryForgetError, MemoryReadError, MemoryWriteOutcome, MemoryWriteRefusal,
+    COPY_SITES, CopySite, MemoryAdapter, MemoryForgetError, MemoryReadError, MemoryWriteOutcome,
+    MemoryWriteRefusal, PurgeReport,
 };
 pub use observation::{ObservationOutcome, ObservationRefusal};
 pub use ramp::{RampOutcome, RampRefusal};

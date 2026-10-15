@@ -776,6 +776,8 @@ struct RecordingSurface {
     seen_scopes: Mutex<Vec<(String, String)>>,
     seen_kinds: Mutex<Vec<Vec<MemoryKind>>>,
     seen_budgets: Mutex<Vec<usize>>,
+    /// W111: 第三方留存是**事实**，MUST 由路由原样转交到接缝（不许在控制面被改写）。
+    seen_retention: Mutex<Vec<Option<String>>>,
     script: MemoryScript,
 }
 
@@ -787,6 +789,7 @@ impl RecordingSurface {
             seen_scopes: Mutex::new(Vec::new()),
             seen_kinds: Mutex::new(Vec::new()),
             seen_budgets: Mutex::new(Vec::new()),
+            seen_retention: Mutex::new(Vec::new()),
             script,
         }
     }
@@ -816,10 +819,23 @@ impl MemorySurface for RecordingSurface {
             MemoryScript::Fault(code) => MemoryControlResult::Fault(code),
         }
     }
-    fn forget(&self, _request: &MemoryForgetRequest) -> MemoryControlResult<i64> {
+    fn forget(&self, request: &MemoryForgetRequest) -> MemoryControlResult<MemoryPurgeReport> {
         self.forgets.fetch_add(1, Ordering::SeqCst);
+        self.seen_retention
+            .lock()
+            .unwrap()
+            .push(request.third_party_retention.clone());
         match self.script {
-            MemoryScript::Ok => MemoryControlResult::Ok(1_700_000_000_000),
+            MemoryScript::Ok => MemoryControlResult::Ok(MemoryPurgeReport {
+                record_id: request.record_id.clone(),
+                revoked_at_ms: 1_700_000_000_000,
+                payload_purged_at_ms: 1_700_000_000_001,
+                copy_sites_cleared: 0,
+                purge_state: "complete",
+                payload_cleared: true,
+                // W111: 实现端 MUST NOT 报 `true`——本仓未做介质级擦除。
+                physical_bytes_erased: false,
+            }),
             MemoryScript::Rejected(reason) => MemoryControlResult::Rejected(reason),
             MemoryScript::Fault(code) => MemoryControlResult::Fault(code),
         }
@@ -1060,6 +1076,7 @@ async fn memory_forget_labels_round_trip_exhaustively() {
     // 非空洞守卫：每个在册标签都 MUST 被路由认得。加一个变体而此处没跟上 ⇒ 红。
     let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
     let h = memory_harness(&["memory.forget"], Some(surface.clone())).await;
+
     for trigger in ForgetTrigger::ALL {
         let response = memory_post(
             &h,
@@ -1069,18 +1086,28 @@ async fn memory_forget_labels_round_trip_exhaustively() {
         .await;
         assert_eq!(response.status(), 200, "trigger {}", trigger.label());
     }
-    for state in PurgeState::ALL {
+    assert_eq!(surface.forgets(), ForgetTrigger::ALL.len());
+
+    // W111: `purge_state` 从**事实**降级为**结论**，因而不再是请求字段。
+    // 它 MUST 被**拒**，MUST NOT 被静默忽略——静默忽略会让调用方以为自己的宣称生效了。
+    for state in nai_kernel::evaluate::memory::PurgeState::ALL {
         let response = memory_post(
             &h,
             "/api/v1/memory/forget",
             &json!({"record_id": "r", "purge_state": state.label()}),
         )
         .await;
-        assert_eq!(response.status(), 200, "purge {}", state.label());
+        assert_eq!(
+            response.status(),
+            400,
+            "purge_state 是结论而非请求字段，MUST 被拒：{}",
+            state.label()
+        );
     }
     assert_eq!(
         surface.forgets(),
-        ForgetTrigger::ALL.len() + PurgeState::ALL.len()
+        ForgetTrigger::ALL.len(),
+        "被拒的请求 MUST NOT 到达后端"
     );
 }
 
@@ -1097,4 +1124,92 @@ async fn memory_forget_defaults_take_the_safe_direction() {
         200
     );
     assert_eq!(surface.forgets(), 1);
+}
+
+// ---------------------------------------------------------------------------
+// W111：清除结论由**系统**给出，调用方 MUST NOT 参与构造
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn the_forget_response_carries_the_systems_own_purge_conclusion() {
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
+    let h = memory_harness(&["memory.forget"], Some(surface.clone())).await;
+
+    let response = memory_post(
+        &h,
+        "/api/v1/memory/forget",
+        &json!({"record_id": "memory-1", "trigger": "user_request"}),
+    )
+    .await;
+    assert_eq!(response.status(), 200);
+    let body: Value = response.json().await.unwrap();
+
+    // 清除的完成状态、清除时刻、副本清点结果都 MUST 在响应里，且由实现端给出。
+    assert_eq!(body["record_ref"], "memory-1");
+    assert_eq!(body["purge_state"], "complete");
+    assert_eq!(body["copy_sites_cleared"], 0);
+    assert!(
+        body["payload_purged_at_utc_ms"].is_string(),
+        "清除时刻 MUST 出现在响应里：否则「可验证」无从谈起"
+    );
+    // 口径写进形状：逻辑擦除，**恒不**宣称介质级擦除。
+    assert_eq!(body["erased"]["scope"], "logical");
+    assert_eq!(body["erased"]["payload_cleared"], true);
+    assert_eq!(
+        body["erased"]["physical_bytes_erased"], false,
+        "本仓未做介质级擦除，响应 MUST NOT 把它报成 true"
+    );
+    assert_eq!(surface.forgets(), 1, "接线 MUST 真被调用");
+}
+
+#[tokio::test]
+async fn a_caller_supplied_conclusion_field_is_refused_before_the_seam() {
+    // W111 的核心修复点：结论字段从请求体**删除**。若只是「不再使用」而静默忽略，
+    // 调用方会以为自己的宣称生效了——那正是 W110 交付面与实际能力矛盾的地方。
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
+    let h = memory_harness(&["memory.forget"], Some(surface.clone())).await;
+
+    for (field, value) in [
+        ("claims_fully_erased", json!(true)),
+        ("purge_state", json!("complete")),
+        ("claims_fully_erased", json!(false)),
+    ] {
+        let response = memory_post(
+            &h,
+            "/api/v1/memory/forget",
+            &json!({"record_id": "r", field: value}),
+        )
+        .await;
+        assert_eq!(response.status(), 400, "{field} MUST 被拒");
+        let body: Value = response.json().await.unwrap();
+        assert!(
+            body["error"]["message"].as_str().unwrap().contains(field),
+            "错误消息 MUST 点名那个字段：{body}"
+        );
+    }
+    assert_eq!(
+        surface.forgets(),
+        0,
+        "被拒的请求 MUST NOT 到达后端——否则「拒」只是装饰"
+    );
+}
+
+#[tokio::test]
+async fn the_third_party_retention_fact_is_forwarded_verbatim() {
+    // 留存是**事实**（只有调用方知道），与被删掉的两个**结论**字段不同层：
+    // 控制面 MUST 原样转交，MUST NOT 改写、也不 MUST NOT 丢弃。
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
+    let h = memory_harness(&["memory.forget"], Some(surface.clone())).await;
+
+    let response = memory_post(
+        &h,
+        "/api/v1/memory/forget",
+        &json!({"record_id": "r", "third_party_retention": "provider-retains-30d"}),
+    )
+    .await;
+    assert_eq!(response.status(), 200);
+    assert_eq!(
+        surface.seen_retention.lock().unwrap().as_slice(),
+        &[Some("provider-retains-30d".to_owned())]
+    );
 }

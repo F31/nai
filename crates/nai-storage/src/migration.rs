@@ -2,8 +2,8 @@ use crate::{Operation, Result, error, hash, utc_ms};
 use nai_contracts::v1::ErrorCode;
 use rusqlite::{Connection, TransactionBehavior};
 
-pub(crate) const VERSION: i64 = 8;
-const SQL: [&str; 8] = [
+pub(crate) const VERSION: i64 = 9;
+const SQL: [&str; 9] = [
     include_str!("../../../migrations/sqlite/0001-foundation.sql"),
     include_str!("../../../migrations/sqlite/0002-authority.sql"),
     include_str!("../../../migrations/sqlite/0003-knowledge-index.sql"),
@@ -12,6 +12,7 @@ const SQL: [&str; 8] = [
     include_str!("../../../migrations/sqlite/0006-utterance-display-text.sql"),
     include_str!("../../../migrations/sqlite/0007-decision-log-assembly-kind.sql"),
     include_str!("../../../migrations/sqlite/0008-memory-revocation.sql"),
+    include_str!("../../../migrations/sqlite/0009-memory-purge.sql"),
 ];
 
 pub(crate) fn verify(connection: &Connection) -> Result<i64> {
@@ -237,13 +238,20 @@ mod tests {
     /// 但「老行的新列是什么」才是要钉的事实：它 MUST 是 NULL（未撤销），MUST NOT 是 0——
     /// 0 会被 `revoked_at_ms.is_some()` 读成「1970 年就已撤销」，把**每一行老记忆**一次性
     /// 判死。这条升级路径 MUST 在一个**已有行**的库上跑：空表上的 `ALTER TABLE` 什么也证明不了。
+    ///
+    /// ⚠️ **版本号钉死**（W111 修）：此处原写 `VERSION as usize - 1`——正是本文件上方
+    /// 警告过的那种写法。W111 把 `VERSION` 升到 9 之后，它**悄悄改测了 v8→v9**：
+    /// 用例名还写着 version_eight，而被测对象已经不是那一次升级。
+    /// 钉住具体数字后，后续升版本不会再改变这里被测的对象。
     #[test]
     fn version_eight_upgrade_preserves_memory_rows_and_defaults_the_revocation_column_to_null() {
+        /// `0008-memory-revocation.sql` 的版本号。改它 MUST 同时改用例名。
+        const MEMORY_REVOCATION: usize = 8;
         let mut db = Connection::open_in_memory().unwrap();
-        for (index, sql) in SQL.iter().take(VERSION as usize - 1).enumerate() {
+        for (index, sql) in SQL.iter().take(MEMORY_REVOCATION - 1).enumerate() {
             apply(&mut db, &op(), index as i64 + 1, sql).unwrap();
         }
-        assert_eq!(verify(&db).unwrap(), VERSION - 1);
+        assert_eq!(verify(&db).unwrap(), (MEMORY_REVOCATION - 1) as i64);
         db.execute(
             "INSERT INTO workspaces(workspace_id,name) VALUES('w','legacy')",
             [],
@@ -303,5 +311,56 @@ mod tests {
             })
             .unwrap();
         assert_eq!(revoked, None);
+    }
+
+    /// W111: `0009-memory-purge.sql` 给 `memory_records` 加 `purged_at_ms`。
+    ///
+    /// 要钉的是**两件事**，且它们**互不相同**：
+    /// * 老行在新列上是 `NULL`（**未清除**），MUST NOT 是 0——0 会被任何按值比较读成
+    ///   「1970 年就已清」，让**每一行**老记忆一夜之间变成「已擦除」；
+    /// * 载荷 `content` **一字未动**——加列不是清除。
+    ///
+    /// 同样 MUST 在一个**已有行**的库上跑：空表上的 `ALTER TABLE` 什么也证明不了。
+    #[test]
+    fn version_nine_upgrade_preserves_the_payload_and_defaults_the_purge_column_to_null() {
+        /// `0009-memory-purge.sql` 的版本号。改它 MUST 同时改用例名。
+        const MEMORY_PURGE: usize = 9;
+        let mut db = Connection::open_in_memory().unwrap();
+        for (index, sql) in SQL.iter().take(MEMORY_PURGE - 1).enumerate() {
+            apply(&mut db, &op(), index as i64 + 1, sql).unwrap();
+        }
+        assert_eq!(verify(&db).unwrap(), (MEMORY_PURGE - 1) as i64);
+        db.execute(
+            "INSERT INTO workspaces(workspace_id,name) VALUES('w','legacy')",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            "INSERT INTO sessions(session_id,workspace_id) VALUES('session-1','w')",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            "INSERT INTO memory_records(workspace_id,record_id,session_id,kind,purpose,authorization_ref,content,expires_at_ms) \
+             VALUES('w','memory-legacy','session-1','session','order_status','auth-1','body',4102444800000)",
+            [],
+        )
+        .unwrap();
+
+        migrate(&mut db, &op()).unwrap();
+        assert_eq!(verify(&db).unwrap(), VERSION);
+
+        let (content, purged): (String, Option<i64>) = db
+            .query_row(
+                "SELECT content,purged_at_ms FROM memory_records WHERE record_id='memory-legacy'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(content, "body", "加列 MUST NOT 改写载荷");
+        assert_eq!(
+            purged, None,
+            "老行的清除时刻 MUST 是 NULL（未清除），MUST NOT 是 0"
+        );
     }
 }

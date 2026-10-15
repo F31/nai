@@ -113,10 +113,17 @@ D06还必须复检epoch、审批hash、事实和媒体lease。
 `POST /api/v1/memory/read`（权限 `memory.read`）与 `POST /api/v1/memory/forget`（权限 `memory.forget`）
 经它调到装配根。作用域维度由**控制面自身的绑定**给出、请求里出现同名字段一律忽略；
 判定**只在一处**（内核），控制面与适配器都只转发。
-**仍未接线**的是：§42.4 的**清除副本**一侧（W109/W110 都只到阻断，清除需要另一条工作）、
-Pro 跨会话（§42.5：授权/审批/租约/设备身份不跨场继承）。
+**已由 W111 订正（清除侧已从「字段」变成「动作」）**：W111 给 `ForgetOutcome` 增 `body_purged`
+——它**从存储读出**（`Store::memory_body_purged_at`），不是调用方能填的字段；并新增拒因
+`ErasedClaimWithoutPurge`（「已完全擦除」而载荷一次都没清过）。`forget()` 的检查顺序
+（Complete → body_purged → 留存）由**可达性**决定：反过来排会让
+`ErasedClaimWithoutCompletePurge` 不可达。清除执行体 `Composition::purge_memory`
+先阻断、再清载荷、最后清点副本清单 `COPY_SITES`（**当前为空集**，且由代码派生的落点集合钉住）。
+
+**仍未接线**的是：Pro 跨会话（§42.5：授权/审批/租约/设备身份不跨场继承）；
+远端留存清除（§24.4 知识链那套 `RemoteRetention`，与记忆记录不共用落点）。
 见 [ADR 0085](adr/0085-memory-write-gate-wiring.md)、[ADR 0087](adr/0087-memory-read-surface.md)、
-[ADR 0088](adr/0088-memory-control-surface.md)。
+[ADR 0088](adr/0088-memory-control-surface.md)、[ADR 0089](adr/0089-memory-purge-surface.md)。
 
 ## W66 harness 观测与逐层具名降级（V3.11 §47.1、§47.4；验收 H15/H17）
 

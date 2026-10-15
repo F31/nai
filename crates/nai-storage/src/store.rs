@@ -825,6 +825,81 @@ impl Store {
         Ok(now)
     }
 
+    /// W111: §42.4 清理侧的**执行体**——真正把载荷从库里清掉。
+    ///
+    /// 与 [`Self::block_memory_read`] 同形的三条刻意的取舍：
+    /// * **只置一次、不覆盖**：已清过就返回**同一个** `purged_at_ms`。若每次都刷新，
+    ///   「什么时候清的」会被后来的一次改写，而那正是「可验证」要钉的东西。
+    /// * **保留该行**：§24.4「删除先发布 tombstone」⇒ 被清的是 `content`，不是行。
+    ///   行还在，「这条记录被遗忘过」才有凭据。
+    /// * **已撤销照样能清**：读取侧已阻断**不是**拒绝清除的理由——那会让一条被遗忘的记录
+    ///   因为「已经不能读了」而永远留在库里。
+    ///
+    /// ⚠️ **这不是介质级擦除**：SQLite 的页与 WAL 可能仍留有旧字节。故上层 MUST NOT
+    /// 据此宣称「已完全擦除」（`nai_kernel` 的 `body_purged` 只支撑**逻辑**口径）。
+    pub fn purge_memory_body(
+        &mut self,
+        op: &Operation,
+        workspace: &str,
+        actor: &str,
+        record_id: &str,
+    ) -> Result<i64> {
+        self.start(op)?;
+        id(record_id)?;
+        access(&self.conn, workspace, actor, "session.manage", "*")?;
+        let existing: Option<i64> = self
+            .conn
+            .query_row(
+                "SELECT purged_at_ms FROM memory_records WHERE workspace_id=?1 AND record_id=?2",
+                params![workspace, record_id],
+                |r| r.get(0),
+            )
+            .optional()?
+            .ok_or_else(|| error(ErrorCode::InvalidArgument, "memory record missing"))?;
+        if let Some(purged) = existing {
+            op.check()?;
+            return Ok(purged);
+        }
+        let now = utc_ms()?;
+        self.conn.execute(
+            "UPDATE memory_records SET content='' WHERE workspace_id=?1 AND record_id=?2 AND purged_at_ms IS NULL",
+            params![workspace, record_id],
+        )?;
+        self.conn.execute(
+            "UPDATE memory_records SET purged_at_ms=?1 WHERE workspace_id=?2 AND record_id=?3 AND purged_at_ms IS NULL",
+            params![now, workspace, record_id],
+        )?;
+        op.check()?;
+        Ok(now)
+    }
+
+    /// W111: 载荷**是否真的被清过**——由存储派生，不是调用方的说法。
+    ///
+    /// §42.4 的判定需要这个事实，而调用方给的 `purge_state` 只是陈述。
+    /// 读列（而不是收参数）是 [`Self::block_memory_read`] 之外的第二个「事实派生源」。
+    pub fn memory_body_purged_at(
+        &mut self,
+        op: &Operation,
+        workspace: &str,
+        actor: &str,
+        record_id: &str,
+    ) -> Result<Option<i64>> {
+        self.start(op)?;
+        id(record_id)?;
+        access(&self.conn, workspace, actor, "session.manage", "*")?;
+        let purged: Option<i64> = self
+            .conn
+            .query_row(
+                "SELECT purged_at_ms FROM memory_records WHERE workspace_id=?1 AND record_id=?2",
+                params![workspace, record_id],
+                |r| r.get(0),
+            )
+            .optional()?
+            .ok_or_else(|| error(ErrorCode::InvalidArgument, "memory record missing"))?;
+        op.check()?;
+        Ok(purged)
+    }
+
     pub fn approve(
         &mut self,
         op: &Operation,

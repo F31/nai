@@ -7,7 +7,6 @@ use hyper_util::rt::TokioIo;
 use nai_contracts::{control_http::SCHEMAS_JSON, v1::*};
 use nai_kernel::evaluate::memory::{
     ForgetTrigger, MemoryKind, MemoryQuery, MemoryReadOutcome, MemoryRejection, MemoryScope,
-    PurgeState,
 };
 use nai_kernel::session::{CommandLedger, Session, SessionError};
 use nai_media_core::EmergencyHandle;
@@ -160,16 +159,39 @@ pub enum MemoryControlResult<T> {
     Fault(ErrorCode),
 }
 
-/// §42.4 一次遗忘的请求。四个字段是**调用方自己的陈述**，不是判定结论：
-/// 调用方只陈述它**自己**知道的部分（清理进展、第三方留存、是否宣称已完全擦除）；
-/// 「读取侧是否已阻断」不是调用方可断言的字段——它由阻断真的发生这一事实得出。
+/// §42.4 一次遗忘的请求。**只有事实，没有结论**。
+///
+/// W110 曾让调用方自带 `purge_state` 与 `claims_fully_erased`——那两个是**结论**，
+/// 而结论只能由执行得出。实测（`claiming_fully_erased_must_leave_no_payload_in_the_store`）：
+/// 调用方自称「副本已清、已完全擦除」时系统**接受**，而载荷在库里一字未动。
+/// 故本轮**删除**这两个字段；仍留在请求体里的同名字段按**未知字段**被拒（`400`），
+/// MUST NOT 静默忽略一个自称已擦除的字段。
+///
+/// 保留的 `third_party_retention` 是**事实**而不是结论：第三方留存只有调用方知道
+/// （本仓不接触任何第三方存储），删掉它会把真实信息赶进「要么谎称没有、要么不告知」。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MemoryForgetRequest {
     pub record_id: String,
     pub trigger: ForgetTrigger,
-    pub purge_state: PurgeState,
     pub third_party_retention: Option<String>,
-    pub claims_fully_erased: bool,
+}
+
+/// 清除的**系统结论**。全部由执行得出，接缝实现 MUST NOT 让调用方参与构造。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemoryPurgeReport {
+    pub record_id: String,
+    /// 读取侧阻断生效中的时刻（已阻断则返回原有时刻，MUST NOT 覆盖）。
+    pub revoked_at_ms: i64,
+    /// 载荷清除生效中的时刻（只置一次）。
+    pub payload_purged_at_ms: i64,
+    /// 被清点的副本点数量；空集也报 `0`。
+    pub copy_sites_cleared: usize,
+    /// 清理侧完成状态的稳定标签（`not_started` / `in_progress` / `complete` / `blocked_third_party`）。
+    pub purge_state: &'static str,
+    /// 载荷是否真的不在库里了。
+    pub payload_cleared: bool,
+    /// 恒为 `false`：本仓未做介质级擦除。MUST NOT 报成 `true`。
+    pub physical_bytes_erased: bool,
 }
 
 /// 记忆面的**接缝**。
@@ -187,9 +209,9 @@ pub struct MemoryForgetRequest {
 pub trait MemorySurface: Send + Sync {
     /// §42.3 读取：取数 → 诚实派生 → 判定。
     fn read(&self, query: &MemoryQuery) -> MemoryControlResult<MemoryReadOutcome>;
-    /// §42.4 遗忘：**先**阻断读取，**再**判这次遗忘的陈述是否如实。
-    /// 返回**生效中的**撤销时刻（已撤销则返回原有时刻，MUST NOT 覆盖）。
-    fn forget(&self, request: &MemoryForgetRequest) -> MemoryControlResult<i64>;
+    /// §42.4 遗忘 + 清除：**先**阻断读取，**再**清载荷、清点副本；
+    /// 返回**系统结论**（MUST NOT 由调用方参与构造）。
+    fn forget(&self, request: &MemoryForgetRequest) -> MemoryControlResult<MemoryPurgeReport>;
 }
 
 /// Root-created, single device credential. Only its hash is retained here.
@@ -722,12 +744,14 @@ impl ControlApi {
         }
     }
 
-    /// §42.4 遗忘：**先**阻断读取，**再**判这次遗忘的陈述是否如实。
+    /// §42.4 遗忘 + 清除：**先**阻断读取，**再**清载荷、清点副本，结论由系统给出。
     ///
-    /// 调用方只陈述**它自己**知道的部分；「读取侧是否已阻断」不是它的字段。
-    /// 缺省值一律取**安全方向**：`trigger` 缺 ⇒ 用户请求删除（本控制面正是它的载体），
-    /// `purge_state` 缺 ⇒ 未开始（不宣称已清除），`claims_fully_erased` 缺 ⇒ 不宣称。
+    /// 请求体**只有事实**（`record_id` / `trigger` / `third_party_retention`）。
+    /// **未知字段被拒**而不是被忽略：`purge_state` 与 `claims_fully_erased` 是**结论**
+    /// （W111 实测：照抄它们等于接受一个零执行支撑的「已完全擦除」），
+    /// 静默忽略会让调用方以为自己的宣称生效了。
     fn memory_forget(&self, bytes: &[u8]) -> HttpResponse {
+        const ALLOWED: [&str; 3] = ["record_id", "trigger", "third_party_retention"];
         let body: Value = match serde_json::from_slice(bytes) {
             Ok(Value::Object(body)) => Value::Object(body),
             Ok(_) => {
@@ -745,6 +769,16 @@ impl ControlApi {
                 );
             }
         };
+        if let Some(unknown) = body
+            .as_object()
+            .and_then(|object| object.keys().find(|key| !ALLOWED.contains(&key.as_str())))
+        {
+            return error(
+                400,
+                ErrorCode::InvalidArgument,
+                &format!("memory forget field not accepted: {unknown}"),
+            );
+        }
         let Some(record_id) = body.get("record_id").and_then(Value::as_str) else {
             return error(
                 400,
@@ -783,42 +817,13 @@ impl ControlApi {
                 trigger
             }
         };
-        let purge_state = match body.get("purge_state") {
-            None | Some(Value::Null) => PurgeState::NotStarted,
-            Some(value) => {
-                let Some(name) = value.as_str() else {
-                    return error(
-                        400,
-                        ErrorCode::InvalidArgument,
-                        "memory purge state must be a string",
-                    );
-                };
-                let Some(state) = PurgeState::ALL
-                    .iter()
-                    .copied()
-                    .find(|state| state.label() == name)
-                else {
-                    return error(
-                        400,
-                        ErrorCode::InvalidArgument,
-                        "memory purge state unknown",
-                    );
-                };
-                state
-            }
-        };
         let request = MemoryForgetRequest {
             record_id: record_id.to_owned(),
             trigger,
-            purge_state,
             third_party_retention: body
                 .get("third_party_retention")
                 .and_then(Value::as_str)
                 .map(|value| value.to_owned()),
-            claims_fully_erased: body
-                .get("claims_fully_erased")
-                .and_then(Value::as_bool)
-                .unwrap_or(false),
         };
         let Some(surface) = self.memory.as_ref() else {
             return error(
@@ -828,13 +833,22 @@ impl ControlApi {
             );
         };
         match surface.forget(&request) {
-            MemoryControlResult::Ok(revoked_at_ms) => reply(
+            MemoryControlResult::Ok(report) => reply(
                 200,
                 json!({
-                    "record_ref": request.record_id,
-                    "revoked_at_utc_ms": revoked_at_ms.to_string(),
-                    // 如实：阻断已生效，**清除副本**不在本入口（被遗忘的记录仍在库里）。
-                    "safe_message": "读取侧已阻断；副本清除未执行，该记录仍存在于库中。",
+                    "record_ref": report.record_id,
+                    "revoked_at_utc_ms": report.revoked_at_ms.to_string(),
+                    "payload_purged_at_utc_ms": report.payload_purged_at_ms.to_string(),
+                    "copy_sites_cleared": report.copy_sites_cleared,
+                    "purge_state": report.purge_state,
+                    // 口径写进形状：逻辑擦除，**未**做介质级擦除。
+                    "erased": {
+                        "scope": "logical",
+                        "payload_cleared": report.payload_cleared,
+                        "physical_bytes_erased": report.physical_bytes_erased,
+                    },
+                    "safe_message": "读取侧已阻断，载荷已清空，已按清单清点副本；\
+                    介质级擦除未执行也未验证，故不宣称完全擦除。",
                 }),
             ),
             MemoryControlResult::Rejected(rejection) => {

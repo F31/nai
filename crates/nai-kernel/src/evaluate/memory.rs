@@ -823,6 +823,12 @@ pub struct ForgetOutcome {
     pub record_ref: String,
     /// §42.4: 读取侧先失效——顺序不能反。
     pub read_side_blocked: bool,
+    /// §42.4: **载荷**真的被清过——与 `read_side_blocked` 同形，都是**事实**而非入参。
+    ///
+    /// W111 实测：在此之前「宣称已完全擦除」只需调用方把 `purge_state` 写成 `complete`，
+    /// 系统就接受，而 `memory_records.content` 一字未动。判定读到的是**说法**。
+    /// 本字段 MUST 由「清除动作真的发生过」得出，否则它就是恒真的装饰。
+    pub body_purged: bool,
     pub purge_state: PurgeState,
     /// §24.4: 第三方留存说明；存在留存时必须在使用前明示。
     pub third_party_retention: Option<String>,
@@ -837,6 +843,7 @@ impl ForgetOutcome {
             trigger,
             record_ref: record_ref.into(),
             read_side_blocked: true,
+            body_purged: false,
             purge_state: PurgeState::NotStarted,
             third_party_retention: None,
             claims_fully_erased: false,
@@ -861,8 +868,16 @@ pub fn forget(outcome: &ForgetOutcome) -> Result<(), MemoryRejection> {
         return Err(MemoryRejection::ThirdPartyRetentionUndisclosed);
     }
     if outcome.claims_fully_erased {
+        // 判定顺序：**先**查陈述内部是否自洽，**再**查执行事实，**最后**查第三方留存。
+        // 顺序不是随意的：每条拒因都 MUST 有可达的构造路径，反过来排会把其中一条变成死分支。
         if outcome.purge_state != PurgeState::Complete {
             return Err(MemoryRejection::ErasedClaimWithoutCompletePurge);
+        }
+        if !outcome.body_purged {
+            // §42.4: 「MUST NOT 宣称已完全擦除」。这一条是 W111 的核心：
+            // 在它之前，一次「已完全擦除」只需要副本状态自洽，而**清除可以一次都没发生**。
+            // `body_purged` 由实现端从**存储**派生（不是入参），故这条拒绝不是装饰。
+            return Err(MemoryRejection::ErasedClaimWithoutPurge);
         }
         if !disclosed {
             return Err(MemoryRejection::ErasedClaimWithThirdPartyRetention);
@@ -903,15 +918,16 @@ pub enum MemoryRejection {
     OverBudget,
     // 遗忘（§42.4）
     ReadSideNotBlocked,
+    ErasedClaimWithoutPurge,
     ErasedClaimWithoutCompletePurge,
     ErasedClaimWithThirdPartyRetention,
     ThirdPartyRetentionUndisclosed,
 }
 
 impl MemoryRejection {
-    /// 全部 23 个拒绝名。测试据此断言「构造出的拒绝集合**恰为**全部」——
+    /// 全部 24 个拒绝名。测试据此断言「构造出的拒绝集合**恰为**全部」——
     /// 既证每条都能被构造，也防出现未登记的名字。
-    pub const ALL: [MemoryRejection; 23] = [
+    pub const ALL: [MemoryRejection; 24] = [
         MemoryRejection::UntrustedSourceAsFact,
         MemoryRejection::UnplayedCandidateAsFact,
         MemoryRejection::WriteWithoutScope,
@@ -932,6 +948,7 @@ impl MemoryRejection {
         MemoryRejection::ApproximateSubstitution,
         MemoryRejection::OverBudget,
         MemoryRejection::ReadSideNotBlocked,
+        MemoryRejection::ErasedClaimWithoutPurge,
         MemoryRejection::ErasedClaimWithoutCompletePurge,
         MemoryRejection::ErasedClaimWithThirdPartyRetention,
         MemoryRejection::ThirdPartyRetentionUndisclosed,
@@ -961,6 +978,7 @@ impl MemoryRejection {
             MemoryRejection::ApproximateSubstitution => "approximate_substitution",
             MemoryRejection::OverBudget => "over_budget",
             MemoryRejection::ReadSideNotBlocked => "read_side_not_blocked",
+            MemoryRejection::ErasedClaimWithoutPurge => "erased_claim_without_purge",
             MemoryRejection::ErasedClaimWithoutCompletePurge => {
                 "erased_claim_without_complete_purge"
             }

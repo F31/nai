@@ -239,7 +239,23 @@ MUST NOT 补判定没输出的段——§41.2 判的是**调用方给的数**，
 本入口就会自己构造一个恒真的 `ForgetOutcome`，判定变成装饰；代价是 `ReadSideNotBlocked`
 经本入口**结构上不可达**（其覆盖在内核 `forget()` 直连的用例里，已在守卫的闭世界里**具名登记**）。
 ⚠️ **阻断 ≠ 清除**：行仍在库里，只是撤销列有了时刻；重复阻断返回**原有**时刻，MUST NOT 覆盖
-（撤销时刻是一条事实，重写它等于篡改——已由注入 I3 实测）。**清除副本不在此处**，那是另一条工作。
+（撤销时刻是一条事实，重写它等于篡改——已由注入 I3 实测）。
+**W111 补齐了清除侧**：走 `Composition::purge_memory`（先阻断 → 再清载荷 → 再清点副本清单），
+本入口保留给「只要求读取侧失效」的调用方。
+
+### §42.4 清除侧（W111）：清除是**动作**，结论由执行得出
+
+`purge_memory(trigger, record_id, third_party_retention) -> Result<PurgeReport>`：
+`content` 置空 + 记 `purged_at_ms`（**只置一次**），**行保留**为 tombstone（§24.4）；
+已撤销的记录**照样能清**（阻断不是拒绝清除的理由）。
+
+- **副本清单 `COPY_SITES` 是闭世界，当前为空集**：读取面直扫表（无记忆索引）、
+  零缓存层、零远端同步、零 `decision_log`/`audit_records` 写入。判据扫**代码派生**的落点，
+  新增记忆落点而不登记即红。空集 MUST 被**清点并报 `0`**（W92 的 `continue` 陷阱）。
+- **`body_purged` 从存储读**：`Store::memory_body_purged_at`。W111 之前「已完全擦除」
+  只需调用方把 `purge_state` 写成 `complete`，而载荷一字未动（立项判据先跑红，实测过）。
+- **口径写进形状**：`PurgeReport.physical_bytes_erased` **恒 `false`**——置空一列不是
+  介质级擦除（SQLite 页与 WAL 可能留有字节）。本仓**永不**宣称介质级完全擦除。
 
 ## 记忆面的控制面接线（W110，验收 H03/H04）
 
@@ -286,9 +302,8 @@ fn forget(&self, request: &MemoryForgetRequest) -> MemoryControlResult<i64>;
 阻断后重读 ⇒ `revoked`、重复遗忘时刻**不变**、三态映射不丢维度。
 ⚠️ 「装配根忙」用**另一条线程持锁**触发——同线程 `try_lock` 在 Windows 上是未定义形状，MUST NOT 依赖它。
 
-**明确不做（如实）**：§42.4 的**清除副本**一侧仍未建（被遗忘的记录**仍在库里**，只是读不出来）；
-`MemoryPolicy` 本轮**无配置项**（来源是装配点）；Pro 跨会话（§42.5）未覆盖。
-见 [ADR 0088](adr/0088-memory-control-surface.md)。
+**明确不做（如实）**：`MemoryPolicy` 仍**无配置项**（来源是装配点）；Pro 跨会话（§42.5）未覆盖。
+见 [ADR 0088](adr/0088-memory-control-surface.md)、[ADR 0089](adr/0089-memory-purge-surface.md)。
 
 ## 子进程监督（Supervisor）
 

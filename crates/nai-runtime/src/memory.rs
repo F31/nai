@@ -34,7 +34,7 @@
 use crate::composition::{short, utc_ms};
 use crate::{Composition, Result, err};
 use nai_contracts::v1::{ErrorCode, MemoryRecord};
-use nai_control_api::{MemoryControlResult, MemoryForgetRequest, MemorySurface};
+use nai_control_api::{MemoryControlResult, MemoryForgetRequest, MemoryPurgeReport, MemorySurface};
 use nai_kernel::evaluate::memory::{
     ForgetOutcome, ForgetTrigger, MemoryCandidate, MemoryPolicy, MemoryQuery, MemoryReadOutcome,
     MemoryRejection, PurgeState, ScopedRecord, VIEWER_KIND, admit_write, forget, read_records,
@@ -201,12 +201,15 @@ impl Composition {
     /// 陈述是否如实。
     ///
     /// 顺序不可交换：§42.4 原话是「先阻断检索与读取，再异步清除副本」。
-    /// `read_side_blocked` **不是**调用方可断言的字段——它由「阻断真的发生了」这一事实
-    /// 得出；调用方只陈述**它自己**知道的部分（清理进展、第三方留存、是否宣称已完全擦除）。
-    /// 否则本入口就会自己构造一个恒真的 `ForgetOutcome`，判定变成装饰。
+    /// `read_side_blocked` 与 `body_purged` 都**不是**调用方可断言的字段——前者由「阻断真的
+    /// 发生了」得出，后者由「载荷真的被清过」得出，**两者都从存储读**。
+    /// 否则本入口就会自己构造一个恒真的 `ForgetOutcome`，判定变成装饰（W111 的立项缺陷
+    /// 正是这个形状：`claims_fully_erased` 无执行支撑也被接受）。
+    ///
+    /// ⚠️ 本入口**只阻断、不清除**：它保留 W110 的形状，供「只要求读取侧失效」的调用方使用。
+    /// 要真正清除载荷走 [`Self::purge_memory`]——那里结论由系统得出。
     ///
     /// 返回**生效中的**撤销时刻（已撤销则返回原有时刻，不覆盖）。
-    /// 清除副本不在本入口——那需要另一条工作。
     pub fn forget_memory(
         &self,
         trigger: ForgetTrigger,
@@ -218,25 +221,141 @@ impl Composition {
         let operation = short()?;
         let workspace = self.workspace().to_owned();
         let actor = self.actor().to_owned();
-        let revoked_at_ms = {
+        let (revoked_at_ms, body_purged) = {
             let mut store = self
                 .store()
                 .try_lock()
                 .map_err(|_| err(ErrorCode::Conflict, "memory store busy"))?;
-            store
+            let revoked = store
                 .block_memory_read(&operation, &workspace, &actor, record_id)
-                .map_err(|e| MemoryForgetError::Fault(crate::RuntimeError::from(e)))?
+                .map_err(|e| MemoryForgetError::Fault(crate::RuntimeError::from(e)))?;
+            // `body_purged` 是**从存储读出的事实**：W111 之前这里是 `true`（或压根没有这个字段），
+            // 于是「已完全擦除」只需调用方把状态写成 complete。写死一个值＝恒真守卫。
+            let purged = store
+                .memory_body_purged_at(&operation, &workspace, &actor, record_id)
+                .map_err(|e| MemoryForgetError::Fault(crate::RuntimeError::from(e)))?;
+            (revoked, purged.is_some())
         };
         let outcome = ForgetOutcome {
             trigger,
             record_ref: record_id.to_owned(),
             read_side_blocked: true,
+            body_purged,
             purge_state,
             third_party_retention,
             claims_fully_erased,
         };
         forget(&outcome).map_err(MemoryForgetError::Rejected)?;
         Ok(revoked_at_ms)
+    }
+}
+
+/// §42.4: 记忆载荷在**本体之外**还会落在哪里（W111 的副本清单）。
+///
+/// 一个在册点 = 一处**除 `memory_records` 之外**仍能读出记忆载荷的落点（索引、缓存、
+/// 远端镜像、日志留痕）。清除执行体 MUST 逐项清点并清掉，MUST NOT 跳过。
+///
+/// **当前在册为空集**，且这是**被守卫的事实**而不是「还没查」（W111 现测）：
+/// 读取面直扫 `memory_records`（无记忆索引）、runtime 与控制面**零**缓存层、
+/// **零**远端同步、**零** `decision_log` / `audit_records` 写入。
+///
+/// ⚠️ **空集 MUST 被清点并报出 `0`**，MUST NOT 当成「无副本可清」而短路——
+/// 那是 W92 的 `continue` 陷阱：把「没有实例」与「不再被扫」混为一谈。
+/// 将来有人加了记忆索引或远端同步，MUST 同时在此登记并给出清除体，否则闭世界判据会红。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CopySite {
+    /// 稳定名字（判据按它点名）。
+    pub site: &'static str,
+    /// 承载物（表.列 / 缓存键前缀 / 远端容器）。
+    pub carrier: &'static str,
+    /// 清除体的**逐字**名字：判据据此在源码里找它，MUST NOT 靠「看起来清了」。
+    pub clears: &'static str,
+}
+
+/// 副本清单（闭世界）。空 ⇒ 当前无副本残留，且这一点由测试钉住。
+pub const COPY_SITES: &[CopySite] = &[];
+
+/// 一次清除的**结论**。每个字段都由**执行**得出，MUST NOT 由调用方给定。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PurgeReport {
+    pub record_id: String,
+    /// 读取侧阻断生效中的时刻（已阻断则返回原有时刻）。
+    pub revoked_at_ms: i64,
+    /// 载荷清除生效中的时刻（只置一次）。
+    pub payload_purged_at_ms: i64,
+    /// 被清点的副本点数量。**空集也报 `0`**，MUST NOT 报「跳过」。
+    pub copy_sites_cleared: usize,
+    /// 清理侧的完成状态（由清点与清除得出）。
+    pub purge_state: PurgeState,
+    /// 载荷是否真的不在库里了（事实，不是说法）。
+    pub payload_cleared: bool,
+    /// **恒为 `false`**：本仓**没有**做介质级擦除，SQLite 的页与 WAL 可能仍留有旧字节。
+    /// 把置空一列说成「已完全擦除」是 §42.4 明令禁止的那种不实陈述。
+    pub physical_bytes_erased: bool,
+}
+
+impl Composition {
+    /// §42.4: 清除——**先**阻断读取（真的把该行标为已撤销），**再**清载荷、清点副本。
+    ///
+    /// 顺序不可交换：§42.4 原话是「先阻断检索与读取，再异步清除副本」。本入口把两个动作
+    /// 放在**同一次调用**里先后发生——分两次请求会留下「已阻断未清除」的中间态，
+    /// 而那个中间态没有任何东西看守。
+    ///
+    /// **本入口不宣称「已完全擦除」**：它能证明的是逻辑擦除（读取侧已阻断 + 载荷已空 +
+    /// 副本清单已清点）。介质级擦除没做、也没验证，故判定处如实填 `claims_fully_erased: false`，
+    /// 而 `physical_bytes_erased` 由构造保证为 `false`。想宣称完全擦除的调用方走
+    /// [`Self::forget_memory`]，那里会被判定**具名拒绝**。
+    pub fn purge_memory(
+        &self,
+        trigger: ForgetTrigger,
+        record_id: &str,
+        third_party_retention: Option<String>,
+    ) -> std::result::Result<PurgeReport, MemoryForgetError> {
+        let operation = short()?;
+        let workspace = self.workspace().to_owned();
+        let actor = self.actor().to_owned();
+        let (revoked_at_ms, payload_purged_at_ms) = {
+            let mut store = self
+                .store()
+                .try_lock()
+                .map_err(|_| err(ErrorCode::Conflict, "memory store busy"))?;
+            // §42.4: 顺序在这里被**写死**——先阻断，后清载荷。
+            let revoked = store
+                .block_memory_read(&operation, &workspace, &actor, record_id)
+                .map_err(|e| MemoryForgetError::Fault(crate::RuntimeError::from(e)))?;
+            let purged = store
+                .purge_memory_body(&operation, &workspace, &actor, record_id)
+                .map_err(|e| MemoryForgetError::Fault(crate::RuntimeError::from(e)))?;
+            (revoked, purged)
+        };
+        // 副本清点：逐项清（当前在册为空 ⇒ 报 0，**MUST NOT** 短路成「跳过」）。
+        let copy_sites_cleared = COPY_SITES.len();
+        let purge_state = if third_party_retention.is_some() {
+            // §24.4: 有无法删除的第三方留存 ⇒ 副本侧**如实**记为受阻，且必须已明示政策。
+            PurgeState::BlockedThirdParty
+        } else {
+            PurgeState::Complete
+        };
+        let outcome = ForgetOutcome {
+            trigger,
+            record_ref: record_id.to_owned(),
+            read_side_blocked: true,
+            body_purged: true,
+            purge_state,
+            third_party_retention,
+            // 如实：本入口只支撑**逻辑**口径，**MUST NOT** 宣称介质级完全擦除。
+            claims_fully_erased: false,
+        };
+        forget(&outcome).map_err(MemoryForgetError::Rejected)?;
+        Ok(PurgeReport {
+            record_id: record_id.to_owned(),
+            revoked_at_ms,
+            payload_purged_at_ms,
+            copy_sites_cleared,
+            purge_state,
+            payload_cleared: true,
+            physical_bytes_erased: false,
+        })
     }
 }
 
@@ -281,18 +400,25 @@ impl MemorySurface for MemoryAdapter {
         }
     }
 
-    fn forget(&self, request: &MemoryForgetRequest) -> MemoryControlResult<i64> {
+    fn forget(&self, request: &MemoryForgetRequest) -> MemoryControlResult<MemoryPurgeReport> {
         let Ok(root) = self.root.try_lock() else {
             return MemoryControlResult::Fault(ErrorCode::Conflict);
         };
-        match root.forget_memory(
+        match root.purge_memory(
             request.trigger,
             &request.record_id,
-            request.purge_state,
             request.third_party_retention.clone(),
-            request.claims_fully_erased,
         ) {
-            Ok(revoked_at_ms) => MemoryControlResult::Ok(revoked_at_ms),
+            Ok(report) => MemoryControlResult::Ok(MemoryPurgeReport {
+                record_id: report.record_id,
+                revoked_at_ms: report.revoked_at_ms,
+                payload_purged_at_ms: report.payload_purged_at_ms,
+                copy_sites_cleared: report.copy_sites_cleared,
+                purge_state: report.purge_state.label(),
+                payload_cleared: report.payload_cleared,
+                // 口径**由构造**保证：本仓没有做介质级擦除，实现端 MUST NOT 报 `true`。
+                physical_bytes_erased: report.physical_bytes_erased,
+            }),
             Err(MemoryForgetError::Rejected(rejection)) => MemoryControlResult::Rejected(rejection),
             Err(MemoryForgetError::Fault(error)) => MemoryControlResult::Fault(error.code),
         }

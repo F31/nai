@@ -536,9 +536,10 @@ fn a_conservative_forget_is_accepted_for_every_trigger() {
             trigger.label()
         );
     }
-    // 清除完成、无留存、宣称擦除 ⇒ 通过。
+    // 清除完成、**载荷真的清过**、无留存、宣称擦除 ⇒ 通过（W111）。
     let complete = ForgetOutcome {
         purge_state: PurgeState::Complete,
+        body_purged: true,
         claims_fully_erased: true,
         ..ForgetOutcome::blocked(ForgetTrigger::UserRequest, "r-1")
     };
@@ -567,8 +568,21 @@ fn an_erasure_claim_never_outruns_the_purge() {
         Err(MemoryRejection::ErasedClaimWithoutCompletePurge)
     );
 
+    // W111：副本状态说「已清」而**载荷一次都没清过** ⇒ 它自己的拒因。
+    let unpurged = ForgetOutcome {
+        purge_state: PurgeState::Complete,
+        claims_fully_erased: true,
+        ..ForgetOutcome::blocked(ForgetTrigger::PermissionRevoked, "r-1")
+    };
+    assert_eq!(
+        forget(&unpurged),
+        Err(MemoryRejection::ErasedClaimWithoutPurge),
+        "「已完全擦除」而载荷没清过 MUST 是它自己的拒因"
+    );
+
     let retained = ForgetOutcome {
         purge_state: PurgeState::Complete,
+        body_purged: true,
         third_party_retention: Some("第三方镜像保留 30 天".into()),
         claims_fully_erased: true,
         ..ForgetOutcome::blocked(ForgetTrigger::PermissionRevoked, "r-1")
@@ -772,9 +786,20 @@ fn every_named_rejection_is_constructible_and_the_set_is_exact() {
         })
         .unwrap_err(),
     );
+    // W111: 副本状态说「已清」而载荷没清过 —— 必须被单独构造出来，
+    // 否则这条拒因只是「碰巧被别的构造盖住」，集合断言就失去分辨力。
     seen.insert(
         forget(&ForgetOutcome {
             purge_state: PurgeState::Complete,
+            claims_fully_erased: true,
+            ..ForgetOutcome::blocked(ForgetTrigger::Ttl, "r")
+        })
+        .unwrap_err(),
+    );
+    seen.insert(
+        forget(&ForgetOutcome {
+            purge_state: PurgeState::Complete,
+            body_purged: true,
             third_party_retention: Some("镜像".into()),
             claims_fully_erased: true,
             ..ForgetOutcome::blocked(ForgetTrigger::Ttl, "r")
@@ -790,7 +815,7 @@ fn every_named_rejection_is_constructible_and_the_set_is_exact() {
     );
 
     let expected: BTreeSet<MemoryRejection> = MemoryRejection::ALL.iter().copied().collect();
-    assert_eq!(seen.len(), 23, "构造出的拒绝数量与 ALL 不符");
+    assert_eq!(seen.len(), 24, "构造出的拒绝数量与 ALL 不符");
     assert_eq!(
         seen, expected,
         "构造出的拒绝集合必须恰为 MemoryRejection::ALL"
