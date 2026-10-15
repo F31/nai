@@ -78,12 +78,15 @@ W113–W118 的归属项已在各自报告标为既有）。本地复跑：`runn
 
 ## 七、提交 / 推送（归档 + 一次 commit + push，SSH 443）
 
-- 提交 SHA：TBD（主提交，归档后回填）。
-- push 区间：TBD，分支 `main`，SSH 443（`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）。
-- 改动文件：`crates/nai-knowledge-core/tests/remote.rs`（+4 测试，含新增 `Secret` 导入）、`docs/adr/0097-remote-request-construction-closed-world.md`（新建）、`docs/reports/2026-10-16-w119-remote-request-construction-closed-world.md`（新建）、`docs/development-plan.md`（W119 段）、`docs/knowledge.md`（订正注记）、`openspec/specs/knowledge-pipeline/spec.md`（合入 4 条 Requirement）、`openspec/changes/archive/2026-10-16-w119-remote-request-construction-closed-world/`（归档目录）。
-- openspec 三连：`validate w119-remote-request-construction-closed-world --strict` → valid；`archive --yes` → 4 条 Requirement 合入基线；`validate --archived --strict` → 全绿（**117 项，含 w119**，0 failed）。`target-check/` 按纪律排除暂存。
+- 提交 SHA：**`9e6589594c271d69a0cb8e990d0107a50d8ef1e0`**（主提交）。
+- push 区间：**`8b86394..9e65895`**，分支 `main`，SSH 443（`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）。
+- 改动文件：`crates/nai-knowledge-core/tests/remote.rs`（+4 测试，含新增 `Secret` 导入）、`docs/adr/0097-remote-request-construction-closed-world.md`（新建）、`docs/reports/2026-10-16-w119-remote-request-construction-closed-world.md`（新建）、`docs/development-plan.md`（W119 段）、`docs/knowledge.md`（订正注记）、`openspec/specs/knowledge-pipeline/spec.md`（合入 4 条 Requirement）、`openspec/changes/archive/2026-10-16-w119-remote-request-construction-closed-world/`（归档目录）。共 10 文件、+404 行。
+- openspec 三连：`validate w119-remote-request-construction-closed-world --strict` → valid；`archive --yes` → 4 条 Requirement 合入基线（`+ 4, ~ 0, - 0`）；`validate --archived --strict` → 全绿（**117 项，含 w119**，0 failed）。归档目录按**系统日期戳**记为 `2026-10-16-...`。`target-check/` 按纪律排除暂存（显式 `git add -- <path>` 逐个暂存）。
 
 ## 八、CI 观测（主提交 + 回填提交各一次双平台观测）
 
-- **主提交** run id：TBD（workflow `Engineering foundation`）。回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`。若失败，按 W117 的四条瞬态判据诊断（失败集合漂移 / 相关包 git status 空 / 本机全绿 / 另一平台 success），并经 check-run 注解取真实错误。
-- **回填提交**（docs-only）自身 CI 双平台观测：run TBD，回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`。回填提交 CI 自身绿（先例 run 109 failure ⇒ 本次实测 success，不赌）；不为回填提交写 §九，仅做 1 次观测。
+- **主提交** run id：**38768579361**（workflow `Engineering foundation`，event `push`）。回读 `head_sha` = `9e6589594c271d69a0cb8e990d0107a50d8ef1e0`，与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`：
+  - `foundation (windows-latest)` — completed / **success**
+  - `foundation (ubuntu-24.04)` — completed / **success**
+  - 本机门控绿（`GATE_EXIT=0`，见 §六）与 CI 双平台绿一致；判定面闭合经端到端 CI 复核。
+- **回填提交**（docs-only）自身 CI：按纪律做 **1 次**双平台观测（先例 run 109 failure ⇒ 不观测就是赌）。**本报告不为回填提交写 §九**；其自身的观测结论按「**回填提交自身不回填**」记入 memory 日志，**不在本报告占位**——避免为了填一个 run id 再叠加提交、形成回填链（W116–W118 曾这样叠加，本轮起改用时即记录于 memory 的写法）。
