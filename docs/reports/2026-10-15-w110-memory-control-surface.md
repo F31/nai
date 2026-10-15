@@ -165,7 +165,23 @@ I2 的信号最值得记：取数按 session 预筛后，越作用域用例红�
 
 ## 八、归档、提交与 CI（**回填**）
 
-待推送后回填：run id、`head_sha` 与推送 SHA 的核对、双平台矩阵结论。
+- 提交：**`2bc0948`**（19 文件，`+1737 / −12`）；推送：`17bd4b5..2bc0948`（SSH 443）。
+- CI run：**`38660294147`**（`Engineering foundation`）⇒ **`status=completed` / `conclusion=success`**。
+- `head_sha` 核对：回读 **`2bc0948c8bac993e3cb0d171865feb612e6507a2`** == 本次推送 SHA ✓。
+
+三件齐（缺一不算观测到）：列表端点带**完整 40 位** `head_sha` 过滤（`total_count=1`，排除「看着像没触发」）、
+每个端点各带唯一 `cb=<纳秒时间戳>` + 请求头 `Cache-Control: no-cache`（绕开沙箱代理缓存）、
+并**回读 `head_sha` 逐字等于推送 SHA**。查询次数控制在个位数（匿名配额 60/h 按 IP，打满后响应体不含 `status`）。
+
+双平台矩阵：
+
+| job | status | conclusion |
+|---|---|---|
+| `foundation (ubuntu-24.04)` | completed | **success** |
+| `foundation (windows-latest)` | completed | **success** |
+
+⚠️ **本机门控绿 ≠ CI 绿**：本轮两者一致（`EXIT=0` ↔ 双平台 `success`），但这是**两次独立观测**的结果，
+不是由其中一次推断出来的。
 
 ## 九、如实披露、遗留与边界
 
