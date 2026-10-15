@@ -182,4 +182,19 @@ first and fails by name」），因为请求体形状变了却不能让旧 Requi
 
 ### 8.2 修复后的观测
 
-见 §九（回填提交 `2e76bc1` 之后的 CI 结论）。
+修复提交：**`e127dff`**（3 文件）；推送 `2e76bc1..e127dff`（SSH 443）。
+CI run **`38673214513`** ⇒ **`completed` / `success`**；
+`head_sha` 回读 **`e127dff28f251689436f83c0e2ef14b970e38ba6`** == 推送 SHA ✓（完整 40 位过滤 ⇒ `total_count=1`）。
+
+| job | status | conclusion | steps |
+| --- | --- | --- | --- |
+| `foundation (ubuntu-24.04)` | completed | **success** | 26 |
+| `foundation (windows-latest)` | completed | **success** | 26 |
+
+⚠️ 修复提交**自身**的观测就是它自己的复核：TS 生成物同步得**不逐字**的话，
+这一步（`cargo xtask schema --check`）会再红——它红了，所以这次同步是逐字的。
+
+**本轮 CI 观测小结（如实）**：两次 run、**结论相反**（`failure` → `success`），
+但**内容确实变了**（修了一处生成物漂移）⇒ 与 W90 的判据不同，这次**不能**判成「与内容无关的瞬态」，
+而是**由差异本身定位到了根因**。这一条也说明：❌ **「CI 红了 = 平台 flaky」是危险的习惯**。
+本轮 API 查询 **7 次**、非轮询（等待靠「先做别的事再单查」）。
