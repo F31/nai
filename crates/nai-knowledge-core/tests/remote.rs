@@ -1115,3 +1115,45 @@ async fn search_drops_evidence_with_empty_id() {
     );
     assert_eq!(evidence[0].evidence_id, "good");
 }
+
+// W116：RemoteError::status() 闭世界映射守卫
+// remote.rs:37-46 把 RemoteError 各变体钉成 RetrievalStatus，此前「已声明、零判据」。
+// 两条非显然坍缩：Invalid→RetrievalUnavailable、Timeout+Cancelled→RetrievalTimeout。
+// 纯函数、确定性离线、零生产代码改动；覆盖全映射以封闭「已声明≠已执行」的缝。
+#[test]
+fn remote_error_status_unauthorized_maps_to_retrieval_unauthorized() {
+    assert_eq!(
+        RemoteError::Unauthorized.status(),
+        RetrievalStatus::RetrievalUnauthorized
+    );
+}
+
+#[test]
+fn remote_error_status_unavailable_maps_to_retrieval_unavailable() {
+    assert_eq!(
+        RemoteError::Unavailable.status(),
+        RetrievalStatus::RetrievalUnavailable
+    );
+}
+
+#[test]
+fn remote_error_status_invalid_maps_to_retrieval_unavailable() {
+    // 非显然坍缩：Invalid 不映射到独立的 RetrievalInvalid，而是并入 RetrievalUnavailable。
+    assert_eq!(
+        RemoteError::Invalid.status(),
+        RetrievalStatus::RetrievalUnavailable
+    );
+}
+
+#[test]
+fn remote_error_status_timeout_and_cancelled_map_to_retrieval_timeout() {
+    // 非显然坍缩：Timeout 与 Cancelled 都并入 RetrievalTimeout。
+    assert_eq!(
+        RemoteError::Timeout.status(),
+        RetrievalStatus::RetrievalTimeout
+    );
+    assert_eq!(
+        RemoteError::Cancelled.status(),
+        RetrievalStatus::RetrievalTimeout
+    );
+}

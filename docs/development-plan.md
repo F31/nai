@@ -1841,6 +1841,32 @@ tombstone 已存在；registry 无 §24.4 H 条目需改。
 见 [W115 报告](reports/2026-10-15-w115-retrieval-evidence-closed-world.md)、[ADR 0093](adr/0093-retrieval-evidence-closed-world.md)、
 `openspec/changes/archive/2026-10-15-w115-retrieval-evidence-closed-world/`。
 
+### W116（2026-10-15）：RemoteError::status() 闭世界映射守卫
+
+**缝（现测）**：W115 闭合了检索链路进入「证据」后的闭世界守卫。在「先测后设计」节奏下，继续勘定 `RemoteError`
+公开契约 `RemoteError::status()`（remote.rs:37-46）的判定面缺口：该函数把 5 个错误变体钉成 `RetrievalStatus`
+的映射**整段零判据**——既有 20 个 `#[tokio::test]` / `#[test]` 无一条断言该映射，含两条**非显然坍缩**：
+`Invalid → RetrievalUnavailable`（无独立 `RetrievalInvalid`）、`Timeout | Cancelled → RetrievalTimeout`
+（两语义并入同态）。回归即可把错误态误映，使上层 `RetrievalStatus` 消费者做出错误的可重试 / 不可重试决策，
+而该错误完全无法被现有测试观测到。
+
+**裁定**：判定面闭合，零生产代码改动——只补可测判据。
+- `crates/nai-knowledge-core/tests/remote.rs` 新增 4：`remote_error_status_unauthorized_maps_to_retrieval_unauthorized`
+  （直读 remote.rs:40 映射）；`remote_error_status_unavailable_maps_to_retrieval_unavailable`
+  （直读 remote.rs:41）；`remote_error_status_invalid_maps_to_retrieval_unavailable`
+  （**非显然坍缩**，直读 remote.rs:43，注释显式标注）；`remote_error_status_timeout_and_cancelled_map_to_retrieval_timeout`
+  （**坍缩**，一条测试内两个 `assert_eq!` 直读 remote.rs:42）。四条均用同步 `#[test]`（`status()` 是纯函数）。
+- `knowledge-pipeline` spec 新增 4 条 Requirement（各 1 Scenario）。
+
+**计数（现测）**：`remote.rs` 测试 20 → 24（+4）；门控权威总数见报告 §六。
+
+**如实披露**：`RemoteError::status()` 与 `RetrievalStatus` 消费侧（gateway `parse_reply`）解耦，W116 只钉声明侧
+映射正确性；两条坍缩是既有语义，不引入新状态分支；`search` 的 `parse_reply` top_k 截断属独立缝；registry 无 H
+条目需改。
+
+见 [W116 报告](reports/2026-10-15-w116-remote-error-status-closed-world.md)、[ADR 0094](adr/0094-remote-error-status-closed-world.md)、
+`openspec/changes/archive/2026-10-15-w116-remote-error-status-closed-world/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |
