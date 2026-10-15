@@ -60,6 +60,7 @@ Evidence 带原文、来源 span、revision、有效期、产品和 permission_r
 `RemotePolicy`，每次调用复检授权过期、允许操作、KB 白名单，以及 query/document 上传、第三方留存、删除要求；
 capabilities/留存声明只作能力约束，不当权限。answer_only 显式返回 human-reference 标志，不自动外发。
 search/answer 有界只读重试；sync/delete 单次尝试，避免未知提交重复，返回回执而非第三方已擦除的承诺。
+（W113 已把此不变量钉成可测判据：`RemoteGateway::delete` 的输入边界闭世界——空集/>16/含空 id ⇒ `Unauthorized` 不触网——与回执透传枚举闭世界守卫——`RemoteReceiptStatus` 穷尽四态、新增 `erased`/`purged` 变体会编译失败；见 [ADR 0091](adr/0091-remote-retention-delete-contract.md)、[W113 报告](reports/2026-10-15-w113-remote-retention-delete-contract.md)。`max_retention_seconds` 声明但本地无强制机制，如实记为遗留。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。

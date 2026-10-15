@@ -1761,7 +1761,32 @@ viewer_scoped_id ⇒ `OutOfScope`；`session_scoped_memory_survives_session_end_
 ≠ 验收达标；Pro 跨会话运营（§14.1）未建。
 
 见 [W112 报告](reports/2026-10-15-w112-memory-cross-session-boundary.md)、[ADR 0090](adr/0090-memory-cross-session-boundary.md)、
-`openspec/changes/2026-10-15-w112-memory-cross-session-boundary/`。
+`openspec/changes/archive/2026-10-15-w112-memory-cross-session-boundary/`。
+
+### W113（2026-10-15）：§24.4 远端留存清除 —— `RemoteGateway::delete` 传输契约判定面闭合
+
+**缝（现测）**：§24.4 删除不变量在 `crates/nai-knowledge-core/src/remote.rs:658-659` 仅以注释钉死
+（「receipt ≠ 第三方擦除证明」），零判据：delete 输入边界（空集/>16/含空 id，remote.rs:670-672）
+无单测；「回执透传、绝不声称第三方已擦除」无守卫，契约若新增 `erased`/`purged` 变体无人拦。这是
+W111 §7.2 遗留清单里**唯一尚存真实候选**（§42.5 已由 W112 完成判定面闭合；介质级擦除已明确不做）。
+
+**裁定**：判定面闭合，零生产代码改动——只补可测判据。
+- `crates/nai-knowledge-core/tests/remote.rs` 新增 2：`remote_delete_rejects_malformed_document_ids`
+  （空集/>16/含空 id ⇒ `Unauthorized` 不触网）；`remote_delete_receipt_is_passed_through_and_never_claims_erasure`
+  （回执原样透传 + 对 `RemoteReceiptStatus` 四态穷尽 match，防新增「擦除证明」变体）。
+- 既有 `sync_and_delete_are_gated_single_attempt_and_return_receipts` 归属 W113（钉 `require_remote_delete` /
+  `allow_third_party_retention` 门控 + 不触网），不重复造。
+- `knowledge-pipeline` spec 新增 Requirement + 2 Scenario。
+
+**计数（现测）**：`remote.rs` `#[tokio::test]` 10 → 12（+2）；门控权威总数见报告 §六。
+
+**如实披露**：`max_retention_seconds`（`RemotePolicy` 字段）声明但未被 `gate` 强制，本地无保留期上限
+执行机制（属「远端留存保留期执行」能力，非传输契约判定面，未建）；`tombstone → 远端删除` 本地前置由
+存储层 `Store::remote_delete_targets` 负责（knowledge.md:65），`RemoteGateway::delete` 是传输层、假定
+tombstone 已存在；registry 无 §24.4 H 条目需改。
+
+见 [W113 报告](reports/2026-10-15-w113-remote-retention-delete-contract.md)、[ADR 0091](adr/0091-remote-retention-delete-contract.md)、
+`openspec/changes/archive/2026-10-15-w113-remote-retention-delete-contract/`。
 
 ## 任务依赖与状态
 

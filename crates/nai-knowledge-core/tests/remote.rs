@@ -1,5 +1,6 @@
 use nai_contracts::remote_knowledge::{
-    RemoteCapability, RemoteDocument, RemoteOperation, RemotePolicy,
+    RemoteCapability, RemoteDocument, RemoteOperation, RemotePolicy, RemoteReceipt,
+    RemoteReceiptStatus,
 };
 use nai_contracts::v1::RetrievalStatus;
 use nai_knowledge_core::{RemoteError, RemoteGateway, RemoteKnowledgeClient, rerank_evidence};
@@ -597,6 +598,84 @@ async fn sync_and_delete_are_gated_single_attempt_and_return_receipts() {
         2,
         "gated calls must not reach the network"
     );
+}
+
+// ---------------------------------------------------------------------------
+// W113：§24.4 远端留存清除 —— `RemoteGateway::delete` 传输契约判定面闭合
+// ---------------------------------------------------------------------------
+// 既有 `sync_and_delete_are_gated_single_attempt_and_return_receipts` 只钉了
+// `require_remote_delete == false` 与 `allow_third_party_retention == false`
+// 两条门控开关；delete 的**输入边界**与「回执透传 ≠ 第三方擦除证明」这两条
+// §24.4 不变量此前零判据。下面两个测试钉死它们（零生产代码改动）。
+
+#[tokio::test]
+async fn remote_delete_rejects_malformed_document_ids() {
+    // 远端始终返回 deleted；本测试钉 delete 的**输入边界**闭世界
+    // （remote.rs:670-672），与既有门控开关测试互补。
+    let mock = Mock::start(|_| {
+        Some(json(
+            200,
+            serde_json::json!({"request_id": "r", "status": "deleted", "policy_ref": "p"}),
+        ))
+    });
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    let gw = gateway(&mock, policy());
+
+    // 空集 ⇒ 拒（不触网）
+    assert_eq!(
+        gw.delete(&op, "kb-allowed", "r", "i", vec![])
+            .await
+            .unwrap_err(),
+        RemoteError::Unauthorized
+    );
+    // 超过 16 个 ⇒ 拒
+    let too_many: Vec<String> = (0..17).map(|n| format!("d{n}")).collect();
+    assert_eq!(
+        gw.delete(&op, "kb-allowed", "r", "i", too_many)
+            .await
+            .unwrap_err(),
+        RemoteError::Unauthorized
+    );
+    // 含空 id ⇒ 拒
+    assert_eq!(
+        gw.delete(&op, "kb-allowed", "r", "i", vec!["".into()])
+            .await
+            .unwrap_err(),
+        RemoteError::Unauthorized
+    );
+}
+
+#[tokio::test]
+async fn remote_delete_receipt_is_passed_through_and_never_claims_erasure() {
+    // §24.4：远端回执透传，绝不声称第三方副本已擦除（remote.rs:658-659）。
+    let mock = Mock::start(|request| {
+        let path = request.url().to_string();
+        Some(match path.as_str() {
+            "/delete" => json(
+                200,
+                serde_json::json!({"request_id": "r", "status": "deleted", "policy_ref": "p"}),
+            ),
+            _ => json(404, serde_json::json!({"message": "unknown"})),
+        })
+    });
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    let receipt: RemoteReceipt = gateway(&mock, policy())
+        .delete(&op, "kb-allowed", "req-del", "idem", vec!["doc".into()])
+        .await
+        .unwrap();
+    // 透传：回执原样返回，网关不做任何「已彻底擦除」转换
+    assert_eq!(receipt.status, RemoteReceiptStatus::Deleted);
+    assert_eq!(receipt.request_id, "r");
+    assert_eq!(receipt.policy_ref, "p");
+    // 闭世界守卫：RemoteReceiptStatus 必须恰好是这四种，且无一表示「第三方已擦除」。
+    // 若契约新增 erased/purged 之类变体，下面的穷尽 match 会编译失败，强制就 §24.4
+    // 不变量评审一次（防止有人把远端回执谎称为擦除证明）。
+    match receipt.status {
+        RemoteReceiptStatus::Accepted
+        | RemoteReceiptStatus::Pending
+        | RemoteReceiptStatus::Deleted
+        | RemoteReceiptStatus::Retained => {}
+    }
 }
 
 #[tokio::test]
