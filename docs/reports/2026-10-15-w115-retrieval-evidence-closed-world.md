@@ -71,12 +71,15 @@ W114 闭合了远端网关的**构造期**与**输入边界**判定面。在「�
 
 ## 七、提交 / 推送（归档 + 一次 commit + push，SSH 443）
 
-- 提交 SHA：**TBD**（commit 后回填）。
-- push 区间：**TBD**，分支 `main`，SSH 443（`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）。
+- 提交 SHA：**`8cf1377631aa70dcad4c93d8203266be8713ca42`**（主提交）。
+- push 区间：**`241b033..8cf1377`**，分支 `main`，SSH 443（`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）。
 - 改动文件：`crates/nai-knowledge-core/tests/remote.rs`（+4 测试）、`docs/adr/0093-retrieval-evidence-closed-world.md`（新建）、`docs/reports/2026-10-15-w115-retrieval-evidence-closed-world.md`（新建）、`docs/development-plan.md`（W115 段）、`docs/knowledge.md`（订正注记）、`openspec/specs/knowledge-pipeline/spec.md`（合入 4 条 Requirement）、`openspec/changes/archive/2026-10-15-w115-retrieval-evidence-closed-world/`（归档目录）。
-- openspec 三连：`validate w115-retrieval-evidence-closed-world --strict` → valid；`archive --yes` → 4 条 Requirement 合入基线；`validate --archived --strict` → 全绿（113 项，含 w115）。`target-check/` 按纪律排除暂存。
+- openspec 三连：`validate w115-retrieval-evidence-closed-world --strict` → valid；`archive --yes` → 4 条 Requirement 合入基线；`validate --archived --strict` → 全绿（**113 项，含 w115**，0 failed）。`target-check/` 按纪律排除暂存。
 
 ## 八、CI 观测（主提交 + 回填提交各一次双平台观测）
 
-- **主提交** run id：**TBD**（push 后观测回填；本机门控绿 ≠ CI 绿，须回读 `head_sha` 与推送 SHA 完整 40 位一致、双平台 `foundation` job 均 `completed success`）。
-- **回填提交**：**TBD**（docs-only 回填报告 §六/七/八；回填提交 MUST 观测自身 CI——先例 run 109 failure ⇒ 不赌）。
+- **主提交** run id：**38720466714**（workflow `Engineering foundation`）。回读 `head_sha` = `8cf1377631aa70dcad4c93d8203266be8713ca42`，与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`：
+  - `foundation (windows-latest)` — completed / **success**
+  - `foundation (ubuntu-24.04)` — completed / **success**
+  - 本机门控绿（`GATE_EXIT=0`）与 CI 双平台绿一致；判定面闭合经端到端 CI 复核。
+- **回填提交**：docs-only，回填报告 §六/七/八（门控证据 + 提交/推送 + 主提交 CI 双平台结论）。回填提交 **MUST 观测自身 CI**——先例 run 109 failure ⇒ 不赌；其 run id 与双平台结论见下方回填段（提交后回填）。
