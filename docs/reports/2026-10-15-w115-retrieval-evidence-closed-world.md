@@ -86,3 +86,4 @@ W114 闭合了远端网关的**构造期**与**输入边界**判定面。在「�
   - `foundation (windows-latest)` — completed / **success**
   - `foundation (ubuntu-24.04)` — completed / **success**
   - 回填提交 CI 自身绿（先例 run 109 failure ⇒ 本次实测 success，不赌）；不为回填提交写 §九，仅做 1 次观测。
+- **回填收尾提交 `bc27245`**（仅补本报告 §八 回填结论文本，docs-only）自身 CI 观测：run **38726807373**。`foundation (windows-latest)` — completed / **success**；`foundation (ubuntu-24.04)` — completed / **failure**（step 10 `Complete engineering foundation`）。因该提交仅改本报告 markdown（不参与 Rust 构建、前端门控、openspec 校验），且同代码 `8cf1377`/`cc6b1fe` 的 ubuntu 均 `success`、本机 `GATE_EXIT=0`，判定 ubuntu 单次 failure 为 **CI runner 瞬态**，非本变更回归（铁律二：宿主瞬态 MUST NOT 改变被测系统结论）。为复核，已追加提交重跑 ubuntu（见下方）。
