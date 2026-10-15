@@ -77,4 +77,4 @@ W113 闭合了 `RemoteGateway::delete` 传输契约判定面。用户经 AskUser
 - **主提交** run id `38706760713`：`head_sha = 989791e86d749c64ee747f5d00d08fecebdc7271`（与推送 SHA 完整 40 位一致）；双平台 `foundation` job 均 `completed success`：
   - `foundation (ubuntu-24.04)` → success；
   - `foundation (windows-latest)` → success。
-- **回填提交**（docs-only，本报告的 §六/§七/§八 回填 + memory 日志）：CI 双平台观测待回填提交推送后补（见下方追加）。
+- **回填提交** `eff1c9507df2eef6b6836deace4780990c241930`（docs-only，本报告的 §六/§七/§八 回填；memory 日志为本地补充不纳入版本控制）：CI run `38708901699`，`head_sha` 与推送 SHA 完整 40 位一致；双平台 `foundation` job 均 `completed success`（`ubuntu-24.04` + `windows-latest`）—— 回填提交 MUST 观测自身 CI 已兑现（先例 run 109 failure ⇒ 不赌）。W114 全闭环：门控 `GATE_EXIT=0`、主提交 + 回填提交双 CI success、零生产代码改动。
