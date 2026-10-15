@@ -67,12 +67,15 @@ W113–W117 的归属项已在各自报告标为既有）。本地复跑：`runn
 
 ## 七、提交 / 推送（归档 + 一次 commit + push，SSH 443）
 
-- 提交 SHA：TBD（主提交，归档后回填）。
-- push 区间：TBD，分支 `main`，SSH 443（`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）。
-- 改动文件：`crates/nai-knowledge-core/tests/remote.rs`（+4 测试）、`docs/adr/0096-remote-status-mapping-closed-world.md`（新建）、`docs/reports/2026-10-15-w118-remote-status-mapping-closed-world.md`（新建）、`docs/development-plan.md`（W118 段）、`docs/knowledge.md`（订正注记）、`openspec/specs/knowledge-pipeline/spec.md`（合入 4 条 Requirement）、`openspec/changes/archive/2026-10-15-w118-remote-status-mapping-closed-world/`（归档目录）。
-- openspec 三连：`validate w118-remote-status-mapping-closed-world --strict` → valid；`archive --yes` → 4 条 Requirement 合入基线；`validate --archived --strict` → 全绿（**116 项，含 w118**，0 failed）。`target-check/` 按纪律排除暂存。
+- 提交 SHA：**`8762a77b19f1fa50fe2d60777a425537c288f211`**（主提交）。
+- push 区间：**`01bfbf3..8762a77`**，分支 `main`，SSH 443（`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）。
+- 改动文件：`crates/nai-knowledge-core/tests/remote.rs`（+4 测试）、`docs/adr/0096-remote-status-mapping-closed-world.md`（新建）、`docs/reports/2026-10-15-w118-remote-status-mapping-closed-world.md`（新建）、`docs/development-plan.md`（W118 段）、`docs/knowledge.md`（订正注记）、`openspec/specs/knowledge-pipeline/spec.md`（合入 4 条 Requirement）、`openspec/changes/archive/2026-10-15-w118-remote-status-mapping-closed-world/`（归档目录）。共 10 文件、+360 行。
+- openspec 三连：`validate w118-remote-status-mapping-closed-world --strict` → valid；`archive --yes` → 4 条 Requirement 合入基线（`+ 4, ~ 0, - 0`）；`validate --archived --strict` → 全绿（**116 项，含 w118**，0 failed）。`target-check/` 按纪律排除暂存（显式 `git add -- <path>` 逐个暂存）。
 
 ## 八、CI 观测（主提交 + 回填提交各一次双平台观测）
 
-- **主提交** run id：TBD（workflow `Engineering foundation`）。回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`。若 windows 失败，按 W117 的四条瞬态判据诊断（失败集合漂移 / 相关包 git status 空 / 本机全绿 / 另一平台 success），并经 check-run 注解取真实错误。
+- **主提交** run id：**38755899566**（workflow `Engineering foundation`，event `push`）。回读 `head_sha` = `8762a77b19f1fa50fe2d60777a425537c288f211`，与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`：
+  - `foundation (windows-latest)` — completed / **success**
+  - `foundation (ubuntu-24.04)` — completed / **success**
+  - 本机门控绿（`GATE_EXIT=0`）与 CI 双平台绿一致；判定面闭合经端到端 CI 复核。（W117 期间的 windows runner 瞬态本轮未复现。）
 - **回填提交**（docs-only）自身 CI 双平台观测：run TBD，回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`。回填提交 CI 自身绿（先例 run 109 failure ⇒ 本次实测 success，不赌）；不为回填提交写 §九，仅做 1 次观测。
