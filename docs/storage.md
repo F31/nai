@@ -27,7 +27,7 @@ SQLite bounded busy/progress handler 和备份循环复检期限；同步 OS 调
 
 ## 迁移与事实
 
-SQL 源位于 `migrations/sqlite/0001-foundation.sql` 至 `0007-decision-log-assembly-kind.sql`，当前 schema 7。
+SQL 源位于 `migrations/sqlite/0001-foundation.sql` 至 `0009-memory-purge.sql`，当前 schema 9。
 基础表、知识准备/发布副本、决策日志及索引/触发器由事务迁移建立；打开时检查版本、checksum 与实际 DDL。
 未知未来 schema、缺表/改 DDL、未版本化旧数据库均拒绝，不伪报健康。
 
@@ -40,7 +40,8 @@ outbox 的实际运行/媒体消费者已由 D06/D09 落地。
 ## 记忆表（`memory_records`）
 
 `memory_records` 由 `0001-foundation.sql` 建立（九列 + 复合主键 `(workspace_id, record_id)`），
-W109 的 `0008-memory-revocation.sql` 再加**一列**可空的 `revoked_at_ms`（⇒ 现**十**列）。
+W109 的 `0008-memory-revocation.sql` 再加**一列**可空的 `revoked_at_ms`（⇒ 现**十**列），
+W111 的 `0009-memory-purge.sql` 再加**一列**可空的 `purged_at_ms`（⇒ 现**十一**列，清除侧承载物）。
 其中九列的模式与 `MemoryRecord` 契约的九字段**逐字对应**：
 
 | `MemoryRecord` 字段 | 列 |
@@ -99,7 +100,7 @@ W109 的 `0008-memory-revocation.sql` 再加**一列**可空的 `revoked_at_ms`�
 `backup` 用 SQLite online backup，复制快照本身的登记清单而非活跃库的另一个版本。
 限制：每文件16MiB，最多512项，总256MiB；这是初始上限，未来调整需匹配配置和测试。
 数据库/文件哈希、schema、运行版本、契约目录 hash 和敏感范围存于 `manifest.json`。
-备份声明从 migration::VERSION 取实际 schema，当前生成契约要求 db_schema_version=7；不把新数据库伪标为旧版本。
+备份声明从 migration::VERSION 取实际 schema，当前生成契约要求 db_schema_version=9；不把新数据库伪标为旧版本。
 密钥本体不在该数据根或备份内；记录的 credential_ref 不是可恢复的密钥。
 快照未加密/签名，不对未知来源保证真实性；保护其中的原文/事实/审计。
 

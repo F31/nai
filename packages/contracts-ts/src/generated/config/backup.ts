@@ -2,7 +2,7 @@
 
 export interface BackupManifest {
   schema_version: 1;
-  db_schema_version: 8;
+  db_schema_version: 9;
   created_at_utc_ms: string;
   runtime_version: string;
   contract_catalog_sha256: string;

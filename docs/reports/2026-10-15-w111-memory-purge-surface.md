@@ -158,6 +158,28 @@ first and fails by name」），因为请求体形状变了却不能让旧 Requi
 **H03 / H04 的 registry `status` 仍为 `pending`**——本轮闭合的是「清除侧：字段 → 动作」，
 **不是验收达标**。
 
-## 八、归档、提交与 CI（**待回填**）
+## 八、归档、提交与 CI
 
-归档、`--archived`、提交、推送与 CI 结论在本节回填。
+- 提交：**`2e76bc1`**（28 文件）；推送：`decf43a..2e76bc1`（SSH 443）。
+- **CI run `38671490996` ⇒ `failure`**（两个平台**同一处**红）⇒ 见 §8.1。
+
+### 8.1 首次 CI 失败：是**真回归**，不是宿主瞬态
+
+`jobs` 实测：**两个平台都在第 9 步** `Check generated contracts without modifying consumers`
+（`cargo xtask schema --check`）失败，其余步骤无异常。
+
+**根因（现测定位）**：本轮改了 `backup.schema.json` 的 `db_schema_version` const（8 → 9），
+而**TS 生成物** `packages/contracts-ts/src/generated/config/backup.ts` 仍写 `db_schema_version: 8`。
+⚠️ **版本号成套不是五处，是六处**——第五处（Node 备份样本）本轮已改，**第六处是 TS 生成物**。
+
+⚠️ **本机跑不了再生入口**：`cargo xtask schema --check` 报 `install protoc 3.21.12: program not found`
+——成因是**工具链前提**（ADR 0086 的 `requires-compiled-artifact`），**不是**「本机不行」，
+故**不写成「已通过」**。本轮的处理是**手工同步该常量**（它是 `backup.schema.json` 的机械镜像），
+并**由 CI 的 `schema --check` 复核**：若同步得不逐字，CI 会再红一次——这正是它存在的理由。
+
+⚠️ 顺带**订正一处陈旧陈述**：`docs/storage.md` 仍写「schema 7」「生成契约要求
+`db_schema_version=7`」（W109 升到 8 时漏订正，本轮升到 9 时一并就地订正为 9）。
+
+### 8.2 修复后的观测
+
+见 §九（回填提交 `2e76bc1` 之后的 CI 结论）。
