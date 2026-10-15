@@ -1383,6 +1383,147 @@ async fn remote_request_normalizes_repeated_trailing_slashes_in_endpoint() {
     );
 }
 
+// W120：post_json 重试预算 与 read_body 读取上限 的闭世界守卫
+// 既有测试从未命中 remote.rs:195-241 post_json 的预算分支，也从未触碰
+// remote.rs:133-135 read_body 的 8 MiB 读取上限：
+//   (a) `backoff >= op.remaining()` ⇒ 立即 Unavailable（退避装不进剩余预算时不硬等到超时变 Timeout）；
+//   (b) `attempt >= max_retries` ⇒ Unavailable 且尝试次数有界（不无限重试）；
+//   (c) 5xx 走指数退避、**忽略** Retry-After（若误用 Retry-After，100s 退避会立刻撞上 (a)）；
+//   (d) 响应体超过 8 MiB ⇒ RemoteError::Invalid（有界读取，不无上限缓冲）。
+// 既有 429 用例只用过 `Retry-After: 0`，故 (a)(b)(c) 三条分支此前一次都没被执行。
+fn retrying_header(status: u16, retry_after: &str) -> Response<std::io::Cursor<Vec<u8>>> {
+    let mut response = json(status, serde_json::json!({"message": "retryable"}));
+    response.add_header(Header::from_bytes(&b"Retry-After"[..], retry_after.as_bytes()).unwrap());
+    response
+}
+
+#[tokio::test]
+async fn remote_search_returns_unavailable_when_backoff_exceeds_remaining_budget() {
+    // (a) 429 + Retry-After: 100 ⇒ backoff(100s) >= op.remaining(1s) ⇒ 立即 Unavailable。
+    // 判别性：若该分支被移除，会 sleep_until(now+100s) 直到 op 到期 ⇒ 变 RetrievalTimeout 且耗时 ~1s。
+    let mock = Mock::start(|_| Some(retrying_header(429, "100")));
+    let client = mock.client();
+    let op = Operation::new(Duration::from_secs(1)).unwrap();
+    let started = std::time::Instant::now();
+    let status = client
+        .search(&op, "r", "s", &["kb".into()], "q", &BTreeMap::new(), 5)
+        .await
+        .unwrap()
+        .0;
+    assert_eq!(status, RetrievalStatus::RetrievalUnavailable);
+    assert!(
+        started.elapsed() < Duration::from_millis(900),
+        "backoff must not be waited out; it must return Unavailable at once"
+    );
+}
+
+#[tokio::test]
+async fn remote_search_returns_unavailable_when_retry_budget_is_exhausted() {
+    // (b) 持续 429 + max_retries=1 ⇒ 第 2 次尝试后 `attempt >= max_retries` ⇒ Unavailable，
+    // 且尝试次数恰好 2（有界）。
+    let attempts = Arc::new(Mutex::new(0));
+    let mock = Mock::start({
+        let attempts = attempts.clone();
+        move |_| {
+            *attempts.lock().unwrap() += 1;
+            Some(retrying_header(429, "0"))
+        }
+    });
+    let client = RemoteKnowledgeClient::new(
+        format!("http://127.0.0.1:{}", mock.port),
+        None,
+        Duration::from_secs(5),
+        1,
+    )
+    .unwrap();
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    let status = client
+        .search(&op, "r", "s", &["kb".into()], "q", &BTreeMap::new(), 5)
+        .await
+        .unwrap()
+        .0;
+    assert_eq!(status, RetrievalStatus::RetrievalUnavailable);
+    assert_eq!(
+        *attempts.lock().unwrap(),
+        2,
+        "max_retries=1 means at most 2 attempts, then stop"
+    );
+}
+
+#[tokio::test]
+async fn remote_search_retries_server_error_with_exponential_backoff_not_retry_after() {
+    // (c) 5xx 走 200ms 指数退避、**忽略** Retry-After。判别性：这里故意带 Retry-After: 100，
+    // 若 5xx 误用 Retry-After，100s 退避会撞上 (a) ⇒ 立刻 Unavailable 且只有 1 次尝试；
+    // 正确实现用 200ms 指数退避 ⇒ 会重试并成功（2 次尝试、Complete）。
+    let attempts = Arc::new(Mutex::new(0));
+    let mock = Mock::start({
+        let attempts = attempts.clone();
+        move |_| {
+            let mut count = attempts.lock().unwrap();
+            *count += 1;
+            if *count == 1 {
+                Some(retrying_header(503, "100"))
+            } else {
+                Some(json(
+                    200,
+                    serde_json::json!({"status": "complete", "evidence": []}),
+                ))
+            }
+        }
+    });
+    let client = RemoteKnowledgeClient::new(
+        format!("http://127.0.0.1:{}", mock.port),
+        None,
+        Duration::from_secs(5),
+        1,
+    )
+    .unwrap();
+    // 用 CEILING 常量而非 30s 字面量：registry 守卫禁止「第二份、会漂移的副本」
+    // （tests/registry.test.mjs: no Rust source hides a second copy of the operation ceiling）。
+    let op = Operation::new(Operation::CEILING).unwrap();
+    let status = client
+        .search(&op, "r", "s", &["kb".into()], "q", &BTreeMap::new(), 5)
+        .await
+        .unwrap()
+        .0;
+    assert_eq!(status, RetrievalStatus::RetrievalComplete);
+    assert_eq!(
+        *attempts.lock().unwrap(),
+        2,
+        "5xx must retry with exponential backoff, ignoring Retry-After"
+    );
+}
+
+#[tokio::test]
+async fn remote_search_rejects_response_body_beyond_the_read_cap() {
+    // (d) 8 MiB + 1 ⇒ 越过 read_body 上限 ⇒ RemoteError::Invalid。
+    // 判别性：若上限被移除，同一份回包会正常解析 ⇒ Complete / Ok（而非 Invalid）。
+    let oversized = Arc::new("x".repeat(8 * 1024 * 1024 + 1));
+    let mock = Mock::start({
+        let oversized = oversized.clone();
+        move |_| {
+            Some(json(
+                200,
+                serde_json::json!({
+                    "status": "complete",
+                    "evidence": [{"evidence_id": "e0", "text": oversized.as_str()}]
+                }),
+            ))
+        }
+    });
+    let client = mock.client();
+    // 用 CEILING 常量而非 30s 字面量：registry 守卫禁止「第二份、会漂移的副本」
+    // （tests/registry.test.mjs: no Rust source hides a second copy of the operation ceiling）。
+    let op = Operation::new(Operation::CEILING).unwrap();
+    let result = client
+        .search(&op, "r", "s", &["kb".into()], "q", &BTreeMap::new(), 5)
+        .await;
+    assert!(
+        matches!(result, Err(RemoteError::Invalid)),
+        "a body beyond the 8 MiB read cap must be rejected, not buffered"
+    );
+}
+
 // W116：RemoteError::status() 闭世界映射守卫
 // remote.rs:37-46 把 RemoteError 各变体钉成 RetrievalStatus，此前「已声明、零判据」。
 // 两条非显然坍缩：Invalid→RetrievalUnavailable、Timeout+Cancelled→RetrievalTimeout。

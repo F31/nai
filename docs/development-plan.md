@@ -1941,6 +1941,30 @@ tombstone 已存在；registry 无 §24.4 H 条目需改。
 见 [W119 报告](reports/2026-10-16-w119-remote-request-construction-closed-world.md)、[ADR 0097](adr/0097-remote-request-construction-closed-world.md)、
 `openspec/changes/archive/2026-10-16-w119-remote-request-construction-closed-world/`。
 
+### W120（2026-10-16）：post_json 重试预算与 read_body 读取上限闭世界守卫
+
+**缝（现测）**：继续勘定客户端内部**预算与边界**分支。既有 429 用例只用过 `Retry-After: 0`、且总在预算耗尽前就
+成功 ⇒ 三条分支一次都没被执行：① `backoff >= op.remaining()` ⇒ `Unavailable`（移除则硬等到期变 **`Timeout`**）；
+② `attempt >= max_retries` ⇒ `Unavailable`（移除则退避 0 时**无限重试**）；③ 5xx 走指数退避、**忽略**
+`Retry-After`（若误用 `Retry-After: 100` 会立刻撞上 ① ⇒ 不再重试）；④ `read_body` 的 8 MiB 上限从未被触碰
+（移除则无上限缓冲）。
+
+**裁定**：判定面闭合，零生产代码改动——只补可测判据，**每条都用判别性构造**（断言在分支被移除时必然变红）。
+- `crates/nai-knowledge-core/tests/remote.rs` 新增 4：`remote_search_returns_unavailable_when_backoff_exceeds_remaining_budget`
+  （429+`Retry-After:100`+1s op ⇒ Unavailable 且耗时 <900ms）、`remote_search_returns_unavailable_when_retry_budget_is_exhausted`
+  （尝试次数恰为 2）、`remote_search_retries_server_error_with_exponential_backoff_not_retry_after`
+  （503 **故意带** `Retry-After:100` ⇒ 仍重试并成功）、`remote_search_rejects_response_body_beyond_the_read_cap`
+  （>8 MiB ⇒ `Invalid`；用**合法** `evidence[0].text` 撑大，避免与畸形 JSON 混淆）。尝试次数显式清点。
+- `knowledge-pipeline` spec 新增 4 条 Requirement（各 1 Scenario）。
+
+**计数（现测）**：`remote.rs` 测试 36 → 40（+4）；门控权威总数见报告 §六。
+
+**如实披露**：不断言真实网络下的退避时序；不断言 `Retry-After` 语义正确性（只钉本客户端选用哪个退避来源）；
+「5xx 忽略 Retry-After」依赖既有设计，若将来有意改动应**先改设计再改判据**；registry 无 H 条目需改。
+
+见 [W120 报告](reports/2026-10-16-w120-remote-retry-budget-closed-world.md)、[ADR 0098](adr/0098-remote-retry-budget-closed-world.md)、
+`openspec/changes/archive/2026-10-16-w120-remote-retry-budget-closed-world/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |
