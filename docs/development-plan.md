@@ -1891,6 +1891,31 @@ tombstone 已存在；registry 无 §24.4 H 条目需改。
 见 [W117 报告](reports/2026-10-15-w117-retrieval-top-k-closed-world.md)、[ADR 0095](adr/0095-retrieval-top-k-closed-world.md)、
 `openspec/changes/archive/2026-10-15-w117-retrieval-top-k-closed-world/`。
 
+### W118（2026-10-15）：parse_reply 的 RemoteStatus → RetrievalStatus 闭世界映射守卫
+
+**缝（现测）**：W117 闭合了 `parse_reply`（remote.rs:395-411）的 `top_k` 截断。该函数还有第二处判定面——其
+`RemoteStatus → RetrievalStatus` 的 6 臂映射（remote.rs:396-403）**大部分零判据**：既有测试经 `parse_reply` 只
+覆盖 `Complete`/`Empty` 两臂，其余四臂（partial/timeout/unavailable/unauthorized）从未被 body status 触发。
+**关键陷阱**：既有断言里的 `RetrievalTimeout`/`RetrievalUnavailable`/`RetrievalUnauthorized` 全部来自 `search`
+的 **HTTP 内联错误分支**（remote.rs:317-327），**不是** `parse_reply` 的 body status 映射——两条路径独立，
+故换错 `parse_reply` 映射完全不可见。
+
+**裁定**：判定面闭合，零生产代码改动——只补可测判据。
+- `crates/nai-knowledge-core/tests/remote.rs` 新增 4（经公共 `gateway.search` + Mock 的 **HTTP 200 body status**
+  隔离 body-status 映射，不走内联分支；新增测试内辅助 `status_mock`/`gateway_search_status`）：
+  `search_maps_partial_remote_status_to_retrieval_partial`、`search_maps_timeout_remote_status_to_retrieval_timeout`、
+  `search_maps_unavailable_remote_status_to_retrieval_unavailable`、`search_maps_unauthorized_remote_status_to_retrieval_unauthorized`。
+  与既有 `Complete`/`Empty` 两臂合计 **6/6 臂**全钉。
+- `knowledge-pipeline` spec 新增 4 条 Requirement（各 1 Scenario）。
+
+**计数（现测）**：`remote.rs` 测试 28 → 32（+4）；门控权威总数见报告 §六。
+
+**如实披露**：`parse_reply` 保持 `private`，仅经公共 `gateway.search` 覆盖；`gateway.answer` 亦调
+`parse_reply`（624）共用；本轮不改 `remote.rs`（不合并内联分支与 body 映射，二者刻意分离）；registry 无 H 条目需改。
+
+见 [W118 报告](reports/2026-10-15-w118-remote-status-mapping-closed-world.md)、[ADR 0096](adr/0096-remote-status-mapping-closed-world.md)、
+`openspec/changes/archive/2026-10-15-w118-remote-status-mapping-closed-world/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

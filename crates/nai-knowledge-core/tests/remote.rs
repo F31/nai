@@ -1220,6 +1220,78 @@ async fn search_top_k_exceeding_reply_keeps_all_evidence() {
     );
 }
 
+// W118：parse_reply 的 RemoteStatus → RetrievalStatus 闭世界映射守卫
+// remote.rs:396-403 把 6 个 RemoteStatus 变体钉成 RetrievalStatus。既有测试经 parse_reply 只覆盖
+// Complete/Empty 两臂；其余四臂（partial/timeout/unavailable/unauthorized）零判据——既有
+// RetrievalTimeout/RetrievalUnavailable/RetrievalUnauthorized 断言全部来自 search 的 **HTTP 内联
+// 错误分支**（RemoteError → status），而非 **body status 映射**（parse_reply）。故把 parse_reply 的
+// 映射换错（如 unavailable ↔ unauthorized）完全不可见。经公共 gateway.search + Mock（HTTP 200 body
+// status）逐臂钉死。
+fn status_mock(status: &str) -> Mock {
+    let status = status.to_string();
+    Mock::start(move |request| {
+        let path = request.url().to_string();
+        match path.as_str() {
+            "/capabilities" => Some(json(200, capabilities_body())),
+            "/search" => Some(json(
+                200,
+                serde_json::json!({"status": status.clone(), "evidence": []}),
+            )),
+            _ => Some(json(404, serde_json::json!({"message": "unknown"}))),
+        }
+    })
+}
+
+async fn gateway_search_status(remote_status: &str) -> RetrievalStatus {
+    let mock = status_mock(remote_status);
+    let gw = gateway(&mock, policy());
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    gw.search(
+        &op,
+        "r",
+        "s",
+        &["kb-allowed".into()],
+        "q",
+        &BTreeMap::new(),
+        5,
+    )
+    .await
+    .unwrap()
+    .0
+}
+
+#[tokio::test]
+async fn search_maps_partial_remote_status_to_retrieval_partial() {
+    assert_eq!(
+        gateway_search_status("partial").await,
+        RetrievalStatus::RetrievalPartial
+    );
+}
+
+#[tokio::test]
+async fn search_maps_timeout_remote_status_to_retrieval_timeout() {
+    assert_eq!(
+        gateway_search_status("timeout").await,
+        RetrievalStatus::RetrievalTimeout
+    );
+}
+
+#[tokio::test]
+async fn search_maps_unavailable_remote_status_to_retrieval_unavailable() {
+    assert_eq!(
+        gateway_search_status("unavailable").await,
+        RetrievalStatus::RetrievalUnavailable
+    );
+}
+
+#[tokio::test]
+async fn search_maps_unauthorized_remote_status_to_retrieval_unauthorized() {
+    assert_eq!(
+        gateway_search_status("unauthorized").await,
+        RetrievalStatus::RetrievalUnauthorized
+    );
+}
+
 // W116：RemoteError::status() 闭世界映射守卫
 // remote.rs:37-46 把 RemoteError 各变体钉成 RetrievalStatus，此前「已声明、零判据」。
 // 两条非显然坍缩：Invalid→RetrievalUnavailable、Timeout+Cancelled→RetrievalTimeout。
