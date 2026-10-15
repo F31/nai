@@ -678,6 +678,225 @@ async fn remote_delete_receipt_is_passed_through_and_never_claims_erasure() {
     }
 }
 
+// ---------------------------------------------------------------------------
+// W114：远端网关构造期与输入边界闭世界守卫
+// ---------------------------------------------------------------------------
+// §25.3 把 policy 身份字段 / unknown_revision_ttl_ms、客户端 endpoint/timeout/
+// max_retries、sync 文档边界、capabilities 首操作守卫的「已声明不变量」钉成显式
+// 构造期与输入边界闭世界。既有 `gateway()` 辅助函数只用合法 policy `.unwrap()`、
+// `Mock::client()` 只传合法参数，下列四条此前零判据。全部零生产代码改动。
+
+#[tokio::test]
+async fn remote_gateway_new_rejects_invalid_policy() {
+    // remote.rs:518-526：构造期闭世界 —— policy 必填身份字段与
+    // unknown_revision_ttl_ms 取值边界。构造本身不触网、也不应 panic。
+    let mock = Mock::start(|_| Some(json(404, serde_json::json!({"message": "unused"}))));
+
+    let mut bad = policy();
+    bad.source_id = "".into();
+    assert_eq!(
+        RemoteGateway::new(mock.client(), bad, None).err(),
+        Some(RemoteError::Invalid)
+    );
+
+    let mut bad = policy();
+    bad.policy_ref = "".into();
+    assert_eq!(
+        RemoteGateway::new(mock.client(), bad, None).err(),
+        Some(RemoteError::Invalid)
+    );
+
+    let mut bad = policy();
+    bad.permission_revision = "".into();
+    assert_eq!(
+        RemoteGateway::new(mock.client(), bad, None).err(),
+        Some(RemoteError::Invalid)
+    );
+
+    let mut bad = policy();
+    bad.allowed_kb_ids = vec![];
+    assert_eq!(
+        RemoteGateway::new(mock.client(), bad, None).err(),
+        Some(RemoteError::Invalid)
+    );
+
+    // unknown_revision_ttl_ms == 0 ⇒ 拒
+    let mut bad = policy();
+    bad.unknown_revision_ttl_ms = 0;
+    assert_eq!(
+        RemoteGateway::new(mock.client(), bad, None).err(),
+        Some(RemoteError::Invalid)
+    );
+
+    // unknown_revision_ttl_ms > 5000 ⇒ 拒
+    let mut bad = policy();
+    bad.unknown_revision_ttl_ms = 5001;
+    assert_eq!(
+        RemoteGateway::new(mock.client(), bad, None).err(),
+        Some(RemoteError::Invalid)
+    );
+
+    // 合法 policy 仍应构造成功（守卫不误伤正常路径）
+    assert!(RemoteGateway::new(mock.client(), policy(), None).is_ok());
+}
+
+#[tokio::test]
+async fn remote_knowledge_client_new_rejects_invalid_args() {
+    // remote.rs:67-74：构造期闭世界 —— endpoint / timeout / max_retries 取值边界。
+    // 纯构造测试，不触网（校验在建 http client 之前）。`.err()` 而非 `.unwrap_err()`
+    // 因为 `RemoteKnowledgeClient` 未实现 `Debug`（`.unwrap_err()` 要求 Ok 值可 Debug）。
+    // 空 endpoint
+    assert_eq!(
+        RemoteKnowledgeClient::new("".into(), None, Duration::from_secs(5), 1).err(),
+        Some(RemoteError::Invalid)
+    );
+    // endpoint 过长（> 2048）
+    assert_eq!(
+        RemoteKnowledgeClient::new("x".repeat(2049), None, Duration::from_secs(5), 1).err(),
+        Some(RemoteError::Invalid)
+    );
+    // timeout 为零
+    assert_eq!(
+        RemoteKnowledgeClient::new("http://example".into(), None, Duration::from_secs(0), 1).err(),
+        Some(RemoteError::Invalid)
+    );
+    // timeout 超过 600s
+    assert_eq!(
+        RemoteKnowledgeClient::new("http://example".into(), None, Duration::from_secs(601), 1)
+            .err(),
+        Some(RemoteError::Invalid)
+    );
+    // max_retries 超过 10
+    assert_eq!(
+        RemoteKnowledgeClient::new("http://example".into(), None, Duration::from_secs(5), 11).err(),
+        Some(RemoteError::Invalid)
+    );
+    // 合法参数仍应构造成功
+    assert!(
+        RemoteKnowledgeClient::new("http://example".into(), None, Duration::from_secs(5), 1)
+            .is_ok()
+    );
+}
+
+#[tokio::test]
+async fn remote_sync_rejects_malformed_documents_without_network() {
+    // §25.3 / §24.4 对称缺口：sync 输入边界闭世界（remote.rs:639-647）。
+    // 既有 `sync_and_delete_are_gated_*` 只钉了 allow_document_upload /
+    // allow_third_party_retention 两条开关；documents 的空集 / >16 / content>65536
+    // 边界此前零判据。下面钉死，并显式证明被拒调用未触网。
+    let attempts = Arc::new(Mutex::new(0));
+    let mock = Mock::start({
+        let attempts = attempts.clone();
+        move |request| {
+            if request.url() == "/sync" {
+                let mut count = attempts.lock().unwrap();
+                *count += 1;
+            }
+            Some(json(
+                200,
+                serde_json::json!({"request_id": "r", "status": "accepted", "policy_ref": "p"}),
+            ))
+        }
+    });
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    let gw = gateway(&mock, policy());
+
+    // 空集 ⇒ 拒（不触网）
+    assert_eq!(
+        gw.sync(&op, "kb-allowed", "r", "i", vec![])
+            .await
+            .unwrap_err(),
+        RemoteError::Unauthorized
+    );
+    // 超过 16 个 ⇒ 拒
+    let too_many: Vec<RemoteDocument> = (0..17)
+        .map(|n| RemoteDocument {
+            document_id: format!("d{n}"),
+            revision: "r".into(),
+            content: "t".into(),
+        })
+        .collect();
+    assert_eq!(
+        gw.sync(&op, "kb-allowed", "r", "i", too_many)
+            .await
+            .unwrap_err(),
+        RemoteError::Unauthorized
+    );
+    // 单文档 content 超过 65536 字节 ⇒ 拒
+    let oversized = vec![RemoteDocument {
+        document_id: "big".into(),
+        revision: "r".into(),
+        content: "x".repeat(65537),
+    }];
+    assert_eq!(
+        gw.sync(&op, "kb-allowed", "r", "i", oversized)
+            .await
+            .unwrap_err(),
+        RemoteError::Unauthorized
+    );
+    // 合法单文档仍应成功（守卫不误伤正常路径）
+    let ok = gw
+        .sync(
+            &op,
+            "kb-allowed",
+            "r",
+            "i",
+            vec![RemoteDocument {
+                document_id: "ok".into(),
+                revision: "r".into(),
+                content: "t".into(),
+            }],
+        )
+        .await
+        .unwrap();
+    assert_eq!(ok.status, RemoteReceiptStatus::Accepted);
+    assert_eq!(
+        *attempts.lock().unwrap(),
+        1,
+        "only the well-formed call must reach the network"
+    );
+}
+
+#[tokio::test]
+async fn remote_capabilities_rejects_when_first_allowed_op_not_search_or_answer() {
+    // remote.rs:571-581：capabilities 首操作守卫。policy 首个 allowed op 必须是
+    // Search 或 Answer（检索/问答才是机器消费），否则即便远端可用也不得暴露给上层。
+    // 既有测试首 op 都是 Search，零判据。
+    let mock = Mock::start(|_| {
+        Some(json(
+            200,
+            serde_json::json!({
+                "capabilities": ["retrieval_with_evidence", "answer_with_evidence"],
+                "operations": ["search", "answer", "sync", "delete"],
+                "retention": {"policy_ref": "retention-v1", "retention_seconds": 86400, "supports_delete": true}
+            }),
+        ))
+    });
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+
+    // 首 op 是 Sync ⇒ 拒（不触网，远端即便可用也不被查询）
+    let mut p = policy();
+    p.allowed_operations = vec![RemoteOperation::Sync, RemoteOperation::Delete];
+    assert_eq!(
+        RemoteGateway::new(mock.client(), p, None)
+            .unwrap()
+            .capabilities(&op)
+            .await
+            .unwrap_err(),
+        RemoteError::Unauthorized
+    );
+
+    // 首 op 是 Answer ⇒ 放行（合法正常路径）
+    let mut p = policy();
+    p.allowed_operations = vec![RemoteOperation::Answer, RemoteOperation::Search];
+    let caps = RemoteGateway::new(mock.client(), p, None)
+        .unwrap()
+        .capabilities(&op)
+        .await
+        .unwrap();
+    assert!(caps.retention.supports_delete);
+}
+
 #[tokio::test]
 async fn rerank_preserves_base_on_budget_expiry_and_drops_unknown_ids() {
     let op = Operation::new(Duration::from_secs(5)).unwrap();

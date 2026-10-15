@@ -1788,6 +1788,33 @@ tombstone 已存在；registry 无 §24.4 H 条目需改。
 见 [W113 报告](reports/2026-10-15-w113-remote-retention-delete-contract.md)、[ADR 0091](adr/0091-remote-retention-delete-contract.md)、
 `openspec/changes/archive/2026-10-15-w113-remote-retention-delete-contract/`。
 
+### W114（2026-10-15）：远端网关构造期与输入边界闭世界守卫
+
+**缝（现测）**：W113 闭合了 `RemoteGateway::delete` 传输契约判定面。用户选定「新开 nai 守卫缺口」后重新勘定，
+远端网关的**构造期**与**输入边界**仍有四处「已声明、零判据」不变量（remote.rs:67-74 / 518-526 / 571-581 /
+639-647）：既有 `gateway()` 只用合法 policy `.unwrap()`、`Mock::client()` 只传合法参数，故这些不变量从未被
+任何单测覆盖；`sync_and_delete_are_gated_*` 只钉门控开关，未钉文档形状边界。
+
+**裁定**：判定面闭合，零生产代码改动——只补可测判据。
+- `crates/nai-knowledge-core/tests/remote.rs` 新增 4：`remote_gateway_new_rejects_invalid_policy`
+  （policy 六类非法变体 ⇒ `Invalid` 不触网）；`remote_knowledge_client_new_rejects_invalid_args`
+  （endpoint/timeout/max_retries 五类非法变体 ⇒ `Invalid` 不建 http client）；
+  `remote_sync_rejects_malformed_documents_without_network`（文档集空/>16/content>65536 ⇒ `Unauthorized` 且
+  仅合法调用触网）；`remote_capabilities_rejects_when_first_allowed_op_not_search_or_answer`
+  （首 op 非 Search/Answer ⇒ `Unauthorized` 不触网）。
+- 既有 `sync_and_delete_are_gated_single_attempt_and_return_receipts` 归属 W114（钉 `allow_document_upload` /
+  `allow_third_party_retention` 门控 + 不触网），不重复造。
+- `knowledge-pipeline` spec 新增 4 条 Requirement（各 1 Scenario）。
+
+**计数（现测）**：`remote.rs` `#[tokio::test]` 12 → 16（+4）；门控权威总数见报告 §六。
+
+**如实披露**：`RemoteGateway::new` 不校验 `allowed_operations`（只查身份字段与 `unknown_revision_ttl_ms`）；
+`capabilities` 守卫依赖调用方把「检索/问答」放在 `allowed_operations` 首位——是「首操作」约定而非穷举校验，
+若未来改为「集合含 Search/Answer 任一即可」属新变更；registry 无 H 条目需改。
+
+见 [W114 报告](reports/2026-10-15-w114-remote-gateway-construction-input-bounds.md)、[ADR 0092](adr/0092-remote-gateway-construction-input-bounds.md)、
+`openspec/changes/archive/2026-10-15-w114-remote-gateway-construction-input-bounds/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |
