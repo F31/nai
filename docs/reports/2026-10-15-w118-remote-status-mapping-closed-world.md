@@ -78,4 +78,7 @@ W113–W117 的归属项已在各自报告标为既有）。本地复跑：`runn
   - `foundation (windows-latest)` — completed / **success**
   - `foundation (ubuntu-24.04)` — completed / **success**
   - 本机门控绿（`GATE_EXIT=0`）与 CI 双平台绿一致；判定面闭合经端到端 CI 复核。（W117 期间的 windows runner 瞬态本轮未复现。）
-- **回填提交**（docs-only）自身 CI 双平台观测：run TBD，回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`。回填提交 CI 自身绿（先例 run 109 failure ⇒ 本次实测 success，不赌）；不为回填提交写 §九，仅做 1 次观测。
+- **回填提交**（SHA `536a05f5f2d949a4157685942d901f9bf58789e3`，docs-only）自身 CI 双平台观测：run **38758032202**，回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`：
+  - `foundation (windows-latest)` — completed / **success**
+  - `foundation (ubuntu-24.04)` — completed / **success**
+  回填提交 CI 自身绿（先例 run 109 failure ⇒ 本次实测 success，不赌）；不为回填提交写 §九，仅做 1 次观测。W118 三笔提交（主 `8762a77`、回填 `536a05f`、以及本复核提交）的双平台 CI 均已观测且全绿；本复核提交自身的观测结论按纪律记入 memory 日志，不再回填（回填提交自身不回填）。
