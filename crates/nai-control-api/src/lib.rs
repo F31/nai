@@ -5,6 +5,10 @@ use http_body_util::{BodyExt, Full};
 use hyper::{Request, Response, body::Incoming, service::service_fn};
 use hyper_util::rt::TokioIo;
 use nai_contracts::{control_http::SCHEMAS_JSON, v1::*};
+use nai_kernel::evaluate::memory::{
+    ForgetTrigger, MemoryKind, MemoryQuery, MemoryReadOutcome, MemoryRejection, MemoryScope,
+    PurgeState,
+};
 use nai_kernel::session::{CommandLedger, Session, SessionError};
 use nai_media_core::EmergencyHandle;
 use nai_storage::{Operation, PendingApproval};
@@ -59,6 +63,10 @@ use tokio::{
 
 type HttpResponse = Response<Full<Bytes>>;
 const ORIGIN: &str = "http://127.0.0.1:5173";
+/// §42.3 读取的**默认**预算与上限。⚠️ 缺省给 16 而不是「不设限」：配额裁剪是**可见**的
+/// （被裁条目逐条具名），故默认不会把「被裁掉」伪装成「本来就没有」。
+const MEMORY_BUDGET_DEFAULT: usize = 16;
+const MEMORY_BUDGET_MAX: usize = 256;
 
 /// Local approval workflow backend backed by the real single-owner store.
 /// Absent backend, approval routes return CAPABILITY_NOT_READY instead of
@@ -135,6 +143,55 @@ impl ApprovalBackend {
     }
 }
 
+/// §42.3/§42.4 记忆面结果的三态：**谁的失败**必须分开。
+///
+/// `Rejected` 是**判定的结论**（§42.3 请求级拒绝、§42.4 陈述不实）；`Fault` 是
+/// 路径自身的故障。把后者折进前者，就是把一个存储故障记在判定名下——
+/// `write_memory` 明确拒绝这么做，读取面与遗忘面同理。
+///
+/// 故障载体复用契约的 [`ErrorCode`]，**不新造**一套故障分类。
+#[derive(Debug)]
+pub enum MemoryControlResult<T> {
+    /// 判定放行：这次读取成立／这次遗忘的陈述如实。
+    Ok(T),
+    /// §42.3／§42.4 的拒绝，带判定自己的稳定名字。
+    Rejected(MemoryRejection),
+    /// 路径自身的故障（后端未注入、装配根忙、存储拒绝）。
+    Fault(ErrorCode),
+}
+
+/// §42.4 一次遗忘的请求。四个字段是**调用方自己的陈述**，不是判定结论：
+/// 调用方只陈述它**自己**知道的部分（清理进展、第三方留存、是否宣称已完全擦除）；
+/// 「读取侧是否已阻断」不是调用方可断言的字段——它由阻断真的发生这一事实得出。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemoryForgetRequest {
+    pub record_id: String,
+    pub trigger: ForgetTrigger,
+    pub purge_state: PurgeState,
+    pub third_party_retention: Option<String>,
+    pub claims_fully_erased: bool,
+}
+
+/// 记忆面的**接缝**。
+///
+/// ⚠️ 它定义在 shared 层而不是 runtime 层，是**分层的强制结果**：
+/// `xtask/src/deps.rs` 禁止 shared 依赖 runtime（`nai-runtime` 反过来依赖本 crate），
+/// 故「控制面能调到装配根」只能靠「接缝在此定义、实现在 runtime、由 app 注入」。
+///
+/// 实现 MUST **只转发**：判定只在内核一处（§42.3 `read_records`／§42.4 `forget`），
+/// 控制面与实现都 MUST NOT 重跑它，否则一条门槛答两次就会分家（W89）。
+///
+/// 签名**不带** `now_ms`：时间源只在实现端一处（铁律：MUST NOT 另立第二处时间源）。
+/// 签名**不带** `MemoryPolicy`：策略由实现端持有，路由挑策略会让 §42.3 的
+/// `viewer_memory_enabled` 被答两次。
+pub trait MemorySurface: Send + Sync {
+    /// §42.3 读取：取数 → 诚实派生 → 判定。
+    fn read(&self, query: &MemoryQuery) -> MemoryControlResult<MemoryReadOutcome>;
+    /// §42.4 遗忘：**先**阻断读取，**再**判这次遗忘的陈述是否如实。
+    /// 返回**生效中的**撤销时刻（已撤销则返回原有时刻，MUST NOT 覆盖）。
+    fn forget(&self, request: &MemoryForgetRequest) -> MemoryControlResult<i64>;
+}
+
 /// Root-created, single device credential. Only its hash is retained here.
 pub struct Access {
     hash: Vec<u8>,
@@ -206,8 +263,16 @@ pub struct ControlApi {
     command_schema: jsonschema::Validator,
     approval_schema: jsonschema::Validator,
     approvals: Option<Arc<ApprovalBackend>>,
+    /// §42.3/§42.4 记忆面后端。**缺失 ⇒ `CAPABILITY_NOT_READY`**，MUST NOT 假成功
+    /// （与 `approvals` 同形）。
+    memory: Option<Arc<dyn MemorySurface>>,
 }
 impl ControlApi {
+    /// 挂上记忆面后端。链式是为了不破坏既有构造器的调用点。
+    pub fn with_memory(mut self, memory: Arc<dyn MemorySurface>) -> Self {
+        self.memory = Some(memory);
+        self
+    }
     /// Owns its session. The composition root should use
     /// [`Self::with_shared_session`] so revocation is not forked.
     pub fn new(
@@ -269,6 +334,7 @@ impl ControlApi {
             command_schema,
             approval_schema,
             approvals,
+            memory: None,
         })
     }
 
@@ -325,6 +391,10 @@ impl ControlApi {
                 && path.starts_with("/api/v1/approvals/")
             {
                 Some("approval.write")
+            } else if method == hyper::Method::POST && path == "/api/v1/memory/read" {
+                Some("memory.read")
+            } else if method == hyper::Method::POST && path == "/api/v1/memory/forget" {
+                Some("memory.forget")
             } else {
                 None
             };
@@ -383,6 +453,10 @@ impl ControlApi {
                         response
                     } else if !self.access.authorized(&token) {
                         error(401, ErrorCode::Unauthenticated, "control identity invalid")
+                    } else if path == "/api/v1/memory/read" {
+                        self.memory_read(&bytes)
+                    } else if path == "/api/v1/memory/forget" {
+                        self.memory_forget(&bytes)
                     } else if let Some(action) = path.strip_prefix("/api/v1/approvals/") {
                         match action.strip_suffix("/approve") {
                             Some(id) => self.approval_action(id, true, &bytes, received),
@@ -538,6 +612,235 @@ impl ControlApi {
                 },
                 "media revoked; command state update rejected",
             ),
+        }
+    }
+
+    /// §42.3 记忆读取。
+    ///
+    /// `workspace` 与 `session` 取自**控制面自身的绑定**：作用域是事实，不是请求参数，
+    /// 请求里出现同名字段一律忽略（有测试钉它）。观众维度是**查询**维度（取数边界只按
+    /// workspace），故 `viewer_scoped_id` 可由请求给出，缺失即为空串。
+    ///
+    /// 判定**不在**这里：本方法只做鉴权、入参构造与结果传输。请求级拒绝 MUST 以具名
+    /// 错误返回，MUST NOT 折成 `200` 加空 `records`——否则「本次读取不成立」与
+    /// 「读出来零条」不可区分。
+    fn memory_read(&self, bytes: &[u8]) -> HttpResponse {
+        let body: Value = match serde_json::from_slice(bytes) {
+            Ok(Value::Object(body)) => Value::Object(body),
+            Ok(_) => {
+                return error(
+                    400,
+                    ErrorCode::InvalidArgument,
+                    "memory read body must be a JSON object",
+                );
+            }
+            Err(_) => return error(400, ErrorCode::InvalidArgument, "invalid memory read JSON"),
+        };
+        // ⚠️ 「没给输入」≠「空集」：缺失/Null ⇒ 全部三类；显式 `[]` ⇒ 空集（零类）。
+        let kinds = match body.get("kinds") {
+            None | Some(Value::Null) => MemoryKind::ALL.to_vec(),
+            Some(Value::Array(items)) => {
+                let mut parsed = Vec::with_capacity(items.len());
+                for item in items {
+                    let Some(name) = item.as_str() else {
+                        return error(
+                            400,
+                            ErrorCode::InvalidArgument,
+                            "memory kind must be a string",
+                        );
+                    };
+                    let Some(kind) = MemoryKind::parse_label(name) else {
+                        return error(400, ErrorCode::InvalidArgument, "memory kind unknown");
+                    };
+                    parsed.push(kind);
+                }
+                parsed
+            }
+            Some(_) => {
+                return error(
+                    400,
+                    ErrorCode::InvalidArgument,
+                    "memory kinds must be an array",
+                );
+            }
+        };
+        let budget = match body.get("budget") {
+            None | Some(Value::Null) => MEMORY_BUDGET_DEFAULT,
+            Some(value) => match value.as_u64() {
+                Some(value) if value <= MEMORY_BUDGET_MAX as u64 => value as usize,
+                _ => {
+                    return error(
+                        400,
+                        ErrorCode::InvalidArgument,
+                        "memory budget out of range",
+                    );
+                }
+            },
+        };
+        let text = |name: &str| -> Option<String> {
+            body.get(name)
+                .and_then(Value::as_str)
+                .map(|value| value.to_owned())
+        };
+        let query = MemoryQuery {
+            scope: MemoryScope::new(
+                self.workspace.clone(),
+                self.session_id.clone(),
+                text("viewer_scoped_id").unwrap_or_default(),
+            ),
+            kinds,
+            budget,
+            authorization_ref: text("authorization_ref"),
+            purpose: text("purpose"),
+            allow_approximate: body
+                .get("allow_approximate")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        };
+        let Some(surface) = self.memory.as_ref() else {
+            return error(
+                503,
+                ErrorCode::CapabilityNotReady,
+                "memory backend not configured; no fabricated results",
+            );
+        };
+        match surface.read(&query) {
+            MemoryControlResult::Ok(outcome) => reply(
+                200,
+                json!({
+                    "records": outcome.records.iter().map(memory_record_json).collect::<Vec<_>>(),
+                    "refused": outcome.refused.iter().map(|refusal| json!({
+                        "record_ref": refusal.record_ref, "reason": refusal.reason.label(),
+                    })).collect::<Vec<_>>(),
+                }),
+            ),
+            // 判定拒绝是**结论**，不是输入错误 ⇒ 与 400 分开；名字取自判定自己。
+            MemoryControlResult::Rejected(rejection) => {
+                error(422, ErrorCode::InvalidArgument, rejection.label())
+            }
+            MemoryControlResult::Fault(code) => fault(code),
+        }
+    }
+
+    /// §42.4 遗忘：**先**阻断读取，**再**判这次遗忘的陈述是否如实。
+    ///
+    /// 调用方只陈述**它自己**知道的部分；「读取侧是否已阻断」不是它的字段。
+    /// 缺省值一律取**安全方向**：`trigger` 缺 ⇒ 用户请求删除（本控制面正是它的载体），
+    /// `purge_state` 缺 ⇒ 未开始（不宣称已清除），`claims_fully_erased` 缺 ⇒ 不宣称。
+    fn memory_forget(&self, bytes: &[u8]) -> HttpResponse {
+        let body: Value = match serde_json::from_slice(bytes) {
+            Ok(Value::Object(body)) => Value::Object(body),
+            Ok(_) => {
+                return error(
+                    400,
+                    ErrorCode::InvalidArgument,
+                    "memory forget body must be a JSON object",
+                );
+            }
+            Err(_) => {
+                return error(
+                    400,
+                    ErrorCode::InvalidArgument,
+                    "invalid memory forget JSON",
+                );
+            }
+        };
+        let Some(record_id) = body.get("record_id").and_then(Value::as_str) else {
+            return error(
+                400,
+                ErrorCode::InvalidArgument,
+                "memory forget needs record_id",
+            );
+        };
+        if record_id.trim().is_empty() {
+            return error(
+                400,
+                ErrorCode::InvalidArgument,
+                "memory forget record_id empty",
+            );
+        }
+        let trigger = match body.get("trigger") {
+            None | Some(Value::Null) => ForgetTrigger::UserRequest,
+            Some(value) => {
+                let Some(name) = value.as_str() else {
+                    return error(
+                        400,
+                        ErrorCode::InvalidArgument,
+                        "memory forget trigger must be a string",
+                    );
+                };
+                let Some(trigger) = ForgetTrigger::ALL
+                    .iter()
+                    .copied()
+                    .find(|trigger| trigger.label() == name)
+                else {
+                    return error(
+                        400,
+                        ErrorCode::InvalidArgument,
+                        "memory forget trigger unknown",
+                    );
+                };
+                trigger
+            }
+        };
+        let purge_state = match body.get("purge_state") {
+            None | Some(Value::Null) => PurgeState::NotStarted,
+            Some(value) => {
+                let Some(name) = value.as_str() else {
+                    return error(
+                        400,
+                        ErrorCode::InvalidArgument,
+                        "memory purge state must be a string",
+                    );
+                };
+                let Some(state) = PurgeState::ALL
+                    .iter()
+                    .copied()
+                    .find(|state| state.label() == name)
+                else {
+                    return error(
+                        400,
+                        ErrorCode::InvalidArgument,
+                        "memory purge state unknown",
+                    );
+                };
+                state
+            }
+        };
+        let request = MemoryForgetRequest {
+            record_id: record_id.to_owned(),
+            trigger,
+            purge_state,
+            third_party_retention: body
+                .get("third_party_retention")
+                .and_then(Value::as_str)
+                .map(|value| value.to_owned()),
+            claims_fully_erased: body
+                .get("claims_fully_erased")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        };
+        let Some(surface) = self.memory.as_ref() else {
+            return error(
+                503,
+                ErrorCode::CapabilityNotReady,
+                "memory backend not configured; no fabricated results",
+            );
+        };
+        match surface.forget(&request) {
+            MemoryControlResult::Ok(revoked_at_ms) => reply(
+                200,
+                json!({
+                    "record_ref": request.record_id,
+                    "revoked_at_utc_ms": revoked_at_ms.to_string(),
+                    // 如实：阻断已生效，**清除副本**不在本入口（被遗忘的记录仍在库里）。
+                    "safe_message": "读取侧已阻断；副本清除未执行，该记录仍存在于库中。",
+                }),
+            ),
+            MemoryControlResult::Rejected(rejection) => {
+                error(422, ErrorCode::InvalidArgument, rejection.label())
+            }
+            MemoryControlResult::Fault(code) => fault(code),
         }
     }
 
@@ -764,6 +1067,36 @@ fn reply(status: u16, body: Value) -> HttpResponse {
         .body(Full::new(Bytes::from(serde_json::to_vec(&body).unwrap())))
         .unwrap()
 }
+/// 记忆记录的 JSON 形状。大整数按契约惯例走字符串，避免 TS 侧精度丢失。
+fn memory_record_json(record: &MemoryRecord) -> Value {
+    json!({
+        "record_id": record.record_id,
+        "workspace_id": record.workspace_id,
+        "session_id": record.session_id,
+        "viewer_scoped_id": record.viewer_scoped_id,
+        "kind": record.kind,
+        "purpose": record.purpose,
+        "authorization_ref": record.authorization_ref,
+        "content": record.content,
+        "expires_at_utc_ms": record.expires_at_utc_ms.to_string(),
+    })
+}
+
+/// 路径自身的故障。状态码由契约错误码映射，MUST NOT 与判定拒绝共用同一个码——
+/// 否则「存储故障」会被记在「判定说不可以」的名下。
+fn fault(code: ErrorCode) -> HttpResponse {
+    let status = match code {
+        ErrorCode::Conflict => 409,
+        ErrorCode::PermissionDenied => 403,
+        ErrorCode::Unauthenticated => 401,
+        ErrorCode::CapabilityNotReady => 503,
+        ErrorCode::ResourceExhausted => 429,
+        ErrorCode::DeadlineExceeded => 504,
+        _ => 500,
+    };
+    error(status, code, "memory surface fault")
+}
+
 fn error(status: u16, code: ErrorCode, message: &str) -> HttpResponse {
     reply(
         status,

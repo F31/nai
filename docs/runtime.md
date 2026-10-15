@@ -241,6 +241,55 @@ MUST NOT 补判定没输出的段——§41.2 判的是**调用方给的数**，
 ⚠️ **阻断 ≠ 清除**：行仍在库里，只是撤销列有了时刻；重复阻断返回**原有**时刻，MUST NOT 覆盖
 （撤销时刻是一条事实，重写它等于篡改——已由注入 I3 实测）。**清除副本不在此处**，那是另一条工作。
 
+## 记忆面的控制面接线（W110，验收 H03/H04）
+
+W109 把读取面与遗忘阻断接上了**真实存储**，但那两个入口（`read_memory` / `forget_memory`）在
+生产代码里**仍零调用方**——只有测试在调。W110 补上接缝**之上**的那一层。
+
+**接缝为什么定义在 control-api 而不是 runtime**：`xtask/src/deps.rs` 禁止 shared 依赖 runtime
+（`nai-runtime` 反过来依赖 `nai-control-api`）⇒ 「控制面能调到装配根」只能靠
+**接缝在此定义、实现在 runtime、由 app 注入**。`MemorySurface` 两个方法：
+
+```
+fn read(&self, query: &MemoryQuery) -> MemoryControlResult<MemoryReadOutcome>;
+fn forget(&self, request: &MemoryForgetRequest) -> MemoryControlResult<i64>;
+```
+
+⚠️ **签名刻意不带 `now_ms` 与 `MemoryPolicy`**：时间源只在一处（`utc_ms()`，由实现端取），
+策略由**装配点**给定并在适配器里持有——若让路由挑策略，§42.3 的 `viewer_memory_enabled`
+就会被答两次（W89 的教训）。实现是 `MemoryAdapter{root, policy}`（不是直接 `impl … for Composition`），
+它**只转发**：判定只在内核一处，控制面与适配器都 MUST NOT 重跑 §42.3／§42.4。
+
+**两个端点**（控制面**一律禁 query** ⇒ 读取也走 `POST` + body，不是 `GET`）：
+
+| 端点 | 权限 | 要点 |
+|---|---|---|
+| `POST /api/v1/memory/read` | `memory.read` | 作用域由控制面填，请求里的 `workspace_id`/`session_id` 一律忽略 |
+| `POST /api/v1/memory/forget` | `memory.forget` | 先阻断、再判陈述；返回**生效中的**撤销时刻 |
+
+**三态 MUST 不丢维度**：`MemoryControlResult` 是 `Ok(T)` / `Rejected(MemoryRejection)` /
+`Fault(ErrorCode)`——
+
+- 判定拒绝 ⇒ **具名 4xx**（422），**MUST NOT** 折成 `200` 加空 `records`；
+  否则「本次读取不成立」与「读出来零条」不可区分（后者是被**允许**的）。
+- 路径故障 ⇒ 与拒绝**不同**的状态码（装配根忙 ⇒ 409 冲突），**MUST NOT** 把锁竞争或存储故障
+  记在判定名下。
+- 后端未注入 ⇒ `503 CAPABILITY_NOT_READY`，**MUST NOT** 以空结果假成功（与 `approvals` 同形）。
+
+**「没给输入」≠「空集」**：`kinds` 缺失/`null` ⇒ 全部三类；显式 `[]` ⇒ 空集。`budget` 缺省 16、上限 256。
+`trigger` / `purge_state` 缺省一律取**安全方向**（用户请求删除 / 未开始 / 不宣称已擦除）。
+
+测试：`crates/nai-control-api/src/tests.rs`（**26** 项，W110 新增 11）用**真实 loopback + reqwest**
+钉后端缺失／无 token（401）／无权限（403）／入参各失败路径／`PurgeState` 与 `ForgetTrigger`
+在册标签逐个回环；接线成立由 `RecordingSurface` **记录调用**证明（恒真桩会让「接线」变成装饰）。
+`crates/nai-runtime/tests/memory.rs`（**23** 项，W110 新增 5）钉经接缝走一遍后越作用域判据**仍有对象**、
+阻断后重读 ⇒ `revoked`、重复遗忘时刻**不变**、三态映射不丢维度。
+⚠️ 「装配根忙」用**另一条线程持锁**触发——同线程 `try_lock` 在 Windows 上是未定义形状，MUST NOT 依赖它。
+
+**明确不做（如实）**：§42.4 的**清除副本**一侧仍未建（被遗忘的记录**仍在库里**，只是读不出来）；
+`MemoryPolicy` 本轮**无配置项**（来源是装配点）；Pro 跨会话（§42.5）未覆盖。
+见 [ADR 0088](adr/0088-memory-control-surface.md)。
+
 ## 子进程监督（Supervisor）
 
 - 二进制路径由调用方显式传入（`Binaries::validate` 缺失即 `CapabilityNotReady`）；库内不用

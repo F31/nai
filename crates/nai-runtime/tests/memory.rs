@@ -22,7 +22,9 @@ use nai_kernel::evaluate::memory::{
     MemoryReadOutcome, MemoryRejection, MemoryScope, PurgeState, SEMANTIC_KIND, SESSION_KIND,
     VIEWER_KIND, WriteSource,
 };
-use nai_runtime::{Composition, MemoryForgetError, MemoryReadError, MemoryWriteOutcome};
+use nai_runtime::{
+    Composition, MemoryAdapter, MemoryForgetError, MemoryReadError, MemoryWriteOutcome,
+};
 use nai_storage::{DataPaths, DecisionEntryView};
 use std::time::Duration;
 use tempfile::tempdir;
@@ -952,4 +954,142 @@ fn the_read_and_forget_face_is_reachable_end_to_end() {
         observed, READ_FORGET_FACE,
         "读取+遗忘面可达的拒因 MUST 恰为这些：多了说明有未登记的，少了说明某条守卫没有对象可守"
     );
+}
+
+// ---------------------------------------------------------------------------
+// W110：控制面接缝（`MemorySurface`）调到装配根
+//
+// 上一轮（W109）把读取面与遗忘阻断接上了真实存储，但接缝**之上**仍零调用方：
+// `read_memory` / `forget_memory` 只有测试在调。本段钉的是「经接缝走一遍」——
+// 且 MUST 由**观测到的结果**证明，MUST NOT 由「响应成功」证明。
+// ---------------------------------------------------------------------------
+use nai_control_api::{MemoryControlResult, MemoryForgetRequest, MemorySurface};
+use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
+
+/// 把装配根包成控制面拿得到的后端。策略由**装配点**给出（接缝签名不带它）。
+fn seam(
+    composition: Composition,
+    policy: MemoryPolicy,
+) -> (Arc<Mutex<Composition>>, MemoryAdapter) {
+    let root = Arc::new(Mutex::new(composition));
+    let adapter = MemoryAdapter::new(root.clone(), policy);
+    (root, adapter)
+}
+
+/// §42.4 一次**最保守**的遗忘陈述：只阻断、尚未清理、无第三方留存、不宣称已擦除。
+fn forget_request(record_id: &str) -> MemoryForgetRequest {
+    MemoryForgetRequest {
+        record_id: record_id.to_owned(),
+        trigger: ForgetTrigger::UserRequest,
+        purge_state: PurgeState::NotStarted,
+        third_party_retention: None,
+        claims_fully_erased: false,
+    }
+}
+
+#[test]
+fn the_seam_reads_through_the_runtime_and_out_of_scope_stays_decidable() {
+    let root = tempdir().unwrap();
+    let mut composition = prepared(root.path());
+    open_session(&composition, OTHER_SESSION);
+    write(
+        &mut composition,
+        &admissible("memory-in-scope", SESSION_KIND),
+    );
+    let mut elsewhere = admissible("memory-elsewhere", SESSION_KIND);
+    elsewhere.record.session_id = OTHER_SESSION.into();
+    write(&mut composition, &elsewhere);
+
+    let (_shared, surface) = seam(composition, open_policy());
+    let outcome = match surface.read(&session_query(SESSION, 8)) {
+        MemoryControlResult::Ok(outcome) => outcome,
+        _ => panic!("一次请求级合法的读取 MUST 成功"),
+    };
+    assert_eq!(ids(&outcome.records), vec!["memory-in-scope"]);
+    let out = outcome.refused_for(MemoryRejection::OutOfScope);
+    // 经接缝走一遍后，越作用域判据 MUST 仍有对象：若取数层按会话预筛，这里是 0。
+    assert_eq!(out.len(), 1, "越作用域 MUST 仍可达");
+    assert_eq!(out[0].record_ref, "memory-elsewhere");
+}
+
+#[test]
+fn the_seam_forget_blocks_the_read_side_and_reports_the_effective_moment() {
+    let root = tempdir().unwrap();
+    let mut composition = prepared(root.path());
+    write(&mut composition, &admissible("memory-kept", SESSION_KIND));
+
+    let (_shared, surface) = seam(composition, open_policy());
+    let first = match surface.forget(&forget_request("memory-kept")) {
+        MemoryControlResult::Ok(moment) => moment,
+        _ => panic!("最保守的陈述 MUST 被接受"),
+    };
+    // 阻断后**再读** ⇒ 该条进 `refused(revoked)`：阻断真的生效了，不是记了一笔就完。
+    let outcome = match surface.read(&session_query(SESSION, 8)) {
+        MemoryControlResult::Ok(outcome) => outcome,
+        _ => panic!("读取 MUST 成功"),
+    };
+    assert!(outcome.records.is_empty());
+    let revoked = outcome.refused_for(MemoryRejection::Revoked);
+    assert_eq!(revoked.len(), 1);
+    assert_eq!(revoked[0].record_ref, "memory-kept");
+
+    // 重复遗忘 ⇒ **同一个**撤销时刻（撤销时刻是一条事实，重写它等于篡改）。
+    // ⚠️ 这段等待不是装饰：同毫秒内「覆盖写」会与原值碰巧相等而绿着过（假阴性）。
+    std::thread::sleep(Duration::from_millis(20));
+    let second = match surface.forget(&forget_request("memory-kept")) {
+        MemoryControlResult::Ok(moment) => moment,
+        _ => panic!("已撤销的记录再次遗忘 MUST 返回原有时刻"),
+    };
+    assert_eq!(first, second);
+}
+
+#[test]
+fn a_missing_record_is_a_named_failure_through_the_seam() {
+    let root = tempdir().unwrap();
+    let composition = prepared(root.path());
+    let (_shared, surface) = seam(composition, open_policy());
+    // 记录不存在 MUST 具名失败，MUST NOT 静默成功。
+    match surface.forget(&forget_request("memory-absent")) {
+        MemoryControlResult::Fault(code) => assert_eq!(code, ErrorCode::InvalidArgument),
+        _ => panic!("记录不存在 MUST 是具名失败"),
+    }
+}
+
+#[test]
+fn a_busy_assembly_root_is_a_conflict_not_a_permission_verdict() {
+    let root = tempdir().unwrap();
+    let composition = prepared(root.path());
+    let (shared, surface) = seam(composition, open_policy());
+    // 另一条线程持有装配根：这是**故障**，MUST NOT 被报成「不允许」。
+    let (held_tx, held_rx) = mpsc::channel::<()>();
+    let (release_tx, release_rx) = mpsc::channel::<()>();
+    let blocker = shared.clone();
+    let holder = std::thread::spawn(move || {
+        let _guard = blocker.lock().unwrap();
+        held_tx.send(()).unwrap();
+        let _ = release_rx.recv();
+    });
+    held_rx.recv().unwrap();
+    match surface.read(&session_query(SESSION, 8)) {
+        MemoryControlResult::Fault(code) => assert_eq!(code, ErrorCode::Conflict),
+        _ => panic!("装配根忙 MUST 是冲突，MUST NOT 报成权限不足或判定拒绝"),
+    }
+    release_tx.send(()).unwrap();
+    holder.join().unwrap();
+}
+
+#[test]
+fn the_request_level_refusal_survives_the_seam_as_a_refusal() {
+    let root = tempdir().unwrap();
+    let composition = prepared(root.path());
+    // 观众记忆**默认关** ⇒ 请求观众记忆是请求级拒绝，且经接缝后仍是 `Rejected`
+    // （三态映射 MUST NOT 把「判定说不可以」折成「路径故障」或「空结果」）。
+    let (_shared, surface) = seam(composition, MemoryPolicy::default());
+    match surface.read(&viewer_query(8)) {
+        MemoryControlResult::Rejected(rejection) => {
+            assert_eq!(rejection, MemoryRejection::ViewerMemoryDisabled)
+        }
+        _ => panic!("请求级拒绝 MUST 经接缝后仍是 Rejected"),
+    }
 }

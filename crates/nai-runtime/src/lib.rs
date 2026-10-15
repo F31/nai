@@ -18,7 +18,9 @@ pub use assembly::{
     LoggedCrop, LoggedSegmentBudget, LoggedSegmentUsage,
 };
 pub use composition::{BRINGUP_OPERATION, Composition, ControlAction, DutyEvent, ObservedFault};
-pub use memory::{MemoryForgetError, MemoryReadError, MemoryWriteOutcome, MemoryWriteRefusal};
+pub use memory::{
+    MemoryAdapter, MemoryForgetError, MemoryReadError, MemoryWriteOutcome, MemoryWriteRefusal,
+};
 pub use observation::{ObservationOutcome, ObservationRefusal};
 pub use ramp::{RampOutcome, RampRefusal};
 pub use supervisor::{

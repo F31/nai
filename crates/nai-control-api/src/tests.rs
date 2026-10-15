@@ -751,3 +751,350 @@ async fn approval_reject_retry_survives_backend_age_and_storage_permissions_are_
         .unwrap();
     assert_eq!(response.status(), 403);
 }
+// ---------------------------------------------------------------------------
+// §42.3/§42.4 记忆面（W110）
+// ---------------------------------------------------------------------------
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// 路由喂给后端的**结果剧本**：三态各一（`Ok` / `Rejected` / `Fault`）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MemoryScript {
+    Ok,
+    Rejected(MemoryRejection),
+    Fault(ErrorCode),
+}
+
+/// 一个**记录调用**的测试实现。
+///
+/// ⚠️ 非空洞的关键：接线成立 MUST 由「调用真的发生了」证明。若用恒真桩（一律返回空
+/// outcome 且不记账），「接线」可以是装饰——路由返回 `200` 而**从未**调到后端，
+/// 测试照样绿（R1）。故本实现既记账，也留下路由构造出的**入参**（作用域/类别/配额），
+/// 让「路由填了什么」本身可被断言。
+struct RecordingSurface {
+    reads: AtomicUsize,
+    forgets: AtomicUsize,
+    seen_scopes: Mutex<Vec<(String, String)>>,
+    seen_kinds: Mutex<Vec<Vec<MemoryKind>>>,
+    seen_budgets: Mutex<Vec<usize>>,
+    script: MemoryScript,
+}
+
+impl RecordingSurface {
+    fn new(script: MemoryScript) -> Self {
+        Self {
+            reads: AtomicUsize::new(0),
+            forgets: AtomicUsize::new(0),
+            seen_scopes: Mutex::new(Vec::new()),
+            seen_kinds: Mutex::new(Vec::new()),
+            seen_budgets: Mutex::new(Vec::new()),
+            script,
+        }
+    }
+    fn reads(&self) -> usize {
+        self.reads.load(Ordering::SeqCst)
+    }
+    fn forgets(&self) -> usize {
+        self.forgets.load(Ordering::SeqCst)
+    }
+}
+
+impl MemorySurface for RecordingSurface {
+    fn read(&self, query: &MemoryQuery) -> MemoryControlResult<MemoryReadOutcome> {
+        self.reads.fetch_add(1, Ordering::SeqCst);
+        self.seen_scopes.lock().unwrap().push((
+            query.scope.workspace_id.clone(),
+            query.scope.session_id.clone(),
+        ));
+        self.seen_kinds.lock().unwrap().push(query.kinds.clone());
+        self.seen_budgets.lock().unwrap().push(query.budget);
+        match self.script {
+            MemoryScript::Ok => MemoryControlResult::Ok(MemoryReadOutcome {
+                records: vec![],
+                refused: vec![],
+            }),
+            MemoryScript::Rejected(reason) => MemoryControlResult::Rejected(reason),
+            MemoryScript::Fault(code) => MemoryControlResult::Fault(code),
+        }
+    }
+    fn forget(&self, _request: &MemoryForgetRequest) -> MemoryControlResult<i64> {
+        self.forgets.fetch_add(1, Ordering::SeqCst);
+        match self.script {
+            MemoryScript::Ok => MemoryControlResult::Ok(1_700_000_000_000),
+            MemoryScript::Rejected(reason) => MemoryControlResult::Rejected(reason),
+            MemoryScript::Fault(code) => MemoryControlResult::Fault(code),
+        }
+    }
+}
+
+struct MemoryHarness {
+    url: String,
+    client: reqwest::Client,
+    stop: watch::Sender<bool>,
+    task: tokio::task::JoinHandle<std::io::Result<()>>,
+}
+impl Drop for MemoryHarness {
+    fn drop(&mut self) {
+        let _ = self.stop.send(true);
+        self.task.abort();
+    }
+}
+
+async fn memory_harness(
+    permissions: &[&str],
+    surface: Option<Arc<dyn MemorySurface>>,
+) -> MemoryHarness {
+    let access =
+        Arc::new(Access::new(TOKEN, "device", permissions, Duration::from_secs(10)).unwrap());
+    let mut api = ControlApi::new(
+        Session::new("s", "w").unwrap(),
+        EmergencyHandle::default(),
+        access,
+    )
+    .unwrap();
+    if let Some(surface) = surface {
+        api = api.with_memory(surface);
+    }
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let (stop, shutdown) = watch::channel(false);
+    let task = tokio::spawn(serve(listener, Arc::new(api), shutdown));
+    MemoryHarness {
+        url,
+        client: reqwest::Client::builder()
+            .no_proxy()
+            .timeout(Duration::from_secs(2))
+            .build()
+            .unwrap(),
+        stop,
+        task,
+    }
+}
+
+async fn memory_post(h: &MemoryHarness, route: &str, body: &Value) -> reqwest::Response {
+    h.client
+        .post(format!("{}{route}", h.url))
+        .bearer_auth(TOKEN)
+        .json(body)
+        .send()
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn memory_backend_without_surface_reports_not_configured() {
+    // 未注入记忆后端 MUST NOT 假成功：空结果与「没这能力」不得不可区分。
+    let h = memory_harness(&["memory.read", "memory.forget"], None).await;
+    for route in ["/api/v1/memory/read", "/api/v1/memory/forget"] {
+        let response = memory_post(&h, route, &json!({"record_id": "r"})).await;
+        assert_eq!(response.status(), 503, "{route}");
+        let body: Value = response.json().await.unwrap();
+        assert_eq!(body["error"]["code"], "CAPABILITY_NOT_READY", "{route}");
+    }
+}
+
+#[tokio::test]
+async fn memory_seam_is_really_invoked_over_loopback() {
+    // 「接线存在」MUST 由「调用真的发生了」证明，而不是由「响应是 200 」证明。
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
+    let h = memory_harness(&["memory.read", "memory.forget"], Some(surface.clone())).await;
+    let read = memory_post(&h, "/api/v1/memory/read", &json!({})).await;
+    assert_eq!(read.status(), 200);
+    let forget = memory_post(&h, "/api/v1/memory/forget", &json!({"record_id": "r"})).await;
+    assert_eq!(forget.status(), 200);
+    assert_eq!(surface.reads(), 1, "读取接缝 MUST 被调用恰好一次");
+    assert_eq!(surface.forgets(), 1, "遗忘接缝 MUST 被调用恰好一次");
+    // 「没给输入」≠「空集」：kinds 缺失 ⇒ 全部三类，不是一个空查询。
+    assert_eq!(
+        surface.seen_kinds.lock().unwrap().as_slice(),
+        &[MemoryKind::ALL.to_vec()]
+    );
+    // budget 缺失 ⇒ 常量默认。
+    assert_eq!(surface.seen_budgets.lock().unwrap().as_slice(), &[16]);
+}
+
+#[tokio::test]
+async fn memory_explicit_empty_kinds_is_an_empty_set_not_all_three() {
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
+    let h = memory_harness(&["memory.read"], Some(surface.clone())).await;
+    assert_eq!(
+        memory_post(&h, "/api/v1/memory/read", &json!({"kinds": []}))
+            .await
+            .status(),
+        200
+    );
+    assert_eq!(
+        surface.seen_kinds.lock().unwrap().as_slice(),
+        &[Vec::<MemoryKind>::new()]
+    );
+}
+
+#[tokio::test]
+async fn memory_scope_comes_from_the_control_surface_and_the_request_cannot_pick_it() {
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
+    let h = memory_harness(&["memory.read"], Some(surface.clone())).await;
+    // 请求里硬塞作用域 MUST 被忽略：作用域是控制面自己的绑定，不是请求参数。
+    assert_eq!(
+        memory_post(
+            &h,
+            "/api/v1/memory/read",
+            &json!({"workspace_id": "attacker", "session_id": "attacker"})
+        )
+        .await
+        .status(),
+        200
+    );
+    assert_eq!(
+        surface.seen_scopes.lock().unwrap().as_slice(),
+        &[("w".to_owned(), "s".to_owned())]
+    );
+}
+
+#[tokio::test]
+async fn memory_read_requires_a_token_and_the_named_permission() {
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
+    let h = memory_harness(&["memory.read", "memory.forget"], Some(surface.clone())).await;
+    let anonymous = h
+        .client
+        .post(format!("{}/api/v1/memory/read", h.url))
+        .json(&json!({}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(anonymous.status(), 401);
+    // 只有 `memory.read` 时，遗忘 MUST 是 403（两类权限可分别吊销）。
+    let read_only = memory_harness(&["memory.read"], Some(surface.clone())).await;
+    assert_eq!(
+        memory_post(
+            &read_only,
+            "/api/v1/memory/forget",
+            &json!({"record_id": "r"})
+        )
+        .await
+        .status(),
+        403
+    );
+    assert_eq!(surface.forgets(), 0, "被拒的请求 MUST NOT 到达后端");
+}
+
+#[tokio::test]
+async fn memory_request_level_refusal_is_not_an_empty_read() {
+    // 判定拒绝 MUST 具名返回，MUST NOT 折成 200 加空 records——
+    // 否则「本次读取不成立」与「读出来零条」不可区分。
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Rejected(
+        MemoryRejection::ViewerMemoryDisabled,
+    )));
+    let h = memory_harness(&["memory.read"], Some(surface.clone())).await;
+    let response = memory_post(&h, "/api/v1/memory/read", &json!({})).await;
+    assert_eq!(response.status(), 422);
+    let body: Value = response.json().await.unwrap();
+    assert_eq!(body["error"]["message"], "viewer_memory_disabled");
+    assert!(body.get("records").is_none(), "MUST NOT 返回空 records");
+}
+
+#[tokio::test]
+async fn memory_fault_is_not_reported_as_a_refusal() {
+    // 路径自身的故障 MUST 与判定拒绝分开：锁竞争/存储故障不得记在门槛名下。
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Fault(
+        ErrorCode::Conflict,
+    )));
+    let h = memory_harness(&["memory.read"], Some(surface.clone())).await;
+    let response = memory_post(&h, "/api/v1/memory/read", &json!({})).await;
+    assert_eq!(response.status(), 409);
+    assert_ne!(response.status(), 422, "故障 MUST NOT 报成判定拒绝");
+}
+
+#[tokio::test]
+async fn memory_request_parse_failures_are_each_named() {
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
+    let h = memory_harness(&["memory.read", "memory.forget"], Some(surface.clone())).await;
+    let bad_reads: &[Value] = &[
+        json!({"kinds": "semantic"}),
+        json!({"kinds": ["nonsense"]}),
+        json!({"kinds": [1]}),
+        json!({"budget": 4096}),
+        json!([]),
+    ];
+    for body in bad_reads {
+        assert_eq!(
+            memory_post(&h, "/api/v1/memory/read", body).await.status(),
+            400,
+            "{body}"
+        );
+    }
+    let bad_forgets: &[Value] = &[
+        json!({}),
+        json!({"record_id": "   "}),
+        json!({"record_id": 1}),
+        json!({"record_id": "r", "trigger": 1}),
+        json!({"record_id": "r", "trigger": "nonsense"}),
+        json!({"record_id": "r", "purge_state": "nonsense"}),
+        json!([]),
+    ];
+    for body in bad_forgets {
+        assert_eq!(
+            memory_post(&h, "/api/v1/memory/forget", body)
+                .await
+                .status(),
+            400,
+            "{body}"
+        );
+    }
+    assert_eq!(surface.reads(), 0, "入参不合法 MUST NOT 到达后端");
+    assert_eq!(surface.forgets(), 0);
+}
+
+#[tokio::test]
+async fn memory_oversized_body_is_rejected_before_the_seam() {
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
+    let h = memory_harness(&["memory.read"], Some(surface.clone())).await;
+    let huge = json!({"purpose": "x".repeat(8192)});
+    assert_eq!(
+        memory_post(&h, "/api/v1/memory/read", &huge).await.status(),
+        413
+    );
+    assert_eq!(surface.reads(), 0);
+}
+
+#[tokio::test]
+async fn memory_forget_labels_round_trip_exhaustively() {
+    // 非空洞守卫：每个在册标签都 MUST 被路由认得。加一个变体而此处没跟上 ⇒ 红。
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
+    let h = memory_harness(&["memory.forget"], Some(surface.clone())).await;
+    for trigger in ForgetTrigger::ALL {
+        let response = memory_post(
+            &h,
+            "/api/v1/memory/forget",
+            &json!({"record_id": "r", "trigger": trigger.label()}),
+        )
+        .await;
+        assert_eq!(response.status(), 200, "trigger {}", trigger.label());
+    }
+    for state in PurgeState::ALL {
+        let response = memory_post(
+            &h,
+            "/api/v1/memory/forget",
+            &json!({"record_id": "r", "purge_state": state.label()}),
+        )
+        .await;
+        assert_eq!(response.status(), 200, "purge {}", state.label());
+    }
+    assert_eq!(
+        surface.forgets(),
+        ForgetTrigger::ALL.len() + PurgeState::ALL.len()
+    );
+}
+
+#[tokio::test]
+async fn memory_forget_defaults_take_the_safe_direction() {
+    // 缺省 MUST 取安全方向：不宣称已清除、不宣称第三方无留存。
+    // 这里只钉**路由不报错且真调到后端**；「缺省值是什么」由 runtime 侧用例钉。
+    let surface = Arc::new(RecordingSurface::new(MemoryScript::Ok));
+    let h = memory_harness(&["memory.forget"], Some(surface.clone())).await;
+    assert_eq!(
+        memory_post(&h, "/api/v1/memory/forget", &json!({"record_id": "r"}))
+            .await
+            .status(),
+        200
+    );
+    assert_eq!(surface.forgets(), 1);
+}

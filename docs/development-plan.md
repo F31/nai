@@ -1652,6 +1652,46 @@ MUST NOT 读作「已覆盖」。另：VERSION 7→8 带出一处**回归**已�
 见 [W109 报告](reports/2026-10-15-w109-memory-read-surface.md)、[ADR 0087](adr/0087-memory-read-surface.md)、
 `openspec/changes/archive/2026-10-15-w109-memory-read-surface/`。
 
+### W110（2026-10-15）：记忆读取面与遗忘落点接上控制面（H03/H04 控制面接线）
+
+**缝（现测，非推断）**：`grep -rn "read_memory\|forget_memory\|write_memory" --include=*.rs crates apps
+| grep -v /tests/` ⇒ **零命中**。W109 让 `read_records` / `forget` 有了第一处调用方（装配根的两个入口），
+但**那个调用方自己仍无调用者** ⇒ 链子最上面一环是空的。与 W103–W109 **连续第七轮同型**，
+**不同的一点**：前几轮缺**执行体**，本轮执行体已存在，缺的是**调用方** ⇒ **纯接线轮**：
+**零迁移、零契约字段改动、零 schema 改动**（与 W109 必须付一次迁移形成对照）。
+
+**接缝位置由分层决定，不是偏好**：`xtask/src/deps.rs` 禁止 shared 依赖 runtime ⇒
+**接缝在 `nai-control-api` 定义、在 `nai-runtime` 实现（`MemoryAdapter`）、由 app 注入**。
+⚠️ **签名刻意不带 `now_ms` 与 `MemoryPolicy`**：时间源只在一处（实现端 `utc_ms()`）；
+策略由装配点给定、适配器持有——让路由挑策略会让 `viewer_memory_enabled` **答两次**（W89）。
+
+**两个端点**（控制面**一律禁 query**，有既有测试钉它 ⇒ 读取也走 `POST`+body，不是 `GET`）：
+`POST /api/v1/memory/read`（权限 `memory.read`）／`POST /api/v1/memory/forget`（权限 `memory.forget`）。
+**三态不丢维度**：判定拒绝 ⇒ `422` + **判定自己的**名字（**MUST NOT** 折成 `200`+空 `records`）；
+路径故障 ⇒ 按 `ErrorCode` 映射（装配根忙 ⇒ `409` 冲突），**MUST NOT** 把锁竞争记在判定名下；
+后端未注入 ⇒ `503 CAPABILITY_NOT_READY`，MUST NOT 以空结果假成功。
+**作用域是控制面自己的绑定**，请求里的 `workspace_id`/`session_id` 一律忽略。
+**「没给输入」≠「空集」**：`kinds` 缺 ⇒ 全部三类、显式 `[]` ⇒ 空集；缺省一律取**安全方向**。
+
+**门控 `EXIT=0`**：95 目标 / **940 passed** / 0 failed；Node 13 / 319 / 0；故障痕迹全 0。
+对照 W109（924）⇒ **+16** = `nai-control-api` **+11**（15→26）+ `tests/memory.rs` **+5**（18→23），
+两处都落在**既有目标内** ⇒ 目标数与 Node 根数**均不变** ⇒ 无需 `engineering_checks` 登记。
+⚠️ 门控虽**一次即绿**，但**不能据此推断**「无需限并发」——写测试过程中两次实测到宿主
+`DeadlineExceeded`（与 W107/W109 **同一用例同一症状**，相关文件一行未改）⇒ 门控**直接**限并发跑。
+
+**注入 3 组共 7 红**，每组 ≥1 且 `sha256` **逐字节**还原：I1 拒绝折成 `200+[]` ⇒ 1；
+I2 取数按 session 预筛 ⇒ 3（越作用域**失去对象**）；I3 `impl` 不调 `read_memory` 直接返回空 ⇒ 3（**假契约**）。
+⚠️ 接线成立 MUST 由「**调用真的发生了**」证明（`RecordingSurface` 记账并留下路由构造的入参），
+恒真桩会让「接线」变成装饰。「装配根忙」用**另一条线程持锁**触发——同线程 `try_lock` 在 Windows 上
+是未定义形状，MUST NOT 依赖。
+
+**如实披露**：§42.4 仍**只到阻断、未到清除**（被遗忘的记录**仍在库里**，只是读不出来，端点响应已写明）；
+`MemoryPolicy` 本轮**无配置项**（来源是装配点，默认观众记忆关闭）。
+**H03/H04 `status` 仍 `pending`**——闭合的是「执行体 → 调用方」，**不是验收达标**。
+
+见 [W110 报告](reports/2026-10-15-w110-memory-control-surface.md)、[ADR 0088](adr/0088-memory-control-surface.md)、
+`openspec/changes/archive/2026-10-15-w110-memory-control-surface/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

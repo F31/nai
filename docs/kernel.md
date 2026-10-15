@@ -107,9 +107,16 @@ D06还必须复检epoch、审批hash、事实和媒体lease。
 授权是否在场（观众记忆看记录自己的 `authorization_ref`，其余类别 §42.3 无记录级授权要求 ⇒ 结构蕴含）、
 `approximate_of` ← 恒 `None`（存储里结构上不存在顶替条目）；`Composition::forget_memory` 则
 **先**写撤销列阻断读取、**再**判这次遗忘的**陈述**是否如实。
-**仍未接线**的是：控制面接线、§42.4 的**清除副本**一侧（W109 只到阻断，清除需要另一条工作）、
+⚠️ **已由 W110 订正（控制面接线已建）**：两个入口的**生产调用方**由 W110 补上——
+`nai-control-api` 定义接缝 `MemorySurface`（定义在 shared 层，因为分层禁止 shared 依赖 runtime），
+`nai-runtime` 以 `MemoryAdapter` 实现它，**app 层（engine）注入**；
+`POST /api/v1/memory/read`（权限 `memory.read`）与 `POST /api/v1/memory/forget`（权限 `memory.forget`）
+经它调到装配根。作用域维度由**控制面自身的绑定**给出、请求里出现同名字段一律忽略；
+判定**只在一处**（内核），控制面与适配器都只转发。
+**仍未接线**的是：§42.4 的**清除副本**一侧（W109/W110 都只到阻断，清除需要另一条工作）、
 Pro 跨会话（§42.5：授权/审批/租约/设备身份不跨场继承）。
-见 [ADR 0085](adr/0085-memory-write-gate-wiring.md)、[ADR 0087](adr/0087-memory-read-surface.md)。
+见 [ADR 0085](adr/0085-memory-write-gate-wiring.md)、[ADR 0087](adr/0087-memory-read-surface.md)、
+[ADR 0088](adr/0088-memory-control-surface.md)。
 
 ## W66 harness 观测与逐层具名降级（V3.11 §47.1、§47.4；验收 H15/H17）
 

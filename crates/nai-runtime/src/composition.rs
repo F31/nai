@@ -567,7 +567,8 @@ fn open_bringup_store(paths: DataPaths) -> Result<(Store, Operation)> {
     Ok((store, operation))
 }
 
-fn utc_ms() -> Result<u64> {
+/// 唯一的时间源。记忆面与值守面都用它，MUST NOT 另立第二处。
+pub(crate) fn utc_ms() -> Result<u64> {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|time| time.as_millis().min(u64::MAX as u128) as u64)

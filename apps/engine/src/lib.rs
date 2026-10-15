@@ -24,7 +24,8 @@ use nai_media_core::frame_slots::{
 #[cfg(target_os = "linux")]
 use nai_runtime::RenderWorkerSpec;
 use nai_runtime::{
-    BRINGUP_OPERATION, Binaries, Composition, ControlAction, FramePoolArgs, Supervisor,
+    BRINGUP_OPERATION, Binaries, Composition, ControlAction, FramePoolArgs, MemoryAdapter,
+    Supervisor,
 };
 use nai_storage::{DataPaths, DecisionKind};
 use prost::Message;
@@ -54,6 +55,7 @@ pub const USAGE: &str = "Usage: nai-engine --data-root <dir> --workspace <id> --
 real devices, production IPC and real provider transport unavailable";
 
 /// Control-surface permissions of the local operator credential.
+// ⚠️ `Access::new` 允许至多 **8** 条权限，本表已**正好用满**。再增一条必须先改那个上限。
 const CONTROL_PERMISSIONS: &[&str] = &[
     "runtime.read",
     "session.read",
@@ -61,6 +63,9 @@ const CONTROL_PERMISSIONS: &[&str] = &[
     "session.takeover",
     "approval.read",
     "approval.write",
+    // §42.3/§42.4 记忆面。单独成权是为了可以**只**吊销记忆访问而不连带会话读取。
+    "memory.read",
+    "memory.forget",
 ];
 const CONTROL_TTL: Duration = Duration::from_secs(3600);
 const PRODUCER: &str = "render-1";
@@ -317,6 +322,9 @@ pub async fn run(config: Config) -> Result<(), String> {
     let emergency = composition.emergency();
     let approvals = composition.approvals().clone();
     let shared = Arc::new(Mutex::new(composition));
+    // §42.3/§42.4 记忆面接线：控制面拿到的后端就是这个装配根本身。
+    // 策略由装配点给定（本轮无配置项，用默认：观众长期记忆**默认关闭**）。
+    let memory = Arc::new(MemoryAdapter::with_default_policy(shared.clone()));
     let api = Arc::new(
         ControlApi::with_shared_session(
             shared_session,
@@ -324,7 +332,8 @@ pub async fn run(config: Config) -> Result<(), String> {
             access.clone(),
             Some(approvals),
         )
-        .map_err(|error| format!("control surface rejected: {error}"))?,
+        .map_err(|error| format!("control surface rejected: {error}"))?
+        .with_memory(memory),
     );
     let listener = TcpListener::bind(("127.0.0.1", config.control_port))
         .await

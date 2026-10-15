@@ -31,13 +31,15 @@
 //! project forbids (W94's shape). The storage accessor
 //! [`Store::memory_records`] is a per-column fetch and MUST NOT be read as having answered it.
 
-use crate::composition::short;
+use crate::composition::{short, utc_ms};
 use crate::{Composition, Result, err};
 use nai_contracts::v1::{ErrorCode, MemoryRecord};
+use nai_control_api::{MemoryControlResult, MemoryForgetRequest, MemorySurface};
 use nai_kernel::evaluate::memory::{
     ForgetOutcome, ForgetTrigger, MemoryCandidate, MemoryPolicy, MemoryQuery, MemoryReadOutcome,
     MemoryRejection, PurgeState, ScopedRecord, VIEWER_KIND, admit_write, forget, read_records,
 };
+use std::sync::{Arc, Mutex};
 
 /// Why a memory write was refused: which record, and which §42.2 rule.
 ///
@@ -162,7 +164,7 @@ impl Composition {
     /// 判定**一次**：存储层只取数、不施加 §42.3 的六类判定；`now_ms` 由调用方给，
     /// MUST NOT 由本入口另立一个时间源。
     pub fn read_memory(
-        &mut self,
+        &self,
         query: &MemoryQuery,
         policy: &MemoryPolicy,
         now_ms: u64,
@@ -206,7 +208,7 @@ impl Composition {
     /// 返回**生效中的**撤销时刻（已撤销则返回原有时刻，不覆盖）。
     /// 清除副本不在本入口——那需要另一条工作。
     pub fn forget_memory(
-        &mut self,
+        &self,
         trigger: ForgetTrigger,
         record_id: &str,
         purge_state: PurgeState,
@@ -235,5 +237,64 @@ impl Composition {
         };
         forget(&outcome).map_err(MemoryForgetError::Rejected)?;
         Ok(revoked_at_ms)
+    }
+}
+
+/// 记忆面的**适配器**：把一个共享的装配根接到控制面的接缝 [`MemorySurface`] 上。
+///
+/// 为什么不是直接 `impl MemorySurface for Composition`：接缝的两个方法都**不带**
+/// `MemoryPolicy` 与 `now_ms`，而二者 MUST 由**一侧**决定、且只决定一次——
+/// 策略放进适配器（由装配点给定）、时间由实现端取（唯一时间源 [`utc_ms`]）。
+/// 否则 §42.3 的 `viewer_memory_enabled` 会被答两次（W89 的教训）。
+///
+/// 判定**不在**这里：适配器只把装配根的结果**映射**成接口层三态。
+/// 映射 MUST 不丢维度——`Ok` / `Rejected` / `Fault` 三态各有用例钉住。
+pub struct MemoryAdapter {
+    root: Arc<Mutex<Composition>>,
+    policy: MemoryPolicy,
+}
+
+impl MemoryAdapter {
+    /// 由装配点给定策略。⚠️ 本轮**没有**配置项，策略来源就是装配点（已如实披露）。
+    pub fn new(root: Arc<Mutex<Composition>>, policy: MemoryPolicy) -> Self {
+        Self { root, policy }
+    }
+    pub fn with_default_policy(root: Arc<Mutex<Composition>>) -> Self {
+        Self::new(root, MemoryPolicy::default())
+    }
+}
+
+impl MemorySurface for MemoryAdapter {
+    fn read(&self, query: &MemoryQuery) -> MemoryControlResult<MemoryReadOutcome> {
+        let Ok(root) = self.root.try_lock() else {
+            // 「忙」是故障，MUST NOT 报成「不允许」——那会把锁竞争记在门槛名下。
+            return MemoryControlResult::Fault(ErrorCode::Conflict);
+        };
+        let now_ms = match utc_ms() {
+            Ok(value) => value,
+            Err(error) => return MemoryControlResult::Fault(error.code),
+        };
+        match root.read_memory(query, &self.policy, now_ms) {
+            Ok(outcome) => MemoryControlResult::Ok(outcome),
+            Err(MemoryReadError::Rejected(rejection)) => MemoryControlResult::Rejected(rejection),
+            Err(MemoryReadError::Fault(error)) => MemoryControlResult::Fault(error.code),
+        }
+    }
+
+    fn forget(&self, request: &MemoryForgetRequest) -> MemoryControlResult<i64> {
+        let Ok(root) = self.root.try_lock() else {
+            return MemoryControlResult::Fault(ErrorCode::Conflict);
+        };
+        match root.forget_memory(
+            request.trigger,
+            &request.record_id,
+            request.purge_state,
+            request.third_party_retention.clone(),
+            request.claims_fully_erased,
+        ) {
+            Ok(revoked_at_ms) => MemoryControlResult::Ok(revoked_at_ms),
+            Err(MemoryForgetError::Rejected(rejection)) => MemoryControlResult::Rejected(rejection),
+            Err(MemoryForgetError::Fault(error)) => MemoryControlResult::Fault(error.code),
+        }
     }
 }

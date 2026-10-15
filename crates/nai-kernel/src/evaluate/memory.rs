@@ -797,6 +797,15 @@ pub enum PurgeState {
 }
 
 impl PurgeState {
+    /// 全部取值。**长度是类型的一部分**：新增一个取值而此处未列 ⇒ 数组长度不再匹配
+    /// `[PurgeState; 4]` ⇒ **编译失败**，而不是让解析静默地不认识它。
+    pub const ALL: [PurgeState; 4] = [
+        PurgeState::NotStarted,
+        PurgeState::InProgress,
+        PurgeState::Complete,
+        PurgeState::BlockedThirdParty,
+    ];
+
     pub fn label(self) -> &'static str {
         match self {
             PurgeState::NotStarted => "not_started",
