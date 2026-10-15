@@ -1116,6 +1116,110 @@ async fn search_drops_evidence_with_empty_id() {
     assert_eq!(evidence[0].evidence_id, "good");
 }
 
+// W117：检索结果 top_k 截断闭世界守卫
+// remote.rs:395-411 parse_reply 的 evidence 处理顺序为
+// `filter_map(to_evidence).take(top_k)`，此前零判据（既有测试无一条断言 top_k）。
+// 两条非显然语义：
+//   (a) top_k 统计的是「已丢弃空 id 后的有效项」数量（filter 先于 take）；
+//   (b) take 保留序列前 N 项（顺序不变），top_k=0 ⇒ 空，top_k>有效项数 ⇒ 不补齐。
+// parse_reply 私有，经公共 gateway.search 路径 + Mock 确定性离线覆盖。
+fn search_mock(evidence: serde_json::Value) -> Mock {
+    Mock::start(move |request| {
+        let path = request.url().to_string();
+        match path.as_str() {
+            "/capabilities" => Some(json(200, capabilities_body())),
+            "/search" => Some(json(
+                200,
+                serde_json::json!({"status": "complete", "evidence": evidence.clone()}),
+            )),
+            _ => Some(json(404, serde_json::json!({"message": "unknown"}))),
+        }
+    })
+}
+
+async fn gateway_search_ids(top_k: u32) -> Vec<String> {
+    let mock = search_mock(serde_json::json!([
+        {"evidence_id": "e0", "text": "t0"},
+        {"evidence_id": "e1", "text": "t1"},
+        {"evidence_id": "e2", "text": "t2"},
+        {"evidence_id": "e3", "text": "t3"},
+        {"evidence_id": "e4", "text": "t4"}
+    ]));
+    let gw = gateway(&mock, policy());
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    let (_status, evidence) = gw
+        .search(
+            &op,
+            "r",
+            "s",
+            &["kb-allowed".into()],
+            "q",
+            &BTreeMap::new(),
+            top_k,
+        )
+        .await
+        .unwrap();
+    evidence.into_iter().map(|e| e.evidence_id).collect()
+}
+
+#[tokio::test]
+async fn search_truncates_evidence_to_top_k_in_order() {
+    // 5 个有效项配 top_k=2 ⇒ 恰好前 2 项，且顺序不变（e0, e1）。
+    let ids = gateway_search_ids(2).await;
+    assert_eq!(ids, ["e0", "e1"], "top_k must keep the first N in order");
+}
+
+#[tokio::test]
+async fn search_applies_top_k_after_dropping_empty_ids() {
+    // 非显然顺序：filter_map(to_evidence) 先于 take(top_k)——top_k 统计有效项。
+    // reply=[e0, "", e1, e2]（3 有效）配 top_k=2 ⇒ [e0, e1]（len 2）。
+    // 若回归成 take-then-filter，take(2) 得 [e0, ""]，filter 后只剩 [e0]（len 1）⇒ 本断言变红。
+    let mock = search_mock(serde_json::json!([
+        {"evidence_id": "e0", "text": "t0"},
+        {"evidence_id": "", "text": "drop-me"},
+        {"evidence_id": "e1", "text": "t1"},
+        {"evidence_id": "e2", "text": "t2"}
+    ]));
+    let gw = gateway(&mock, policy());
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    let (_status, evidence) = gw
+        .search(
+            &op,
+            "r",
+            "s",
+            &["kb-allowed".into()],
+            "q",
+            &BTreeMap::new(),
+            2,
+        )
+        .await
+        .unwrap();
+    let ids: Vec<&str> = evidence.iter().map(|e| e.evidence_id.as_str()).collect();
+    assert_eq!(
+        ids,
+        ["e0", "e1"],
+        "top_k counts valid evidence (filter precedes take)"
+    );
+}
+
+#[tokio::test]
+async fn search_top_k_zero_yields_empty_evidence() {
+    // top_k=0 ⇒ take(0) ⇒ 空集合（MUST 被显式清点，绝不静默变「未截断」）。
+    let ids = gateway_search_ids(0).await;
+    assert!(ids.is_empty(), "top_k=0 must truncate to an empty set");
+}
+
+#[tokio::test]
+async fn search_top_k_exceeding_reply_keeps_all_evidence() {
+    // top_k>有效项数 ⇒ 保留全部，不补齐占位、不报错。
+    let ids = gateway_search_ids(10).await;
+    assert_eq!(
+        ids,
+        ["e0", "e1", "e2", "e3", "e4"],
+        "top_k greater than evidence count must keep all, never pad"
+    );
+}
+
 // W116：RemoteError::status() 闭世界映射守卫
 // remote.rs:37-46 把 RemoteError 各变体钉成 RetrievalStatus，此前「已声明、零判据」。
 // 两条非显然坍缩：Invalid→RetrievalUnavailable、Timeout+Cancelled→RetrievalTimeout。

@@ -1867,6 +1867,30 @@ tombstone 已存在；registry 无 §24.4 H 条目需改。
 见 [W116 报告](reports/2026-10-15-w116-remote-error-status-closed-world.md)、[ADR 0094](adr/0094-remote-error-status-closed-world.md)、
 `openspec/changes/archive/2026-10-15-w116-remote-error-status-closed-world/`。
 
+### W117（2026-10-15）：检索结果 top_k 截断闭世界守卫
+
+**缝（现测）**：兑现 W116 明确留待后续的 `parse_reply` `top_k` 独立缝。`parse_reply`（remote.rs:395-411）把远端
+证据集转成上层 `Vec<Evidence>`，其截断语义 `reply.evidence.into_iter().filter_map(to_evidence).take(top_k)` 整段
+零判据——既有 24 测试无一条断言 `top_k`（grep 零命中）。两处非显然语义：**filter 先于 take**（`top_k` 统计的是
+丢弃空 `evidence_id` 后的有效项数，非原始回包项数）、**take 保前 N 不补齐**（`top_k=0` ⇒ 空，`top_k>`有效项数
+⇒ 全保留不补齐）。
+
+**裁定**：判定面闭合，零生产代码改动——只补可测判据。
+- `crates/nai-knowledge-core/tests/remote.rs` 新增 4（经公共 `gateway.search` + Mock 覆盖私有 `parse_reply`）：
+  `search_truncates_evidence_to_top_k_in_order`（5 项 + top_k=2 ⇒ `[e0,e1]`）、`search_applies_top_k_after_dropping_empty_ids`
+  （判别性构造 `[e0,"",e1,e2]` + top_k=2 ⇒ `[e0,e1]`，证 filter 先于 take）、`search_top_k_zero_yields_empty_evidence`
+  （top_k=0 ⇒ 空集合）、`search_top_k_exceeding_reply_keeps_all_evidence`（top_k=10 > 5 项 ⇒ 全保留不补齐）。
+- `knowledge-pipeline` spec 新增 4 条 Requirement（各 1 Scenario）。
+
+**计数（现测）**：`remote.rs` 测试 24 → 28（+4）；门控权威总数见报告 §六。
+
+**如实披露**：`parse_reply` 保持 `private`，仅经公共 `gateway.search` 覆盖；本轮只钉既有截断语义，不改
+`search`/`answer` 的入参校验（`top_k` 是否设上界属独立缝）；`gateway.answer` 亦调 `parse_reply`（624），与
+`search` 共用同一函数、语义一致；registry 无 H 条目需改。
+
+见 [W117 报告](reports/2026-10-15-w117-retrieval-top-k-closed-world.md)、[ADR 0095](adr/0095-retrieval-top-k-closed-world.md)、
+`openspec/changes/archive/2026-10-15-w117-retrieval-top-k-closed-world/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |
