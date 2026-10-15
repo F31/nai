@@ -973,3 +973,145 @@ async fn rerank_preserves_base_on_budget_expiry_and_drops_unknown_ids() {
     assert_eq!(outcome.status, RetrievalStatus::RetrievalPartial);
     assert_eq!(outcome.evidence.len(), 2);
 }
+
+// ---------------------------------------------------------------------------
+// W115：检索证据闭世界守卫（rerank_evidence + to_evidence 的已声明不变量）
+// ---------------------------------------------------------------------------
+// §25.3 / §25.4 把「检索证据集合的闭世界」钉成显式判据：空 base 短路、重复 id
+// 去重、reranker 故障→Invalid、空 evidence_id 丢弃。上述不变量此前在 remote.rs
+// 中「已声明、零判据」。全部零生产代码改动，确定性离线（前三条直调
+// rerank_evidence，第四条经公共 search 路径 + localhost Mock）。与既有 901 区
+// rerank 测试（reorder / unknown-id drop / budget-expiry partial）互不重复。
+
+#[tokio::test]
+async fn rerank_empty_base_returns_empty_without_calling_reranker() {
+    // remote.rs:463-468：空 base 短路守卫。base 为空时必须在调用 reranker 之前
+    // 直接返回 RetrievalEmpty，绝不触达 reranker。用「会 panic 的 reranker」证明：
+    // 若早期返回未生效、reranker 被调用，则 spawn_blocking 抛 JoinError →
+    // RemoteError::Invalid → .unwrap() 会让本测试失败。
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    let boom: Arc<
+        dyn Fn(Vec<nai_contracts::v1::Evidence>) -> Vec<nai_contracts::v1::Evidence> + Send + Sync,
+    > = Arc::new(|_| panic!("reranker must not be invoked for an empty base"));
+    let outcome = rerank_evidence(
+        &op,
+        RetrievalStatus::RetrievalComplete,
+        Vec::new(),
+        Duration::from_secs(2),
+        &boom,
+    )
+    .await
+    .unwrap();
+    assert_eq!(outcome.status, RetrievalStatus::RetrievalEmpty);
+    assert!(outcome.evidence.is_empty());
+}
+
+#[tokio::test]
+async fn rerank_deduplicates_repeated_ids() {
+    // remote.rs:490-495：闭世界去重守卫。base 内出现重复 evidence_id 时，
+    // `seen.insert` 必须把后续同名项丢弃（已知集合 `known` 也只认一次）。
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    let base = vec![
+        nai_contracts::v1::Evidence {
+            evidence_id: "a".into(),
+            text: "a1".into(),
+            ..Default::default()
+        },
+        nai_contracts::v1::Evidence {
+            evidence_id: "a".into(),
+            text: "a2".into(),
+            ..Default::default()
+        },
+        nai_contracts::v1::Evidence {
+            evidence_id: "b".into(),
+            text: "b".into(),
+            ..Default::default()
+        },
+    ];
+    // identity reranker：保持顺序，仅供去重判据观察
+    let identity: Arc<
+        dyn Fn(Vec<nai_contracts::v1::Evidence>) -> Vec<nai_contracts::v1::Evidence> + Send + Sync,
+    > = Arc::new(|items| items);
+    let outcome = rerank_evidence(
+        &op,
+        RetrievalStatus::RetrievalComplete,
+        base,
+        Duration::from_secs(2),
+        &identity,
+    )
+    .await
+    .unwrap();
+    // 已知集合 {a,b}；a1 入、a2 重复被 seen 丢弃、b 入 ⇒ 仅 2 条
+    assert_eq!(outcome.evidence.len(), 2);
+    assert_eq!(outcome.evidence[0].evidence_id, "a");
+    assert_eq!(outcome.evidence[1].evidence_id, "b");
+}
+
+#[tokio::test]
+async fn rerank_reranker_failure_maps_to_invalid() {
+    // remote.rs:476-478：reranker 在 spawn_blocking 内 panic ⇒ JoinError ⇒
+    // 必须映射为 RemoteError::Invalid（不是 Cancelled、也不是静默吞掉）。
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    let base = vec![nai_contracts::v1::Evidence {
+        evidence_id: "a".into(),
+        text: "a".into(),
+        ..Default::default()
+    }];
+    let boom: Arc<
+        dyn Fn(Vec<nai_contracts::v1::Evidence>) -> Vec<nai_contracts::v1::Evidence> + Send + Sync,
+    > = Arc::new(|_| panic!("reranker exploded"));
+    let err = rerank_evidence(
+        &op,
+        RetrievalStatus::RetrievalComplete,
+        base,
+        Duration::from_secs(2),
+        &boom,
+    )
+    .await
+    .err();
+    assert_eq!(err, Some(RemoteError::Invalid));
+}
+
+#[tokio::test]
+async fn search_drops_evidence_with_empty_id() {
+    // remote.rs:413-416 / 404-411：to_evidence 闭世界守卫。远端返回的 evidence
+    // 若 evidence_id 为空，必须被 filter_map 丢弃，绝不进入上层消费集合。
+    // 经公共 search 路径（私有 to_evidence 不可从集成测试直调）确定性离线验证。
+    let mock = Mock::start(|request| {
+        let path = request.url().to_string();
+        match path.as_str() {
+            "/capabilities" => Some(json(200, capabilities_body())),
+            "/search" => Some(json(
+                200,
+                serde_json::json!({
+                    "status": "complete",
+                    "evidence": [
+                        {"evidence_id": "good", "text": "keep"},
+                        {"evidence_id": "", "text": "drop-me"}
+                    ]
+                }),
+            )),
+            _ => Some(json(404, serde_json::json!({"message": "unknown"}))),
+        }
+    });
+    let gw = gateway(&mock, policy());
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    let (_status, evidence) = gw
+        .search(
+            &op,
+            "r",
+            "s",
+            &["kb-allowed".into()],
+            "q",
+            &BTreeMap::new(),
+            10,
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        evidence.len(),
+        1,
+        "empty evidence_id must be dropped by to_evidence"
+    );
+    assert_eq!(evidence[0].evidence_id, "good");
+}

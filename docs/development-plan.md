@@ -1815,6 +1815,32 @@ tombstone 已存在；registry 无 §24.4 H 条目需改。
 见 [W114 报告](reports/2026-10-15-w114-remote-gateway-construction-input-bounds.md)、[ADR 0092](adr/0092-remote-gateway-construction-input-bounds.md)、
 `openspec/changes/archive/2026-10-15-w114-remote-gateway-construction-input-bounds/`。
 
+### W115（2026-10-15）：检索证据闭世界守卫（rerank + to_evidence）
+
+**缝（现测）**：W114 闭合了远端网关的**构造期**与**输入边界**判定面。在「先测后设计」节奏下，检索链路进入
+「证据」后仍有两处「已声明、零判据」不变量（remote.rs:413-416 / 455-500）：`rerank_evidence` 的空 base
+短路（463-468）、rerank 输出重复 id 去重（490-495）、reranker panic ⇒ `Invalid` 映射（476-478），以及
+`to_evidence` 空 `evidence_id` 丢弃（413-416）；既有 `rerank_preserves_base_on_budget_expiry_and_drops_unknown_ids`
+只钉 reorder / unknown-id drop / budget-expiry partial，`search` 只走合法非空 id，故这四条从未被任何单测覆盖。
+
+**裁定**：判定面闭合，零生产代码改动——只补可测判据。
+- `crates/nai-knowledge-core/tests/remote.rs` 新增 4：`rerank_empty_base_returns_empty_without_calling_reranker`
+  （panic reranker 探针证明空 base 不调用 reranker）；`rerank_deduplicates_repeated_ids`
+  （`base=[a,a,b]` + identity reranker ⇒ 长度 2、顺序 `[a,b]`）；`rerank_reranker_failure_maps_to_invalid`
+  （panic reranker ⇒ `RemoteError::Invalid`，不降级）；`search_drops_evidence_with_empty_id`
+  （经公共 `search` + Mock，`evidence_id:""` 项被 `filter_map` 丢弃）。
+- `knowledge-pipeline` spec 新增 4 条 Requirement（各 1 Scenario）。
+
+**计数（现测）**：`remote.rs` `#[tokio::test]` 16 → 20（+4）；门控权威总数见报告 §六。
+
+**如实披露**：unknown-id drop（W114 既有 `rerank_preserves_base_*` 已钉）与本案重复 id 去重是独立闭世界维度
+——前者由 `known: BTreeSet`（remote.rs:469-472）负责、后者由 `seen: BTreeSet`（490-495）负责，W115 只补后者；
+空 base 短路路径直接返回 `RetrievalEmpty`（不沿用 `base_status` 入参）；`to_evidence` 保持 `private`，仅经公共
+`search` 覆盖；registry 无 H 条目需改。
+
+见 [W115 报告](reports/2026-10-15-w115-retrieval-evidence-closed-world.md)、[ADR 0093](adr/0093-retrieval-evidence-closed-world.md)、
+`openspec/changes/archive/2026-10-15-w115-retrieval-evidence-closed-world/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |
