@@ -1916,6 +1916,31 @@ tombstone 已存在；registry 无 §24.4 H 条目需改。
 见 [W118 报告](reports/2026-10-15-w118-remote-status-mapping-closed-world.md)、[ADR 0096](adr/0096-remote-status-mapping-closed-world.md)、
 `openspec/changes/archive/2026-10-15-w118-remote-status-mapping-closed-world/`。
 
+### W119（2026-10-16）：远端出站请求构造闭世界守卫（凭证头 + endpoint 规范化）
+
+**缝（现测）**：从「回包解析」转向**出站请求构造**。`RemoteKnowledgeClient::request()`（remote.rs:100-112）
+在每次 POST 前组装 URL 与请求头，两条不变量整段零判据——既有测试经 `Mock::client()` 恒传 `api_key: None`、
+且 endpoint 无尾斜杠：**(a) 凭证头**：`api_key=Some` ⇒ MUST 带 `Authorization: Bearer <key>`（从未被观测；
+若被静默丢弃，请求以「未认证」身份发出而无信号），`api_key=None` ⇒ MUST 不带该头；
+**(b) endpoint 规范化**：`trim_end_matches('/')` 分支从未执行。
+
+**裁定**：判定面闭合，零生产代码改动——只补可测判据。
+- `crates/nai-knowledge-core/tests/remote.rs` 新增 4（引入 `ObservedRequest` + **记录型 Mock** 观测出站请求，
+  既有 Mock 是「响应型」、看不到请求内容）：`remote_request_sends_bearer_authorization_header_when_api_key_present`
+  （断言 `Bearer <key>` **逐字相等**）、`remote_request_omits_authorization_header_when_api_key_absent`、
+  `remote_request_normalizes_trailing_slash_in_endpoint`、`remote_request_normalizes_repeated_trailing_slashes_in_endpoint`
+  （trim 全部尾随斜杠，非只 trim 一个）。
+- `knowledge-pipeline` spec 新增 4 条 Requirement（各 1 Scenario）。
+
+**计数（现测）**：`remote.rs` 测试 32 → 36（+4）；门控权威总数见报告 §六。
+
+**如实披露**：只钉**出站侧事实**（头被发出/不被发出），不断言远端真的接受凭证（无真实远端）；endpoint 尾斜杠
+两条钉的是「最终路径为 `/search`」，若下层 reqwest/url 自身折叠 `//` 则其判别力弱于凭证头两条，定位是回归
+哨兵+语义记录，不冒充强判别判据；不断言凭证不泄露到日志/盘（独立面）；registry 无 H 条目需改。
+
+见 [W119 报告](reports/2026-10-16-w119-remote-request-construction-closed-world.md)、[ADR 0097](adr/0097-remote-request-construction-closed-world.md)、
+`openspec/changes/archive/2026-10-16-w119-remote-request-construction-closed-world/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

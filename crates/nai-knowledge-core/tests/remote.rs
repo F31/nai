@@ -4,7 +4,7 @@ use nai_contracts::remote_knowledge::{
 };
 use nai_contracts::v1::RetrievalStatus;
 use nai_knowledge_core::{RemoteError, RemoteGateway, RemoteKnowledgeClient, rerank_evidence};
-use nai_security::Operation;
+use nai_security::{Operation, Secret};
 use std::{
     collections::BTreeMap,
     net::TcpListener,
@@ -1289,6 +1289,97 @@ async fn search_maps_unauthorized_remote_status_to_retrieval_unauthorized() {
     assert_eq!(
         gateway_search_status("unauthorized").await,
         RetrievalStatus::RetrievalUnauthorized
+    );
+}
+
+// W119：出站请求构造闭世界守卫（remote.rs:100-112 `request()`）
+// 既有测试经 `Mock::client()` 恒传 `api_key: None`、且 endpoint 无尾斜杠 ⇒ 下列不变量零判据：
+//   (a) api_key = Some ⇒ 每个出站请求 MUST 带 `Authorization: Bearer <key>`（凭证真的被发出去，
+//       若该头被静默丢弃，请求会以「未认证」身份发出而无人察觉）；
+//   (b) api_key = None ⇒ MUST 不带 Authorization 头（闭世界：不凭空造凭证）；
+//   (c) endpoint 尾斜杠 MUST 被 `trim_end_matches('/')` 规范化，拼出的路径不是 `//search`。
+// 经真实出站请求观测（Mock 记录 url + Authorization 头），确定性离线。
+#[derive(Clone, Default)]
+struct ObservedRequest {
+    url: String,
+    authorization: Option<String>,
+}
+
+async fn observe_outgoing_request(endpoint: String, api_key: Option<Secret>) -> ObservedRequest {
+    let observed = Arc::new(Mutex::new(ObservedRequest::default()));
+    let mock = Mock::start({
+        let observed = observed.clone();
+        move |request| {
+            let mut authorization = None;
+            for header in request.headers() {
+                // tiny_http 的 HeaderField/Header value 都是 `AsciiStr`；先经 AsRef<str>
+                // 转成 &str 再做大小写无关比较（AsciiStr::eq_ignore_ascii_case 只接受 &AsciiStr）。
+                let name: &str = header.field.as_str().as_ref();
+                if name.eq_ignore_ascii_case("authorization") {
+                    // `HeaderField::as_str()` 返回 &AsciiStr（需 as_ref 转 &str），
+                    // 而 `Header.value`（AsciiString）的 as_str() 本身就返回 &str。
+                    let value: &str = header.value.as_str();
+                    authorization = Some(value.to_string());
+                }
+            }
+            *observed.lock().unwrap() = ObservedRequest {
+                url: request.url().to_string(),
+                authorization,
+            };
+            Some(json(
+                200,
+                serde_json::json!({"status": "complete", "evidence": []}),
+            ))
+        }
+    });
+    let endpoint = endpoint.replace("{port}", &mock.port.to_string());
+    let client = RemoteKnowledgeClient::new(endpoint, api_key, Duration::from_secs(5), 0).unwrap();
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    client
+        .search(&op, "r", "s", &["kb".into()], "q", &BTreeMap::new(), 5)
+        .await
+        .unwrap();
+    observed.lock().unwrap().clone()
+}
+
+#[tokio::test]
+async fn remote_request_sends_bearer_authorization_header_when_api_key_present() {
+    let observed = observe_outgoing_request(
+        "http://127.0.0.1:{port}".into(),
+        Some(Secret::new(b"test-api-key".to_vec()).unwrap()),
+    )
+    .await;
+    assert_eq!(
+        observed.authorization.as_deref(),
+        Some("Bearer test-api-key"),
+        "api_key must be sent as an exact `Authorization: Bearer <key>` header"
+    );
+}
+
+#[tokio::test]
+async fn remote_request_omits_authorization_header_when_api_key_absent() {
+    let observed = observe_outgoing_request("http://127.0.0.1:{port}".into(), None).await;
+    assert_eq!(
+        observed.authorization, None,
+        "no api_key must mean no Authorization header at all"
+    );
+}
+
+#[tokio::test]
+async fn remote_request_normalizes_trailing_slash_in_endpoint() {
+    let observed = observe_outgoing_request("http://127.0.0.1:{port}/".into(), None).await;
+    assert_eq!(
+        observed.url, "/search",
+        "a trailing slash in endpoint must be trimmed, never produce `//search`"
+    );
+}
+
+#[tokio::test]
+async fn remote_request_normalizes_repeated_trailing_slashes_in_endpoint() {
+    let observed = observe_outgoing_request("http://127.0.0.1:{port}///".into(), None).await;
+    assert_eq!(
+        observed.url, "/search",
+        "repeated trailing slashes in endpoint must be trimmed as well"
     );
 }
 
