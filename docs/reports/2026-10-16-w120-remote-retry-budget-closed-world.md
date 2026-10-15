@@ -79,12 +79,24 @@ W113–W119 的归属项已在各自报告标为既有）。本地复跑：`runn
 
 ## 七、提交 / 推送（归档 + 一次 commit + push，SSH 443）
 
-- 提交 SHA：TBD（主提交，归档后回填）。
-- push 区间：TBD，分支 `main`，SSH 443（`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）。
-- 改动文件：`crates/nai-knowledge-core/tests/remote.rs`（+4 测试）、`docs/adr/0098-remote-retry-budget-closed-world.md`（新建）、`docs/reports/2026-10-16-w120-remote-retry-budget-closed-world.md`（新建）、`docs/development-plan.md`（W120 段）、`docs/knowledge.md`（订正注记）、`openspec/specs/knowledge-pipeline/spec.md`（合入 4 条 Requirement）、`openspec/changes/archive/2026-10-16-w120-remote-retry-budget-closed-world/`（归档目录）。
-- openspec 三连：`validate w120-remote-retry-budget-closed-world --strict` → valid；`archive --yes` → 4 条 Requirement 合入基线；`validate --archived --strict` → 全绿（**118 项，含 w120**，0 failed）。归档目录按**系统日期戳**记为 `2026-10-16-...`。`target-check/` 按纪律排除暂存。
+- 提交 SHA：**`ea2f0409d03029697ad6897ed9103b26d2e1202d`**（主提交）。
+- push 区间：**`c91e7bd..ea2f040`**，分支 `main`，SSH 443（`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）。
+- 改动文件：`crates/nai-knowledge-core/tests/remote.rs`（+4 测试）、`docs/adr/0098-remote-retry-budget-closed-world.md`（新建）、`docs/reports/2026-10-16-w120-remote-retry-budget-closed-world.md`（新建）、`docs/development-plan.md`（W120 段）、`docs/knowledge.md`（订正注记）、`openspec/specs/knowledge-pipeline/spec.md`（合入 4 条 Requirement）、`openspec/changes/archive/2026-10-16-w120-remote-retry-budget-closed-world/`（归档目录）。共 10 文件、+443 行。
+- openspec 三连：`validate w120-remote-retry-budget-closed-world --strict` → valid；`archive --yes` → 4 条 Requirement 合入基线（`+ 4, ~ 0, - 0`）；`validate --archived --strict` → 全绿（**118 项，含 w120**，0 failed）。归档目录按**系统日期戳**记为 `2026-10-16-...`。`target-check/` 按纪律排除暂存（显式 `git add -- <path>` 逐个暂存）。
 
 ## 八、CI 观测（主提交 + 回填提交各一次双平台观测）
 
-- **主提交** run id：TBD（workflow `Engineering foundation`）。回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`。若失败，按 W117/W119 的瞬态判据诊断（失败集合漂移 / 相关包 git status 空 / 本机全绿 / 另一平台 success），并经 check-run 注解取真实错误。
+- **主提交** run id：**38775400122**（workflow `Engineering foundation`，event `push`）。回读 `head_sha` = `ea2f0409d03029697ad6897ed9103b26d2e1202d`，与推送 SHA **完整 40 位一致**：
+  - `foundation (ubuntu-24.04)` — completed / **success**
+  - `foundation (windows-latest)` — completed / **failure**（step 10 `Complete engineering foundation`）
+  - check-run 注解真实错误：`crates/nai-control-api/src/tests.rs` 的 4 条 approval 测试
+    （`approval_list_and_real_reject_workflow_over_loopback` 等）panic
+    `StorageError { code: DeadlineExceeded, reason: "operation stopped" }`（tests.rs:355 附近装配期）。
+  - **判定 windows 为 runner 瞬态、非 W120 回归**，五条依据：① **失败集合每次漂移且跨 crate**
+    （W117 step12 `nai-storage` → W117 step10 `nai-runtime/assembly` → W119 回填 step10 `nai-runtime/composition`
+    → 本次 step10 **`nai-control-api`**）；② 错误类同族（`DeadlineExceeded / "operation stopped"`，宿主机时限）；
+    ③ `git show --name-only ea2f040` ⇒ **触碰 `nai-control-api` 文件数 = 0**（本轮只改
+    `crates/nai-knowledge-core/tests/remote.rs` + 文档/openspec）；④ 同代码 ubuntu success；
+    ⑤ 本机 `cargo xtask check --profile full` `GATE_EXIT=0`（同一批 control-api 测试在本机全绿）。
+    铁律二：宿主瞬态 MUST NOT 改变被测系统结论。已由回填提交重跑复核（见下）。
 - **回填提交**（docs-only）自身 CI：按纪律做 **1 次**双平台观测（先例 run 109 failure ⇒ 不观测就是赌）。**本报告不为回填提交写 §九**；其自身结论按「**回填提交自身不回填**」记入 memory 日志，**不在本报告占位**（W119 起的写法，避免为填 run id 再叠加提交）。
