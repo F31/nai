@@ -33,9 +33,10 @@
   按纪律不改代码。
 
 ## 五、提交 / 推送
-- 提交 SHA：TBD。｜push 区间：TBD，分支 `main`，SSH 443。
+- 提交 SHA：**`27adc174449b3d65049c898c2bba83d07a86f5c2`**（主提交）。｜push 区间：**`395034f..27adc17`**，分支 `main`，SSH 443（共 12 文件）。
 - openspec 三连：valid → `archive --yes`（`+2`）→ `--archived --strict` **122 / 0**。
 
 ## 六、CI 观测
-- **主提交** run id：TBD；`head_sha` 完整 40 位一致；双平台 `foundation` 结论 TBD。
+- **主提交** run id：**38860249371**。回读 `head_sha` = `27adc174449b3d65049c898c2bba83d07a86f5c2`，与推送 SHA **完整 40 位一致** ⇒ **双平台 `foundation` 均 `completed / success`**。
+  - ⚠️ **观测期两度撞 GitHub 匿名 API 限流**（`remaining=0`，返回体缺 `status`/`head_sha`）。按纪律**不轮询**，改为「等到 reset 后**单次**查询」；结论由此取得。**长会话第 2 次撞墙** ⇒ 「每轮 CI 观测只查 1–2 次」应作为硬纪律。
 - **回填提交**（docs-only）自身 CI：观测 1 次，结论记入 memory，不在本报告占位。
