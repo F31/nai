@@ -197,17 +197,11 @@ pub fn download_package(
 
     for file in &package.files {
         op.check()?;
+        // Counted for the report; the *gate* on this value is inside the loop
+        // below, so the check cannot be removed from one place and survive in
+        // another.
         let start = ledger.durable_bytes(&file.path);
         resumed_bytes = resumed_bytes.saturating_add(start);
-        // A resume point past the declared end is not a number to clamp: the
-        // ledger is describing an artifact that cannot be this one, and
-        // pretending otherwise would verify something nobody asked for.
-        if start > file.bytes {
-            return Err(error(
-                ErrorCode::InvalidArgument,
-                "resume ledger exceeds declared size",
-            ));
-        }
 
         let mut attempts: u32 = 0;
         loop {
@@ -216,6 +210,9 @@ pub fn download_package(
             if have == file.bytes {
                 break;
             }
+            // A resume point past the declared end is not a number to clamp: the
+            // ledger is describing an artifact that cannot be this one, and
+            // pretending otherwise would verify something nobody asked for.
             if have > file.bytes {
                 return Err(error(
                     ErrorCode::InvalidArgument,
