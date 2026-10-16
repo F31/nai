@@ -42,5 +42,17 @@ R10 的缺口 = 「真实会话注册表（装配根）未接线」。实测：`
 - openspec 三连：valid → `archive --yes`（`+2`）→ `--archived --strict` **121 / 0**。
 
 ## 八、CI 观测
-- **主提交** run id：TBD；回读 `head_sha` 完整 40 位一致；双平台 `foundation` 均 success。
+- **主提交**（`0ca3b5e9b7844c37f41315d759c6a999322d31b4`）run id：**38853589407**。回读 `head_sha` **完整 40 位一致**；
+  **双平台均 failure**，且**同一步**：step 9 `Check generated contracts without modifying consumers`
+  （`cargo xtask schema --check`，exit 101）。
+- **诊断（根因 = 本轮的暂存遗漏，非宿主瞬态）**：W123 给 `nai-runtime` 新增 `nai-upgrade-core` 依赖后，**本机门控据此改写了
+  `Cargo.lock`**（+1 行依赖边），而主提交用「显式 `git add -- <path>`」逐文件暂存时**漏掉了 `Cargo.lock`** ⇒ CI 的
+  `--locked` 要求锁文件已更新 ⇒ 失败。**判据**：两平台**同因**失败 ⇒ MUST NOT 当瞬态放过（否则真回归会被吃掉）；
+  本机门控绿也**不能**替代（本机不带 `--locked` 的那条路径与 CI 的步骤集合不同）。
+- **修复提交** `d9039f2da506a615efeb251022bcf4912a55b31d`（补 `Cargo.lock`，差异恰为那条 `nai-upgrade-core` 边）run id：
+  **38854484587** ⇒ **双平台 `foundation` 均 `completed / success`**，`head_sha` 完整 40 位一致
+  ⇒ **W123 的代码经 CI 双平台验证通过**。
+- **教训**：显式暂存路径的盲区恰是「**工具链自己生成/改写的文件**」——本会话第 3 次踩暂存坑（W109/W110 漏
+  `':!target-check'`，本次漏 `Cargo.lock`）。⇒ 改依赖后 MUST 显式 `git add Cargo.lock`，提交前逐项核对
+  `git status --short` 的每个 `M`。
 - **回填提交**（docs-only）自身 CI：按纪律观测 1 次，结论记入 memory，不在本报告占位。
