@@ -2101,6 +2101,36 @@ MUST NOT 返回 0（返回 0 等于谎称「无人活跃」，会让版本切换
 见 [W126 报告](reports/2026-10-16-w126-download-resume-and-budget.md)、[ADR 0104](adr/0104-download-resume-and-budget.md)、
 `openspec/changes/archive/2026-10-16-w126-download-resume-and-budget/`。
 
+### W128（2026-10-16）：装配根驱动升级事务（R10 调用点收口）
+
+**缝（现测）**：R10 的 W123 段逐字记「运行时仍无升级激活调用点」。本轮前
+`grep -rn "UpgradeTransaction" crates apps xtask` 只命中 `nai-upgrade-core` 的定义与其自己的测试
+⇒ 核心有 `activate`、装配根有 `SessionGate`（W123），**没有一处把两者接起来**。
+
+**前置障碍（决定了第一步）**：`Prepared` 在核心之外**无法字面构造**（字段全 `pub` 但无构造器，且
+`PreflightReport::checks` 私有）⇒ 调用点判据只能通过一次**真的** `prepare` 得到它；而 `nai-runtime` 的
+dev-dependencies **够不到另一个 crate 的 `tests/`** ⇒ 先把散在 `tests/{plan,gates,upgrade}.rs` 三处的 demo
+夹具提为 `nai-upgrade-core/src/rehearsal.rs` 的 `RehearsalPackage`/`demo_manifest`/`demo_facts`/`DEMO_CONTENT`
+（纯增加、无新依赖、三个测试文件用例数**逐项不变**、core 全量 99 passed）。
+
+**改动**：`crates/nai-runtime/src/upgrade.rs` 的 `Composition::stage_upgrade` / `activate_staged`（二者皆 `&self`
+——不可变借用使「缓存活跃计数」在类型层面不可能）+ `UpgradeActivation`；`lib.rs` 导出与
+`From<UpgradeError> for RuntimeError`。**暂存不问门、激活先问门**（门只答一次，由装配根自己持有的真实会话回答）；
+**推迟是值不是错误**（`Deferred{active}`），被门控的包保持 `prepared` 并在静默边界**复用而不重暂存**；
+门不可观测 ⇒ 原样上抛 `Conflict`；运行后的终局**原样**携带核心 `Outcome`（成因码 + 导出计数）。
+
+**判据**：新增测试目标 `crates/nai-runtime/tests/upgrade.rs` **5** 条 ⇒ nai-runtime 91 → **96**
+（Rust 侧目标 78 → **79**）；`nai-upgrade-core` **99** 不变。4 组注入逐条可归因（4／3／1／1 条红；I2 与 I3 的
+红色集合**不相交**）；一处断言（「包被复用未二次暂存」）**按构造**成立、无注入可令其单独变红，已在测试注释如实标明。
+
+**registry**：`R10` **维持 `implemented`** —— ①降档侧 `downgrade`/`require_rollback_compatible` 在核心之外
+**恰 0 个调用点**（现测）；②真实安装器与真实分发端点仍是外部注入点（第④环真值缺口）；③ADR 0100 的 `tested`
+门槛（`A03` 判例）。另如实登记：`apps/engine/src` 对 `upgrade` **0 命中**（引擎侧入口未建，本轮**不**建——
+真实安装器不存在时它只能是演练路径，而「演练不得表示生产就绪」是本仓硬规矩）。
+
+见 [W128 报告](reports/2026-10-16-w128-runtime-upgrade-call-site.md)、[ADR 0106](adr/0106-runtime-upgrade-call-site.md)、
+`openspec/changes/archive/2026-10-16-w128-runtime-upgrade-call-site/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

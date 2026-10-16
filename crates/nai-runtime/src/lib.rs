@@ -12,6 +12,7 @@ mod memory;
 mod observation;
 mod ramp;
 pub mod supervisor;
+mod upgrade;
 
 pub use assembly::{
     AssemblyOutcome, AssemblyRebuild, AssemblyRefusal, LoggedAssembly, LoggedAssemblyFragment,
@@ -27,6 +28,7 @@ pub use ramp::{RampOutcome, RampRefusal};
 pub use supervisor::{
     Binaries, FramePoolArgs, RenderWorkerSpec, StandbyReason, Supervisor, SupervisorFault,
 };
+pub use upgrade::UpgradeActivation;
 
 use nai_contracts::v1::{ContractError, ErrorCode};
 
@@ -58,6 +60,15 @@ pub(crate) fn err(code: ErrorCode, message: impl Into<String>) -> RuntimeError {
 
 impl From<nai_storage::StorageError> for RuntimeError {
     fn from(error: nai_storage::StorageError) -> Self {
+        Self::new(error.code, error.reason)
+    }
+}
+/// The upgrade core reports failures as a code plus a stable token. That is
+/// exactly the shape this error already carries, so the mapping is total and
+/// loses nothing — in particular it does not degrade a `Conflict` (an
+/// unobservable session) into an internal failure.
+impl From<nai_upgrade_core::UpgradeError> for RuntimeError {
+    fn from(error: nai_upgrade_core::UpgradeError) -> Self {
         Self::new(error.code, error.reason)
     }
 }

@@ -8,126 +8,32 @@
 use nai_contracts::v1::ErrorCode;
 use nai_security::Operation;
 use nai_upgrade_core::{
-    BackupRef, DeterministicVerifier, EffectCounts, FaultPoint, HostFacts, Outcome, PackageFile,
-    Prepared, Probe, RecoveryAction, RehearsalHost, RehearsalJournal, ResourceState,
-    RevocationList, UpgradeHost, UpgradeJournal, UpgradeRecord, UpgradeRequest, UpgradeStep,
-    UpgradeTransaction, VerifyLimits,
+    BackupRef, EffectCounts, FaultPoint, Outcome, Prepared, Probe, RecoveryAction, RehearsalHost,
+    RehearsalJournal, RehearsalPackage, UpgradeHost, UpgradeJournal, UpgradeRecord, UpgradeStep,
+    UpgradeTransaction,
 };
-use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
-use std::{
-    sync::atomic::AtomicBool,
-    time::{Duration, Instant},
-};
-
-const CONTENT: &[(&str, &[u8])] = &[("bin/app", b"payload")];
-
-fn sha256_hex(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
-}
-
-fn manifest() -> Vec<u8> {
-    let files: Vec<Value> = CONTENT
-        .iter()
-        .map(|(path, content)| {
-            json!({ "path": path, "sha256": sha256_hex(content), "bytes": content.len().to_string() })
-        })
-        .collect();
-    serde_json::to_vec(&json!({
-        "manifest_schema": 1,
-        "package_id": "plugin.demo",
-        "package_version": "1.2.3",
-        "kind": "plugin",
-        "kernel_range": ">=1.0.0, <2.0.0",
-        "requires": [{ "ref": "cap.one", "range": ">=1.0.0, <2.0.0" }],
-        "hosts": ["inproc"],
-        "os": ["linux"],
-        "architectures": ["x86_64"],
-        "runtime": [{ "id": "rt-cpu", "accel": "cpu" }],
-        "files": files,
-        "install_bytes": "1024",
-        "migrated_bytes": "2048",
-        "signer_ref": "signer.demo",
-        "license_ref": "license.demo",
-        "migration_ref": "migration.forward",
-        "rollback_range": ">=1.0.0, <1.2.0",
-        "cost": { "currency": "CNY", "cloud": "10", "download": null, "storage": "5", "runtime_delta": null }
-    }))
-    .unwrap()
-}
-
-fn files() -> Vec<PackageFile<'static>> {
-    CONTENT
-        .iter()
-        .map(|&(path, content)| PackageFile { path, content })
-        .collect()
-}
-
-fn facts() -> HostFacts {
-    HostFacts {
-        host: "inproc".into(),
-        os: "linux".into(),
-        architecture: "x86_64".into(),
-        kernel_version: "1.96.0".into(),
-        capabilities: vec!["cap.one".into()],
-        runtime_ids: vec!["rt-cpu".into()],
-        credentials_available: ResourceState::Sufficient,
-    }
-}
 
 fn op() -> Operation {
     Operation::new(Operation::CEILING).unwrap()
 }
 
-struct Fixture {
-    manifest: Vec<u8>,
-    signature: Vec<u8>,
-    revocations: RevocationList,
-    verifier: DeterministicVerifier,
-    cancelled: AtomicBool,
-}
-impl Fixture {
-    fn new() -> Self {
-        let manifest = manifest();
-        let signature = DeterministicVerifier::sign(&manifest);
-        Self {
-            manifest,
-            signature,
-            revocations: RevocationList::new(1_000, 60_000, []).unwrap(),
-            verifier: DeterministicVerifier,
-            cancelled: AtomicBool::new(false),
-        }
-    }
-    fn request(&self) -> UpgradeRequest<'_> {
-        UpgradeRequest {
-            transaction_id: "tx-1".into(),
-            from_manifest: "manifest-old".into(),
-            manifest: &self.manifest,
-            files: files(),
-            signature: &self.signature,
-            verifier: &self.verifier,
-            revocations: &self.revocations,
-            now_ms: 1_000,
-            limits: VerifyLimits::default(),
-            deadline: Instant::now() + Duration::from_secs(30),
-            cancelled: &self.cancelled,
-        }
-    }
+/// The demo package and its verification environment. One definition, shared
+/// with every other crate that must drive a real `prepare`; a local copy here
+/// would be a second one to drift.
+fn demo() -> RehearsalPackage {
+    RehearsalPackage::new()
 }
 
 fn rehearsal_host(space: Probe) -> RehearsalHost {
-    RehearsalHost::new(facts(), space, "manifest-old")
+    demo().host(space, "manifest-old")
 }
 
 fn prepare(
-    fixture: &Fixture,
+    fixture: &RehearsalPackage,
     host: &mut RehearsalHost,
     journal: &mut dyn UpgradeJournal,
 ) -> nai_upgrade_core::Result<Prepared> {
-    let request = fixture.request();
+    let request = fixture.request("tx-1", "manifest-old");
     let mut transaction = UpgradeTransaction::new(host, journal);
     transaction.prepare(&op(), &request)
 }
@@ -181,7 +87,7 @@ fn crash_at(
 
 #[test]
 fn activation_commits_and_swaps_the_manifest_once() {
-    let fixture = Fixture::new();
+    let fixture = demo();
     let mut host = rehearsal_host(Probe::Measured(1 << 30));
     let mut journal = RehearsalJournal::new();
 
@@ -223,7 +129,7 @@ fn activation_commits_and_swaps_the_manifest_once() {
 
 #[test]
 fn an_insufficient_or_unknown_preflight_leaves_no_trace() {
-    let fixture = Fixture::new();
+    let fixture = demo();
     for (space, code) in [
         (Probe::Measured(100), ErrorCode::ResourceExhausted),
         (Probe::Unknown("no probe"), ErrorCode::CapabilityNotReady),
@@ -242,13 +148,12 @@ fn an_insufficient_or_unknown_preflight_leaves_no_trace() {
 
 #[test]
 fn a_target_equal_to_the_current_version_is_refused() {
-    let fixture = Fixture::new();
+    let fixture = demo();
     let mut host = rehearsal_host(Probe::Measured(1 << 30));
     let mut journal = RehearsalJournal::new();
     // Derive the real target identity, then claim it is already installed.
     let prepared = prepare(&fixture, &mut host, &mut journal).unwrap();
-    let mut request = fixture.request();
-    request.from_manifest = prepared.to_manifest.clone();
+    let request = fixture.request("tx-1", &prepared.to_manifest);
     let mut transaction = UpgradeTransaction::new(&mut host, &mut journal);
     let failure = transaction.prepare(&op(), &request).unwrap_err();
     assert_eq!(failure.code, ErrorCode::InvalidArgument);
@@ -257,7 +162,7 @@ fn a_target_equal_to_the_current_version_is_refused() {
 
 #[test]
 fn a_failure_after_the_backup_converges_to_rolled_back() {
-    let fixture = Fixture::new();
+    let fixture = demo();
     for fault in [
         FaultPoint::Migrate,
         FaultPoint::SelfCheck,
@@ -303,7 +208,7 @@ fn a_failure_after_the_backup_converges_to_rolled_back() {
 
 #[test]
 fn a_backup_failure_closes_the_record_without_a_restore() {
-    let fixture = Fixture::new();
+    let fixture = demo();
     let mut host = rehearsal_host(Probe::Measured(1 << 30)).fail_at(FaultPoint::Backup);
     let mut journal = RehearsalJournal::new();
     let prepared = prepare(&fixture, &mut host, &mut journal).unwrap();
@@ -323,7 +228,7 @@ fn a_backup_failure_closes_the_record_without_a_restore() {
 
 #[test]
 fn a_stop_signal_converges_before_it_propagates() {
-    let fixture = Fixture::new();
+    let fixture = demo();
     let mut host = rehearsal_host(Probe::Measured(1 << 30))
         .fail_with(FaultPoint::Migrate, ErrorCode::Cancelled);
     let mut journal = RehearsalJournal::new();
@@ -343,7 +248,7 @@ fn a_stop_signal_converges_before_it_propagates() {
 
 #[test]
 fn a_cancellation_before_activation_leaves_the_record_prepared() {
-    let fixture = Fixture::new();
+    let fixture = demo();
     let mut host = rehearsal_host(Probe::Measured(1 << 30));
     let mut journal = RehearsalJournal::new();
     let prepared = prepare(&fixture, &mut host, &mut journal).unwrap();
@@ -382,7 +287,7 @@ fn a_cancellation_before_activation_leaves_the_record_prepared() {
 
 #[test]
 fn recovery_from_migrated_restores_and_is_idempotent() {
-    let fixture = Fixture::new();
+    let fixture = demo();
     let mut host = rehearsal_host(Probe::Measured(1 << 30)).with_post_upgrade_writes(2, 3);
     let mut journal = RehearsalJournal::new();
     let prepared = prepare(&fixture, &mut host, &mut journal).unwrap();
@@ -413,7 +318,7 @@ fn recovery_from_migrated_restores_and_is_idempotent() {
 
 #[test]
 fn recovery_after_a_landed_swap_confirms_commit_without_repeating_effects() {
-    let fixture = Fixture::new();
+    let fixture = demo();
     let mut host = rehearsal_host(Probe::Measured(1 << 30));
     let mut journal = RehearsalJournal::new();
     let prepared = prepare(&fixture, &mut host, &mut journal).unwrap();
@@ -448,7 +353,7 @@ fn recovery_after_a_landed_swap_confirms_commit_without_repeating_effects() {
 
 #[test]
 fn recovery_before_the_swap_rolls_back() {
-    let fixture = Fixture::new();
+    let fixture = demo();
     let mut host = rehearsal_host(Probe::Measured(1 << 30));
     let mut journal = RehearsalJournal::new();
     let prepared = prepare(&fixture, &mut host, &mut journal).unwrap();
@@ -466,7 +371,7 @@ fn recovery_before_the_swap_rolls_back() {
 
 #[test]
 fn recovery_of_an_absent_or_committed_transaction_has_no_effects() {
-    let fixture = Fixture::new();
+    let fixture = demo();
     let mut host = rehearsal_host(Probe::Measured(1 << 30));
     let mut journal = RehearsalJournal::new();
 
@@ -498,7 +403,7 @@ fn the_transaction_journals_into_the_storage_table() {
     let paths = nai_storage::DataPaths::at(dir.path()).unwrap();
     let mut store = nai_storage::Store::open(paths, &op()).unwrap();
 
-    let fixture = Fixture::new();
+    let fixture = demo();
     let mut host = rehearsal_host(Probe::Measured(1 << 30));
     let prepared = prepare(&fixture, &mut host, &mut store).unwrap();
     assert_eq!(

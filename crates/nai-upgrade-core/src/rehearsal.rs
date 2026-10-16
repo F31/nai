@@ -14,16 +14,21 @@
 use crate::{
     Result, error,
     gates::{ActiveSessionGate, SessionDrain},
-    plan::{BackupRef, ExportedWrites, StagingId, UpgradeHost, UpgradeJournal},
-    preflight::{HostFacts, Probe},
-    verify::VerifiedPackage,
+    plan::{BackupRef, ExportedWrites, StagingId, UpgradeHost, UpgradeJournal, UpgradeRequest},
+    preflight::{HostFacts, Probe, ResourceState},
+    revocation::RevocationList,
+    signature::DeterministicVerifier,
+    verify::{PackageFile, VerifiedPackage, VerifyLimits},
 };
 use nai_contracts::v1::ErrorCode;
 use nai_security::Operation;
 use nai_storage::{UpgradeRecord, UpgradeStep};
+use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+    time::{Duration, Instant},
 };
 
 /// The step at which a rehearsal should fail, so each transition can be driven
@@ -425,5 +430,163 @@ impl SessionDrain for RehearsalDrain {
         self.retired.push(capability.to_owned());
         // Retiring touches code, never the stored records.
         Ok(())
+    }
+}
+
+/// The single fake binary the demo package carries. Seven bytes, so a caller can
+/// assert a staged content size without deriving it.
+pub const DEMO_CONTENT: &[(&str, &[u8])] = &[("bin/app", b"payload")];
+
+/// The demo cost table: two components known and two `null`, which is what makes
+/// "an unknown cost survives as unknown rather than as zero" observable.
+pub fn demo_cost() -> Value {
+    json!({
+        "currency": "CNY",
+        "cloud": "10",
+        "download": null,
+        "storage": "5",
+        "runtime_delta": null
+    })
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
+/// A schema-valid demo manifest whose `files` array matches `files` exactly.
+///
+/// Public because a caller that must break one field — the preflight and
+/// signature tests do exactly that — needs a valid base to mutate, and
+/// restating every other field per test file is how copies drift.
+pub fn demo_manifest(files: &[(&str, &[u8])], cost: Value) -> Value {
+    let declarations: Vec<Value> = files
+        .iter()
+        .map(|(path, content)| {
+            json!({
+                "path": path,
+                "sha256": sha256_hex(content),
+                "bytes": content.len().to_string()
+            })
+        })
+        .collect();
+    json!({
+        "manifest_schema": 1,
+        "package_id": "plugin.demo",
+        "package_version": "1.2.3",
+        "kind": "plugin",
+        "kernel_range": ">=1.0.0, <2.0.0",
+        "requires": [{ "ref": "cap.one", "range": ">=1.0.0, <2.0.0" }],
+        "hosts": ["inproc"],
+        "os": ["linux"],
+        "architectures": ["x86_64"],
+        "runtime": [{ "id": "rt-cpu", "accel": "cpu" }],
+        "files": declarations,
+        "install_bytes": "1024",
+        "migrated_bytes": "2048",
+        "signer_ref": "signer.demo",
+        "license_ref": "license.demo",
+        "migration_ref": "migration.forward",
+        "rollback_range": ">=1.0.0, <1.2.0",
+        "cost": cost
+    })
+}
+
+/// The host facts the demo manifest needs to pass its own preflight: they mirror
+/// the `hosts`/`runtime`/`requires` declarations in [`demo_manifest`]. The
+/// preflight is what keeps the two honest — a mismatch makes every `prepare`
+/// refuse rather than quietly pass — and a caller that must break one of them
+/// starts from here rather than restating the rest.
+pub fn demo_facts() -> HostFacts {
+    HostFacts {
+        host: "inproc".into(),
+        os: "linux".into(),
+        architecture: "x86_64".into(),
+        kernel_version: "1.96.0".into(),
+        capabilities: vec!["cap.one".into()],
+        runtime_ids: vec!["rt-cpu".into()],
+        credentials_available: ResourceState::Sufficient,
+    }
+}
+
+/// A signed demo package plus the verification environment a transaction needs.
+///
+/// The real package bytes come from a distributor, so every caller that must
+/// drive a **real** `prepare` needs the same demo manifest, the same
+/// deterministic signature and the same empty revocation list. Deriving that per
+/// test file is how copies drift — and a caller in *another* crate has no way to
+/// reach a fixture that lives in this crate's `tests/` — so it lives here beside
+/// the other rehearsal doubles, one definition usable from anywhere.
+///
+/// It is **not** a distributor: it holds one fake binary, signs it
+/// deterministically, and touches no disk, network or clock.
+pub struct RehearsalPackage {
+    manifest: Vec<u8>,
+    signature: Vec<u8>,
+    revocations: RevocationList,
+    verifier: DeterministicVerifier,
+    cancelled: AtomicBool,
+}
+
+impl RehearsalPackage {
+    /// The demo package with the default cost table.
+    pub fn new() -> Self {
+        Self::with_cost(demo_cost())
+    }
+
+    /// The demo package with a chosen `cost` block. Cost is the one manifest
+    /// field that is policy rather than identity, so it is the one a caller
+    /// varies.
+    pub fn with_cost(cost: Value) -> Self {
+        let manifest = serde_json::to_vec(&demo_manifest(DEMO_CONTENT, cost)).unwrap();
+        let signature = DeterministicVerifier::sign(&manifest);
+        Self {
+            manifest,
+            signature,
+            revocations: RevocationList::new(1_000, 60_000, []).unwrap(),
+            verifier: DeterministicVerifier,
+            cancelled: AtomicBool::new(false),
+        }
+    }
+
+    /// The manifest bytes, for a caller that must parse the package itself.
+    pub fn manifest(&self) -> &[u8] {
+        &self.manifest
+    }
+
+    /// A rehearsal host carrying [`demo_facts`], `space` free bytes and the
+    /// identity that is claimed to be installed right now.
+    pub fn host(&self, space: Probe, current_manifest: impl Into<String>) -> RehearsalHost {
+        RehearsalHost::new(demo_facts(), space, current_manifest)
+    }
+
+    /// A request for this package. `from_manifest` is the identity the caller
+    /// claims is installed; the target identity is derived from the bytes, so a
+    /// caller that needs the two to differ passes anything but the derived hash.
+    pub fn request(&self, transaction_id: &str, from_manifest: &str) -> UpgradeRequest<'_> {
+        UpgradeRequest {
+            transaction_id: transaction_id.to_owned(),
+            from_manifest: from_manifest.to_owned(),
+            manifest: &self.manifest,
+            files: DEMO_CONTENT
+                .iter()
+                .map(|&(path, content)| PackageFile { path, content })
+                .collect(),
+            signature: &self.signature,
+            verifier: &self.verifier,
+            revocations: &self.revocations,
+            now_ms: 1_000,
+            limits: VerifyLimits::default(),
+            deadline: Instant::now() + Duration::from_secs(30),
+            cancelled: &self.cancelled,
+        }
+    }
+}
+
+impl Default for RehearsalPackage {
+    fn default() -> Self {
+        Self::new()
     }
 }

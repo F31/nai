@@ -121,6 +121,19 @@ CapabilityNotReady）→Draining（仍 Deferred）→Stopped（Allowed）；busy
 **注入验证**：三条独立注入各自命中对应判据，幅度判据与 artifact 写入判据保持绿。
 **R08 仍不升 `tested`**：名册 19 项**剩余 11 项零覆盖**（`store`/`budget`/`knowledge` 的调用与批上限，逐项具名在
 registry）。见 [ADR 0103](adr/0103-storage-bound-roster.md)、[W125 报告](reports/2026-10-16-w125-storage-bound-roster.md)。）
+（W128 把「开播中只暂存不激活」接到**生产调用点**上（R10）：`Composition` 新增 `stage_upgrade` / `activate_staged`，
+`UpgradeTransaction` 在核心之外**首次**有使用处。三条形状规则：**暂存不问门**（暂存任何时候都安全、只有切换
+需要静默 ⇒ 运行时不把两调合成一个方法，否则会把「被推迟」压成「失败」，而被门控的包恰恰不该失效）；
+**门只被问一次**且由装配根**自己持有的真实会话**回答（两个方法都取 `&self` ⇒ 缓存活跃计数在**类型层面**不可能）；
+**推迟是值、错误是错误**——门答 `Deferred{active}` ⇒ `UpgradeActivation::Deferred`（**非** `Err`），
+门不可观测 ⇒ 原样上抛 `Conflict`（把「未知」写成推迟＝把未知伪装成已知的等待，写成放行＝让切换在开播中发生），
+运行后的终局**原样**携带核心 `Outcome`（成因码 + 导出计数；运行时侧不重写、不补零）。
+4 组注入逐条可归因（4／3／1／1 条红，I2 与 I3 的红色集合不相交）；一处断言**按构造**成立、无注入可令其
+单独变红，已在测试注释如实标明。**前置**：`Prepared` 在核心之外**无法字面构造** ⇒ 判据必须走一次真的
+`prepare` ⇒ demo 夹具从三份副本提为 `nai-upgrade-core/src/rehearsal.rs` 一处定义（另一个 crate 的 `tests/`
+够不到）。**R10 仍不升 `tested`**：降档侧 `downgrade`/`require_rollback_compatible` 在核心之外**恰 0 个调用点**；
+真实安装器与真实分发端点仍是外部注入点。见 [ADR 0106](adr/0106-runtime-upgrade-call-site.md)、
+[W128 报告](reports/2026-10-16-w128-runtime-upgrade-call-site.md)。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。

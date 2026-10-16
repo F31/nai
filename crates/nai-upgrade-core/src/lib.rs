@@ -64,7 +64,8 @@ pub use preflight::{
     preflight,
 };
 pub use rehearsal::{
-    EffectCounts, FaultPoint, RehearsalDrain, RehearsalHost, RehearsalJournal, RehearsalSessions,
+    DEMO_CONTENT, EffectCounts, FaultPoint, RehearsalDrain, RehearsalHost, RehearsalJournal,
+    RehearsalPackage, RehearsalSessions, demo_cost, demo_facts, demo_manifest,
 };
 pub use residency::{
     CapabilityResidency, IdlePolicy, MAX_CAPABILITIES, PRO_ADDITIONS, ReclaimReport,

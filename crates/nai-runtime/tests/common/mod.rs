@@ -5,6 +5,7 @@ use nai_storage::{ConfigKind, DataPaths, Operation, Store};
 use serde_json::{Value, json};
 use std::{
     path::{Path, PathBuf},
+    sync::mpsc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -161,6 +162,23 @@ pub fn grant(
 
 pub fn store_operation() -> Operation {
     operation()
+}
+
+/// Holds the shared session lock for `hold`, signalling **after** it is held so
+/// the caller knows the contention is already in place before it calls into the
+/// composition. A sleep would race the scheduler; a handshake cannot.
+pub fn hold_session(
+    composition: &nai_runtime::Composition,
+    hold: Duration,
+) -> (std::thread::JoinHandle<()>, mpsc::Receiver<()>) {
+    let session = composition.session();
+    let (held_tx, held_rx) = mpsc::channel();
+    let handle = std::thread::spawn(move || {
+        let _guard = session.lock().unwrap();
+        held_tx.send(()).unwrap();
+        std::thread::sleep(hold);
+    });
+    (handle, held_rx)
 }
 
 /// Recomputes the whole decision-log chain for the composition's workspace.

@@ -8,86 +8,27 @@
 use nai_contracts::v1::ErrorCode;
 use nai_security::Operation;
 use nai_upgrade_core::{
-    Activation, Component, CostEstimate, DeterministicVerifier, HostFacts, Outcome, PackageFile,
-    Probe, RehearsalDrain, RehearsalHost, RehearsalJournal, RehearsalSessions, ResourceState,
-    RevocationList, SessionGate, Total, UpgradePackage, UpgradeRequest, UpgradeTransaction,
-    VerifyLimits, downgrade, require_rollback_compatible,
+    Activation, Component, CostEstimate, DEMO_CONTENT, Outcome, Probe, RehearsalDrain,
+    RehearsalJournal, RehearsalPackage, RehearsalSessions, SessionGate, Total, UpgradePackage,
+    UpgradeTransaction, demo_manifest, downgrade, require_rollback_compatible,
 };
 use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
-use std::{
-    sync::atomic::AtomicBool,
-    time::{Duration, Instant},
-};
 
-const CONTENT: &[(&str, &[u8])] = &[("bin/app", b"payload")];
-
-fn sha256_hex(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+/// The demo package's cost table with two components left undeclared.
+fn partial_cost() -> Value {
+    json!({ "currency": "CNY", "cloud": "10", "download": null, "storage": "5", "runtime_delta": null })
 }
 
-fn manifest(cost: Value) -> Vec<u8> {
-    let files: Vec<Value> = CONTENT
-        .iter()
-        .map(|(path, content)| {
-            json!({ "path": path, "sha256": sha256_hex(content), "bytes": content.len().to_string() })
-        })
-        .collect();
-    serde_json::to_vec(&json!({
-        "manifest_schema": 1,
-        "package_id": "plugin.demo",
-        "package_version": "1.2.3",
-        "kind": "plugin",
-        "kernel_range": ">=1.0.0, <2.0.0",
-        "requires": [{ "ref": "cap.one", "range": ">=1.0.0, <2.0.0" }],
-        "hosts": ["inproc"],
-        "os": ["linux"],
-        "architectures": ["x86_64"],
-        "runtime": [{ "id": "rt-cpu", "accel": "cpu" }],
-        "files": files,
-        "install_bytes": "1024",
-        "migrated_bytes": "2048",
-        "signer_ref": "signer.demo",
-        "license_ref": "license.demo",
-        "migration_ref": "migration.forward",
-        "rollback_range": ">=1.0.0, <1.2.0",
-        "cost": cost
-    }))
-    .unwrap()
+/// The same table with every component declared.
+fn full_cost() -> Value {
+    json!({ "currency": "CNY", "cloud": "10", "download": "2", "storage": "5", "runtime_delta": "3" })
 }
 
-fn partial_cost_manifest() -> Vec<u8> {
-    manifest(
-        json!({ "currency": "CNY", "cloud": "10", "download": null, "storage": "5", "runtime_delta": null }),
-    )
-}
-
-fn full_cost_manifest() -> Vec<u8> {
-    manifest(
-        json!({ "currency": "CNY", "cloud": "10", "download": "2", "storage": "5", "runtime_delta": "3" }),
-    )
-}
-
-fn files() -> Vec<PackageFile<'static>> {
-    CONTENT
-        .iter()
-        .map(|&(path, content)| PackageFile { path, content })
-        .collect()
-}
-
-fn facts() -> HostFacts {
-    HostFacts {
-        host: "inproc".into(),
-        os: "linux".into(),
-        architecture: "x86_64".into(),
-        kernel_version: "1.96.0".into(),
-        capabilities: vec!["cap.one".into()],
-        runtime_ids: vec!["rt-cpu".into()],
-        credentials_available: ResourceState::Sufficient,
-    }
+/// The demo manifest bytes for a cost table. The valid base comes from the
+/// shared demo package, so the two tables above are the only thing this file
+/// defines — a local copy of the manifest JSON would be a second one to drift.
+fn cost_manifest(cost: Value) -> Vec<u8> {
+    serde_json::to_vec(&demo_manifest(DEMO_CONTENT, cost)).unwrap()
 }
 
 fn op() -> Operation {
@@ -96,27 +37,11 @@ fn op() -> Operation {
 
 #[test]
 fn a_live_session_defers_activation_but_not_staging() {
-    let manifest = partial_cost_manifest();
-    let signature = DeterministicVerifier::sign(&manifest);
-    let revocations = RevocationList::new(1_000, 60_000, []).unwrap();
-    let cancelled = AtomicBool::new(false);
-    let deadline = Instant::now() + Duration::from_secs(30);
+    let package = RehearsalPackage::with_cost(partial_cost());
 
-    let mut host = RehearsalHost::new(facts(), Probe::Measured(1 << 30), "manifest-old");
+    let mut host = package.host(Probe::Measured(1 << 30), "manifest-old");
     let mut journal = RehearsalJournal::new();
-    let request = UpgradeRequest {
-        transaction_id: "tx-live".into(),
-        from_manifest: "manifest-old".into(),
-        manifest: &manifest,
-        files: files(),
-        signature: &signature,
-        verifier: &DeterministicVerifier,
-        revocations: &revocations,
-        now_ms: 1_000,
-        limits: VerifyLimits::default(),
-        deadline,
-        cancelled: &cancelled,
-    };
+    let request = package.request("tx-live", "manifest-old");
 
     // Staging is safe during a live session: the running version is untouched.
     let prepared = {
@@ -202,7 +127,7 @@ fn a_downgrade_retiring_nothing_is_refused() {
 
 #[test]
 fn an_incompatible_rollback_target_is_refused() {
-    let package = UpgradePackage::parse(&partial_cost_manifest()).unwrap();
+    let package = UpgradePackage::parse(&cost_manifest(partial_cost())).unwrap();
 
     // Inside the declared range: permitted.
     require_rollback_compatible(&package, "1.1.0").unwrap();
@@ -224,7 +149,7 @@ fn an_incompatible_rollback_target_is_refused() {
 
 #[test]
 fn cost_marks_unknown_components_instead_of_zeroing_them() {
-    let package = UpgradePackage::parse(&partial_cost_manifest()).unwrap();
+    let package = UpgradePackage::parse(&cost_manifest(partial_cost())).unwrap();
     let estimate = CostEstimate::from_package(&package);
 
     assert_eq!(estimate.currency, "CNY");
@@ -248,7 +173,7 @@ fn cost_marks_unknown_components_instead_of_zeroing_them() {
 
 #[test]
 fn a_fully_known_cost_totals_completely() {
-    let package = UpgradePackage::parse(&full_cost_manifest()).unwrap();
+    let package = UpgradePackage::parse(&cost_manifest(full_cost())).unwrap();
     let estimate = CostEstimate::from_package(&package);
 
     assert_eq!(estimate.download, Component::Known(2));

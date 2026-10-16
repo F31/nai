@@ -10,26 +10,8 @@ use nai_storage::{ConfigKind, DataPaths, DecisionKind};
 // direct dependency of nai-runtime, and the gate is what needs it anyway.
 use nai_upgrade_core::{Activation, Operation, SessionGate};
 use serde_json::json;
-use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use tempfile::tempdir;
-
-/// Holds the shared session lock for `hold`, signalling **after** it is held so
-/// the caller knows the contention is already in place before it calls into the
-/// composition. A sleep would race the scheduler; a handshake cannot.
-fn hold_session(
-    composition: &Composition,
-    hold: Duration,
-) -> (std::thread::JoinHandle<()>, mpsc::Receiver<()>) {
-    let session = composition.session();
-    let (held_tx, held_rx) = mpsc::channel();
-    let handle = std::thread::spawn(move || {
-        let _guard = session.lock().unwrap();
-        held_tx.send(()).unwrap();
-        std::thread::sleep(hold);
-    });
-    (handle, held_rx)
-}
 
 fn prepared(root: &std::path::Path) -> Composition {
     provision(root, WORKSPACE, ACTOR, PROFILE, &runtime_profile(WORKSPACE));

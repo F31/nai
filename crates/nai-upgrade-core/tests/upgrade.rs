@@ -1,22 +1,15 @@
 //! End-to-end checks for verify_package and preflight, across the module seams.
 use nai_contracts::v1::ErrorCode;
 use nai_upgrade_core::{
-    DeterministicVerifier, HostFacts, NoSpaceProbe, PackageFile, Probe, ResourceState,
-    RevocationEntry, RevocationList, SpaceProbe, UpgradePackage, VerifyLimits, verify_package,
+    DeterministicVerifier, NoSpaceProbe, PackageFile, Probe, ResourceState, RevocationEntry,
+    RevocationList, SpaceProbe, UpgradePackage, VerifyLimits, demo_cost, demo_facts, demo_manifest,
+    verify_package,
 };
-use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
+use serde_json::Value;
 use std::{
     sync::atomic::AtomicBool,
     time::{Duration, Instant},
 };
-
-fn sha256_hex(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
-}
 
 fn deadline() -> Instant {
     Instant::now() + Duration::from_secs(30)
@@ -27,34 +20,11 @@ fn open_revocations(now_ms: i64) -> RevocationList {
 }
 
 /// Build a schema-valid manifest whose `files` array matches `files` exactly,
-/// then apply `mutate` so a test can break one field at a time.
+/// then apply `mutate` so a test can break one field at a time. The valid base
+/// comes from the shared demo package, so the fields no test breaks are written
+/// down once.
 fn build_manifest(files: &[(&str, &[u8])], mutate: impl FnOnce(&mut Value)) -> Vec<u8> {
-    let declarations: Vec<Value> = files
-        .iter()
-        .map(|(path, content)| {
-            json!({ "path": path, "sha256": sha256_hex(content), "bytes": content.len().to_string() })
-        })
-        .collect();
-    let mut manifest = json!({
-        "manifest_schema": 1,
-        "package_id": "plugin.demo",
-        "package_version": "1.2.3",
-        "kind": "plugin",
-        "kernel_range": ">=1.0.0, <2.0.0",
-        "requires": [{ "ref": "cap.one", "range": ">=1.0.0, <2.0.0" }],
-        "hosts": ["inproc"],
-        "os": ["linux"],
-        "architectures": ["x86_64"],
-        "runtime": [{ "id": "rt-cpu", "accel": "cpu" }],
-        "files": declarations,
-        "install_bytes": "1024",
-        "migrated_bytes": "2048",
-        "signer_ref": "signer.demo",
-        "license_ref": "license.demo",
-        "migration_ref": "migration.forward",
-        "rollback_range": ">=1.0.0, <1.2.0",
-        "cost": { "currency": "CNY", "cloud": "10", "download": null, "storage": "5", "runtime_delta": null }
-    });
+    let mut manifest = demo_manifest(files, demo_cost());
     mutate(&mut manifest);
     serde_json::to_vec(&manifest).unwrap()
 }
@@ -301,18 +271,6 @@ impl SpaceProbe for UnknownSpace {
     }
 }
 
-fn facts() -> HostFacts {
-    HostFacts {
-        host: "inproc".into(),
-        os: "linux".into(),
-        architecture: "x86_64".into(),
-        kernel_version: "1.96.0".into(),
-        capabilities: vec!["cap.one".into()],
-        runtime_ids: vec!["rt-cpu".into()],
-        credentials_available: ResourceState::Sufficient,
-    }
-}
-
 fn package() -> UpgradePackage {
     let content: &[(&str, &[u8])] = &[("bin/app", b"payload")];
     UpgradePackage::parse(&build_manifest(content, |_| {})).unwrap()
@@ -320,7 +278,8 @@ fn package() -> UpgradePackage {
 
 #[test]
 fn preflight_admits_a_supported_target() {
-    let report = nai_upgrade_core::preflight(&package(), &facts(), &FixedSpace(1 << 30)).unwrap();
+    let report =
+        nai_upgrade_core::preflight(&package(), &demo_facts(), &FixedSpace(1 << 30)).unwrap();
     assert!(
         report.admitted(),
         "refusals: {:?}",
@@ -332,11 +291,11 @@ fn preflight_admits_a_supported_target() {
 #[test]
 fn preflight_refuses_on_each_axis() {
     let support = FixedSpace(1 << 30);
-    let base = nai_upgrade_core::preflight(&package(), &facts(), &support).unwrap();
+    let base = nai_upgrade_core::preflight(&package(), &demo_facts(), &support).unwrap();
     assert!(base.admitted());
 
     // unsupported OS
-    let mut wrong_os = facts();
+    let mut wrong_os = demo_facts();
     wrong_os.os = "windows".into();
     let report = nai_upgrade_core::preflight(&package(), &wrong_os, &support).unwrap();
     assert_eq!(
@@ -345,7 +304,7 @@ fn preflight_refuses_on_each_axis() {
     );
 
     // kernel outside range
-    let mut wrong_kernel = facts();
+    let mut wrong_kernel = demo_facts();
     wrong_kernel.kernel_version = "2.0.0".into();
     assert!(
         !nai_upgrade_core::preflight(&package(), &wrong_kernel, &support)
@@ -354,7 +313,7 @@ fn preflight_refuses_on_each_axis() {
     );
 
     // dependency capability absent
-    let mut missing_dependency = facts();
+    let mut missing_dependency = demo_facts();
     missing_dependency.capabilities = vec![];
     assert!(
         !nai_upgrade_core::preflight(&package(), &missing_dependency, &support)
@@ -364,13 +323,13 @@ fn preflight_refuses_on_each_axis() {
 
     // insufficient space (needs 1024 + 2048)
     assert!(
-        !nai_upgrade_core::preflight(&package(), &facts(), &FixedSpace(100))
+        !nai_upgrade_core::preflight(&package(), &demo_facts(), &FixedSpace(100))
             .unwrap()
             .admitted()
     );
 
     // unknown space is refused and classified distinctly from insufficient
-    let unknown = nai_upgrade_core::preflight(&package(), &facts(), &UnknownSpace).unwrap();
+    let unknown = nai_upgrade_core::preflight(&package(), &demo_facts(), &UnknownSpace).unwrap();
     assert!(!unknown.admitted());
     assert_eq!(
         unknown.refusal_error().unwrap().code,
@@ -379,13 +338,13 @@ fn preflight_refuses_on_each_axis() {
 
     // the default no-probe also refuses rather than assuming room
     assert!(
-        !nai_upgrade_core::preflight(&package(), &facts(), &NoSpaceProbe)
+        !nai_upgrade_core::preflight(&package(), &demo_facts(), &NoSpaceProbe)
             .unwrap()
             .admitted()
     );
 
     // unknown credentials are refused
-    let mut unknown_credentials = facts();
+    let mut unknown_credentials = demo_facts();
     unknown_credentials.credentials_available = ResourceState::Unknown("vault unreachable");
     assert!(
         !nai_upgrade_core::preflight(&package(), &unknown_credentials, &support)
