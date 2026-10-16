@@ -112,3 +112,55 @@ I7 第一次注入后测试**全绿**（40 passed / 0 failed）——**没有一
   以及「合法用例零假阴性」的论证；**不改 `status`**——本轮闭合的是**判定面口径**，
   「本系统里真实装配一次上下文并喂给模型」**仍不是事实**。
 - ⚠️ 报告 MUST NOT 出现「装配器已接入运行期」「已不依赖当时内存」这类运行期断言。
+
+## 五、门控（`cargo xtask check --profile full`）
+
+三次尝试，逐次如实登记（判据见 §三末与 KNOWLEDGE §6.32，**不写成「跑一次就绿」**）：
+
+| # | 命令 | 结果 | 性质判定 |
+| --- | --- | --- | --- |
+| 1 | `... check --profile full` | `GATE_EXIT=1` | **构建期**失败：`nai-kernel` 的 `realistic` 用例链接 `LNK1104`（无法打开 `target/debug/deps/*.exe`），全日志**零条 `test result`** ⇒ 与代码无关，判宿主间歇 |
+| 2 | 同上（不限并发） | 红 | bring-up 夹具 `DeadlineExceeded`（§三末已具名判定），默认并发下多数据根同时建库的宿主并行瞬态 |
+| 3 | `CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=2 ... check --profile full` | `GATE_EXIT=0` | 限并发 **直接移除成因**后全绿 |
+
+第三次（**结论**）现测计数：
+
+- 错误类扫描（`LNK1104`／`error[`／`out of memory`／`^error`／`FAILED`）：**0**
+- `test result` 行 **96** 条 = **78** 个真实测试目标（`Running unittests|tests\`）+ **18** 个 `Doc-tests`
+  （日志第 11 行 `Running ...nai-xtask.exe check --profile full` 是 **gate runner 自身回显，不计**）
+- Rust 合计 **1023 passed / 0 failed**
+- Node 侧 **13** 个套件、**323 passed / 0 failed**（逐套件 `# fail 0`）
+- 前端 6 步全过（`[frontend] 全部步骤通过`）
+
+**对照 W126**（同为 **96** 个目标、**1017 passed / 0 failed**）：本轮 **+6**，
+与 kernel **+4**（36→40）、runtime **+2**（25→27）**逐项吻合**；目标数不变，
+因本轮只在**既有**测试文件内增补用例、未新增文件（新增独立 Node 测试文件须在 `engineering_checks` 登记 —— 本轮无）。
+
+## 六、提交与推送
+
+**一次**提交，**20** 个文件（`git show --stat` 现测）：
+
+```
+a305288 feat(w127): 从决策日志重建装配以条目为单位（H02 口径收紧）
+20 files changed, 906 insertions(+), 43 deletions(-)
+```
+
+`git push` 输出 `1b570db..a305288  HEAD -> main`（SSH 443）。
+
+## 七、CI 观测
+
+三件齐（唯一查询参数 + `Cache-Control: no-cache` + 回读 `head_sha` == 推送 SHA），
+全程 **3** 次请求、**未轮询**：
+
+| # | 目的 | 结果 |
+| --- | --- | --- |
+| 1 | 触发确认 | `HTTP=200`、`total_count=1`、run **#197**（id `38901130988`）`in_progress`；`head_sha` 回读 == `a305288` ✓ |
+| 2 | 完成态（等 ~11.7 min 后） | 仍 `in_progress` ⇒ 触发「平台时长不同步」分支（W126 已实测：平台差距不固定，单次不够） |
+| 3 | 完成态（再等 ~4.3 min） | `completed / **success**`；`head_sha` 回读 == `a3052885864fa51bbc176c521fc4251bc6a3ff7f` ✓ |
+
+run #197 的 matrix 含 `foundation (windows-latest)` 与 `foundation (ubuntu-24.04)` 两个 job；
+**run 级 `success`** ⇒ 两平台全部 job 通过（任一 job 失败时 run 级不会为 `success`）。
+
+**口径（沿用 W126 实测修正）**：单轮完成态**最少两次**查询，第二次 MUST 在**确认前一平台仍缺之后**才发
+——本轮 query #2 正处于该分支。**本机绿 ≠ CI 绿**，且 CI 有独立于本机 profile 的步骤
+（如 `cargo xtask schema --check`，本轮未触及 `migration::VERSION`，无升版成套项）。
