@@ -80,7 +80,19 @@
   （门控是 fail-fast，故当时还未跑到 clippy/测试）。改法：按 rustfmt 建议换行，未动语义。
 
 ## 六、提交 / 推送
-（待跑）
+- 提交 SHA：**`279a3b65c3c6159312c8ad6ce42cc3d9e99a6081`**（主提交）。｜push 区间：**`3613ee6..279a3b6`**，
+  分支 `main`，SSH 443（16 文件 / +694 −10）。
+- 暂存用**显式路径**（不用 `-A`）：`target-check/`（safe-delete 批量阈值删不掉）与 `.commitmsg_w125.txt`
+  因此天然不进提交。
+- openspec 三连：`validate --strict` → `archive --yes`（`+3`，`knowledge-pipeline` +1、`local-persistence` +2）
+  → `--archived --strict` **123 / 0**（主规格 **43** 份）。
 
 ## 七、CI 观测
-（待跑）
+- **主提交** run id：**38872187999**。回读 `head_sha` = `279a3b65c3c6159312c8ad6ce42cc3d9e99a6081`，
+  与推送 SHA **完整 40 位一致** ⇒ **双平台 `foundation` 均 `completed / success`**
+  （`windows-latest` 与 `ubuntu-24.04`；逐 step 无 `failure`）。
+- 匿名 API 用量 **3** 次：① run 是否触发（`in_progress`）② ubuntu 先完成时的一次 job 查询
+  ③ windows 完成时的最终 job 查询。**未轮询**；每次均带唯一查询参数 + `Cache-Control: no-cache`。
+  ⚠️ **口径修正输入**：本轮实测「每轮 CI 观测只查 1–2 次」在**双平台时长不同步**时不够用——
+  至少需要「触发确认」+「完成确认」两次完成态查询（首批 ubuntu 与 windows 相差约 4 分钟）。
+- **回填提交**（docs-only）自身 CI：观测 1 次，结论记入 memory，不在本报告占位。
