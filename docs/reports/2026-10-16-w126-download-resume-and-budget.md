@@ -80,5 +80,62 @@ implemented/blocked，不得因映射自动升级为 tested」不升 `tested`（
 本轮**零新增依赖**：peer 与 client 都是测试内最小实现，故 `offline.rs` 依赖的
 「本 crate 无 HTTP 客户端 ⇒ 不会偷偷下载」这一**编译期性质**在 dev-dependency 层面仍逐字成立。
 
-## 五–七、门控 / 提交推送 / CI 观测
-由本轮**回填提交**填入（回填提交自身不占位）。
+## 五、门控（全量 `cargo xtask check --profile full`）
+**跑了两次**，两次结论逐项相同；计数均为**现测**。
+
+| 次 | 覆盖的工作树 | `GATE_EXIT` | 耗时 | `LNK1104` | `error[` | OOM |
+|---|---|---|---|---|---|---|
+| 1 | 主提交 `1ca82ce` | **0** | 4m32s | 0 | 0 | 0 |
+| 2 | 补提交 `33d0239` | **0** | **282s** | 0 | 0 | 0 |
+
+- 测试目标 **96** 个全 `0 failed`：**78** 个 `Running` 目标 + **18** 个 `Doc-tests`
+  （原始 `Running` 行 **79**，首行 ``Running `target\debug\nai-xtask.exe check --profile full` `` 是 gate runner
+  自身回显，**不计**），合计 **1017 passed / 0 failed**。
+- Node 侧 **13** 个套件、**323** passed / **0** failed（逐套件 `# fail 0`）。
+- 步骤全过：`cargo fmt --all --check`、`cargo clippy --workspace --all-targets --locked -- -D warnings`、
+  `cargo test --workspace --locked --exclude nai-xtask`、`cargo test --locked -p nai-xtask --lib`、
+  `node scripts/frontend-gate.mjs`。
+- `nai-upgrade-core` 现测 **8** 个 `Running` 目标 + `Doc-tests` = **99 passed / 0 failed**
+  （`lib` 3 / `cloud` 21 / **`download` 20** / `gates` 7 / `lifecycle` 17 / `migration` 11 / `plan` 12 / `upgrade` 8）。
+- ⚠️ **为什么要跑第二次**：「归档前最后一读」在**主提交之后**才发现一处重复守卫（见 §六），改动虽只有 6 行，
+  但**源码已变 ⇒ 不能沿用旧门控结论**。第二次跑在同一份改动上，计数与第一次逐项相同——这一点是**现测**，不是推断。
+- 告警：仅增量编译锁文件「拒绝访问 (os error 5)」，跨多个 crate 共有、与本轮改动无关。
+- 本 profile **未包含** `cargo xtask schema --check`（它需要 protoc 3.21.12，属**工具链前提**；
+  该步骤的成因已由 `requires-compiled-artifact` + 仓库内凭据兑付，ADR 0086）⇒ **不作「已通过」声明**。
+- 日志末行 `GATE_EXIT=0`；本轮门控输出**不含** `GATE_OK` 这一 token（与 W125 日志格式不同）⇒ 本报告只按实测写。
+
+## 六、提交 / 推送
+- **主提交 `1ca82ce`**（`test(w126): R09 下载阶段的续传、重问预算与哈希闸门`）：15 文件 / **+1796 −7**，
+  push 区间 **`dbf3749..1ca82ce`**。
+- **补提交 `33d0239`**（`test(w126): 删除 R09 下载循环前的重复守卫`）：1 文件 / **+6 −9**，
+  push 区间 **`1ca82ce..33d0239`**。分支 `main`，SSH 443（`HostName=ssh.github.com -p 443`）。
+- **补提交的来由**（如实披露）：「归档前最后一读」逐字核对判定词时，`grep` 发现
+  `resume ledger exceeds declared size` 在 `crates/nai-upgrade-core/src/download.rs` **出现 2 次**（循环前 / 循环内）。
+  两条守卫**同 token 同条件**，且首轮迭代时循环内读到的值必然等于循环前读到的值（`have == start`）
+  ⇒ 循环前那条**永不单独生效**，属「同一件事 MUST NOT 两处定义」；反过来说，**删掉循环内那条判据仍全绿**，
+  而**删掉循环前那条会静默收窄覆盖面**。处置：删循环前那条，只留循环内（它每轮迭代都重新从台账读回，是真正的闸门），
+  `start` 保留**仅作报告计数**并加注释说明闸门位置。判据不变：`tests/download.rs` 20 条全过，
+  其中 `an_oversized_resume_point_is_refused_not_clamped` 覆盖该守卫。
+- 三方 SHA 一致：本地 `HEAD` == `origin/main` == 远端 `refs/heads/main`
+  == **`33d02395c094300781bc71b20454e468b12cd847`**。
+- 暂存一律用**显式路径**（不用 `-A`）：`.commitmsg_w126*.txt` 与 `target-check/` 因此天然不进提交。
+- openspec 三连（主提交内）：`validate --strict` → `archive --yes` → `--archived --strict`
+  **124 / 0**（主规格 **43** 份，未归档 validate `--all --strict` **43 / 0**）。
+
+## 七、CI 观测
+- **补提交 `33d0239`（= `HEAD`，有效结论）**：run id **38882423048**（`run_number` #195）。
+  回读 `head_sha` = `33d02395c094300781bc71b20454e468b12cd847`，与推送 SHA **完整 40 位一致**
+  ⇒ `completed / success`（创建 09:43:36Z、收尾 09:57:38Z）。逐 job：
+  `foundation (windows-latest)` **success**（26 步，无失败）、`foundation (ubuntu-24.04)` **success**（26 步，无失败）。
+- **主提交 `1ca82ce`（已被取代）**：run id **38881674808**（`run_number` #194），
+  `head_sha` = `1ca82ceb73dbf048c198aac9d558866d00f5d737` **完整 40 位一致** ⇒ `completed / success`
+  （收尾 09:51:06Z）。它覆盖的 SHA 已**不再是 `HEAD`**，故**不**作结论依据，仅为闭合「主提交当时是不是绿的」补查 **1** 次。
+- 匿名 API 用量 **6** 次：① 触发确认（`?head_sha=` 完整 40 位，`total_count=1`）②③ 第一次完成态（run + jobs）
+  ④⑤ 第二次完成态（run + jobs）⑥ 被取代 run 的补查。每次均带**唯一查询参数** + `Cache-Control: no-cache`；
+  **未轮询**（相邻两次完成态查询间隔 **5m35s**）。
+- ⚠️ **口径修正输入（第二次实测，修正 W125 的「约 12 分钟」）**：本轮 run 全程 **14m02s**。
+  第一次完成态查询在 run 开始后 **13m34s**（09:57:10Z）时，ubuntu **已 success**、windows **仍 `in_progress`**，
+  而 run 实际在 **28 秒后**（09:57:38Z）就双双收尾 ⇒ **windows 侧确实比 ubuntu 晚，但差距可以小于 1 分钟，
+  也可能远大于 4 分钟**；「等到某个固定分钟数再单次查」**不是可靠判据**。
+  ⇒ 单轮完成态**最少两次**查询（合计三次：触发 + 两次完成态），且**第二次必须在确认前一平台仍缺之后才发**。
+- **回填提交**（docs-only）自身 CI：另做 **1** 次观测，结论记入 memory，不在本报告占位（回填提交自身不回填）。
