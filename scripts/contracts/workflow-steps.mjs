@@ -41,10 +41,15 @@ export const WORKFLOW_FILES = ['.github/workflows/foundation.yml'];
 export const STEP_KINDS = ['infra', 'local', 'ci-only', 'diagnostic'];
 
 /// `ci-only` 的**成因闭集**。域外取值 ⇒ 具名失败（W90：一个未知成因是一个标签，不是一个理由）。
-/// 三个取值按**实测**区分——「跑不了」有三种不同的成因，混成一个会让理由不可读：
+/// 四个取值按**实测**区分——「只有 CI 跑」有四种不同的成因，混成一个会让理由不可读：
 /// - `compiled-artifact`：需要编译产物（`descriptor.test.mjs` 要 protoc + 生成物）；
 /// - `platform-toolchain`：需要特定平台工具链（`--suite contracts` 要 Linux C++）；
-/// - `not-in-profile`：本机**能**跑，但没接进 `check` profile（`spec:validate`／`openspec --archived`）。
+/// - `not-in-profile`：本机**能**跑，但没接进 `check` profile（`spec:validate`／`openspec --archived`）；
+/// - `ci-produced-artifact`：本机**能**跑，但它判定的**产物只由 CI 的前序步产生**
+///   （W130：门控日志由写方 `tee` 落进 `.nai-diagnostics/`，由 `xtask/src/secrets.rs` 的
+///   `ARTIFACTS` 登记表指出扫描域）。本机跑它是**空洞的**——扫描域为空，报「通过」等于什么都没说。
+///   它与 `not-in-profile` 的区别就是**实测出来的**：后者删掉该步，那条判定**本机本来也没有**；
+///   前者删掉该步，判定的**对象**根本不会出现在任何地方。
 ///
 /// ⚠️ 上面每一点都 MUST 在 `CI_ONLY_REASON_PAYMENTS` 里有**凭据**。原有的第四个取值
 /// `host-subprocess` 已**逐出**（W108 / ADR 0086）：它是**宿主/机器事实**，而宿主瞬态 MUST NOT
@@ -54,6 +59,7 @@ export const CI_ONLY_REASONS = [
   'compiled-artifact',
   'platform-toolchain',
   'not-in-profile',
+  'ci-produced-artifact',
 ];
 
 /// **成因兑付规格**（W108）：每条 `ci-only` 成因 MUST 付代价——给出一条**可从仓库自证**的凭据。
@@ -103,6 +109,20 @@ export const CI_ONLY_REASON_PAYMENTS = {
         file: 'package.json',
         marker: '"@fission-ai/openspec"',
         why: '第二条实例（`pnpm exec openspec validate --archived`）用的 CLI 装在依赖里 ⇒ 它同样是一条能跑的判定',
+      },
+    ],
+  },
+  'ci-produced-artifact': {
+    evidence: [
+      {
+        file: 'scripts/ci-diagnose.mjs',
+        marker: 'Usage: node scripts/ci-diagnose.mjs <log-path>',
+        why: '门控日志在这个仓库里的**唯一消费者**把日志当**入参**（`<log-path>`）、自己不生产它 ⇒ 产物由别处产生，本机构建不是它的来源。凭据刻意指向**消费者**而不是 workflow 里那条 `tee`：后者是被审宿主里的另一个在册条目，用它做凭据会让两个在册条目互为证据（W108 同一条理由）',
+      },
+      {
+        file: 'xtask/src/secrets.rs',
+        marker: 'producer: ".github/workflows/foundation.yml"',
+        why: '扫描器自己的**产物登记表**点明该产物的生产者是 CI workflow；而那条 `tee` 行由同一个文件里的 `every_registered_artifact_names_the_repository_text_that_produces_it` 逐字核验 ⇒ 这条凭据不是一句空声明，是一条被另一条判据守着的声明',
       },
     ],
   },
@@ -175,6 +195,16 @@ export const WORKFLOW_STEPS = [
     host: '.github/workflows/foundation.yml',
     identity: 'Publish the gate failure summary as annotations',
     kind: 'diagnostic',
+  },
+  {
+    host: '.github/workflows/foundation.yml',
+    // W130：诊断产物的凭据扫描。本机**能**跑这条命令（`secrets::check(root)` 就在
+    // `["check", "--secrets"]` 那条 arm 里），但它判定的**产物**只由前序步的 `tee` 产生
+    // ⇒ 本机跑它是空洞的：扫描域为空，报「通过」等于什么都没说。
+    identity: 'Scan the diagnostic artifacts for credential material (W130)',
+    kind: 'ci-only',
+    reason: 'ci-produced-artifact',
+    target: [{shape: 'xtask', value: 'check --secrets'}],
   },
   {
     host: '.github/workflows/foundation.yml',

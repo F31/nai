@@ -2165,6 +2165,54 @@ D03 验收原文的「数量/大小/路径受限」由本名册承载，WAL/事�
 见 [W129 报告](reports/2026-10-16-w129-storage-bound-roster-coverage.md)、[ADR 0107](adr/0107-storage-bound-behavior-coverage.md)、
 `openspec/changes/2026-10-16-w129-storage-bound-roster-coverage/`。
 
+### W130（2026-10-17）：S07 诊断面扫描（日志 / 诊断包 / 崩溃转储）
+
+**缝（现测）**：registry `S07`（「无明文密钥」）的口径含**四面**，W36 只建了**仓库面**，其 notes 末句逐字写着
+「日志/诊断包/崩溃转储的扫描仍未建，保持 implemented 不升级」。现测：全仓**无** `tracing`/`log` 依赖；
+`REDACTED` 的唯一落点是 `Secret` 的手工 `Debug`（**已有**测试覆盖，不是缺口）；`diagnostic_refs` 无消费者；
+仓库内**无任何代码写 `.log`**。唯一真实存在的诊断产物是 **CI 门控日志**：`.github/workflows/foundation.yml`
+用 `tee` 写它，`scripts/ci-diagnose.mjs` 把其中的行发成**匿名可读的 check-run annotation**——泄漏面真实，
+而**失败那一次**恰恰信息量最大（libtest 会转储失败测试的 stdout）。
+
+**改动**：`xtask/src/secrets.rs` 新增**产物域**（仓库域**一字未改**，只加一处具名弱点注释）——
+登记表 `ARTIFACTS {dir, producer, source(include_str!), marker}`（**产生者的名册**，只登记**有真实产生者**
+的目录）、闭世界台账 `ArtifactLedger`（四桶各自独立累加）、`scan_tree`（缺目录是**值**；非 UTF-8
+**有损解码后照样扫**；不跟随符号链接）、`check_artifacts`。CI：`tee` 目标改到仓库内约定目录
+`.nai-diagnostics/`，新增 **`if: always()`** 的 `cargo xtask check --secrets` 步。门控登记：W95 成因闭集
++`ci-produced-artifact` 并配两条凭据（指向**消费者**与扫描器的 `producer:` 字段，刻意不指 workflow 的 `tee` 行，
+以免两个在册条目互为证据）；W100 条件形状表 +`always`，**新增 R6**。
+
+**判据**：新增 9 条 `--lib` 用例（二进制不丢 / 空集报 0 / 缺目录是值 / 闭世界可失败 / 递归 / 符号链接（`cfg(unix)`）/
+登记凭据双向核验 4 断言）+ node **F10** ⇒ `nai-xtask --lib` **52 → 60**。**注入验证 11 条**真跑
+（A1–A6 / B1、B1b / B2–B4），逐条可归因，随后**逐字节还原**（四文件 `sha256sum` 全部等于基线）；
+**B1 只触发 R6**（R1/R2 未误报）、**B1b 同时触发 R6 + R3** ⇒ 两条规则各自独立触发；node 六文件 **110/110**。
+
+**registry**：`S07` **保持 `implemented`**（不升 `tested`）——四面里**两面**（仓库、日志）已有真实产生者与判据，
+**两面**（诊断包、崩溃转储）在仓库内**无产生者** ⇒ 在本仓库**建不了**（登记空目录不是覆盖，是**发通行证**）。
+按 ADR 0100 §6 与 `admission-registry` 的 Honest backfill，剩下的缺口仍在 ⇒ MUST NOT 升。
+**具名登记三处**（MUST NOT 顺手修）：①仓库域 `check` 的 `else { continue; }`（非 UTF-8/读失败静默跳过）——
+只加注释；②`always`/R6 是**规则**（写规格），而新增成因取值/兑付格/`ARTIFACTS` 一行是**数据** ⇒
+W95/W108 的规格不重复写（同一件事两处定义）；③**规格校验不在本机门控里，且归档前没有信号**——`openspec validate` 不在 `check --profile full` 的步骤集合里
+（`engineering_checks` 只登记 `tests/contracts/*.test.mjs`），而 `validate <change> --strict` 对 **MODIFIED
+的正文长度豁免**（`validator.js` 第 255–258 行逐字 `MODIFIED is left alone`）⇒ 超长的 MODIFIED 正文**只在
+归档之后**才被看见；CI **有**两步规格校验（`.github/workflows/foundation.yml:93` 的 `pnpm spec:validate`
+= `--all --strict`、第 94 行的 `validate --archived`），故 CI 迟到但会红。
+
+**门控**：共跑 **4 次**——r1 红在 `crates/nai-runtime/tests/composition.rs`（`StorageError{DeadlineExceeded,
+"operation stopped"}`）、r2 绿、r3 红在 `apps/engine/tests/pipeline.rs`（`run.status` 为 `None`、该文件
+39.95s）、r4 绿。四条替代判据：错误类同族且全在 bring-up／子进程、失败集合**跨目标漂移**（composition 重跑
+3 次里 run3 换用例；pipeline 重跑 **3/3 全绿** 22–25s）、相关文件 `git status` 为空（`apps/` 亦为空）、
+重复跑全绿 ⇒ 判为**宿主瞬态**（composition 那条 W84 起已登记）。⚠️ 限并发（`RUST_TEST_THREADS=1`）
+**只是减轻不是消除**（r3 正是在该旋钮下红的）⇒ 结论不以「限并发后全绿」为依据，处置**不是**代码修正。
+最终绿（r4，6m41s）：Rust **1045 passed / 0 failed**、**79** 目标 + **18** `Doc-tests`、Node **13 套件 324/0**，
+与 W129（1037 / 79 / 323）逐项吻合。门控在**全部改动定稿后**重跑，故日志与提交字节对应。
+⚠️ **归档后 `validate --all --strict` 首跑红**：两条 Requirement 正文越过 500 字符上限（**604** / **838**）——
+根因是把两条行为塞进一条正文、且 `always` 规则跨两规格各声明一遍 ⇒ **就地重分 MODIFIED + ADDED 重新归档**
+（两条 validate 回到 **43/0** 与 **128/0**）。
+
+见 [W130 报告](reports/2026-10-17-w130-diagnostic-artifact-secret-scan.md)、[ADR 0108](adr/0108-diagnostic-artifact-secret-scan.md)、
+`openspec/changes/archive/2026-10-17-w130-diagnostic-artifact-secret-scan/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

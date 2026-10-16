@@ -47,11 +47,15 @@ jobs:
       # shell: bash 让 Linux 与 Windows 用同一条命令（Windows runner 自带 Git Bash）。
       # set -o pipefail 是**关键**：tee 会吞掉被管道的退出码，没有它这条命令永远成功，
       # CI 也就永远不会红——「看起来接了诊断，实际把门控废掉了」。
+      # 诊断产物落在**仓库内的约定目录** `.nai-diagnostics/`（已被 .gitignore 排除），
+      # 由凭据扫描器按登记表 `.nai-diagnostics` 遍历——产物必须住在扫描器看得见的地方，
+      # 否则「日志里没有明文密钥」只能靠人看。
       - name: Complete engineering foundation (portable steps + frontend workspace)
         shell: bash
         run: |
           set -o pipefail
-          cargo xtask check --profile full 2>&1 | tee "$RUNNER_TEMP/nai-gate.log"
+          mkdir -p .nai-diagnostics
+          cargo xtask check --profile full 2>&1 | tee ".nai-diagnostics/nai-gate.log"
       # 诊断通道：把门控日志的失败摘要转成 check-run annotation。
       # 动机：CI 的执行日志只能经 GET /actions/jobs/{id}/logs 读取，而该端点要求仓库 admin 权限，
       # 无凭据的读者只能看到「Process completed with exit code 1.」；annotation 则匿名可读。
@@ -59,8 +63,14 @@ jobs:
       - name: Publish the gate failure summary as annotations
         if: failure()
         shell: bash
-        run: node scripts/ci-diagnose.mjs "$RUNNER_TEMP/nai-gate.log"
+        run: node scripts/ci-diagnose.mjs ".nai-diagnostics/nai-gate.log"
         continue-on-error: true
+      # 诊断产物的**凭据扫描**（S07 的日志/诊断包/崩溃转储那一面）：仓库域的扫描只认 UTF-8，
+      # 而崩溃转储是二进制。条件 `always()` 是**必须**的——门控失败会让后续步默认被跳过，
+      # 而失败的那次门控日志恰恰是最该扫的那一份（失败时 libtest 会转储失败测试的 stdout）。
+      - name: Scan the diagnostic artifacts for credential material (W130)
+        if: always()
+        run: cargo xtask check --secrets
       - name: Storage and credential boundary (Windows native vault only on Windows)
         run: cargo xtask test --suite storage
       - name: Kernel registration and binding

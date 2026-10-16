@@ -80,7 +80,7 @@ const patch = (text, from, to) => {
 };
 
 // ---------------------------------------------------------------------------
-// 合成世界：一个两腿矩阵的单 job，七步覆盖五种 kind 与两种条件形状
+// 合成世界：一个两腿矩阵的单 job，八步覆盖四种 kind 与三种条件形状
 // ---------------------------------------------------------------------------
 
 const SYNTHETIC_WORKFLOW = [
@@ -113,6 +113,9 @@ const SYNTHETIC_WORKFLOW = [
   '        if: failure()',
   '        run: node scripts/ci-diagnose.mjs log',
   '        continue-on-error: true',
+  '      - name: Credential scan',
+  '        if: always()',
+  '        run: cargo xtask check --secrets',
   '',
 ].join('\n');
 
@@ -124,6 +127,7 @@ const SYNTHETIC_REGISTRY = [
   {host: HOST, identity: 'Contracts', kind: 'ci-only', reason: 'platform-toolchain'},
   {host: HOST, identity: 'Spec', kind: 'ci-only', reason: 'not-in-profile'},
   {host: HOST, identity: 'Diagnose', kind: 'diagnostic'},
+  {host: HOST, identity: 'Credential scan', kind: 'ci-only', reason: 'ci-produced-artifact'},
 ];
 
 const synthetic = (workflowText = SYNTHETIC_WORKFLOW) =>
@@ -203,6 +207,42 @@ test('F3 the ci-only cause must agree with the platform condition, in both direc
   );
 });
 
+test('F10 a scan of a CI-produced artifact must cover the failure path', () => {
+  // 前提：合成世界的 Credential scan 步带 `always()`，基线是绿的（F0 已钉住）。
+  // 去掉它 ⇒ R6 必须具名：GitHub 的默认语义是「前序步失败 ⇒ 后续步被跳过」，
+  // 于是这个判定会在**最需要它的那一刻**消失（失败那次的日志恰恰最该扫）。
+  const unconditional = patch(
+    SYNTHETIC_WORKFLOW,
+    '      - name: Credential scan\n        if: always()\n',
+    '      - name: Credential scan\n',
+  );
+  assert.ok(
+    named(synthetic(unconditional), 'Credential scan', 'instead of always()', 'disappears exactly when'),
+    `a scan of a CI-produced artifact without always() must be named, saw ${JSON.stringify(synthetic(unconditional))}`,
+  );
+  // 平台条件也替代不了：它既收窄平台，又同样会被前序失败跳过。
+  const restricted = patch(
+    SYNTHETIC_WORKFLOW,
+    '      - name: Credential scan\n        if: always()\n',
+    "      - name: Credential scan\n        if: runner.os == 'Linux'\n",
+  );
+  assert.ok(
+    named(synthetic(restricted), 'Credential scan', 'instead of always()'),
+    `a platform condition must not stand in for always(), saw ${JSON.stringify(synthetic(restricted))}`,
+  );
+  // 反向：R6 只对 `ci-produced-artifact` 生效——把 `always()` 给一个别的 ci-only 成因
+  // MUST NOT 被 R6 报错（否则这条规则会变成「所有 ci-only 都必须无条件跑」的另一条规则）。
+  const elsewhere = patch(
+    SYNTHETIC_WORKFLOW,
+    '      - name: Spec\n        run:',
+    '      - name: Spec\n        if: always()\n        run:',
+  );
+  assert.ok(
+    !synthetic(elsewhere).some(error => error.includes('Spec') && error.includes('instead of always()')),
+    'R6 must be scoped to the artifact cause, not to every ci-only step',
+  );
+});
+
 test('F4 every configuration value outside its closed set is named', () => {
   const cases = [
     {
@@ -217,8 +257,9 @@ test('F4 every configuration value outside its closed set is named', () => {
     },
     {
       name: 'condition shape',
-      text: patch(SYNTHETIC_WORKFLOW, '        if: failure()\n', '        if: always()\n'),
-      needle: ['always()', 'not one of the recognized condition shapes'],
+      // `always()` 已经成为闭集成员（W130），所以这里换一个**仍未归类**的形状做样本。
+      text: patch(SYNTHETIC_WORKFLOW, '        if: failure()\n', '        if: success()\n'),
+      needle: ['success()', 'not one of the recognized condition shapes'],
     },
     {
       name: 'continue-on-error literal',
@@ -327,7 +368,9 @@ test('F8 the shape and platform helpers are pure and closed', () => {
   assert.equal(conditionShapeOf(''), '');
   assert.equal(conditionShapeOf("runner.os == 'Linux'"), 'platform-os');
   assert.equal(conditionShapeOf('failure()'), 'failure');
-  assert.equal(conditionShapeOf('always()'), 'unknown');
+  assert.equal(conditionShapeOf('always()'), 'always');
+  // 仍未归类的形状 MUST 报 `unknown`——它是「静默地不认识」的唯一出口。
+  assert.equal(conditionShapeOf('success()'), 'unknown');
 
   const errors = [];
   const platforms = platformsOf(
@@ -339,6 +382,16 @@ test('F8 the shape and platform helpers are pure and closed', () => {
   // macOS 上的 `sudo` 是**可以的**：支持集写成 ['Linux'] 会误报一个正确的配置。
   const legs = platformLegsOf({identity: 'x', condition: ''}, platforms, errors, 'job');
   assert.deepEqual(legs, ['ubuntu-24.04', 'macos-14', 'windows-latest']);
+  // `always()` 在**平台集合**上与「没有条件」等价——差别在失败语义（不会被跳过），
+  // 因此它不是「没写条件」的别名，而必须有自己的形状与自己的实例。
+  assert.deepEqual(
+    platformLegsOf({identity: 'x', condition: 'always()'}, platforms, errors, 'job'),
+    ['ubuntu-24.04', 'macos-14', 'windows-latest'],
+  );
+  assert.deepEqual(
+    platformLegsOf({identity: 'x', condition: 'failure()'}, platforms, errors, 'job'),
+    ['ubuntu-24.04', 'macos-14', 'windows-latest'],
+  );
   for (const command of PLATFORM_COMMAND_SHAPES) {
     assert.ok(
       command.supported.every(os => RUNNER_OS_VALUES.includes(os)),
@@ -347,7 +400,7 @@ test('F8 the shape and platform helpers are pure and closed', () => {
   }
   assert.deepEqual(RUNNER_OS_VALUES, ['Linux', 'Windows', 'macOS']);
   assert.deepEqual(RUNNER_LABEL_PREFIXES.map(entry => entry.os), RUNNER_OS_VALUES);
-  assert.deepEqual(CONDITION_SHAPES, ['platform-os', 'failure']);
+  assert.deepEqual(CONDITION_SHAPES, ['platform-os', 'failure', 'always']);
   // `continue-on-error` 只认布尔字面量或「没写」。
   assert.equal(continueOnErrorOf({continueOnError: undefined}, [], 'x'), false);
   assert.equal(continueOnErrorOf({continueOnError: false}, [], 'x'), false);

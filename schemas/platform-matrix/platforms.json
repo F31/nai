@@ -151,8 +151,8 @@
       "id": "toolchain-target-assumptions",
       "label": "工具链的目标平台假设",
       "basis": "source",
-      "source_files": ["xtask/src/lib.rs", "xtask/src/schema.rs", "xtask/tests/cli.rs"],
-      "note": "工程工具链的目标假设：windows-local profile 只在原生 Windows 上可跑（其它平台具名拒绝）；可执行文件后缀按平台取 .exe；部分用例为平台条件。属工具性条目，不是产品能力。",
+      "source_files": ["xtask/src/lib.rs", "xtask/src/schema.rs", "xtask/src/secrets.rs", "xtask/tests/cli.rs"],
+      "note": "工程工具链的目标假设：windows-local profile 只在原生 Windows 上可跑（其它平台具名拒绝）；可执行文件后缀按平台取 .exe；部分用例为平台条件（`xtask/tests/cli.rs` 与 `secrets.rs` 的符号链接夹具——建链在 Windows 上要特权或开发者模式，故按本仓惯例用 `cfg(unix)` 门控，而不是让宿主能力决定结论）。属工具性条目，不是产品能力。",
       "states": {
         "windows": {"state": "supported"},
         "linux": {"state": "supported"},

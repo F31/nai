@@ -386,9 +386,9 @@ SHALL 具名失败而非静默降级。
 `matrix`（或字面 `runs-on`）与步的 `if:` **静态求值**得出，且 SHALL 非空。产生判定的步
 （`local` / `ci-only`）SHALL NOT 带真值 `continue-on-error`；`diagnostic` 步 SHALL 带真值
 `continue-on-error`。`ci-only` 的 `platform-toolchain` 成因 SHALL 由**真子集**平台条件兑付，
-其余成因 SHALL NOT 被平台限定。`matrix` 形状、`if:` 形状、`continue-on-error` 形状、
-runner 标签与 `runner.os` 取值 SHALL 落在各自的闭集里。域外取值、不可解析的输入、
-空注册表或不可兑付的声明 SHALL 具名失败，而非静默降级。
+其余成因 SHALL NOT 被平台限定。`matrix` 形状、`if:` 形状、`continue-on-error` 形状、runner 标签与
+`runner.os` 取值 SHALL 落在各自的闭集里。域外取值、不可解析的输入、空注册表或不可兑付的声明
+SHALL 具名失败，而非静默降级。
 
 #### Scenario: A judged step that can never run fails
 
@@ -575,3 +575,17 @@ SHALL **恰等于**对应的成因闭集。每条规格 SHALL 至少给出一条
 
 - **WHEN** 凭据文件的内容集或其跟踪状态没有被提供给校验
 - **THEN** 校验 MUST 具名失败并指出缺的是哪一项——一条会因入参缺失而恒真的断言比没有断言更坏
+
+### Requirement: A step that judges an artifact produced by an earlier step declares always()
+
+一个**产物由更早的 CI 步产生**的在册步 SHALL 带 `always()` 条件。`always()` 在**平台集合**上与
+「无条件」等价，差别只在**失败语义**：该步 MUST NOT 因前序步的失败而被跳过——依赖 GitHub 默认跳过
+语义的判定会在门控一红的那一刻消失，而那恰是它最该跑的一次。
+
+#### Scenario: A scan of a CI-produced artifact must cover the failure path
+
+- **WHEN** 一个 `ci-only` 步的成因是 `ci-produced-artifact`（它判定的产物由**更早的 CI 步**产生），
+  而它的 `if:` 不是 `always()`——包括**完全没有** `if:` 的情形
+- **THEN** 检查失败并具名该步与它声明的条件，指出前序步失败会让它被跳过，
+  扫描恰在产物最有价值的那一次消失。GitHub 的默认语义是「前序步失败 ⇒ 后续步被跳过」，
+  于是没写条件等于「门控一红，扫描就消失」——这是一个**在需要它的那一刻才消失**的判定

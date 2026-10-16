@@ -56,13 +56,19 @@ export const RUNNER_LABEL_PREFIXES = [
   {prefix: 'macos-', os: 'macOS'},
 ];
 
-/// **`if:` 的形状闭世界**。只认两种形状，其余（`always()`、`success()`、
-/// `github.event_name == …`、`!cancelled()` …）一律**具名拒绝**。
+/// **`if:` 的形状闭世界**。只认三种形状，其余（`success()`、`github.event_name == …`、
+/// `!cancelled()` …）一律**具名拒绝**。
+///
+/// - `platform-os`：`runner.os == '…'`，把执行平台集合**收窄**；
+/// - `failure`：`failure()`，只在失败时跑（诊断通道）；
+/// - `always`：`always()`，**无条件**跑——含前序步失败的情形。它与「没有 `if:`」在**平台集合**上
+///   等价，但在**失败语义**上不同：没有 `if:` 的步在前序步失败后**会被跳过**。因此它是独立的一格，
+///   而不是「没写条件」的别名（W130：诊断产物的扫描必须覆盖失败路径，见 R6）。
 ///
 /// 这是一张**规则表**（与 W99 的 `TIER_PAYMENTS` 同形）：每个形状 MUST 至少有一个在册步在用，
 /// 否则那一格的判据对空集恒真。新增一个形状而不在这里归类，会让判据**静默地不认识它**。
 /// 拒否方向落在**假阳性**（要求人显式归类），安全。
-export const CONDITION_SHAPES = ['platform-os', 'failure'];
+export const CONDITION_SHAPES = ['platform-os', 'failure', 'always'];
 
 /// **平台专属命令形状**：命中它的 `run` ⇒ 该步的执行平台集合 MUST ⊆ `supported` 且非空。
 ///
@@ -162,6 +168,7 @@ export function conditionShapeOf(condition) {
   if (condition === '') return '';
   if (/^runner\.os\s*==\s*'([^']*)'$/.test(condition)) return 'platform-os';
   if (/^failure\(\s*\)$/.test(condition)) return 'failure';
+  if (/^always\(\s*\)$/.test(condition)) return 'always';
   return 'unknown';
 }
 
@@ -174,6 +181,7 @@ export function platformLegsOf(step, platforms, errors = [], where = 'the workfl
   const shape = conditionShapeOf(condition);
   if (shape === '') return [...platforms];
   if (shape === 'failure') return [...platforms];
+  if (shape === 'always') return [...platforms];
   if (shape === 'platform-os') {
     const value = condition.match(/^runner\.os\s*==\s*'([^']*)'$/)[1];
     if (!RUNNER_OS_VALUES.includes(value)) {
@@ -323,6 +331,18 @@ export function stepConfigErrors(deps = {}) {
               `${JSON.stringify(unavailable)} — the command is not available there`,
           );
         }
+      }
+
+      // R6 产物的扫描 MUST 覆盖**失败路径**（W130）。它判定的产物（CI 前序步的 `tee` 输出）
+      // 恰恰在失败那一次最有价值——失败时 libtest 会把失败测试的 stdout 一起转储进日志。
+      // 而 GitHub 的默认语义是：前序步失败 ⇒ 后续步**被跳过**。于是「没写 `if:`」等于
+      // 「门控一红，扫描就消失」——一个在需要它的那一刻才消失的判定。
+      if (entry.kind === 'ci-only' && entry.reason === 'ci-produced-artifact' && shape !== 'always') {
+        errors.push(
+          `${where} step ${JSON.stringify(step.identity)} judges an artifact produced by an earlier CI step ` +
+            `but carries the condition ${JSON.stringify(step.condition ?? '')} instead of always() — a previous ` +
+            'step failing skips this one, so the scan disappears exactly when the artifact matters most',
+        );
       }
     }
   }

@@ -108,3 +108,29 @@
 #### Scenario: A blocked acceptance item stays blocked
 - **WHEN** 真实模型已可用但其验收所需的题集或演练尚未完成
 - **THEN** 该项保持其原有状态
+
+### Requirement: The registered diagnostic artifact domain is scanned by the same command
+
+`cargo xtask check --secrets` SHALL 同时扫一份**在册登记表**给出的**诊断产物目录**集合，每条登记为
+`{dir, producer, source, marker}`（`source` 由编译期从 `producer` 的路径抓取）。递归遍历 MUST NOT
+跟随符号链接；**缺目录 SHALL 报「没有这个目录」，MUST NOT 被说成「跳过」**；空集 SHALL 报 `0`。
+非 UTF-8 的产物（崩溃转储是二进制）SHALL 仍被扫描，MUST NOT 因解码失败整条丢弃。命中 SHALL 只报
+路径、行号与族，**MUST NOT 回显匹配到的文本**。登记的 `marker` SHALL 逐字存在于它自己声称的生产者
+文本里并点名扫描器要走的目录；生产者 SHALL 是本仓库已跟踪的文件，且 MUST NOT 是登记表自己的
+实现文件。
+
+#### Scenario: A diagnostic artifact carries credential material
+- **WHEN** 一个在册产物目录里的文件（例如 CI 门控日志）含有前缀加足额长度的凭据串
+- **THEN** `cargo xtask check --secrets` 失败，并按路径与行号具名该产物，**不回显匹配到的文本**
+
+#### Scenario: A binary artifact is scanned instead of being dropped
+- **WHEN** 产物目录里有一个非 UTF-8 的文件（崩溃转储）而它含 ASCII 段的凭据串
+- **THEN** 该文件被具名为非文本**且仍被扫过**、命中被报出——MUST NOT 因解码失败而整条丢弃
+
+#### Scenario: A missing artifact directory is a value, not a failure
+- **WHEN** 一个在册产物目录在本机不存在
+- **THEN** 扫描报出「没有这个目录（nothing to scan）」并通过——它 MUST NOT 被读成「存在但为空」，也 MUST NOT 被说成「跳过」
+
+#### Scenario: A registration that names no producer fails
+- **WHEN** 一条登记的 `marker` 不在它自己声称的生产者文本里，或那个 `marker` 不点名扫描器要走的目录
+- **THEN** 校验失败并具名该生产者——登记即核验，MUST NOT 是一句空话

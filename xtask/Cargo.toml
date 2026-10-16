@@ -29,6 +29,9 @@ nai-contracts.workspace = true
 nai-provider-core.workspace = true
 nai-security.workspace = true
 serde_json.workspace = true
+# 诊断产物扫描的夹具（W130）：与仓库域不同，产物域是对任意目录的遍历，
+# 需要一个会自我清理的临时目录。
+tempfile.workspace = true
 tokio = { version = "=1.53.2", features = ["macros", "rt-multi-thread", "time"] }
 
 [lints]

@@ -151,6 +151,34 @@ registry）。见 [ADR 0103](adr/0103-storage-bound-roster.md)、[W125 报告](r
 全量 72 passed / 0 failed。**R08 升 `tested`**（缺口全清、无外部真值，判据见 ADR 0100 §6）。
 见 [ADR 0107](adr/0107-storage-bound-behavior-coverage.md)、
 [W129 报告](reports/2026-10-16-w129-storage-bound-roster-coverage.md)。）
+（W130 把 S07「无明文密钥」的**诊断面**接上（口径含四面：仓库扫描／日志／诊断包／崩溃转储；W36 只建了仓库面）。
+三条方法论落点：①**产物域与仓库域是两条扫描路径，缺省语义刻意不同**——仓库域对非 UTF-8 `else { continue; }`
+**静默跳过**（具名登记的弱化，本轮**只加注释不修**），而产物域**必须收下非 UTF-8**：崩溃转储就是二进制，
+`continue` 会把整条记录丢掉而报告上看与干净一模一样 ⇒ 有损解码后**照样扫**（ASCII 段逐字保留，高熵凭据恰在此），
+并具名进 `non_text`。②**登记表是「产生者的名册」，不是「想扫的目录」的清单**——登记一个**没有产生者**的目录
+等于给「扫了个空目录」**发通行证**（`present=true`、`scanned=0`，报告上看与干净无差）⇒ 本轮只登记 CI 门控日志，
+诊断包与崩溃转储的「无产生者」**具名在册**而不是用空目录敷衍；登记凭据由一条判据**双向**钉住（`marker` 逐字存在于
+`producer` 文本里、且点名 `dir`、且生产者是已跟踪文件、且**不是判据自身**）。③**`always()` 是必须的，不是保险**
+——产物扫描判的是**前序步写的产物**，而 GitHub 默认「前序步失败 ⇒ 后续步跳过」⇒ 没写 `if:` 等于「门控一红，
+扫描就消失」，一个**在需要它的那一刻才消失**的判定（落成 W100 的 **R6**；`always` 也因此成为条件形状表独立一格，
+它与「没写条件」在**平台集合**上等价、差别**只在失败语义**）。**闭世界台账**：`visited` 与四桶（文本／非文本／
+非文件／容器）**各自独立累加** ⇒「条目 == 四桶之和」是一条**可失败**的判据（A3 注入：`scanned` 改成派生即红）。
+**规则与数据分开**：`always`/R6 是**规则**（写规格），新增成因取值 `ci-produced-artifact`、兑付格、`ARTIFACTS` 一行是
+**数据**（W95/W108 的 Requirement 是生成的 ⇒ 不重复写，否则同一件事两处定义）。**注入 11 条**逐条可归因 +
+逐字节还原（四文件 `sha256sum` 全等于基线）；B1 **只**触发 R6（R1/R2 未误报）、B1b 同时触发 R6 + R3；
+`nai-xtask --lib` 52 → **60**、node 六文件 **110/110**。**门控 4 跑 2 绿**：composition（5s 期限 `Operation`
+越限）与 engine `pipeline`（子进程被杀 ⇒ `status: None`）各红一次 ⇒ **失败集合跨目标漂移**、相关文件
+（`crates/nai-runtime`/`crates/nai-storage`/`apps/engine`）`git status` 为空、单独重跑全绿 ⇒ 判为**宿主瞬态**；
+**限并发只是减轻不是消除**（r3 正是在 `RUST_TEST_THREADS=1` 下红的），故结论不落在「限并发后全绿」上。⚠️ **「一条 Requirement 只声明一条行为」有可执行的落点，
+但落点在归档之后**：`validate <change> --strict` 对 **MODIFIED 的正文长度豁免**（`validator.js` 第 255–258 行逐字
+`MODIFIED is left alone`），而 500 字符上限只在**主规格**上查；`openspec validate` 又**不在**
+`cargo xtask check --profile full` 的步骤集合里 ⇒ **超长的 MODIFIED 正文只在归档之后才被看见**（本轮实测
+604 / 838 字符各报一次，两条 validate 从 43/0 掉到 41/2）⇒ 处置＝**就地重分 MODIFIED + ADDED 并重新归档**
+（不压字、不动判据），并把「规格校验不在本机门控里、**归档前无信号**」具名登记（CI 的两步规格校验
+——`foundation.yml:93` 的 `pnpm spec:validate` = `--all --strict`、94 行的 `--archived`——迟到但会红）。**S07 保持 `implemented`**（不升）——四面已建其二，
+诊断包/崩溃转储在仓库内**无产生者** ⇒ 建不了，缺口仍在。
+见 [ADR 0108](adr/0108-diagnostic-artifact-secret-scan.md)、
+[W130 报告](reports/2026-10-17-w130-diagnostic-artifact-secret-scan.md)。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。
