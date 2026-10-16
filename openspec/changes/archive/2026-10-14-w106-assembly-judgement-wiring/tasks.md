@@ -75,3 +75,9 @@
 
 归档与提交按 `AGENTS.md` §0 的闭环执行：门控通过 → tasks 归档前全勾 → `archive --yes`（系统日期戳）
 → 两条 validate 都跑 → 一次 commit + push → 单次低频 CI 观测 → 回填报告（回填提交自身不回填）。
+
+## 勘误（W127，2026-10-16）
+
+上文任务里「（**不**改其池化判定语义）」所登记的遗留，**已由 W127 闭合**（`rebuild_assembly_from_log`
+改为逐行作为独立**条目**判定，具名 `rebuild.not_in_one_entry`）。本文档按当时状态保留，MUST NOT 就地改写。
+见 [ADR 0105](../../../../docs/adr/0105-rebuild-in-one-entry.md)。

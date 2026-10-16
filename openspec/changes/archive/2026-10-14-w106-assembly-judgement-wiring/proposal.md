@@ -109,3 +109,10 @@ MUST NOT 被读作覆盖了 (ii)。本轮做的是 (ii)。
   不接线「把九段片段喂给模型」的装配器（卡能力包 **H16**）；**不修** `rebuild_assembly_from_log`
   的池化判定语义（本轮只统一其解析路径；该语义的缺陷如实披露并登记为遗留，见 design §9）；
   不改任何验收 `status`（H01 仍 `pending`）。
+
+## 勘误（W127，2026-10-16）
+
+上文「**不修** `rebuild_assembly_from_log` 的池化判定语义（本轮只统一其解析路径；……登记为遗留，
+见 design §9）」所登记的遗留，**已由 W127 作为独立一轮闭合**（逐行作为独立**条目**判定、
+具名 `rebuild.not_in_one_entry`）。本文档按当时状态保留，MUST NOT 就地改写。
+见 [ADR 0105](../../../../docs/adr/0105-rebuild-in-one-entry.md)。

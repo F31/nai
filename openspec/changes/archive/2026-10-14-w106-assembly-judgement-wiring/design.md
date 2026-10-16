@@ -290,3 +290,15 @@ pub fn read_logged_assemblies(&self, limit: u32) -> Result<Vec<LoggedAssembly>>;
   故在此**具名登记为遗留**，并给出上面这个可复现的反例构造。
 - **不改任何验收 `status`**：H01 仍 `pending`（判定面 + 落链 + 读回已可测，但「本系统里真实装配一次
   上下文并喂给模型」还不是事实）。**如实披露不是缺陷，不实声明才是。**
+
+## 勘误（W127，2026-10-16）
+
+上文「已披露的既有缺陷（本轮不修）」所登记的 `rebuild_assembly_from_log` **池化**，
+**已由 W127 作为独立一轮闭合**。本文档按归档时状态保留，MUST NOT 就地改写。
+
+- 上文给出的反例构造（record 声明 `[A, B]`、链上第 1 行只有 `A`／第 2 行只有 `B`）被 W127 采纳为
+  **立项判据**，首跑实测确认旧实现报 `rebuildable = true`；现报具名 `rebuild.not_in_one_entry`。
+- **更正口径来源**：上文写「逐行判定才是 §41.5 的语义」——§41.5 原文（V3.11:1971）**未**明文要求
+  「单个日志条目」；登记依据是 `tests/registry.yaml` 的 H02 标题「……重建**同一**上下文」。
+- H01/H02 的 `status` **仍为 `pending`**（W127 闭合的是判定面口径）。
+- 见 [ADR 0105](../../../../docs/adr/0105-rebuild-in-one-entry.md)。

@@ -962,6 +962,92 @@ fn the_logs_own_order_decides_and_a_difference_is_named() {
     verify_chain(&composition);
 }
 
+/// H02's question is about **this** assembly, not about the union of everything in the chain.
+///
+/// The chain carries two entries, one holding `frag-a` and one holding `frag-b`; the record claims
+/// `[frag-a, frag-b]`. No single entry ever assembled that context, so the chain alone cannot
+/// reproduce it — and `unlogged_ids` MUST stay empty, because both ids *are* in the log: saying
+/// "not logged" about them would be a false statement, not a conservative one.
+///
+/// W104 pooled the rows before judging, which makes this read as rebuildable (this test is the
+/// round's立项判据 and was run red against that implementation).
+#[test]
+fn an_assembly_split_across_two_entries_is_not_rebuildable_from_the_log() {
+    let dir = tempdir().unwrap();
+    let mut composition = prepared(dir.path());
+
+    expect_logged(offer(&mut composition, &["frag-a"], &fragments(&["frag-a"])).unwrap());
+    expect_logged(offer(&mut composition, &["frag-b"], &fragments(&["frag-b"])).unwrap());
+    assert_eq!(
+        assembly_rows(&composition).len(),
+        2,
+        "two entries, one per half"
+    );
+
+    let claimed = ["frag-a", "frag-b"];
+    let rebuilt = composition
+        .rebuild_assembly_from_log(&record(&claimed), 500)
+        .unwrap();
+    assert!(
+        !rebuilt.rebuildable,
+        "no single entry assembled this context: {:?}",
+        rebuilt.rejections
+    );
+    assert!(
+        rebuilt
+            .rejections
+            .contains(&RebuildRejection::NotInOneEntry.label()),
+        "the rebuild names the reason: {:?}",
+        rebuilt.rejections
+    );
+    assert!(
+        rebuilt.rebuilt.is_empty(),
+        "there is no entry whose own order could yield this sequence: {:?}",
+        rebuilt.rebuilt
+    );
+    assert!(
+        rebuilt.unlogged_ids.is_empty(),
+        "both ids are in the log; 'not logged' would be a false statement: {:?}",
+        rebuilt.unlogged_ids
+    );
+    verify_chain(&composition);
+}
+
+/// The same question with a wider entry: an entry that carries **more** than the record is a
+/// different assembly, not this one. Reproducing `[frag-a]` out of a chain that only ever logged
+/// `[frag-a, frag-b]` would mean editing history, so the log alone cannot do it.
+#[test]
+fn an_entry_carrying_a_superset_is_not_this_assembly() {
+    let dir = tempdir().unwrap();
+    let mut composition = prepared(dir.path());
+
+    let logged = ["frag-a", "frag-b"];
+    expect_logged(offer(&mut composition, &logged, &fragments(&logged)).unwrap());
+
+    let claimed = ["frag-a"];
+    let rebuilt = composition
+        .rebuild_assembly_from_log(&record(&claimed), 500)
+        .unwrap();
+    assert!(
+        !rebuilt.rebuildable,
+        "a superset entry is another assembly: {:?}",
+        rebuilt.rejections
+    );
+    assert!(
+        rebuilt
+            .rejections
+            .contains(&RebuildRejection::NotInOneEntry.label()),
+        "the rebuild names the reason: {:?}",
+        rebuilt.rejections
+    );
+    assert!(
+        rebuilt.unlogged_ids.is_empty(),
+        "frag-a is in the log: {:?}",
+        rebuilt.unlogged_ids
+    );
+    verify_chain(&composition);
+}
+
 /// H02's crux: a fragment whose body only ever lived in working memory is refused by name and is
 /// **never** persisted as a pointer. This is the case `content: None` models.
 #[test]
@@ -1219,10 +1305,24 @@ fn every_rebuild_rejection_is_reachable_through_the_runtime() {
 }
 
 /// Build the runtime scenario that triggers `rejection` and return the labels the runtime named.
+///
+/// **Two faces produce rebuild reasons, and the guard must use the one that owns each.** Every
+/// reason below except `NotInOneEntry` is a statement about *one* write, so the write path can
+/// produce it. `NotInOneEntry` is a statement about the **chain** — it needs two entries whose
+/// union covers the record and no entry that does — and the write path hands the judge exactly one
+/// entry, so no single offer can ever produce it. That asymmetry is the finding, not a workaround.
 fn runtime_refusal_for(rejection: RebuildRejection) -> Vec<&'static str> {
     let dir = tempdir().unwrap();
     let mut composition = prepared(dir.path());
     let outcome = match rejection {
+        RebuildRejection::NotInOneEntry => {
+            expect_logged(offer(&mut composition, &["frag-a"], &fragments(&["frag-a"])).unwrap());
+            expect_logged(offer(&mut composition, &["frag-b"], &fragments(&["frag-b"])).unwrap());
+            return composition
+                .rebuild_assembly_from_log(&record(&["frag-a", "frag-b"]), 500)
+                .unwrap()
+                .rejections;
+        }
         RebuildRejection::FragmentNotLogged => {
             let ids = ["frag-a", "frag-b"];
             offer(&mut composition, &ids, &fragments(&["frag-a"])).unwrap()

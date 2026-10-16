@@ -686,17 +686,22 @@ pub enum RebuildRejection {
     PromptVersionMissing,
     /// A logged body carries a plaintext credential (INV-11).
     PlaintextCredential,
+    /// No **single** log entry carries this assembly: the chain holds the pieces, but no one entry
+    /// ever assembled this context. Distinct from [`Self::FragmentNotLogged`] — every referenced id
+    /// may be in the log and this reason still holds.
+    NotInOneEntry,
 }
 
 impl RebuildRejection {
-    /// All six names. Tests assert the constructed set is exactly this.
-    pub const ALL: [RebuildRejection; 6] = [
+    /// All seven names. Tests assert the constructed set is exactly this.
+    pub const ALL: [RebuildRejection; 7] = [
         RebuildRejection::FragmentNotLogged,
         RebuildRejection::FragmentContentNotInLog,
         RebuildRejection::RebuildOrderDiffers,
         RebuildRejection::ModelVersionMissing,
         RebuildRejection::PromptVersionMissing,
         RebuildRejection::PlaintextCredential,
+        RebuildRejection::NotInOneEntry,
     ];
 
     /// Stable decision-log label.
@@ -708,6 +713,7 @@ impl RebuildRejection {
             RebuildRejection::ModelVersionMissing => "rebuild.model_version_missing",
             RebuildRejection::PromptVersionMissing => "rebuild.prompt_version_missing",
             RebuildRejection::PlaintextCredential => "rebuild.plaintext_credential",
+            RebuildRejection::NotInOneEntry => "rebuild.not_in_one_entry",
         }
     }
 }
@@ -735,12 +741,16 @@ pub struct RebuildVerdict<'a> {
     pub credential_ids: Vec<String>,
 }
 
-/// §41.5 / H02: reproduce an assembly from the decision log **alone**.
+/// §41.5 / H02: reproduce an assembly from **one** pool of logged fragments.
 ///
 /// The judgement is not "does the log mention these fragments" but "does the log, on its own,
 /// yield the same sequence". So the rebuilt order is the **log's** order — using the record's
 /// order to sort first would make the comparison below true by construction and turn H02 into a
 /// comment.
+///
+/// "One pool" is a parameter, not a nicety: this function answers about whatever slice it is given,
+/// and a caller that concatenates several log entries into one slice gets a weaker answer. The
+/// chain face is [`rebuild_assembly_from_entries`], which keeps the entries apart.
 ///
 /// INV-11 is enforced by reusing [`crate::evaluate::harness::CREDENTIAL_MARKERS`] rather than a
 /// second marker table: two copies would drift into "the log recognises it, the assembly does
@@ -749,18 +759,11 @@ pub fn rebuild_assembly<'log>(
     record: &AssemblyRecord<'_>,
     logged: &'log [LoggedFragment<'log>],
 ) -> RebuildVerdict<'log> {
-    let mut rejections = Vec::new();
+    let mut rejections = version_rejections(record);
     let mut rebuilt = Vec::new();
     let mut unlogged_ids = Vec::new();
     let mut contentless_ids = Vec::new();
     let mut credential_ids = Vec::new();
-
-    if record.model_version.trim().is_empty() {
-        refuse(&mut rejections, RebuildRejection::ModelVersionMissing);
-    }
-    if record.prompt_version.trim().is_empty() {
-        refuse(&mut rejections, RebuildRejection::PromptVersionMissing);
-    }
 
     for id in record.fragment_ids {
         match logged.iter().find(|fragment| fragment.id == *id) {
@@ -822,4 +825,133 @@ pub fn rebuild_assembly<'log>(
         contentless_ids,
         credential_ids,
     }
+}
+
+/// §41.5's item four, as its own named step: both versions must be present.
+///
+/// Split out so the single-pool judgement and the per-entry one cannot answer this item
+/// differently — a second copy of these two lines would be exactly the drift this file's module
+/// docs warn about.
+fn version_rejections(record: &AssemblyRecord<'_>) -> Vec<RebuildRejection> {
+    let mut rejections = Vec::new();
+    if record.model_version.trim().is_empty() {
+        refuse(&mut rejections, RebuildRejection::ModelVersionMissing);
+    }
+    if record.prompt_version.trim().is_empty() {
+        refuse(&mut rejections, RebuildRejection::PromptVersionMissing);
+    }
+    rejections
+}
+
+/// Whether one log entry — a single assembly row's fragments — carries **exactly** this assembly:
+/// the same ids with the same multiplicities, in any order.
+///
+/// A **multiset**, not a set: a record naming `[f1, f1]` is not carried by an entry naming `[f1]`,
+/// and a set comparison would call those equal (a superset entry is a *different* assembly — the
+/// log reproducing it as this one would mean editing history). Order is deliberately outside the
+/// question: an entry holding the right fragments in the wrong order **is** this assembly's entry,
+/// and keeping it selected is what keeps [`RebuildRejection::RebuildOrderDiffers`] reachable below.
+/// Selecting by exact order instead would make that rejection unreachable and silently swap a
+/// specific reason for a vaguer one.
+pub fn entry_carries_assembly<'a>(
+    record: &AssemblyRecord<'_>,
+    entry: &[LoggedFragment<'a>],
+) -> bool {
+    if entry.len() != record.fragment_ids.len() {
+        return false;
+    }
+    let mut taken = vec![false; entry.len()];
+    'ids: for id in record.fragment_ids {
+        for (index, fragment) in entry.iter().enumerate() {
+            if !taken[index] && fragment.id == *id {
+                taken[index] = true;
+                continue 'ids;
+            }
+        }
+        return false;
+    }
+    true
+}
+
+/// §41.5 / H02 over the **chain**, where the log is a sequence of entries rather than one pool.
+///
+/// "Can the log alone reproduce *this* assembly" is asked of **one entry**, because one entry is
+/// one assembly: §41.5's four items describe a single assembly and the write path appends them
+/// together, so an entry is the unit the chain was written in. Pooling the entries first — the
+/// W104 shape — answers a strictly weaker question ("can the log supply these fragments from
+/// somewhere") under which a record whose halves live in two different rows reads as rebuildable
+/// even though no entry ever held it.
+///
+/// The verdict is **existential** over the entries that carry the record: one entry that
+/// reproduces it is enough for the chain to reproduce it, so a later entry carrying the same
+/// fragments in the wrong order cannot veto an earlier entry that is right. When no carrying entry
+/// reproduces it, the reported reasons are the **union** over the carrying entries — each label is
+/// individually true of at least one of them and dropping the rest would hide real reasons — while
+/// `rebuilt` and the id lists come from the **first** carrying entry, since the sequence is read in
+/// that entry's own order.
+pub fn rebuild_assembly_from_entries<'log>(
+    record: &AssemblyRecord<'_>,
+    entries: &[&'log [LoggedFragment<'log>]],
+) -> RebuildVerdict<'log> {
+    let mut carrying = entries
+        .iter()
+        .copied()
+        .filter(|entry| entry_carries_assembly(record, entry));
+
+    let Some(first) = carrying.next() else {
+        // The first check is the one that can say "no entry carries this assembly", and it is a
+        // fact about the chain, not a restatement of "a fragment is missing".
+        let mut rejections = version_rejections(record);
+        let mut unlogged_ids = Vec::new();
+        for id in record.fragment_ids {
+            // Against the **whole** chain, not an empty pool: an id sitting in some entry is in the
+            // log, and calling it unlogged would be false rather than conservative.
+            if !entries
+                .iter()
+                .any(|entry| entry.iter().any(|fragment| fragment.id == *id))
+            {
+                unlogged_ids.push((*id).to_string());
+                refuse(&mut rejections, RebuildRejection::FragmentNotLogged);
+            }
+        }
+        refuse(&mut rejections, RebuildRejection::NotInOneEntry);
+        return RebuildVerdict {
+            rebuildable: false,
+            rejections,
+            rebuilt: Vec::new(),
+            unlogged_ids,
+            contentless_ids: Vec::new(),
+            credential_ids: Vec::new(),
+        };
+    };
+
+    let mut verdict = rebuild_assembly(record, first);
+    if verdict.rebuildable {
+        return verdict;
+    }
+    for entry in carrying {
+        let other = rebuild_assembly(record, entry);
+        if other.rebuildable {
+            return other;
+        }
+        for reason in other.rejections {
+            refuse(&mut verdict.rejections, reason);
+        }
+        for id in other.unlogged_ids {
+            if !verdict.unlogged_ids.contains(&id) {
+                verdict.unlogged_ids.push(id);
+            }
+        }
+        for id in other.contentless_ids {
+            if !verdict.contentless_ids.contains(&id) {
+                verdict.contentless_ids.push(id);
+            }
+        }
+        for id in other.credential_ids {
+            if !verdict.credential_ids.contains(&id) {
+                verdict.credential_ids.push(id);
+            }
+        }
+    }
+    verdict
 }

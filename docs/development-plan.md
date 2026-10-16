@@ -1475,8 +1475,9 @@ passed **+13** = `tests/assembly.rs` 12 → 25）。⚠️ **门控共跑 3 次*
 **明确不做 / 如实披露**：**H01 保持 `pending`**——本轮可测的是「§41.1 的拒绝**在 runtime 上有表达**」与
 「§41.5 的**四项**真的落盘、且能逐行读回」；**喂模型**这一半（属 **H16**／仓库外）、**§41.2 分段预算初值标定**
 （§47.2 黄金集回放，§48.7 禁采外部观察值）与 **§47.2 六类回归的执行体**（**H16**）**仍未接线**。
-另：`rebuild_assembly_from_log` 的片段池**跨行合并**（W104 语义）⇒ 比 §41.5 的「日志能否重建**这一次**装配」**弱**，
-**具名登记、本轮不修**（修它＝改 H02 read 侧语义、属另一个对象）。
+另：`rebuild_assembly_from_log` 的片段池**跨行合并**（W104 语义）曾是**具名登记的弱化**，
+**已由 W127 收紧**：现在把**每一行作为自己的条目**判定，链上两行各持一半时报具名原因
+`rebuild.not_in_one_entry`（不再报可重建），见 [ADR 0105](adr/0105-rebuild-in-one-entry.md)。
 
 见 [W106 报告](reports/2026-10-14-w106-assembly-judgement-wiring.md)、[ADR 0084](adr/0084-assembly-judgement-wiring.md)、
 `openspec/changes/archive/2026-10-14-w106-assembly-judgement-wiring/`。

@@ -35,15 +35,17 @@
 //! omission breaks the invariant and no test can see it.
 //!
 //! [`Composition::rebuild_assembly_from_log`] is the read half: it reads the chain back and hands
-//! the rows to the **same** judgement. The judge is *called*, not re-written, so "which rule
-//! refused this" stays decidable in one place.
+//! **each row** to the same judgement, as its own entry. The judge is *called*, not re-written, so
+//! "which rule refused this" stays decidable in one place; and keeping the rows apart is what makes
+//! the question "can the chain rebuild *this* assembly" rather than "can the chain supply these
+//! fragments from somewhere".
 
 use crate::composition::short;
 use crate::{Composition, Result, err};
 use nai_contracts::v1::ErrorCode;
 use nai_kernel::evaluate::assembly::{
     AssemblyPlan, AssemblyRecord, AssemblyVerdict, LoggedFragment, RebuildVerdict,
-    evaluate_assembly, rebuild_assembly,
+    evaluate_assembly, rebuild_assembly, rebuild_assembly_from_entries,
 };
 use nai_storage::{DecisionAck, DecisionKind};
 use serde_json::{Value, json};
@@ -212,36 +214,42 @@ impl Composition {
     }
 
     /// Rebuild one assembly **from the persisted chain alone**: read back the `assembly` entries,
-    /// decode the fragments in the **log's own order**, and hand them to the same judgement the
-    /// write path used.
+    /// decode each entry's fragments in **that entry's own order**, and hand each entry to the same
+    /// judgement the write path used.
     ///
     /// Read-only: it never appends, repairs or reorders the chain. The judge is *called*, not
     /// re-written, so the two faces cannot drift apart.
     ///
-    /// ⚠️ The fragment pool is deliberately **pooled across rows** here (W104's semantics, kept):
-    /// that makes this a weaker question than §41.5's "can the log alone rebuild *this* assembly",
-    /// because a record assembled out of two different rows can still read as rebuildable. Changing
-    /// it would change W104's existing behaviour, so it is disclosed in the report and in
-    /// `docs/runtime.md` as a known limitation rather than silently re-scoped here.
+    /// Each row is passed as **its own entry**, never merged. One entry is one assembly — §41.5's
+    /// four items describe a single assembly and the write path appends them together — so a record
+    /// whose halves sit in two different rows is **not** rebuildable: no entry ever assembled it.
+    /// Pooling the rows first (the W104 shape) answered a weaker question and reported such a
+    /// record as rebuildable; that is now `rebuild.not_in_one_entry`.
     pub fn rebuild_assembly_from_log(
         &self,
         record: &AssemblyRecord<'_>,
         limit: u32,
     ) -> Result<AssemblyRebuild> {
-        let owned: Vec<LoggedAssemblyFragment> = self
+        let rows: Vec<Vec<LoggedAssemblyFragment>> = self
             .read_logged_assemblies(limit)?
             .into_iter()
-            .flat_map(|row| row.fragments)
+            .map(|row| row.fragments)
             .collect();
-        let logged: Vec<LoggedFragment<'_>> = owned
+        let entries: Vec<Vec<LoggedFragment<'_>>> = rows
             .iter()
-            .map(|fragment| LoggedFragment {
-                id: &fragment.id,
-                source_ref: &fragment.source_ref,
-                content: fragment.content.as_deref(),
+            .map(|row| {
+                row.iter()
+                    .map(|fragment| LoggedFragment {
+                        id: &fragment.id,
+                        source_ref: &fragment.source_ref,
+                        content: fragment.content.as_deref(),
+                    })
+                    .collect()
             })
             .collect();
-        let verdict = rebuild_assembly(record, &logged);
+        let entry_refs: Vec<&[LoggedFragment<'_>]> =
+            entries.iter().map(|entry| entry.as_slice()).collect();
+        let verdict = rebuild_assembly_from_entries(record, &entry_refs);
         Ok(AssemblyRebuild {
             rebuildable: verdict.rebuildable,
             rejections: verdict

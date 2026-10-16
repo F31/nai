@@ -19,8 +19,8 @@
 use nai_kernel::evaluate::assembly::{
     AssemblyPlan, AssemblyRecord, AssemblyRejection, AssemblyVerdict, BudgetDimension, Crop,
     Fragment, LoggedFragment, RebuildRejection, RebuildVerdict, SEGMENT_ORDER, SOURCE_KINDS,
-    Segment, SegmentBudget, SegmentSlice, SegmentUsage, SourceKind, Trust, evaluate_assembly,
-    rebuild_assembly,
+    Segment, SegmentBudget, SegmentSlice, SegmentUsage, SourceKind, Trust, entry_carries_assembly,
+    evaluate_assembly, rebuild_assembly, rebuild_assembly_from_entries,
 };
 use nai_kernel::evaluate::harness::ObservationLayer;
 
@@ -883,6 +883,147 @@ fn a_field_name_that_looks_sensitive_is_not_a_credential() {
     assert!(verdict.rebuildable, "{:?}", verdict.rejections);
 }
 
+/// Two fragments with real bodies — the pool the per-entry tests split and regroup.
+fn two_bodies() -> Vec<LoggedFragment<'static>> {
+    vec![
+        LoggedFragment {
+            id: "f1",
+            source_ref: "kb0#p1",
+            content: Some("price is 19"),
+        },
+        LoggedFragment {
+            id: "f2",
+            source_ref: "kb0#p2",
+            content: Some("in stock"),
+        },
+    ]
+}
+
+#[test]
+fn an_entry_carries_the_assembly_by_multiset_and_ignores_order() {
+    let full = two_bodies();
+    let both = full.as_slice();
+
+    assert!(entry_carries_assembly(&record(&["f1", "f2"]), both));
+    assert!(
+        entry_carries_assembly(&record(&["f2", "f1"]), both),
+        "order is not part of carrying — that is what keeps order_differs reachable"
+    );
+    assert!(
+        !entry_carries_assembly(&record(&["f1"]), both),
+        "an entry holding *more* is a different assembly, not this one"
+    );
+    assert!(
+        !entry_carries_assembly(&record(&["f1", "f9"]), both),
+        "an id the entry never held is not carried by it"
+    );
+
+    let single = [full[0].clone()];
+    assert!(
+        !entry_carries_assembly(&record(&["f1", "f1"]), &single),
+        "the entry holds only one fragment; the record names two"
+    );
+    // Equal lengths, different multiplicities: this is the case the length guard above does **not**
+    // catch, so it is what actually exercises the one-to-one pairing. A `set` reading (or a
+    // `contains`-per-id reading that lets one entry fragment answer for two record ids) calls these
+    // equal — an injection that did exactly that was caught by this line alone.
+    assert!(
+        !entry_carries_assembly(&record(&["f1", "f1"]), both),
+        "the record names f1 twice while the entry holds f1 and f2 — the multiplicities differ"
+    );
+}
+
+#[test]
+fn a_split_across_two_entries_is_refused_by_name_and_nothing_is_called_unlogged() {
+    let full = two_bodies();
+    let half_a = [full[0].clone()];
+    let half_b = [full[1].clone()];
+
+    let verdict =
+        rebuild_assembly_from_entries(&record(&["f1", "f2"]), &[&half_a[..], &half_b[..]]);
+    assert!(!verdict.rebuildable, "no entry ever held this context");
+    assert!(
+        verdict
+            .rejections
+            .contains(&RebuildRejection::NotInOneEntry),
+        "{:?}",
+        verdict.rejections
+    );
+    assert!(
+        verdict.unlogged_ids.is_empty(),
+        "both ids *are* in the chain; 'not logged' would be false: {:?}",
+        verdict.unlogged_ids
+    );
+    assert!(verdict.rebuilt.is_empty());
+}
+
+#[test]
+fn one_carrying_entry_that_reproduces_the_record_is_enough() {
+    let full = two_bodies();
+    let wrong_order = [full[1].clone(), full[0].clone()];
+    let right_order = [full[0].clone(), full[1].clone()];
+
+    let verdict = rebuild_assembly_from_entries(
+        &record(&["f1", "f2"]),
+        &[&wrong_order[..], &right_order[..]],
+    );
+    assert!(
+        verdict.rebuildable,
+        "one entry that reproduces it is enough for the chain to reproduce it: {:?}",
+        verdict.rejections
+    );
+    assert!(verdict.rejections.is_empty());
+    assert_eq!(
+        verdict
+            .rebuilt
+            .iter()
+            .map(|fragment| fragment.id)
+            .collect::<Vec<_>>(),
+        vec!["f1", "f2"],
+        "the sequence comes from the entry that reproduced it"
+    );
+
+    // With only the wrong-ordered entry, the specific reason is still the specific one — the
+    // existential rule must not swallow `order_differs` into a vaguer answer.
+    let only_wrong = rebuild_assembly_from_entries(&record(&["f1", "f2"]), &[&wrong_order[..]]);
+    assert!(!only_wrong.rebuildable);
+    assert!(
+        only_wrong
+            .rejections
+            .contains(&RebuildRejection::RebuildOrderDiffers),
+        "{:?}",
+        only_wrong.rejections
+    );
+    assert!(
+        !only_wrong
+            .rejections
+            .contains(&RebuildRejection::NotInOneEntry),
+        "an entry *does* carry it; the assembly is simply not reproducible from it"
+    );
+}
+
+#[test]
+fn an_empty_chain_names_every_id_unlogged_and_not_in_one_entry() {
+    let verdict = rebuild_assembly_from_entries(&record(&["f1", "f2"]), &[]);
+    assert!(!verdict.rebuildable);
+    assert_eq!(
+        verdict.unlogged_ids,
+        vec!["f1".to_string(), "f2".to_string()]
+    );
+    assert!(
+        verdict
+            .rejections
+            .contains(&RebuildRejection::FragmentNotLogged)
+    );
+    assert!(
+        verdict
+            .rejections
+            .contains(&RebuildRejection::NotInOneEntry),
+        "an empty chain is also a chain with no carrying entry: {:?}",
+        verdict.rejections
+    );
+}
+
 #[test]
 fn every_rebuild_rejection_is_constructible_and_none_is_unregistered() {
     let mut seen: Vec<RebuildRejection> = Vec::new();
@@ -942,6 +1083,13 @@ fn every_rebuild_rejection_is_constructible_and_none_is_unregistered() {
         content: Some("token=abc"),
     }];
     collect_rebuild(&mut seen, &rebuild_assembly(&record(&["f1"]), &secret));
+    // NotInOneEntry — the chain holds every id, but no single entry holds this assembly.
+    let half_a = [full[0].clone()];
+    let half_b = [full[1].clone(), full[2].clone()];
+    collect_rebuild(
+        &mut seen,
+        &rebuild_assembly_from_entries(&record(&RECORDED), &[&half_a[..], &half_b[..]]),
+    );
 
     let mut expected = RebuildRejection::ALL.to_vec();
     seen.sort_by_key(|rejection| rejection.label());
