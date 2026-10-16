@@ -2034,6 +2034,20 @@ MUST NOT 返回 0（返回 0 等于谎称「无人活跃」，会让版本切换
 见 [W123 报告](reports/2026-10-16-w123-runtime-session-gate.md)、[ADR 0101](adr/0101-runtime-session-gate.md)、
 `openspec/changes/archive/2026-10-16-w123-runtime-session-gate/`。
 
+### W124（2026-10-16）：有界存储维护的零覆盖上限补齐（R08 补覆盖）
+
+**缝（现测）**：R08 此前只有一句「WAL/配额逻辑部分覆盖」，无载体。实测零覆盖：`MAX_PAYLOAD_BYTES` **0 引用**、
+快照 mutable journal 规则 **0**、`MAX_BYTES` **0**（而遥测缓冲有 9 处 ⇒ 是部分覆盖而非整项未测）。
+
+**改动**：`MAX_PAYLOAD_BYTES` 改 `pub(crate)`（判据**引用**上限而非复制字面量）；`tests.rs` +2 条判别性判据
+（载荷 `cap/2` 过 / `cap+overhead` 具名 `RESOURCE_EXHAUSTED`；快照三 sidecar 各拒一次 `CONFLICT`
+**并带对照**：删 sidecar 后同一快照必须能恢复）⇒ 55→57 全绿。
+
+**registry**：**R08 维持 `implemented`**（256MiB / publication / knowledge 的上限仍零覆盖）。
+
+见 [W124 报告](reports/2026-10-16-w124-storage-bounds-carriers.md)、[ADR 0102](adr/0102-storage-bounds-carriers.md)、
+`openspec/changes/archive/2026-10-16-w124-storage-bounds-carriers/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

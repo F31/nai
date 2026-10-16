@@ -100,6 +100,14 @@ CapabilityNotReady）→Draining（仍 Deferred）→Stopped（Allowed）；busy
 **R10 仍不升 `tested`**：运行时**无升级激活调用点**（无 `UpgradeTransaction` 使用处）⇒ 命题尚未在真实链路执行，
 按 ADR 0100「守卫通过 ≠ 本项达标」。见 [ADR 0101](adr/0101-runtime-session-gate.md)、
 [W123 报告](reports/2026-10-16-w123-runtime-session-gate.md)。）
+（W124 补 R08「存储维护有界」的**零覆盖上限**：实测 `MAX_PAYLOAD_BYTES`(64KiB) **0 引用**、快照拒绝
+`-wal/-shm/-journal` 的 mutable journal 规则 **0**、`MAX_BYTES` **0**（遥测缓冲有 9 处 ⇒ 部分覆盖）。
+新增 2 条判别性判据（55→57）：① 载荷 `cap/2` 通过、`cap+overhead` ⇒ **具名** `RESOURCE_EXHAUSTED`
+（⇒ 静默截断也会红）；② 三个 journal sidecar 各注入一次 ⇒ `CONFLICT`，**且带对照**——删掉 sidecar 后
+同一快照必须能恢复，否则「拒绝」可能只是备份坏了（假通过）。`MAX_PAYLOAD_BYTES` 改 `pub(crate)` 让判据
+**引用**上限而非复制字面量（W77 对 `Operation::CEILING` 的同一条规矩）。
+**R08 仍不升 `tested`**：256MiB 备份上限、publication / knowledge 上限仍零覆盖。
+见 [ADR 0102](adr/0102-storage-bounds-carriers.md)、[W124 报告](reports/2026-10-16-w124-storage-bounds-carriers.md)。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。

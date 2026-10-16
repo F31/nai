@@ -8,7 +8,11 @@ use rusqlite::{OptionalExtension, TransactionBehavior, params};
 
 pub const GENESIS_HASH: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 pub const TELEMETRY_BUFFER_CAPACITY: usize = 1024;
-const MAX_PAYLOAD_BYTES: usize = 65536;
+/// The decision-payload bound. `pub(crate)` so the boundary judgement can
+/// **reference** it instead of repeating the literal: a second copy would let the
+/// cap and the thing that checks it drift apart without anything noticing
+/// (W77's rule for `Operation::CEILING`, applied to storage bounds).
+pub(crate) const MAX_PAYLOAD_BYTES: usize = 65536;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Criticality {

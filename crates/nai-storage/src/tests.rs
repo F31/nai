@@ -1539,3 +1539,97 @@ fn knowledge_failed_vector_batch_rolls_back_manifest_and_rows() {
         0
     );
 }
+
+/// R08 "存储维护有界": the decision-payload cap had **no carrier at all** before
+/// this round — `grep MAX_PAYLOAD_BYTES src/tests.rs` was 0 — so the bound could
+/// have been raised or removed without a single test going red.
+#[test]
+fn the_decision_payload_is_bounded_and_the_refusal_is_named() {
+    let parent = tempfile::tempdir().unwrap();
+    let mut storage = store(&parent.path().join("source"));
+    setup(&mut storage);
+    let cap = super::decision::MAX_PAYLOAD_BYTES;
+
+    // Well inside the bound -> accepted.
+    let small = serde_json::json!({"blob": "x".repeat(cap / 2)});
+    storage
+        .append_decision(
+            &op(),
+            "test-workspace",
+            None,
+            DecisionKind::Cancellation,
+            &small,
+            "r08-small",
+        )
+        .unwrap();
+
+    // Serializing this one is `cap + overhead` bytes: strictly over the bound.
+    let oversize = serde_json::json!({"blob": "x".repeat(cap)});
+    assert!(
+        serde_json::to_string(&oversize).unwrap().len() > cap,
+        "the fixture must actually exceed the declared bound"
+    );
+    let error = storage
+        .append_decision(
+            &op(),
+            "test-workspace",
+            None,
+            DecisionKind::Cancellation,
+            &oversize,
+            "r08-oversize",
+        )
+        .unwrap_err();
+    assert_eq!(
+        error.code,
+        nai_contracts::v1::ErrorCode::ResourceExhausted,
+        "an oversized payload must be refused by name, not truncated silently"
+    );
+}
+
+/// R08: a snapshot must not be able to smuggle mutable journal state past the
+/// approved database hash. The rule (`snapshot.rs`, "mutable journal") likewise
+/// had zero references in the test suite.
+#[test]
+fn a_snapshot_carrying_a_mutable_journal_is_rejected() {
+    let parent = tempfile::tempdir().unwrap();
+    let mut storage = store(&parent.path().join("source"));
+    setup(&mut storage);
+    let backup = storage.backup(&op()).unwrap();
+
+    // The clean snapshot restores.
+    Store::restore(
+        &backup,
+        DataPaths::at(parent.path().join("clean")).unwrap(),
+        &op(),
+    )
+    .unwrap();
+
+    // Each sidecar is refused on its own, and the snapshot is otherwise intact:
+    // removing it makes the same restore succeed again, so the refusal is
+    // attributable to the sidecar and not to a broken backup.
+    for (index, suffix) in ["-wal", "-shm", "-journal"].into_iter().enumerate() {
+        let sidecar = backup.join(format!("state.sqlite3{suffix}"));
+        fs::write(&sidecar, b"test-only-mutable-journal").unwrap();
+        let error = Store::restore(
+            &backup,
+            DataPaths::at(parent.path().join(format!("tampered-{index}"))).unwrap(),
+            &op(),
+        )
+        .err()
+        .expect("a snapshot carrying a mutable journal must be refused");
+        assert_eq!(
+            error.code,
+            nai_contracts::v1::ErrorCode::Conflict,
+            "a snapshot with a {suffix} sidecar must be refused"
+        );
+        fs::remove_file(&sidecar).unwrap();
+    }
+
+    // The control: with every sidecar gone the snapshot restores again.
+    Store::restore(
+        &backup,
+        DataPaths::at(parent.path().join("clean-again")).unwrap(),
+        &op(),
+    )
+    .unwrap();
+}
