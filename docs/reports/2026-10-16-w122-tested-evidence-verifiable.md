@@ -78,8 +78,8 @@ W121 之前 9 轮（W113–W121）产出集中在判定面守卫，`git log W113
 
 ## 七、提交 / 推送（一次 commit + push，SSH 443）
 
-- 提交 SHA：TBD。
-- push 区间：TBD，分支 `main`，SSH 443。
+- 提交 SHA：**`e6d4f08469c5a8ae00f735f356f252bf7eda8623`**（主提交）。
+- push 区间：**`772f8cb..e6d4f08`**，分支 `main`，SSH 443（`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）。共 11 文件、+378/-2。
 - 改动文件：`tests/registry.yaml`（A13 升 tested + A03 留痕）、`tests/registry.test.mjs`（+4 守卫）、
   `docs/adr/0100-tested-evidence-verifiable.md`（新建）、`docs/reports/2026-10-16-w122-tested-evidence-verifiable.md`（新建）、
   `docs/development-plan.md`（W122 段）、`docs/knowledge.md`（W122 注记）、
@@ -88,5 +88,8 @@ W121 之前 9 轮（W113–W121）产出集中在判定面守卫，`git log W113
 
 ## 八、CI 观测（主提交 + 回填提交各一次双平台观测）
 
-- **主提交** run id：TBD。回读 `head_sha` 与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`。
+- **主提交** run id：**38837204111**（workflow `Engineering foundation`，event `push`）。回读 `head_sha` = `e6d4f08469c5a8ae00f735f356f252bf7eda8623`，与推送 SHA **完整 40 位一致**；双平台 `foundation` job 均 `completed / success`：
+  - `foundation (windows-latest)` — completed / **success**
+  - `foundation (ubuntu-24.04)` — completed / **success**
+  - 本机门控绿（`GATE_EXIT=0`）与 CI 双平台绿一致。
 - **回填提交**（docs-only）自身 CI：按纪律做 **1 次**观测，结论记入 memory，**不在本报告占位**（W119 起的写法）。
