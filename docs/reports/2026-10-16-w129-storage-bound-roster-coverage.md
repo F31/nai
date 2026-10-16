@@ -166,8 +166,43 @@ crates/nai-storage/src/tests/storage_bounds.rs           948f7985943173918fda8b6
 
 ## 六、提交与推送
 
-（待回填）
+**一次**提交，**21** 个文件（`git show --stat` 现测）：
+
+```
+f1159e7 feat(w129): 存储上限名册的行为覆盖——R08 升 tested
+21 files changed, 1682 insertions(+), 62 deletions(-)
+```
+
+`git push` 输出 `63a36df..f1159e7  main -> main`（SSH 443）。
+
+**逐项核对过暂存区**（W109/W110 的教训：`git add -A` 的排除项易漏）：本轮用**显式路径**
+`git add -- <16 条路径>` 暂存，`git status --porcelain` 现测确认**只剩**三个临时项未暂存
+（`.commitmsg_w129.txt` / `.w129-base.sha256` / `target-check/`）；`gate-w129.log` 被 `.gitignore:7`
+（`*.log`）覆盖。本轮无新增依赖 ⇒ `Cargo.lock` **无改动**（现测）；无迁移文件改动 ⇒ 无升版成套六处。
+
 
 ## 七、CI 观测
 
-（待回填）
+三件齐（唯一查询参数 + `Cache-Control: no-cache` + 回读 `head_sha` == 推送 SHA），
+全程 **5** 次请求（4 次 run 查询 + 1 次 jobs 查询）、**未轮询**：
+
+| # | 时刻 | 目的 | 结果 |
+| --- | --- | --- | --- |
+| 1 | 16:01 | 触发确认 | `HTTP=200`、`total_count=1`、run **#201**（id `38928618675`）`queued`；`head_sha` 回读 == `f1159e74cc69…` ✓ |
+| 2 | 16:14:46 | 完成态首查 | `in_progress`（距创建 13.4 min）⇒ 需再查 |
+| 3 | 16:20:27 | 完成态再查 | 仍 `in_progress`（距创建 19.1 min）⇒ 需再查 |
+| 4 | 16:25:47 | 完成态 | `completed / **success**`；`head_sha` 回读 == `f1159e74cc693c0595bf40b09c57ae694f33313c` ✓ |
+
+run #201 的 matrix 含两个 job，**各自 `success`**（第 4 次的 jobs 现测）：
+
+| job | 开始 | 完成 | 结论 |
+|---|---|---|---|
+| `foundation (ubuntu-24.04)` | 16:01:25 | 16:07:21 | `success` |
+| `foundation (windows-latest)` | 16:01:25 | 16:20:56 | `success` |
+
+**双平台差距本次为 13m35s**（ubuntu 6 min 完、windows 19.6 min 完），远比本机门控的 9m19s 长 ⇒
+**「完成态查询 ≥2 次」这条口径本轮真的用上了**：查询 2 与 3 都落在 run 完成之前，
+若按「一次查询就下结论」会误判为「仍在跑」或（更糟）按下缓存响应判成别的状态。
+run 自身 `created_at → updated_at` = **19.6 min**。**本机绿 ≠ CI 绿**：CI 有独立于本机 profile 的步骤
+（如 `cargo xtask schema --check`）；本轮未触及 `migration::VERSION`，无升版成套项。
+
