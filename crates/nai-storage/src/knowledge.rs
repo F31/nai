@@ -13,8 +13,8 @@ use prost::Message;
 use rusqlite::{OptionalExtension, TransactionBehavior, params};
 use std::collections::{BTreeMap, BTreeSet};
 
-const MAX_CONTENT_BYTES: usize = 16 * 1024 * 1024;
-const MAX_CHUNKS: usize = 4096;
+pub(crate) const MAX_CONTENT_BYTES: usize = 16 * 1024 * 1024;
+pub(crate) const MAX_CHUNKS: usize = 4096;
 const MAX_TOKENS_PER_CHUNK: usize = 4096;
 const MAX_DIMENSION: usize = 8192;
 

@@ -2048,6 +2048,29 @@ MUST NOT 返回 0（返回 0 等于谎称「无人活跃」，会让版本切换
 见 [W124 报告](reports/2026-10-16-w124-storage-bounds-carriers.md)、[ADR 0102](adr/0102-storage-bounds-carriers.md)、
 `openspec/changes/archive/2026-10-16-w124-storage-bounds-carriers/`。
 
+### W125（2026-10-16）：R08「存储维护有界」的口径与名册（快照/发布族覆盖）
+
+**缝（现测）**：ADR 0102 把 R08 的缺口写成 4 项常量。按「具名拒绝（或具名丢弃计数）」普查
+`crates/nai-storage`，约束**单次写入或单份快照/备份可占用资源**的上限实为 **19** 项，
+而本轮前**只有 2 项有载体** ⇒ 其余 17 项可被抬高或删除而**零测试变红**。逐项点名既不全、也没给口径
+（D03 的原始存储边界是「登记的不可变文件**数量/大小/路径受限**」）。
+
+**改动**：`knowledge`/`publication`/`snapshot` 的 6 个上限常量改 `pub(crate)`；`publication` 的**合并拒绝**
+拆成 `snapshot chunk count bound` / `snapshot chunk byte bound`（合并时一条计数夹具会替字节上限背书）；
+`tests.rs` 修掉唯一一处复制字面量并 **+6 条判据**（名册幅度 1 + 边界 5）⇒ **57→63** 全绿。
+
+**要点**：幅度判据管「上限悄悄变大」、边界判据管「闸门还在不在、边界在哪一侧」——夹具从常量派生
+⇒ 抬高常量**不会**让边界判据变红，缺一条就有一类漂移无人看守；发布上限按**所选文档合计**判定
+（逐文档测试会判成通过）；快照读回两道闸门给出**不同**具名拒绝 ⇒ 拒绝可归因；`MAX_ARTIFACT`
+**写入/读回**两侧同值同界；**稀疏夹具**（`set_len` 造逻辑长度，实测 0.39s）使「256MiB 级夹具代价过高」
+的推迟理由作废。**注入验证**：三条独立注入各自命中对应判据，幅度判据与 artifact 写入判据保持绿。
+
+**registry**：`R08` **维持 `implemented`**（名册 19 项：已覆盖 8、**剩余 11 项具名列出**）。下一轮从剩余 11 项
+（`store`/`budget`/`knowledge` 的调用与批上限，夹具轻）入手收敛 → 届时才谈 `tested`。
+
+见 [W125 报告](reports/2026-10-16-w125-storage-bound-roster.md)、[ADR 0103](adr/0103-storage-bound-roster.md)、
+`openspec/changes/archive/2026-10-16-w125-storage-bound-roster/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

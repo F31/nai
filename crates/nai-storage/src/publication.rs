@@ -10,8 +10,8 @@ use rusqlite::{
 };
 use sha2::{Digest, Sha256};
 
-const MAX_CHUNKS: i64 = 4096;
-const MAX_BYTES: i64 = 16 * 1024 * 1024;
+pub(crate) const MAX_CHUNKS: i64 = 4096;
+pub(crate) const MAX_BYTES: i64 = 16 * 1024 * 1024;
 
 fn digest_rows<P: Params>(
     conn: &Connection,
@@ -163,8 +163,19 @@ impl Store {
             ));
         }
         let (chunks,bytes):(i64,i64)=tx.query_row("SELECT COUNT(*),COALESCE(SUM(length(CAST(content AS BLOB))),0) FROM chunks WHERE workspace_id=?1 AND document_id IN(SELECT value FROM json_each(?2))",params![workspace,selected],|row|Ok((row.get(0)?,row.get(1)?)))?;
-        if chunks == 0 || chunks > MAX_CHUNKS || bytes > MAX_BYTES {
-            return Err(error(ErrorCode::ResourceExhausted, "snapshot chunk bound"));
+        // Two bounds, two names. While these shared one reason a fixture that
+        // tripped the count silently vouched for the byte ceiling as well.
+        if chunks == 0 || chunks > MAX_CHUNKS {
+            return Err(error(
+                ErrorCode::ResourceExhausted,
+                "snapshot chunk count bound",
+            ));
+        }
+        if bytes > MAX_BYTES {
+            return Err(error(
+                ErrorCode::ResourceExhausted,
+                "snapshot chunk byte bound",
+            ));
         }
         let (lexical_count,token_bytes):(i64,i64)=tx.query_row("SELECT COUNT(*),COALESCE(SUM(length(CAST(f.tokens AS BLOB))),0) FROM knowledge_fts f JOIN chunks c ON c.workspace_id=f.workspace_id AND c.chunk_id=f.chunk_id WHERE c.workspace_id=?1 AND c.document_id IN(SELECT value FROM json_each(?2))",params![workspace,selected],|row|Ok((row.get(0)?,row.get(1)?)))?;
         if lexical_count != chunks || token_bytes > MAX_BYTES {

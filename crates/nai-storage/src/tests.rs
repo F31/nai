@@ -1093,7 +1093,7 @@ fn empty_and_oversized_imports_are_rejected_and_facts_follow_permission() {
     let mut doc = knowledge_doc("第一行内容\n第二行内容比较长一些\n第三行结尾");
     doc.content.clear();
     assert!(storage.import_document(&op(), "operator", &doc).is_err());
-    doc.content = "x".repeat(16 * 1024 * 1024 + 1);
+    doc.content = "x".repeat(super::knowledge::MAX_CONTENT_BYTES + 1);
     assert!(storage.import_document(&op(), "operator", &doc).is_err());
     assert_eq!(
         storage
@@ -1632,4 +1632,352 @@ fn a_snapshot_carrying_a_mutable_journal_is_rejected() {
         &op(),
     )
     .unwrap();
+}
+
+/// R08 fixture: a chunk built to a size instead of by the splitter, so the bound
+/// under test -- not the splitter's own limits -- decides the shape.
+fn synthetic_chunk(document: &str, index: usize, content: String) -> crate::ImportChunk {
+    crate::ImportChunk {
+        chunk_id: format!("{document}#chunk-{index}"),
+        content,
+        source_span: format!("span-{index}"),
+        product_scope: "test-workspace".into(),
+        acl_ref: "acl-read".into(),
+        tokens: vec![format!("t{index}")],
+    }
+}
+fn synthetic_document(document: &str, chunks: Vec<crate::ImportChunk>) -> crate::ImportedDocument {
+    let mut doc = knowledge_doc("占位正文");
+    doc.document_id = document.into();
+    doc.content = format!("{document} 的正文");
+    doc.chunks = chunks;
+    doc
+}
+/// Stage (never publish) a selection, so a refusal can only come from the
+/// bounds under test rather than from the publication CAS.
+fn stage(storage: &mut Store, snapshot: &str, documents: &[&str]) -> crate::Result<()> {
+    let active: Option<String> = storage
+        .conn
+        .query_row(
+            "SELECT snapshot_id FROM knowledge_active_snapshots WHERE workspace_id='test-workspace' AND kb_scope='test-workspace'",
+            [],
+            |row| row.get(0),
+        )
+        .optional()
+        .unwrap();
+    storage.stage_snapshot(
+        &op(),
+        "operator",
+        "test-workspace",
+        snapshot,
+        "test-workspace",
+        &documents
+            .iter()
+            .map(|document| (*document).to_string())
+            .collect::<Vec<_>>(),
+        None,
+        active.as_deref(),
+    )
+}
+/// Give a file a logical length without writing that many bytes. `checked_file`
+/// compares `metadata().len()` before it reads anything, so this reaches the size
+/// gate for one `set_len` instead of a real multi-hundred-megabyte write.
+fn inflate(path: &std::path::Path, len: u64) {
+    fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+        .unwrap()
+        .set_len(len)
+        .unwrap();
+}
+
+/// R08 "存储维护有界": the item is only as good as its roster. Every magnitude
+/// below is a declared policy value, so raising one is a deliberate act rather
+/// than a silent drift -- and the *behaviour* of each bound is pinned separately
+/// by the boundary tests that follow, because a magnitude pin alone would not
+/// notice a bound that is declared and then never consulted.
+#[test]
+fn the_declared_storage_write_bounds_are_the_magnitudes_the_item_claims() {
+    for (name, actual, declared) in [
+        (
+            "decision::MAX_PAYLOAD_BYTES",
+            super::decision::MAX_PAYLOAD_BYTES as u64,
+            65_536,
+        ),
+        (
+            "decision::TELEMETRY_BUFFER_CAPACITY",
+            super::decision::TELEMETRY_BUFFER_CAPACITY as u64,
+            1_024,
+        ),
+        (
+            "knowledge::MAX_CONTENT_BYTES",
+            super::knowledge::MAX_CONTENT_BYTES as u64,
+            16 * 1024 * 1024,
+        ),
+        (
+            "knowledge::MAX_CHUNKS",
+            super::knowledge::MAX_CHUNKS as u64,
+            4_096,
+        ),
+        (
+            "publication::MAX_CHUNKS",
+            super::publication::MAX_CHUNKS as u64,
+            4_096,
+        ),
+        (
+            "publication::MAX_BYTES",
+            super::publication::MAX_BYTES as u64,
+            16 * 1024 * 1024,
+        ),
+        (
+            "snapshot::MAX_BYTES",
+            super::snapshot::MAX_BYTES,
+            256 * 1024 * 1024,
+        ),
+        (
+            "snapshot::MAX_ARTIFACT",
+            super::snapshot::MAX_ARTIFACT,
+            16 * 1024 * 1024,
+        ),
+    ] {
+        assert_eq!(
+            actual, declared,
+            "{name} is a declared magnitude, not an accident"
+        );
+    }
+}
+
+/// R08: the import bounds are inclusive, so "at the cap" and "one over the cap"
+/// must land on opposite sides. The content bound previously had a single
+/// carrier that *copied* the literal, which pinned the number without ever
+/// naming the bound it belonged to.
+#[test]
+fn the_import_bounds_are_enforced_on_both_sides_of_the_declared_cap() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut storage = store(dir.path());
+    setup(&mut storage);
+    let content_cap = super::knowledge::MAX_CONTENT_BYTES;
+    let chunk_cap = super::knowledge::MAX_CHUNKS;
+
+    let mut at_cap = knowledge_doc("界内正文");
+    at_cap.content = "x".repeat(content_cap);
+    storage.import_document(&op(), "operator", &at_cap).unwrap();
+
+    let mut over_cap = knowledge_doc("越界正文");
+    over_cap.content = "x".repeat(content_cap + 1);
+    assert_eq!(
+        storage
+            .import_document(&op(), "operator", &over_cap)
+            .unwrap_err()
+            .reason,
+        "document exceeds import bound",
+        "one byte over the declared content cap must be refused by name"
+    );
+
+    let wide = synthetic_document(
+        "doc-at-cap",
+        (0..chunk_cap)
+            .map(|index| synthetic_chunk("doc-at-cap", index, format!("块{index}")))
+            .collect(),
+    );
+    storage.import_document(&op(), "operator", &wide).unwrap();
+
+    let too_wide = synthetic_document(
+        "doc-over-cap",
+        (0..chunk_cap + 1)
+            .map(|index| synthetic_chunk("doc-over-cap", index, format!("块{index}")))
+            .collect(),
+    );
+    assert_eq!(
+        storage
+            .import_document(&op(), "operator", &too_wide)
+            .unwrap_err()
+            .reason,
+        "invalid chunk count",
+        "one chunk over the declared count cap must be refused by name"
+    );
+}
+
+/// R08: the publication bounds are checked against the **sum over the selected
+/// documents**, so a selection can be refused while every document in it is
+/// individually admissible. A per-document test would call that a pass.
+#[test]
+fn the_published_snapshot_bounds_are_the_sum_over_the_selected_documents() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut storage = store(dir.path());
+    setup(&mut storage);
+    let chunk_cap = super::publication::MAX_CHUNKS as usize;
+    let byte_cap = super::publication::MAX_BYTES as usize;
+
+    let wide = synthetic_document(
+        "doc-wide",
+        (0..chunk_cap)
+            .map(|index| synthetic_chunk("doc-wide", index, format!("块{index}")))
+            .collect(),
+    );
+    storage.import_document(&op(), "operator", &wide).unwrap();
+    let extra = synthetic_document(
+        "doc-extra",
+        (0..2)
+            .map(|index| synthetic_chunk("doc-extra", index, format!("块{index}")))
+            .collect(),
+    );
+    storage.import_document(&op(), "operator", &extra).unwrap();
+
+    stage(&mut storage, "snap-wide", &["doc-wide"]).unwrap();
+    let count_refusal =
+        stage(&mut storage, "snap-wide-extra", &["doc-wide", "doc-extra"]).unwrap_err();
+    assert_eq!(count_refusal.reason, "snapshot chunk count bound");
+    assert_eq!(
+        count_refusal.code,
+        nai_contracts::v1::ErrorCode::ResourceExhausted
+    );
+
+    // Each heavy document fits on its own (its own chunk bytes stay under the
+    // ceiling); only the sum over the selection crosses it.
+    let half = byte_cap / 2 + 1;
+    for (document, filler) in [("doc-left", "l"), ("doc-right", "r")] {
+        let heavy = synthetic_document(
+            document,
+            vec![synthetic_chunk(document, 0, filler.repeat(half))],
+        );
+        storage.import_document(&op(), "operator", &heavy).unwrap();
+    }
+    stage(&mut storage, "snap-left", &["doc-left"]).unwrap();
+    let byte_refusal =
+        stage(&mut storage, "snap-left-right", &["doc-left", "doc-right"]).unwrap_err();
+    assert_eq!(
+        byte_refusal.reason, "snapshot chunk byte bound",
+        "two individually admissible documents must still be refused on their sum"
+    );
+}
+
+/// R08: a snapshot database over the declared ceiling is refused *before a single
+/// byte of it is read*, and the refusal is attributable -- the size gate and the
+/// hash gate are different named refusals, so "too big" cannot be read as
+/// "corrupt" or the other way round.
+#[test]
+fn a_backup_over_the_declared_ceiling_is_refused_by_the_size_gate_not_by_hash() {
+    let parent = tempfile::tempdir().unwrap();
+    let mut storage = store(&parent.path().join("source"));
+    setup(&mut storage);
+    let backup = storage.backup(&op()).unwrap();
+    let database = backup.join("state.sqlite3");
+
+    let original = fs::read(&database).unwrap();
+    let mut flipped = original.clone();
+    flipped[0] ^= 0xff;
+    fs::write(&database, &flipped).unwrap();
+    let mismatch = Store::restore(
+        &backup,
+        DataPaths::at(parent.path().join("flipped")).unwrap(),
+        &op(),
+    )
+    .err()
+    .expect("a snapshot whose bytes changed must be refused");
+    assert_eq!(mismatch.reason, "database hash/size mismatch");
+    fs::write(&database, &original).unwrap();
+
+    inflate(&database, super::snapshot::MAX_BYTES + 1);
+    let oversized = Store::restore(
+        &backup,
+        DataPaths::at(parent.path().join("oversized")).unwrap(),
+        &op(),
+    )
+    .err()
+    .expect("a snapshot database over the declared ceiling must be refused");
+    assert_eq!(
+        oversized.code,
+        nai_contracts::v1::ErrorCode::ResourceExhausted
+    );
+    assert_eq!(oversized.reason, "snapshot file limit");
+}
+
+/// R08: the same two gates on a registered immutable artifact. The artifact is
+/// covered where the D03 declaration puts it -- "registered immutable files enter
+/// the backup with count/size/path limits" -- and the size limit is enforced per
+/// file, not only on the database.
+#[test]
+fn a_backup_artifact_over_the_declared_ceiling_is_refused_by_the_size_gate() {
+    let parent = tempfile::tempdir().unwrap();
+    let mut storage = store(&parent.path().join("source"));
+    setup(&mut storage);
+    let relative = storage
+        .publish_artifact(
+            &op(),
+            "test-workspace",
+            "operator",
+            "doc",
+            "assets",
+            b"test-asset",
+        )
+        .unwrap();
+    let backup = storage.backup(&op()).unwrap();
+    let artifact = backup.join(&relative);
+
+    let original = fs::read(&artifact).unwrap();
+    let mut flipped = original.clone();
+    flipped[0] ^= 0xff;
+    fs::write(&artifact, &flipped).unwrap();
+    let mismatch = Store::restore(
+        &backup,
+        DataPaths::at(parent.path().join("flipped")).unwrap(),
+        &op(),
+    )
+    .err()
+    .expect("a snapshot artifact whose bytes changed must be refused");
+    assert_eq!(mismatch.reason, "restore artifact invalid");
+    fs::write(&artifact, &original).unwrap();
+
+    inflate(&artifact, super::snapshot::MAX_ARTIFACT + 1);
+    let oversized = Store::restore(
+        &backup,
+        DataPaths::at(parent.path().join("oversized")).unwrap(),
+        &op(),
+    )
+    .err()
+    .expect("an artifact over the declared ceiling must be refused");
+    assert_eq!(
+        oversized.code,
+        nai_contracts::v1::ErrorCode::ResourceExhausted
+    );
+    assert_eq!(oversized.reason, "snapshot file limit");
+}
+
+/// R08: the same per-file ceiling is enforced where the artifact is *written*,
+/// and it is inclusive -- so a single exported constant backs two enforcement
+/// sites and both must agree on where the boundary sits.
+#[test]
+fn an_artifact_at_the_declared_ceiling_is_accepted_and_one_byte_over_is_refused() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut storage = store(dir.path());
+    setup(&mut storage);
+    let cap = super::snapshot::MAX_ARTIFACT as usize;
+
+    storage
+        .publish_artifact(
+            &op(),
+            "test-workspace",
+            "operator",
+            "doc-at-cap",
+            "assets",
+            &vec![b'x'; cap],
+        )
+        .unwrap();
+    assert_eq!(
+        storage
+            .publish_artifact(
+                &op(),
+                "test-workspace",
+                "operator",
+                "doc-over-cap",
+                "assets",
+                &vec![b'y'; cap + 1],
+            )
+            .unwrap_err()
+            .reason,
+        "artifact type/size invalid",
+        "one byte over the declared per-file ceiling must be refused by name"
+    );
 }

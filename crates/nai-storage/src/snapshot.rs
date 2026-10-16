@@ -15,8 +15,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const MAX_BYTES: u64 = 256 * 1024 * 1024;
-const MAX_ARTIFACT: u64 = 16 * 1024 * 1024;
+pub(crate) const MAX_BYTES: u64 = 256 * 1024 * 1024;
+pub(crate) const MAX_ARTIFACT: u64 = 16 * 1024 * 1024;
 const CATALOG: &[u8] = include_bytes!("../../../schemas/catalog/capabilities.json");
 fn checked_file(path: &Path, maximum: u64, op: &Operation) -> Result<Vec<u8>> {
     op.check()?;

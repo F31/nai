@@ -108,6 +108,19 @@ CapabilityNotReady）→Draining（仍 Deferred）→Stopped（Allowed）；busy
 **引用**上限而非复制字面量（W77 对 `Operation::CEILING` 的同一条规矩）。
 **R08 仍不升 `tested`**：256MiB 备份上限、publication / knowledge 上限仍零覆盖。
 见 [ADR 0102](adr/0102-storage-bounds-carriers.md)、[W124 报告](reports/2026-10-16-w124-storage-bounds-carriers.md)。）
+（W125 把 R08 从「四项点名」改成**有口径的名册**：按「具名拒绝（或具名丢弃计数）」普查 `crates/nai-storage`，
+约束**单次写入或单份快照/备份可占用资源**的上限共 **19** 项，本轮前**只有 2 项有载体**——其余 17 项可被抬高
+或删除而**零测试变红**。**口径 MUST 先定**：收**写路径**的字节/条目上限；**不收**读路径预算（检索扫描上限以
+`truncated`⇒`RetrievalPartial` **报告**而非拒绝）与输入形状校验（id/token/`source_span`/`MAX_TOKENS_PER_CHUNK`/
+`MAX_DIMENSION`/查询 token 与 `product_filters`——约束「什么算合法输入」，不约束「一次写入能有多大」）。
+本轮覆盖 **8/19**（`nai-storage` **57→63**，+6 条判据）：**幅度判据**管「上限悄悄变大」、**边界判据**管
+「闸门还在不在、边界在哪一侧」——夹具从常量派生 ⇒ 抬高常量**不会**让边界判据变红，缺一条就有一类漂移
+无人看守；发布上限按**所选文档合计**判定（逐文档测试会把它判成通过）；快照读回两道闸门给出**不同**具名
+拒绝（`snapshot file limit` vs `database hash/size mismatch`）⇒ 拒绝可归因；`MAX_ARTIFACT` **写入/读回**
+两侧同值同界；**稀疏夹具** `set_len` 实测 0.39s 使 W124「256MiB 级夹具代价过高」的推迟理由作废。
+**注入验证**：三条独立注入各自命中对应判据，幅度判据与 artifact 写入判据保持绿。
+**R08 仍不升 `tested`**：名册 19 项**剩余 11 项零覆盖**（`store`/`budget`/`knowledge` 的调用与批上限，逐项具名在
+registry）。见 [ADR 0103](adr/0103-storage-bound-roster.md)、[W125 报告](reports/2026-10-16-w125-storage-bound-roster.md)。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。
