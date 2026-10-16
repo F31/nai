@@ -35,7 +35,7 @@ R10 的缺口 = 「真实会话注册表（装配根）未接线」。实测：`
 - **95** 个测试二进制全 `0 failed`，**真实测试失败 0**；clippy `-D warnings` 通过；`fmt --all --check` 通过；前端门控通过；registry 56/56。其中 `nai-runtime` 的 `composition` 目标 **14 passed; 0 failed**（含 W123 两条新增）。
 
 ## 七、提交 / 推送
-- 提交 SHA：TBD。｜push 区间：TBD，分支 `main`，SSH 443。
+- 提交 SHA：**`0ca3b5e9b7844c37f41315d759c6a999322d31b4`**（主提交）。｜push 区间：**`6871952..0ca3b5e`**，分支 `main`，SSH 443（共 12 文件）。
 - 改动：`crates/nai-runtime/{Cargo.toml,src/composition.rs,tests/composition.rs}`、`tests/registry.yaml`(R10 notes)、
   `docs/adr/0101-*.md`、`docs/reports/2026-10-16-w123-*.md`、`docs/development-plan.md`、`docs/knowledge.md`、
   `openspec/specs/runtime-composition/spec.md`、`openspec/changes/archive/2026-10-16-w123-runtime-session-gate/`。

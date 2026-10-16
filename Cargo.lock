@@ -1309,6 +1309,7 @@ dependencies = [
  "nai-media-core",
  "nai-plugin-sdk",
  "nai-storage",
+ "nai-upgrade-core",
  "prost",
  "serde_json",
  "tempfile",
