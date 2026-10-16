@@ -3,7 +3,7 @@
 //! drives the supervised media subprocesses. It never opens a second store and
 //! never exposes owner administration to models or plugins.
 use crate::{Result, RuntimeError, err, supervisor::Supervisor};
-use nai_contracts::v1::{ErrorCode, PlaybackLease, SessionMode};
+use nai_contracts::v1::{ErrorCode, PlaybackLease, SessionLifecycle, SessionMode};
 use nai_control_api::ApprovalBackend;
 use nai_kernel::duty::DutyEnforcement;
 use nai_kernel::session::Session;
@@ -573,6 +573,44 @@ pub(crate) fn utc_ms() -> Result<u64> {
         .duration_since(UNIX_EPOCH)
         .map(|time| time.as_millis().min(u64::MAX as u128) as u64)
         .map_err(|_| err(ErrorCode::Internal, "invalid UTC clock"))
+}
+
+/// The assembly root answers the upgrade core's activation gate from the **real**
+/// session it owns (R10).
+///
+/// "Is anyone on air right now?" is a fact this root holds; the upgrade core
+/// deliberately keeps no session state of its own, because a cached count there
+/// would be a second, stale truth. So the answer is read live, never cached.
+///
+/// **Active means on air**: `Running` (a show is live) and `Draining` (a live
+/// session winding down) count; `Created`/`Preparing`/`Ready`/`ReadyDegraded`/
+/// `Stopped`/`Faulted` do not. Counting every *non-stopped* session as active
+/// would make the gate permanently block activation in this single-session
+/// composition — assembly itself creates that session — so a gate that never
+/// allows anything would be dead rather than cautious.
+impl nai_upgrade_core::ActiveSessionGate for Composition {
+    fn active(&self) -> nai_upgrade_core::Result<usize> {
+        // FAIL CLOSED when the session cannot be observed. Reporting a busy lock
+        // as "no live session" would let an activation swap the running version
+        // out from under a live show — the one failure this gate exists to
+        // prevent. Unobservable is *reported*, never silently degraded.
+        let session = self
+            .session_lock()
+            .map_err(|_| nai_upgrade_core::UpgradeError {
+                code: ErrorCode::Conflict,
+                reason: "session state busy",
+            })?;
+        let lifecycle = SessionLifecycle::try_from(session.snapshot().lifecycle).map_err(|_| {
+            nai_upgrade_core::UpgradeError {
+                code: ErrorCode::Internal,
+                reason: "session lifecycle unreadable",
+            }
+        })?;
+        Ok(match lifecycle {
+            SessionLifecycle::Running | SessionLifecycle::Draining => 1,
+            _ => 0,
+        })
+    }
 }
 
 #[cfg(test)]

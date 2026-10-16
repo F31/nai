@@ -2015,6 +2015,25 @@ registry 无 H 条目需改。
 见 [W122 报告](reports/2026-10-16-w122-tested-evidence-verifiable.md)、[ADR 0100](adr/0100-tested-evidence-verifiable.md)、
 `openspec/changes/archive/2026-10-16-w122-tested-evidence-verifiable/`。
 
+### W123（2026-10-16）：装配根接上真实会话，回答升级激活门（R10 接线）
+
+**缝（现测）**：R10 缺口 =「真实会话注册表（装配根）未接线」。实测 `SessionGate` 只有 `nai-upgrade-core` 的
+trait 与 `RehearsalSessions`（内存计数），`nai-runtime`/`apps/engine` **零命中**。
+
+**裁定（用户定 A）**：`active()` = **在播**（`Running`/`Draining`）。**不取「一切未停止」**——本装配 `prepare` 后会话即
+`Created`，那会让激活永久 defer ⇒ 门恒挡＝死门。**不可观测 ⇒ fail closed**：会话锁 busy 时 MUST 返回错误、
+MUST NOT 返回 0（返回 0 等于谎称「无人活跃」，会让版本切换在开播中发生）。
+
+**改动**：`Composition` 实现 `ActiveSessionGate`（读**真实** `Session`）；新增 `nai-runtime → nai-upgrade-core`
+依赖（`runtime→shared` 合法）；`tests/composition.rs` 新增 2 条（真实 lifecycle 双向 + 握手造竞争 ⇒ Conflict）
+⇒ 12→14 全绿。
+
+**registry 判定**：**R10 维持 `implemented`** —— 本轮接的是「能答 gate」，运行时**仍无升级激活调用点**
+（无 `UpgradeTransaction` 使用处）⇒ 按 ADR 0100「守卫通过 ≠ 本项达标」，不升 `tested`。
+
+见 [W123 报告](reports/2026-10-16-w123-runtime-session-gate.md)、[ADR 0101](adr/0101-runtime-session-gate.md)、
+`openspec/changes/archive/2026-10-16-w123-runtime-session-gate/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

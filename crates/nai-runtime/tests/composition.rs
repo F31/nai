@@ -2,10 +2,13 @@
 //! decision-log grading, control ordering and duty-lease logging.
 mod common;
 use common::*;
-use nai_contracts::v1::{ErrorCode, MediaState, SessionMode};
+use nai_contracts::v1::{ErrorCode, MediaState, SessionLifecycle, SessionMode};
 use nai_kernel::duty::{DUTY_REVOKE_DELAY, DutyEnforcement};
 use nai_runtime::{Composition, ControlAction};
 use nai_storage::{ConfigKind, DataPaths, DecisionKind};
+// `Operation` comes through the upgrade crate's re-export: nai-security is not a
+// direct dependency of nai-runtime, and the gate is what needs it anyway.
+use nai_upgrade_core::{Activation, Operation, SessionGate};
 use serde_json::json;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -438,4 +441,88 @@ fn telemetry_is_buffered_when_persistence_fails_while_critical_is_reported() {
     assert_eq!(critical.unwrap_err().code, ErrorCode::Internal);
     // The failed critical write did not consume the buffered telemetry entry.
     assert_eq!(store.decision_buffer_stats().0, 1);
+}
+
+/// R10: the activation gate reads the **real** session the assembly root owns,
+/// not a rehearsal counter. Walking the real lifecycle is the whole point — the
+/// gap R10 recorded was "真实会话注册表（装配根）未接线".
+#[test]
+fn the_upgrade_activation_gate_reads_the_real_session_lifecycle() {
+    let dir = tempdir().unwrap();
+    let composition = prepared(dir.path());
+    // CEILING, not a 30s literal: the registry guard forbids a second copy of the
+    // operation ceiling (tests/registry.test.mjs, "no Rust source hides...").
+    let op = Operation::new(Operation::CEILING).unwrap();
+    let gate = SessionGate::new(&composition);
+
+    // Not on air yet (the assembly leaves the session `Created`) -> allowed.
+    assert_eq!(gate.activation(&op).unwrap(), Activation::Allowed);
+
+    // Drive the REAL session onto air.
+    {
+        let mut session = composition.session_lock().unwrap();
+        session
+            .transition(true, SessionLifecycle::Preparing, true)
+            .unwrap();
+        session
+            .transition(true, SessionLifecycle::Ready, true)
+            .unwrap();
+        session
+            .transition(true, SessionLifecycle::Running, true)
+            .unwrap();
+    }
+    assert_eq!(
+        gate.activation(&op).unwrap(),
+        Activation::Deferred { active: 1 },
+        "an on-air session must defer the version swap"
+    );
+    assert_eq!(
+        gate.require_idle(&op).unwrap_err().code,
+        ErrorCode::CapabilityNotReady
+    );
+
+    // Draining is still a live show winding down -> still deferred.
+    {
+        let mut session = composition.session_lock().unwrap();
+        session
+            .transition(true, SessionLifecycle::Draining, true)
+            .unwrap();
+    }
+    assert_eq!(
+        gate.activation(&op).unwrap(),
+        Activation::Deferred { active: 1 }
+    );
+
+    // Off air -> activation may proceed on the already-staged package.
+    {
+        let mut session = composition.session_lock().unwrap();
+        session
+            .transition(true, SessionLifecycle::Stopped, true)
+            .unwrap();
+    }
+    assert_eq!(gate.activation(&op).unwrap(), Activation::Allowed);
+}
+
+/// The unobservable case MUST fail closed: a busy session lock reported as
+/// "no live session" would let a swap happen during a live show.
+#[test]
+fn the_upgrade_activation_gate_fails_closed_when_the_session_is_unobservable() {
+    let dir = tempdir().unwrap();
+    let composition = prepared(dir.path());
+    let op = Operation::new(Operation::CEILING).unwrap();
+    let gate = SessionGate::new(&composition);
+
+    // A handshake, not a sleep: the contention is provably in place before the
+    // gate is called, so this cannot race the scheduler.
+    let (handle, held) = hold_session(&composition, Duration::from_millis(300));
+    held.recv().unwrap();
+
+    let error = gate.activation(&op).unwrap_err();
+    assert_eq!(
+        error.code,
+        ErrorCode::Conflict,
+        "an unobservable session must be reported, never read as 'no live session'"
+    );
+
+    handle.join().unwrap();
 }

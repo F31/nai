@@ -89,6 +89,17 @@ search/answer 有界只读重试；sync/delete 单次尝试，避免未知提交
 （静态结构事实，22 项断言在门控实跑）；**A03 维持 `implemented` 即使结构守卫已通过**——剩余缺口是外部真值，
 「守卫通过 ≠ 本项达标」。语义不变量：`MET_STATUSES` 含 `implemented` 与 `tested` ⇒ 升级不改变 met/unmet 归类。
 见 [ADR 0100](adr/0100-tested-evidence-verifiable.md)、[W122 报告](reports/2026-10-16-w122-tested-evidence-verifiable.md)。）
+（W123 按建议啃 R1「本仓可闭合」项之首 **R10**：把**真实会话**接上升级激活门。`nai-runtime::Composition` 实现
+`nai_upgrade_core::ActiveSessionGate`，读**它自己持有的** `Session`（核心刻意不持有会话状态——缓存会成为第二份
+会过期的真相）。**语义（用户裁定 A）**：活跃 = **在播**（`Running`/`Draining`）；**不取**「一切未停止」，
+否则本装配 `prepare` 即有的 `Created` 会让激活**永久 defer**，门恒挡＝死门。**不可观测 ⇒ fail closed**：
+会话锁 busy/poisoned 返回错误，**MUST NOT 返回 0**（返回 0 等于谎称「无人活跃」，会让版本切换在开播中发生）。
+判据 2 条（12→14）：真实 lifecycle Created→Preparing→Ready→Running（Deferred{active:1} + require_idle⇒
+CapabilityNotReady）→Draining（仍 Deferred）→Stopped（Allowed）；busy 锁用**握手**造竞争 ⇒ Conflict（不靠 sleep）。
+依赖方向：`nai-runtime → nai-upgrade-core` 合法（`runtime→shared`；反向 `shared→runtime` 被禁）。
+**R10 仍不升 `tested`**：运行时**无升级激活调用点**（无 `UpgradeTransaction` 使用处）⇒ 命题尚未在真实链路执行，
+按 ADR 0100「守卫通过 ≠ 本项达标」。见 [ADR 0101](adr/0101-runtime-session-gate.md)、
+[W123 报告](reports/2026-10-16-w123-runtime-session-gate.md)。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。

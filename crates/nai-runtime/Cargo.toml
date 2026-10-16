@@ -16,6 +16,10 @@ nai-storage = { path = "../nai-storage" }
 nai-media-core = { path = "../nai-media-core" }
 nai-control-api = { path = "../nai-control-api" }
 nai-plugin-sdk.workspace = true
+# The assembly root owns "is anyone on air right now?", so it is the layer that
+# answers the upgrade core's activation gate (`ActiveSessionGate`). `shared` must
+# not depend on `runtime`, but the reverse is allowed — see xtask/src/deps.rs.
+nai-upgrade-core = { path = "../nai-upgrade-core" }
 prost.workspace = true
 serde_json.workspace = true
 
