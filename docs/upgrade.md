@@ -27,6 +27,8 @@ cargo xtask check --profile portable
 | `SessionDrain` | 哪些会话依赖某能力、能否排空 | `RehearsalDrain` |
 | `UpgradeHost` | 暂存 / 备份 / 迁移 / 自检 / 换清单 / 回滚 | `RehearsalHost`（内存） |
 | `UpgradeJournal` | 事务推进到哪一步 | `RehearsalJournal`；生产为 `Store`（`upgrade_journal` 表） |
+| `PackageFetcher` | 一个窗口的字节到不到（HTTP `Range`、本地镜像…） | 无默认；`tests/download.rs` 是脚本替身 + 真实 loopback HTTP/1.1 peer |
+| `ResumeLedger` | 本地**已持久化**多少字节 | 无默认；生产为包存储，测试为内存台账（含违约变体） |
 
 把任一条写死都会让升级器**绑定一个具体环境**；这正是「不要硬编码、不要绑定太多依赖」要避免的。
 
@@ -45,6 +47,22 @@ recover : 读 journal 当前 step → discard | restore | 确认已提交
 - **换清单原子**：写新文件 → `flush_durable` → 同目录改名覆盖。读者要么看到旧清单、要么看到新清单。
 
 `activate` 与 `prepare` 是两次调用：开播中可以暂存、不可激活。**会话事实归调用方**，事务层不猜。
+
+## 下载阶段：短读是值，误差是终局
+
+`download_package` 在**校验与暂存之前**跑，只做决定：窗口从哪个偏移开始、短读要不要重问、何时按名放弃。
+传输（`PackageFetcher`）与「本地已持久化多少」（`ResumeLedger`）都是接缝，core 不持有网络。
+
+- **短读是值**：到达字节少于所请求窗口是**可存活常态**，因此被清点并按预算重问；
+  传输返回的 `Err` 是**终局**（`PermissionDenied` 再问一次只是烧预算），不被重问。
+- **偏移每次从台账读回**，append 之后**回读确认**；哈希闸门的输入也**读自台账**。
+  于是「工件与声明相符」是关于**本地介质**的陈述，而不是关于本次调用持有过哪些缓冲的陈述。
+- **超出声明的续传点 ⇒ 拒绝**（不夹取）：它描述的是另一个工件。
+- **完整但哈希不符 ⇒ 拒绝 + 先丢弃其持久化字节**。理由不是洁癖而是续传点本身——坏前缀若留下，
+  下一次会在坏文件的末尾续传，而那个位置永久不会被重取（重启也带不走）。
+- 重问上界 `FetchPolicy::max_attempts_per_window`（默认 3）耗尽 ⇒ `RESOURCE_EXHAUSTED`（具名）。
+- 失败**不产生任何东西**：本模块无法暂存、无法写 journal、无法换清单，成功时唯一的输出是
+  `VerifiedPackage`——与 `verify_package` 返回的是同一个值。这就是「网络断开时原版本继续运行」的**结构性**一半。
 
 ## journal 状态机与恢复
 
@@ -111,6 +129,9 @@ recover : 读 journal 当前 step → discard | restore | 确认已提交
   暂存」。真实非对称验证（Ed25519 / 代码签名）是留待 update-helper 的注入点。
 - **没有真实安装器**。`RehearsalHost` 不持有字节、不落盘；真实 Windows 安装（暂存包、快照数据目录、
   改名换清单）是后续注入。
-- **没有真实下载器**，也不实现 Windows 文件锁的独立 update-helper。
+- **下载阶段只有编排与接缝，没有真实分发客户端**：`PackageFetcher` 是注入点，core 只决定「向哪一段要、
+  是否重问、何时放弃」；真实分发端点与 Windows 文件锁的独立 update-helper 仍是后续注入。
+  下载故障语义（断流 / 续传 / 重问预算 / 下载期校验）已在**真实 loopback TCP/HTTP/1.1** 上实测，
+  见 [W126 报告](reports/2026-10-16-w126-download-resume-and-budget.md) 与 [ADR 0104](adr/0104-download-resume-and-budget.md)。
 - **`semver` 只做交集判断**，不实现完整 SAT 求解：单层 `requires` 足够，多包冲突本轮未覆盖。
 - `nai-upgrade-core` 尚未被任何 app 依赖，接入装配根是后续工作项。

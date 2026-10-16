@@ -8,11 +8,13 @@
 //! stops being testable off the target machine.
 //!
 //! Nothing here certifies a real signature chain, a Windows install, or a real
-//! downloader. `DeterministicVerifier` is a rehearsal stand-in, and a
-//! `SignatureVerifier` implementation that chains to a real CA key is a
-//! deliberate later injection point.
+//! package source. `DeterministicVerifier` is a rehearsal stand-in, and an
+//! implementation of `SignatureVerifier` or `PackageFetcher` that chains to a
+//! real CA key or to a real distribution endpoint is a deliberate later
+//! injection point.
 mod cloud;
 mod cost;
+mod download;
 mod gates;
 mod manifest;
 mod migration;
@@ -38,6 +40,10 @@ pub use cloud::{
     NodeClass, Sizing, ThrottlePolicy, assess, audit_local_autonomy, audit_low_cloud, availability,
 };
 pub use cost::{Component, CostEstimate, Total};
+pub use download::{
+    DownloadReport, DownloadRequest, FetchPolicy, FetchWindow, Fetched, PackageFetcher,
+    ResumeLedger, download_package,
+};
 pub use gates::{
     Activation, ActiveSessionGate, DowngradeReport, SessionDrain, SessionGate, downgrade,
     require_rollback_compatible,

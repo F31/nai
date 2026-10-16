@@ -2071,6 +2071,35 @@ MUST NOT 返回 0（返回 0 等于谎称「无人活跃」，会让版本切换
 见 [W125 报告](reports/2026-10-16-w125-storage-bound-roster.md)、[ADR 0103](adr/0103-storage-bound-roster.md)、
 `openspec/changes/archive/2026-10-16-w125-storage-bound-roster/`。
 
+### W126（2026-10-16）：R09 的下载阶段——续传、重问预算与哈希闸门
+
+**缝（现测）**：R09 自 W15 起记「真实下载器（断流/重试/校验失败）未实现」。核实后更细：本 crate 的**每个入口
+都只接收字节**（`verify_package(&[PackageFile])`、`install_offline(&[OfflineArtifact])`、
+`prepare(Vec<PackageFile>)`），**没有一处决定「向哪一段要、短读要不要重问、何时放弃」**
+⇒ 断流只能表现为「字节没到」，而「字节没到」与「下载失败」**在类型上无法区分**。
+架构上也不能把 HTTP 客户端塞进来：`shared` 层、`lib.rs` 与 `offline.rs` 把「无网络依赖」写成**刻意**性质。
+
+**改动**：新增 `src/download.rs`——`PackageFetcher`（传输）与 `ResumeLedger`（本地已持久化多少）两条接缝，
+加上 `download_package` 编排。**短读是值**（可重问、被清点），**`Err` 是终局**（不重问）；
+**偏移每次从台账读回**、append 后**回读确认**、哈希闸门的输入**读自台账**；
+**完整但哈希不符 ⇒ 拒绝并先丢弃**持久化字节（否则下一次会从坏文件末尾续传，而那里永久不会被重取）。
+哈希助手提为单一来源（`verify.rs::sha256_hex`），下载路径**引用**而非复制摘要。
+
+**判据**：新增 `tests/download.rs` **20** 条，其中 **2** 条走**真实 loopback TCP/HTTP/1.1**
+（测试内自写最小 peer 与 client，**零新增依赖**）：断言 peer 记账收到的 `Range` 偏移 == `[0, 1024]`
+（断流后续传）与 `[0, 1, 2]`（预算耗尽且进度真实）。⇒ 该 crate **99 passed**（8 目标 + `Doc-tests`）。
+
+**注入验证**：**10** 条独立注入，逐条可归因（M3 实测「抬高/挪动上界 ⇒ 边界判据变红、幅度判据不变」的成对分工）。
+**自查抓到两处**：①初稿只有入口取消判据 ⇒ 循环内的停止守卫**未被覆盖**（按纪律即装饰），补两条判别性判据
+（其一用「取到窗口就 cancel」的传输构造，不依赖墙钟）；②`bound_declared` 之后那条 `checkpoint`
+与入口那条在同一直线路径、可观测差异为空 ⇒ 属「同一件事两处定义」，删除。
+
+**registry**：`R09` **维持 `implemented`**（下载编排与故障语义已落判定面，真实分发端点/安装器/磁盘与 GPU 度量
+仍是外部注入点）。下一轮按审计路径 A 续 `R10`（运行时升级激活调用点）。
+
+见 [W126 报告](reports/2026-10-16-w126-download-resume-and-budget.md)、[ADR 0104](adr/0104-download-resume-and-budget.md)、
+`openspec/changes/archive/2026-10-16-w126-download-resume-and-budget/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |
