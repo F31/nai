@@ -1965,6 +1965,31 @@ tombstone 已存在；registry 无 §24.4 H 条目需改。
 见 [W120 报告](reports/2026-10-16-w120-remote-retry-budget-closed-world.md)、[ADR 0098](adr/0098-remote-retry-budget-closed-world.md)、
 `openspec/changes/archive/2026-10-16-w120-remote-retry-budget-closed-world/`。
 
+### W121（2026-10-16）：Operation 有界预算的运行期终止语义闭世界守卫
+
+**缝（现测）**：`remote.rs` 主线已勘尽，本轮**换 crate**，勘定安全层 `Operation`
+（`nai-security/src/lib.rs:30-73`，所有带界操作共用的预算载体）。既有测试只钉了**构造期**
+（`CEILING == 30s`、`new(CEILING).is_ok()`、越界被拒）；**运行期终止语义整段零判据**：
+① `check()` 先判 cancel 再判 deadline（58-66）——既取消又超期 MUST 报 `Cancelled` 而非
+`DeadlineExceeded`（两者上层处置不同）；② `remaining()` 单调不增、超期为 0（70-72）；
+③ `stopped()` MUST ≡ `check().is_err()`（67-69）；④ `cancel()` 经 `Arc<AtomicBool>` 跨克隆共享（32/55-57）。
+
+**裁定**：判定面闭合，零生产代码改动——只补运行期守卫；**不重复钉已钉住的构造期**。
+- `crates/nai-security/src/lib.rs` tests 模块新增 4：`check_reports_cancellation_before_the_deadline`
+  （「同时成立」构造 ⇒ 真正钉住优先序）、`remaining_never_grows_as_time_passes`（断言严格变小）、
+  `stopped_is_exactly_check_failure`（三情形逐项核对等价）、
+  `cancellation_is_shared_across_cloned_handles`（克隆侧也 stopped）。
+- `runtime-composition` spec 新增 4 条 Requirement（各 1 Scenario）。
+
+**计数（现测）**：`nai-security` 单测 5 → 9（+4）；门控权威总数见报告 §六。
+
+**如实披露**：只钉可判事实（优先序/单调/一致/共享），不断言真实墙钟精度；单调性断言含 `sleep`，
+属单调而非精确时长，不受正常调度抖动影响；不断言跨进程/重启后的取消语义（仅进程内共享）；
+registry 无 H 条目需改。
+
+见 [W121 报告](reports/2026-10-16-w121-operation-budget-closed-world.md)、[ADR 0099](adr/0099-operation-budget-closed-world.md)、
+`openspec/changes/archive/2026-10-16-w121-operation-budget-closed-world/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

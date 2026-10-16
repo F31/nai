@@ -410,4 +410,89 @@ mod tests {
             ErrorCode::CapabilityAbsent
         );
     }
+
+    // W121：Operation 有界预算的**运行期终止语义**闭世界守卫
+    // nai-security/src/lib.rs:46-72。既有测试只钉了**构造期**（`new(CEILING).is_ok()` 与越界被拒），
+    // 运行期终止语义整段零判据：
+    //   (a) `check()` **先判 cancel 再判 deadline** —— 既取消又超期的 Operation MUST 报
+    //       `Cancelled`（而非 `DeadlineExceeded`）；否则上层把「主动取消」误读成「超时」；
+    //   (b) `remaining()` 单调不增（不会因等待而变长），超期后为 0；
+    //   (c) `stopped()` MUST 与 `check().is_err()` **严格一致**（判据与读取面不得分家）；
+    //   (d) `cancel()` 经 `Arc<AtomicBool>` 共享 —— 任一克隆句柄上的取消 MUST 让全部句柄都 stopped。
+    #[test]
+    fn check_reports_cancellation_before_the_deadline() {
+        // (a) 先确认「超期」条件成立，再确认 cancel 覆盖它。
+        let expired = Operation::new(Duration::ZERO).unwrap();
+        std::thread::sleep(Duration::from_millis(20));
+        assert_eq!(
+            expired.remaining(),
+            Duration::ZERO,
+            "a zero budget must already be exhausted"
+        );
+        assert_eq!(
+            expired.check().unwrap_err().code,
+            ErrorCode::DeadlineExceeded
+        );
+        expired.cancel();
+        assert_eq!(
+            expired.check().unwrap_err().code,
+            ErrorCode::Cancelled,
+            "cancellation MUST take precedence over the deadline"
+        );
+        // 仅取消（预算充足）时同样是 Cancelled。
+        let cancelled = Operation::new(Duration::from_secs(5)).unwrap();
+        cancelled.cancel();
+        assert_eq!(cancelled.check().unwrap_err().code, ErrorCode::Cancelled);
+    }
+
+    #[test]
+    fn remaining_never_grows_as_time_passes() {
+        // (b) 预算单调不增：等待后剩余 MUST 严格变少，且不超过初始预算。
+        let op = Operation::new(Duration::from_secs(5)).unwrap();
+        let first = op.remaining();
+        std::thread::sleep(Duration::from_millis(120));
+        let second = op.remaining();
+        assert!(first <= Duration::from_secs(5));
+        assert!(
+            second < first,
+            "the remaining budget MUST shrink as time passes: {second:?} vs {first:?}"
+        );
+    }
+
+    #[test]
+    fn stopped_is_exactly_check_failure() {
+        // (c) stopped() 与 check().is_err() 在 live/cancelled/expired 三种情形下都必须一致。
+        let live = Operation::new(Duration::from_secs(5)).unwrap();
+        assert!(!live.stopped());
+        assert_eq!(live.stopped(), live.check().is_err());
+
+        let cancelled = Operation::new(Duration::from_secs(5)).unwrap();
+        cancelled.cancel();
+        assert!(cancelled.stopped());
+        assert_eq!(cancelled.stopped(), cancelled.check().is_err());
+
+        let expired = Operation::new(Duration::ZERO).unwrap();
+        std::thread::sleep(Duration::from_millis(20));
+        assert!(expired.stopped());
+        assert_eq!(
+            expired.stopped(),
+            expired.check().is_err(),
+            "stopped() MUST NOT drift from check().is_err()"
+        );
+    }
+
+    #[test]
+    fn cancellation_is_shared_across_cloned_handles() {
+        // (d) cancel() 经 Arc 共享：克隆句柄 MUST 观测到同一停止状态
+        // （若改成每个句柄独立的 bool，本断言会红）。
+        let op = Operation::new(Duration::from_secs(5)).unwrap();
+        let clone = op.clone();
+        assert!(!clone.stopped(), "a live clone is not stopped");
+        op.cancel();
+        assert!(
+            clone.stopped(),
+            "cancellation MUST be shared: the clone observes the cancel"
+        );
+        assert!(op.stopped() && clone.stopped());
+    }
 }
