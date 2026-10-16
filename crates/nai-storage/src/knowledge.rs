@@ -15,6 +15,12 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) const MAX_CONTENT_BYTES: usize = 16 * 1024 * 1024;
 pub(crate) const MAX_CHUNKS: usize = 4096;
+// R08 名册中由本模块承载的两条。
+/// 一条候选可以引用多少条证据（事实引用与块引用合起来算）。
+pub(crate) const MAX_EVIDENCE_REFS: usize = 32;
+/// 一次撤销可以触碰多少个**不重复的** `(document, revision)`。它是「批次」，不是
+/// 「本次选了多少份文档」——同一份文档的多个版本各算一个。
+pub(crate) const MAX_REVOCATION_REVISIONS: usize = 4_096;
 const MAX_TOKENS_PER_CHUNK: usize = 4096;
 const MAX_DIMENSION: usize = 8192;
 
@@ -111,7 +117,7 @@ impl Store {
         cue: &nai_contracts::v1::PerformanceCue,
         facts: &[(&str, &str, &str)],
     ) -> Result<Vec<(String, String)>> {
-        if cue.evidence_refs.len() > 32 {
+        if cue.evidence_refs.len() > MAX_EVIDENCE_REFS {
             return Err(error(
                 ErrorCode::ResourceExhausted,
                 "candidate evidence bound",
@@ -407,8 +413,10 @@ impl Store {
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         access(&tx, workspace, actor, "knowledge.revoke", "*")?;
-        let revisions = tx.prepare("SELECT DISTINCT document_id,revision FROM knowledge_snapshot_documents WHERE workspace_id=?1 AND (?2 IS NULL OR product_scope=?2) AND (?3 IS NULL OR document_id=?3) LIMIT 4097")?.query_map(params![workspace,product_scope,document_id],|row|Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?)))?.collect::<std::result::Result<Vec<_>,_>>()?;
-        if revisions.len() > 4096 {
+        // 读窗口是「上限 + 1」：比上限多读出来的那一行就是「后面还有」的证据。
+        let window = MAX_REVOCATION_REVISIONS + 1;
+        let revisions = tx.prepare(&format!("SELECT DISTINCT document_id,revision FROM knowledge_snapshot_documents WHERE workspace_id=?1 AND (?2 IS NULL OR product_scope=?2) AND (?3 IS NULL OR document_id=?3) LIMIT {window}"))?.query_map(params![workspace,product_scope,document_id],|row|Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?)))?.collect::<std::result::Result<Vec<_>,_>>()?;
+        if revisions.len() > MAX_REVOCATION_REVISIONS {
             return Err(error(
                 ErrorCode::ResourceExhausted,
                 "revocation revision bound",

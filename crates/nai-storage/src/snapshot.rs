@@ -17,6 +17,9 @@ use std::{
 
 pub(crate) const MAX_BYTES: u64 = 256 * 1024 * 1024;
 pub(crate) const MAX_ARTIFACT: u64 = 16 * 1024 * 1024;
+/// R08 名册：导出快照时按**不重复路径**数的托管文件上限。路径是内容寻址的，所以
+/// 「同一份内容发布两次」不占两条。
+pub(crate) const MAX_SNAPSHOT_ARTIFACTS: usize = 512;
 const CATALOG: &[u8] = include_bytes!("../../../schemas/catalog/capabilities.json");
 fn checked_file(path: &Path, maximum: u64, op: &Operation) -> Result<Vec<u8>> {
     op.check()?;
@@ -119,15 +122,17 @@ fn database_integrity(conn: &Connection) -> Result<()> {
     Ok(())
 }
 fn artifacts(conn: &Connection) -> Result<Vec<(String, String, u64)>> {
-    let mut statement = conn.prepare(
-        "SELECT DISTINCT path,sha256,size_bytes FROM managed_artifacts ORDER BY path LIMIT 513",
-    )?;
+    // 窗口 = 上限 + 1：多读出来的那一行就是「后面还有」的证据。
+    let window = MAX_SNAPSHOT_ARTIFACTS + 1;
+    let mut statement = conn.prepare(&format!(
+        "SELECT DISTINCT path,sha256,size_bytes FROM managed_artifacts ORDER BY path LIMIT {window}"
+    ))?;
     let values = statement
         .query_map([], |row| {
             Ok((row.get(0)?, row.get(1)?, row.get::<_, i64>(2)? as u64))
         })?
         .collect::<std::result::Result<Vec<_>, _>>()?;
-    if values.len() > 512 {
+    if values.len() > MAX_SNAPSHOT_ARTIFACTS {
         return Err(error(
             ErrorCode::ResourceExhausted,
             "snapshot artifact count limit",

@@ -2131,6 +2131,40 @@ dev-dependencies **够不到另一个 crate 的 `tests/`** ⇒ 先把散在 `tes
 见 [W128 报告](reports/2026-10-16-w128-runtime-upgrade-call-site.md)、[ADR 0106](adr/0106-runtime-upgrade-call-site.md)、
 `openspec/changes/archive/2026-10-16-w128-runtime-upgrade-call-site/`。
 
+### W129（2026-10-16）：存储上限名册的行为覆盖（R08 收口，**升 `tested`**）
+
+**缝（现测）**：W125 的 registry 段逐字记「仍不升 `tested`：名册 19 项**剩余 11 项零覆盖**」并具名列出。
+「零覆盖」的判据是：11 条拒绝名逐条全仓 `grep`，命中数**均为 1**（只有定义处）⇒ 这些闸门可被删掉、
+改成恒真、或把边界挪一格而**零测试变红**。W125 的幅度判据管「上限是不是它自称的那个数」，
+**不**管「闸门还在不在、边界在哪一侧」。
+
+**改动**：提取 **12 个具名常量**（11 项 = 12 条件，⑥ 是两条件一条目）；三条同名 `65536`（配置文本／事实编码／
+候选编码）是**不同的对象** ⇒ 三个常量。**拆一处合并拒绝**——`store.rs` 候选路径的
+`dependencies > 32 || encode > 65536` 配一个名 ⇒ 拆出 `candidate payload limit`（本轮**唯一**语义变化，
+`ErrorCode` 不变）。两处 SQL 读窗口从上限**派生**（`LIMIT 上限 + 1`：撤销 4097 / artifact 513），
+那个 `+1` 就是「后面还有」的检测机制本身。名册 8 → **20 常量（19 项）**。
+
+**判据**：新增 `crates/nai-storage/src/tests/storage_bounds.rs` **8** 条（各一对夹具：**恰在界上必须过 /
+越界必须具名拒绝**，夹具**从常量派生** ⇒ 抬高常量**不会**让它变红），+ 1 条**名册闭世界**判据
+（文件层／元素层三分是划分／反方向；谓词按「顶格」而非可见性筛——否则私有的 `MAX_DIMENSION` 从后门溜走，
+首跑该守卫即抓到它自己的作者）⇒ `nai-storage` 63 → **72**（全量 72 passed / 0 failed）。
+**注入验证 8 组 / 17 条**真跑，逐条可归因，随后**逐字节还原**（`sha256sum -c` 7/7 OK）；
+**R1 对照**（只动比较符/窗口、不动常量值）把名册幅度判据留绿 ⇒ 幅度钉与行为钉分工成立；
+**R5**（⑥ 重合并）让**载荷**夹具拿到**依赖**拒绝名 ⇒ 拆名是承重的。
+
+**registry**：`R08` **升 `tested`**（`implemented → tested`）——名册 **19/19** 同时有幅度钉 + 行为钉 + 闭世界成立；
+D03 验收原文的「数量/大小/路径受限」由本名册承载，WAL/事务/备份由 D03 的 12 项存储测试承载；
+审计对本项只列「名册 11 项零覆盖」一条，现已清空 ⇒ 无剩余缺口（对照 R10：剩余缺口是外部真值 ⇒ 不升）。
+**如实披露**：⑨ `MAX_LEDGER_ENTRY_BYTES` **今天从被认可的路径走不到**（`nai-budget-core` 把字符串限在
+256 字符、`units` 限在 32 键 × 64 字符 ⇒ 最大合法条目仅几 KB）——具名登记、设计不上手改，并配一条**会过期**
+的可达性断言；本名册普查域**限于 `crates/nai-storage`**。
+
+另**具名登记一处前轮文档缺口**（MUST NOT 顺手修）：`development-plan.md` 的小节 W108–W126 与 W128 都有，
+**唯独 W127 缺**（`docs/reports/2026-10-16-w127-rebuild-in-one-entry.md` 是完整报告，但本文件无对应小节）。
+
+见 [W129 报告](reports/2026-10-16-w129-storage-bound-roster-coverage.md)、[ADR 0107](adr/0107-storage-bound-behavior-coverage.md)、
+`openspec/changes/2026-10-16-w129-storage-bound-roster-coverage/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

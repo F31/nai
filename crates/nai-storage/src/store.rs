@@ -10,6 +10,20 @@ use std::{
     time::Duration,
 };
 
+// R08 名册中由本模块承载的四条（`tests::STORAGE_BOUND_ROSTER` 逐项钉住）。三条 65536
+// 是**不同的对象**（配置文本 / 事实编码 / 候选编码）⇒ 三个常量而不是一个：共用一个
+// 常量会让「改动其中一条上限」不知不觉地改动另外两条。
+/// 一次配置写入接受的**序列化文本**上限。
+pub(crate) const MAX_CONFIGURATION_BYTES: usize = 65_536;
+/// 一份 `AuthoritativeFact` 编码后的上限。
+pub(crate) const MAX_FACT_BYTES: usize = 65_536;
+/// 一条 `PerformanceCue` 编码后的上限。
+pub(crate) const MAX_CANDIDATE_BYTES: usize = 65_536;
+/// 一条候选可以引用多少个事实依赖。
+pub(crate) const MAX_CANDIDATE_DEPENDENCIES: usize = 32;
+/// 一个会话可以同时积压多少条**未被批准**的候选。
+pub(crate) const MAX_PENDING_CANDIDATES: i64 = 200;
+
 pub struct Store {
     pub(crate) conn: Connection,
     pub(crate) paths: DataPaths,
@@ -285,7 +299,7 @@ impl Store {
         id(name)?;
         validate_json(kind, value)?;
         let text = value.to_string();
-        if text.len() > 65536 {
+        if text.len() > MAX_CONFIGURATION_BYTES {
             return Err(error(
                 ErrorCode::ResourceExhausted,
                 "configuration too large",
@@ -494,7 +508,7 @@ impl Store {
         fact.publisher_ref = actor.into();
         fact.permission_revision = permission_revision.to_string();
         let bytes = fact.encode_to_vec();
-        if bytes.len() > 65536 {
+        if bytes.len() > MAX_FACT_BYTES {
             return Err(error(ErrorCode::ResourceExhausted, "fact too large"));
         }
         tx.execute("INSERT INTO facts VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9) ON CONFLICT(workspace_id,product_id,field_key) DO UPDATE SET revision=excluded.revision,fact_proto=excluded.fact_proto,valid_from_ms=excluded.valid_from_ms,valid_until_ms=excluded.valid_until_ms,authority_ref=excluded.authority_ref,permission_revision=excluded.permission_revision",params![fact.workspace_id,fact.product_id,fact.field_key,fact.revision,bytes,fact.valid_from_utc_ms.map(sql_int).transpose()?,fact.valid_until_utc_ms.map(sql_int).transpose()?,fact.authority_ref,permission_revision])?;
@@ -560,10 +574,18 @@ impl Store {
         dependencies: &[(&str, &str, &str)],
     ) -> Result<String> {
         self.start(op)?;
-        if dependencies.len() > 32 || cue.encode_to_vec().len() > 65536 {
+        // 两个条件、两条具名拒绝：合并成一个 `if` 时，绊到依赖条数的夹具会替候选
+        // 编码的上限背书（W125 对 `publication` 的同一条规矩）。
+        if dependencies.len() > MAX_CANDIDATE_DEPENDENCIES {
             return Err(error(
                 ErrorCode::ResourceExhausted,
                 "candidate dependency limit",
+            ));
+        }
+        if cue.encode_to_vec().len() > MAX_CANDIDATE_BYTES {
+            return Err(error(
+                ErrorCode::ResourceExhausted,
+                "candidate payload limit",
             ));
         }
         if cue.expires_at_utc_ms <= utc_ms()? as u64 {
@@ -581,7 +603,7 @@ impl Store {
         let pending: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM utterances u WHERE u.workspace_id=?1 AND u.session_id=?2 AND u.generation_epoch=?3 AND u.expires_at_ms>?4 AND u.status BETWEEN 1 AND 5 AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.workspace_id=u.workspace_id AND a.session_id=u.session_id AND a.generation_epoch=u.generation_epoch AND a.candidate_hash=u.text_hash)",
             params![workspace, cue.session_id, epoch, utc_ms()?], |r| r.get(0))?;
-        if pending >= 200 {
+        if pending >= MAX_PENDING_CANDIDATES {
             return Err(error(
                 ErrorCode::ResourceExhausted,
                 "session pending approval capacity",

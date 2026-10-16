@@ -12,6 +12,8 @@ use sha2::{Digest, Sha256};
 
 pub(crate) const MAX_CHUNKS: i64 = 4096;
 pub(crate) const MAX_BYTES: i64 = 16 * 1024 * 1024;
+/// R08 名册：一次快照可以选中的文档数。空选集与越界共用下一条具名拒绝的两个分支。
+pub(crate) const MAX_SNAPSHOT_DOCUMENTS: usize = 256;
 
 fn digest_rows<P: Params>(
     conn: &Connection,
@@ -137,7 +139,7 @@ impl Store {
         for value in [workspace, snapshot, kb] {
             id(value)?;
         }
-        if documents.is_empty() || documents.len() > 256 {
+        if documents.is_empty() || documents.len() > MAX_SNAPSHOT_DOCUMENTS {
             return Err(error(
                 ErrorCode::InvalidArgument,
                 "invalid snapshot documents",

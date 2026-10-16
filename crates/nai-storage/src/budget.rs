@@ -7,6 +7,15 @@ use nai_contracts::v1::{BillingState, ErrorCode, UsageLedgerEntry};
 use prost::Message;
 use rusqlite::{Connection, TransactionBehavior, params};
 
+// R08 名册中由本模块承载的三条。注意它们是**两个方向**上的：前一条限制我们写出去的
+// 条目编码，后两条限制我们**读回来的已存文本**——写那份文本的可能是别的版本。
+/// 一条 `UsageLedgerEntry` 编码后的上限（写入侧）。
+pub(crate) const MAX_LEDGER_ENTRY_BYTES: usize = 65_536;
+/// 已存账本文本的上限（读回侧）。
+pub(crate) const MAX_STORED_LEDGER_BYTES: usize = 132_000;
+/// 已存账本里 `protobuf_hex` 的**字符数**上限（读回侧）。
+pub(crate) const MAX_STORED_LEDGER_HEX: usize = 131_072;
+
 pub struct DispatchClaim {
     pub entry: UsageLedgerEntry,
     pub acquired: bool,
@@ -21,16 +30,20 @@ fn budget_error(e: BudgetError) -> crate::StorageError {
         "budget operation rejected",
     )
 }
-fn encode(entry: &UsageLedgerEntry) -> Result<String> {
+/// 把一条条目编成库里存的文本（`tests::storage_bounds` 直接问这条闸门，因为见下：从
+/// **被认可的路径**走不到这个上限——见 `decode` 那侧的说明与 W129 报告）。
+pub(crate) fn encode(entry: &UsageLedgerEntry) -> Result<String> {
     let bytes = entry.encode_to_vec();
-    if bytes.len() > 65536 {
+    if bytes.len() > MAX_LEDGER_ENTRY_BYTES {
         return Err(error(ErrorCode::InvalidArgument, "oversized ledger entry"));
     }
     let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
     Ok(serde_json::json!({"format":"nai.v1.UsageLedgerEntry","protobuf_hex":hex}).to_string())
 }
-fn decode(text: &str) -> Result<UsageLedgerEntry> {
-    if text.len() > 132000 {
+/// 把库里存的文本还原成条目。读回侧的两条上限在这里，而不是在写入侧：写那份文本的
+/// 可能是**别的版本**，所以「我们接受什么」MUST 在这里被划出来。
+pub(crate) fn decode(text: &str) -> Result<UsageLedgerEntry> {
+    if text.len() > MAX_STORED_LEDGER_BYTES {
         return Err(error(ErrorCode::InvalidArgument, "oversized stored ledger"));
     }
     let json: serde_json::Value = serde_json::from_str(text)
@@ -45,7 +58,10 @@ fn decode(text: &str) -> Result<UsageLedgerEntry> {
         .get("protobuf_hex")
         .and_then(|v| v.as_str())
         .ok_or_else(|| error(ErrorCode::InvalidArgument, "missing stored ledger bytes"))?;
-    if hex.len() % 2 != 0 || hex.len() > 131072 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+    if hex.len() % 2 != 0
+        || hex.len() > MAX_STORED_LEDGER_HEX
+        || !hex.bytes().all(|b| b.is_ascii_hexdigit())
+    {
         return Err(error(
             ErrorCode::InvalidArgument,
             "invalid stored ledger bytes",

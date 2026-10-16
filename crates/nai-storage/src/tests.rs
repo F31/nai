@@ -5,6 +5,7 @@ use std::{fs, time::Duration};
 mod approval_workflow;
 mod decision_log;
 mod knowledge_publication;
+mod storage_bounds;
 
 fn op() -> Operation {
     Operation::new(BRINGUP_OPERATION).unwrap()
@@ -1692,60 +1693,267 @@ fn inflate(path: &std::path::Path, len: u64) {
         .unwrap();
 }
 
+/// R08 "存储维护有界" 的名册：`模块::常量` 的字面路径、那个常量**自己**的值、以及本项
+/// 自称的数。三者分开写，是为了让「把某个上限抬高」与「改动名册」都成为**显式动作**，
+/// 而不是悄悄漂移。
+///
+/// ⚠️ 名册的**条数**是 19 项（W125 普查所得），这里列的是**承载它们的常量**，共 20 个
+/// ——因为 ⑥「候选编码 65536 / 依赖 32」是**两个条件、一个条目**。别把这两个数当同一个。
+pub(crate) const STORAGE_BOUND_ROSTER: &[(&str, u64, u64)] = &[
+    (
+        "decision::MAX_PAYLOAD_BYTES",
+        decision::MAX_PAYLOAD_BYTES as u64,
+        65_536,
+    ),
+    (
+        "decision::TELEMETRY_BUFFER_CAPACITY",
+        decision::TELEMETRY_BUFFER_CAPACITY as u64,
+        1_024,
+    ),
+    (
+        "knowledge::MAX_CONTENT_BYTES",
+        knowledge::MAX_CONTENT_BYTES as u64,
+        16 * 1024 * 1024,
+    ),
+    ("knowledge::MAX_CHUNKS", knowledge::MAX_CHUNKS as u64, 4_096),
+    (
+        "publication::MAX_CHUNKS",
+        publication::MAX_CHUNKS as u64,
+        4_096,
+    ),
+    (
+        "publication::MAX_BYTES",
+        publication::MAX_BYTES as u64,
+        16 * 1024 * 1024,
+    ),
+    (
+        "snapshot::MAX_BYTES",
+        snapshot::MAX_BYTES,
+        256 * 1024 * 1024,
+    ),
+    (
+        "snapshot::MAX_ARTIFACT",
+        snapshot::MAX_ARTIFACT,
+        16 * 1024 * 1024,
+    ),
+    // W129：W125 之后仍然**零覆盖**的那 11 项（12 个条件）。
+    (
+        "store::MAX_CONFIGURATION_BYTES",
+        store::MAX_CONFIGURATION_BYTES as u64,
+        65_536,
+    ),
+    (
+        "store::MAX_FACT_BYTES",
+        store::MAX_FACT_BYTES as u64,
+        65_536,
+    ),
+    (
+        "store::MAX_CANDIDATE_BYTES",
+        store::MAX_CANDIDATE_BYTES as u64,
+        65_536,
+    ),
+    (
+        "store::MAX_CANDIDATE_DEPENDENCIES",
+        store::MAX_CANDIDATE_DEPENDENCIES as u64,
+        32,
+    ),
+    (
+        "store::MAX_PENDING_CANDIDATES",
+        store::MAX_PENDING_CANDIDATES as u64,
+        200,
+    ),
+    (
+        "knowledge::MAX_EVIDENCE_REFS",
+        knowledge::MAX_EVIDENCE_REFS as u64,
+        32,
+    ),
+    (
+        "knowledge::MAX_REVOCATION_REVISIONS",
+        knowledge::MAX_REVOCATION_REVISIONS as u64,
+        4_096,
+    ),
+    (
+        "publication::MAX_SNAPSHOT_DOCUMENTS",
+        publication::MAX_SNAPSHOT_DOCUMENTS as u64,
+        256,
+    ),
+    (
+        "snapshot::MAX_SNAPSHOT_ARTIFACTS",
+        snapshot::MAX_SNAPSHOT_ARTIFACTS as u64,
+        512,
+    ),
+    (
+        "budget::MAX_LEDGER_ENTRY_BYTES",
+        budget::MAX_LEDGER_ENTRY_BYTES as u64,
+        65_536,
+    ),
+    (
+        "budget::MAX_STORED_LEDGER_BYTES",
+        budget::MAX_STORED_LEDGER_BYTES as u64,
+        132_000,
+    ),
+    (
+        "budget::MAX_STORED_LEDGER_HEX",
+        budget::MAX_STORED_LEDGER_HEX as u64,
+        131_072,
+    ),
+];
+
+/// 名册之外的顶格常量，第一类：**不是上限**（版本号、引用、哨兵、内嵌数据、迁移脚本、
+/// 以及本测试自己的脚手架）。
+const NOT_A_BOUND: &[&str] = &[
+    // 库的 schema 版本号，不是资源天花板（它的换版规矩在 §2 另有成套六处）。
+    "migration::VERSION",
+    // 迁移脚本数组本身。
+    "migration::SQL",
+    // bring-up 上限的家在 kernel（ADR 0055），这里只是引用。
+    "lib::BRINGUP_OPERATION",
+    // 决策链的起始哨兵哈希，不是天花板。
+    "decision::GENESIS_HASH",
+    // 内嵌的能力目录字节。
+    "snapshot::CATALOG",
+    // 本测试自己的脚手架：名册表、源文件表、两张分类表。
+    "tests::STORAGE_BOUND_ROSTER",
+    "tests::SOURCES",
+    "tests::NOT_A_BOUND",
+    "tests::SHAPE_LIMITS",
+];
+
+/// 名册之外的顶格常量，第二类：**是上限，但按 W125 的口径不收进 R08**——它们约束的是
+/// **输入形状**（取值域/编码宽度），不是「一次写入或一份快照/备份可占用的资源」。
+/// 具名登记在这里，避免它们变成「没被扫到所以不用管」的后门。
+const SHAPE_LIMITS: &[&str] = &[
+    "knowledge::MAX_TOKENS_PER_CHUNK",
+    "knowledge::MAX_DIMENSION",
+];
+
+/// 被扫的源文件：模块名 → 该模块的源文本。**文件层**名册自己也要闭世界（见下）。
+const SOURCES: &[(&str, &str)] = &[
+    ("budget", include_str!("budget.rs")),
+    ("decision", include_str!("decision.rs")),
+    ("knowledge", include_str!("knowledge.rs")),
+    ("lib", include_str!("lib.rs")),
+    ("migration", include_str!("migration.rs")),
+    ("paths", include_str!("paths.rs")),
+    ("publication", include_str!("publication.rs")),
+    ("snapshot", include_str!("snapshot.rs")),
+    ("store", include_str!("store.rs")),
+    ("tests", include_str!("tests.rs")),
+    ("upgrade", include_str!("upgrade.rs")),
+];
+
+/// 顶格的常量声明——**三种可见性都算**。只认**顶格**的：函数体内的常量不是模块级的，
+/// MUST NOT 混进来。按可见性筛是一种**弱类别**：`MAX_DIMENSION` 那样私有的上限会从
+/// 后门溜走，所以这里的谓词只按「顶格」，分类全部交给下面的三张表。
+fn declared_constants(module: &str, source: &str) -> Vec<String> {
+    source
+        .lines()
+        .filter_map(|line| {
+            let rest = line
+                .strip_prefix("pub(crate) const ")
+                .or_else(|| line.strip_prefix("pub const "))
+                .or_else(|| line.strip_prefix("const "))?;
+            let name = rest.split([':', ' ', '[']).next()?;
+            Some(format!("{module}::{name}"))
+        })
+        .collect()
+}
+
 /// R08 "存储维护有界": the item is only as good as its roster. Every magnitude
 /// below is a declared policy value, so raising one is a deliberate act rather
 /// than a silent drift -- and the *behaviour* of each bound is pinned separately
-/// by the boundary tests that follow, because a magnitude pin alone would not
-/// notice a bound that is declared and then never consulted.
+/// by `tests::storage_bounds`, because a magnitude pin alone would not notice a
+/// bound that is declared and then never consulted.
 #[test]
 fn the_declared_storage_write_bounds_are_the_magnitudes_the_item_claims() {
-    for (name, actual, declared) in [
-        (
-            "decision::MAX_PAYLOAD_BYTES",
-            super::decision::MAX_PAYLOAD_BYTES as u64,
-            65_536,
-        ),
-        (
-            "decision::TELEMETRY_BUFFER_CAPACITY",
-            super::decision::TELEMETRY_BUFFER_CAPACITY as u64,
-            1_024,
-        ),
-        (
-            "knowledge::MAX_CONTENT_BYTES",
-            super::knowledge::MAX_CONTENT_BYTES as u64,
-            16 * 1024 * 1024,
-        ),
-        (
-            "knowledge::MAX_CHUNKS",
-            super::knowledge::MAX_CHUNKS as u64,
-            4_096,
-        ),
-        (
-            "publication::MAX_CHUNKS",
-            super::publication::MAX_CHUNKS as u64,
-            4_096,
-        ),
-        (
-            "publication::MAX_BYTES",
-            super::publication::MAX_BYTES as u64,
-            16 * 1024 * 1024,
-        ),
-        (
-            "snapshot::MAX_BYTES",
-            super::snapshot::MAX_BYTES,
-            256 * 1024 * 1024,
-        ),
-        (
-            "snapshot::MAX_ARTIFACT",
-            super::snapshot::MAX_ARTIFACT,
-            16 * 1024 * 1024,
-        ),
-    ] {
+    for &(name, actual, declared) in STORAGE_BOUND_ROSTER {
         assert_eq!(
             actual, declared,
             "{name} is a declared magnitude, not an accident"
         );
     }
+}
+
+/// 名册的**闭世界**。`the_declared_storage_write_bounds_are_the_magnitudes_the_item_claims`
+/// 只答「名册上那些数对不对」；「有没有上限**不在这张名册上**」是它的补集，而按清单扫的
+/// 盲区恰恰就是清单的补集。三层一起闭：
+/// ① 文件层：`lib.rs` 的每个 `mod` 都有被扫的源文件；
+/// ② 元素层：扫到的每个顶格常量**恰好**归入三类之一（名册 / 形状校验按口径不收 /
+///    不是上限）——三分是划分，MUST NOT 有第四种出路；
+/// ③ 反方向：名册与两张清单上的每个名字都**真的**扫得到（否则那一行是装饰）。
+#[test]
+fn every_declared_crate_constant_is_classified_by_the_roster() {
+    use std::collections::BTreeSet;
+
+    // ① 文件层
+    let lib = SOURCES
+        .iter()
+        .find(|(module, _)| *module == "lib")
+        .expect("lib.rs MUST 被扫")
+        .1;
+    let modules: BTreeSet<&str> = lib
+        .lines()
+        .filter_map(|line| line.strip_prefix("mod ")?.strip_suffix(';'))
+        .collect();
+    let scanned: BTreeSet<&str> = SOURCES
+        .iter()
+        .map(|(module, _)| *module)
+        .filter(|module| *module != "lib")
+        .collect();
+    assert_eq!(
+        modules, scanned,
+        "每个模块都 MUST 被扫到，否则它的上限会整块掉出名册"
+    );
+
+    // 元素层与反方向
+    let declared: BTreeSet<String> = SOURCES
+        .iter()
+        .flat_map(|(module, source)| declared_constants(module, source))
+        .collect();
+    let bucket = |names: &[&str]| -> BTreeSet<String> {
+        names.iter().map(|name| (*name).to_string()).collect()
+    };
+    let roster: BTreeSet<String> = STORAGE_BOUND_ROSTER
+        .iter()
+        .map(|(name, _, _)| (*name).to_string())
+        .collect();
+    let shapes = bucket(SHAPE_LIMITS);
+    let allowed = bucket(NOT_A_BOUND);
+
+    let unclassified: Vec<&String> = declared
+        .iter()
+        .filter(|name| {
+            !roster.contains(*name) && !shapes.contains(*name) && !allowed.contains(*name)
+        })
+        .collect();
+    assert!(
+        unclassified.is_empty(),
+        "这些常量既不（在名册上）、也不（按口径不收）、也不（不是上限）：{unclassified:?}"
+    );
+    // 三分是划分：两张清单之间 MUST NOT 相交，名册与它们也 MUST NOT 相交。
+    assert!(
+        roster.is_disjoint(&shapes),
+        "「是上限」与「按口径不收」MUST NOT 同时成立"
+    );
+    assert!(
+        roster.is_disjoint(&allowed),
+        "「是上限」与「不是上限」MUST NOT 同时成立"
+    );
+    assert!(
+        shapes.is_disjoint(&allowed),
+        "「按口径不收」与「不是上限」MUST NOT 同时成立"
+    );
+    // 反方向：清单上的名字 MUST 都扫得到（否则那几行是装饰）。
+    let dangling: Vec<&String> = roster
+        .iter()
+        .chain(shapes.iter())
+        .chain(allowed.iter())
+        .filter(|name| !declared.contains(*name))
+        .collect();
+    assert!(
+        dangling.is_empty(),
+        "清单列了扫不到的常量，那几行是装饰：{dangling:?}"
+    );
 }
 
 /// R08: the import bounds are inclusive, so "at the cap" and "one over the cap"

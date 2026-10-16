@@ -134,6 +134,23 @@ registry）。见 [ADR 0103](adr/0103-storage-bound-roster.md)、[W125 报告](r
 够不到）。**R10 仍不升 `tested`**：降档侧 `downgrade`/`require_rollback_compatible` 在核心之外**恰 0 个调用点**；
 真实安装器与真实分发端点仍是外部注入点。见 [ADR 0106](adr/0106-runtime-upgrade-call-site.md)、
 [W128 报告](reports/2026-10-16-w128-runtime-upgrade-call-site.md)。）
+（W129 把 R08「存储维护有界」名册的**行为**那一半补齐并**升 `tested`**。W125 只把名册当**幅度**钉住
+（常量是不是它自称的那个数），剩 11 项零覆盖——「零覆盖」的判据是 11 条拒绝名逐条全仓 `grep` 命中数**均为 1**
+（只有定义处）⇒ 闸门可被删掉/改恒真/边界挪一格而零测试变红。三条方法论落点：①**同名数值不是同一个对象**
+——三条 `65536`（配置文本／事实编码／候选编码）各有常量，共用一个会让「改其中一条」不知不觉改另外两条；
+②**一个 `if` 里多条件 MUST 各自举证**——`store.rs` 候选路径的 `dependencies>32 || encode>65536` 拆出
+`candidate payload limit`，**R5 注入（重合并）让载荷夹具拿到依赖拒绝名**即这条规矩的直接证据；
+③**读窗口的 `+1` 是检测机制本身**（撤销 `LIMIT 4097` / artifact `LIMIT 513` 改为 `上限 + 1`），写死它等于
+让「上限悄悄变大」时检测静默失效。**判据分工刻意保留**：夹具从常量派生 ⇒ 抬高常量**不会**让 8 条行为判据变红
+（那是幅度判据的职责）；**R1 对照**（只动比较符/窗口、不动常量值）把名册幅度判据留绿，证明两者不互相顶替。
+**名册闭世界**（第 9 条）：文件层／元素层三分是划分／反方向；谓词按「**顶格**」而非可见性筛——按可见性筛是
+**弱类别**，私有上限（`MAX_DIMENSION`）会从后门溜走，首跑该守卫**抓到了它自己的作者**。
+**诚实边界**：⑨ `MAX_LEDGER_ENTRY_BYTES` **今天从被认可的路径走不到**（`nai-budget-core` 把字符串限在
+256 字符、`units` 限在 32 键 × 64 字符 ⇒ 最大合法条目仅几 KB）⇒ 具名登记、设计不上手改，配一条**会过期**的
+可达性断言；本名册普查域**限于 `crates/nai-storage`**。**注入 8 组 / 17 条**逐条可归因 + 逐字节还原（7/7 OK），
+全量 72 passed / 0 failed。**R08 升 `tested`**（缺口全清、无外部真值，判据见 ADR 0100 §6）。
+见 [ADR 0107](adr/0107-storage-bound-behavior-coverage.md)、
+[W129 报告](reports/2026-10-16-w129-storage-bound-roster-coverage.md)。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。
