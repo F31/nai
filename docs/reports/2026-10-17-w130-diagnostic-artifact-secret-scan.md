@@ -81,9 +81,14 @@ node 侧：`step-config.test.mjs` 新增 **F10**（产物扫描须覆盖失败�
 
 **覆盖说明（如实）**：⑨ 共 **4** 条断言，A1/A2/A5/A6 逐条覆盖。首轮只做了 A1/A2，
 **A5/A6 是本轮补齐**——纪律要求「每个限定 MUST 用反例验证它在拦什么」。
+⚠️ **未逐条注入的是 ①②④⑤⑦⑧**（它们不是「带限定的守卫」，而是行为用例）：它们的**「被断言之物当时
+不存在」**由 #524 的首跑捕获 **9 个 `E0422`/`E0425`**（`ArtifactLedger`/`ArtifactHit`/`scan_tree`/
+`check_artifacts` 不存在）证明，**行为**由用例自身直接观测。⇒ **如实登记，MUST NOT 记作「已注入验证」**
+（与 W128 的「构造性事实不得记作已注入」同族口径）。
 
 **还原**：四文件 `sha256sum` 全部等于基线；`cargo fmt --all --check` EXIT=0；`nai-xtask --lib` 60/0；
-node 六文件 **110/110**；`git status` 仍为 9 个修改项、无未跟踪残留。
+node 六文件 **110/110**；（**注入验证收尾时的时点事实**）`git status` 为 9 个修改项、无未跟踪残留
+—— 此时文档四件套与 openspec 差量**尚未落盘**（它们是随后 #529 才产生的）。
 
 **宿主瞬态（如实披露）**：`cargo test` 期间两次 `LNK1104 cannot open … nai_xtask-<hash>.exe`（输出 exe 被占用）
 ⇒ 清 `target/debug/deps/nai_xtask-*.exe` + `CARGO_BUILD_JOBS=1` 后即过；按纪律「逐目标能过 ⇒ 非代码缺陷」，未改代码。
@@ -194,8 +199,46 @@ credential scan passed: 1319 files git would publish and 0 diagnostic artifact f
 
 ## 六、提交与推送
 
-_（回填）_
+**一次提交** `2b356b0`：`feat(w130): S07 诊断面扫描——产物域与仓库域分开，always() 是必须的`
+（**21 files changed, 1259 insertions(+), 22 deletions(-)**）。
+
+暂存按本仓纪律 `git add -A -- . ':!.commitmsg_*.txt' ':!target-check'`，核对了暂存清单
+（`git diff --cached --name-status`）里**没有**临时文件（`gate-w130.sh` 已在提交前删除；
+`.gate-w130*.log` 由 `*.log` 规则忽略，`target-check/` 由排除项隔离）。推送：
+
+```
+GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new \
+  -o HostName=ssh.github.com -p 443" git push origin main
+   731ac96..2b356b0  main -> main
+```
+
+**推送 SHA（完整 40 位）**：`2b356b0e8e7fb3305d16f7876526154dc2dfbe5f`。
 
 ## 七、CI 观测（触发确认 1 次 + 完成态 ≥2 次）
 
-_（回填）_
+**查询三件齐**：URL 带唯一查询参数（`cb=$(date +%s%N)`）＋请求头 `Cache-Control: no-cache` ＋
+回读 `head_sha` **完整 40 位**必须等于推送 SHA；另加 `--tlsv1.2 --tls-max 1.2 --max-time 45`
+（本机 schannel 与 TLS 1.3 握手失败的常规规避）。
+
+| 观测 | 时刻（UTC） | 结果 |
+|---|---|---|
+| 触发确认（1 次） | 23:39:26 创建后 | run **`38982577116`** `Engineering foundation`，`status=in_progress`，`head_sha` 回读 **== `2b356b0e8e7fb3305d16f7876526154dc2dfbe5f`** ✓ |
+| 完成态 #1 | 23:55:53 | `completed / **success**`（`updated_at` 23:55:14） |
+| 完成态 #2 | 23:56 后 | `completed / **success**`，`head_sha` 回读仍一致 |
+
+**双平台 job 结论**（`/actions/runs/38982577116/jobs`，同样带 `cb`）：
+
+| job | 开始 | 完成 | 结论 |
+|---|---|---|---|
+| `foundation (ubuntu-24.04)` | 23:39:30 | 23:44:43（**5m13s**） | `success` |
+| `foundation (windows-latest)` | 23:39:30 | 23:55:13（**15m43s**） | `success` |
+
+run 自身 `23:39:26 → 23:55:14` = **15m48s**；双平台差距 **10m30s**（ubuntu 早已收工而 windows 仍在跑）
+⇒ 与 §4 的口径一致：**完成态查询 ≥2 次**（本轮观测循环里前 9 次都是 `in_progress`，
+第 10 次才 `completed`）——**单次查询会把「仍在跑」误判成结论**。
+
+⚠️ 本轮 CI **不带** `RUST_TEST_THREADS=1`，而两平台**都过** ⇒ 与 §五「本机那两次红是宿主瞬态」一致
+（**「本机红 ≠ CI 红」与「本机绿 ≠ CI 绿」是对称的两条**）。
+
+**观测用量**：本轮 GitHub API 共 **15** 次请求（`rate_limit` 1 + runs 列表 11 + jobs 1 + 前段 2），**未轮询硬刷**
+（循环间隔 90s、上限 12 次，命中 `completed` 即退出）。
