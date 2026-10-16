@@ -102,3 +102,55 @@ crates/nai-runtime/src/upgrade.rs  b77a8c91fef0e6bb388454dd3ee807ea7f70b5802afde
 
 **另如实登记**：`apps/engine/src` 至今对 `upgrade` **0 命中**（引擎侧升级入口未建）。本轮**不**新建该入口——
 真实安装器不存在，引擎侧入口只能是演练路径，而「演练不得表示生产就绪」是本仓硬规矩。
+
+## 五、门控（`cargo xtask check --profile full`）
+
+**首跑即绿**（`CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=2`，5m42s，`GATE_EXIT=0`），现测计数：
+
+- 错误类扫描（`LNK1104` / `error[` / `out of memory` / `^error` / `FAILED`）：**0**
+- `test result` 行 **97** 条 = **79** 个真实测试目标（`Running unittests|tests\`）+ **18** 个 `Doc-tests`
+  （日志里 `Running ...nai-xtask.exe check --profile full` 是 **gate runner 自身回显，不计**）
+- Rust 合计 **1028 passed / 0 failed**（逐目标 `0 failed`，无一条非零）
+- Node 侧 **13** 个套件、**323 passed / 0 failed**（逐套件 `# fail 0`）
+- 前端 6 步全过（`[frontend] 全部步骤通过`）
+- **真实 rustc 告警 0**（`grep -E "^warning: " | grep -vE "error deleting lock file|generated [0-9]+ warning"` 计数为 0；
+  其余「warning」行是增量编译 lock 文件的宿主噪音，W127 已具名）
+
+**对照 W127**（**1023 passed / 0 failed**、**78** 个目标）：Rust **+5**，与本轮 nai-runtime **+5** 逐项吻合；
+目标数 **78 → 79**，因本轮**新增了一个测试文件**（`crates/nai-runtime/tests/upgrade.rs`）。
+
+⚠️ 本日志**不含** `GATE_OK` / `PREBUILD_OK` token（W127 已记：MUST NOT 把「没有该 token」判成失败）；
+结论以 `GATE_EXIT=0` 与上表逐项现测为准。
+
+## 六、提交与推送
+
+**一次**提交，**20** 个文件（`git show --stat` 现测）：
+
+```
+38cea79 feat(w128): 装配根驱动升级事务——暂存不问门、激活先问门（R10 调用点收口）
+20 files changed, 1067 insertions(+), 297 deletions(-)
+```
+
+`git push` 输出 `3e4f146..38cea79  main -> main`（SSH 443）。
+
+**逐项核对过暂存区**（W123 的教训：显式暂存路径的盲区恰是「工具链自己改写的文件」）：本轮**没有**新增
+依赖（`nai-upgrade-core` 已是 `nai-runtime` 的常规依赖）⇒ `Cargo.lock` **无改动**，`git status` 现测确认；
+`target-check/`（safe-delete 阈值删不掉的缓存）与 `.commitmsg_w128.txt` 未被暂存。
+
+## 七、CI 观测
+
+三件齐（唯一查询参数 + `Cache-Control: no-cache` + 回读 `head_sha` == 推送 SHA），
+全程 **3** 次请求、**未轮询**：
+
+| # | 目的 | 结果 |
+| --- | --- | --- |
+| 1 | 触发确认 | `HTTP=200`、`total_count=1`、run **#199**（id `38913947053`）`queued`；`head_sha` 回读 == `38cea79` ✓ |
+| 2 | 完成态（等 ~13.0 min 后） | 仍 `in_progress` ⇒ 触发「平台时长不同步」分支（平台差距不固定，单次不够） |
+| 3 | 完成态（再等 ~5.1 min 后） | `completed / **success**`；`head_sha` 回读 == `38cea79415804a97bcfb420e2c737415b1cf6345` ✓ |
+
+run #199 的 matrix 含 `foundation (ubuntu-24.04)` 与 `foundation (windows-latest)` 两个 job；
+**run 级 `success`** ⇒ 两平台全部 job 通过（任一 job 失败时 run 级不会为 `success`）。
+run 自身 `created_at → updated_at` = **14.75 min**，而 query #2 落在其完成前 **86 s** —— 正是「单轮完成态
+**最少两次**查询」这条口径要挡的情形。**本机绿 ≠ CI 绿**：CI 有独立于本机 profile 的步骤
+（如 `cargo xtask schema --check`）；本轮未触及 `migration::VERSION`，无升版成套项。
+
