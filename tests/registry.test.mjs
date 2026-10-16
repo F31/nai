@@ -2226,3 +2226,84 @@ test('the real repository reaches every tracked test file', async () => {
   assert.ok(covered.size >= 9, `expected at least nine covered test files, got ${covered.size}`);
 });
 
+// ── W122 · `tested` 的证据可核验（admission-registry：Honest backfill mapping with traceable evidence）──
+// 该 Requirement 早已声明「`tested` 仅可用于**已有归档实测证据**的项目，且证据 MUST 指向**真实报告**与
+// 测试计数」，但此前**没有任何判据读取 `acceptance[].evidence`** —— 那句话是一句散文、零载体（W122 立项判据）。
+// 下列守卫遍历 registry **自己的键**、覆盖**全部在册对象**（不是扫一份手写清单），并各带一条注入反例，
+// 使「存在 / 是仓库成员 / 落在 reports/」三个方向都可判定；顺序刻意从「形状」到「仓库成员」再到「磁盘存在」，
+// 且**先查 tracked 再查磁盘**——否则断言会随本机磁盘状态变化（宿主瞬态不得改变被测结论）。
+const testedAcceptance = (await readRegistry()).acceptance.filter(item => item.status === 'tested');
+/// `tested` 集合的**下限**（A13 升级后实测）。下调必须先说明为什么，否则非空洞守卫会退化成恒真。
+const W122_TESTED_FLOOR = 11;
+const evidenceCarriers = items => items.map(item => [item.id, (item.evidence || '').trim()]);
+/// registry 的 `evidence` 是**相对 `docs/`** 的引用（与 `development-plan.md` 里的相对报告链接同一约定），
+/// 而 `.git/index` 派生的成员集是**仓库根**相对路径 ⇒ 判据必须先落到 `docs/` 再判归属，否则一律假阳性。
+const EVIDENCE_BASE = 'docs/';
+
+// 判据的输入 === 被断言的对象：给定一组 acceptance，返回「证据载体不成立」的具名清单（不是布尔）。
+async function evidenceDefects(items) {
+  const defects = [];
+  for (const [id, report] of evidenceCarriers(items)) {
+    if (report.length === 0) {
+      defects.push(`${id}:<empty>`);
+    } else if (!report.startsWith('reports/')) {
+      defects.push(`${id}:${report}:not-under-reports`);
+    } else if (!tracked.paths.has(EVIDENCE_BASE + report)) {
+      defects.push(`${id}:${report}:not-tracked`);
+    } else {
+      try {
+        await stat(EVIDENCE_BASE + report);
+      } catch {
+        defects.push(`${id}:${report}:missing`);
+      }
+    }
+  }
+  return defects;
+}
+
+test('every tested acceptance carries a report that exists, is tracked, and lives under reports/', async () => {
+  assert.ok(
+    testedAcceptance.length >= W122_TESTED_FLOOR,
+    `expected at least ${W122_TESTED_FLOOR} tested acceptances, got ${testedAcceptance.length}`,
+  );
+  assert.deepEqual(
+    await evidenceDefects(testedAcceptance),
+    [],
+    'a tested acceptance must name an archived report that exists and is a repository member',
+  );
+});
+
+test('the evidence-carrier scan is closed over the whole tested set', () => {
+  const carriers = evidenceCarriers(testedAcceptance);
+  assert.equal(
+    carriers.length,
+    testedAcceptance.length,
+    'every tested acceptance must be scanned — the scan must not silently skip any',
+  );
+  assert.equal(
+    new Set(carriers.map(([id]) => id)).size,
+    carriers.length,
+    'registry acceptance ids must be unique',
+  );
+});
+
+test('guard: a tested acceptance with an empty evidence field is rejected', async () => {
+  const probe = [{ id: 'PROBE-EMPTY', status: 'tested', evidence: '' }];
+  assert.deepEqual(await evidenceDefects(probe), ['PROBE-EMPTY:<empty>']);
+});
+
+test('guard: evidence outside reports/, or untracked, is rejected', async () => {
+  const outside = [{ id: 'PROBE-OUTSIDE', status: 'tested', evidence: 'docs/knowledge.md' }];
+  assert.deepEqual(await evidenceDefects(outside), ['PROBE-OUTSIDE:docs/knowledge.md:not-under-reports']);
+  const untracked = [
+    {
+      id: 'PROBE-UNTRACKED',
+      status: 'tested',
+      evidence: 'reports/2026-10-16-w122-not-a-real-report.md',
+    },
+  ];
+  assert.deepEqual(await evidenceDefects(untracked), [
+    'PROBE-UNTRACKED:reports/2026-10-16-w122-not-a-real-report.md:not-tracked',
+  ]);
+});
+

@@ -78,6 +78,17 @@ search/answer 有界只读重试；sync/delete 单次尝试，避免未知提交
 ④`cancel()` 经 `Arc<AtomicBool>` **跨克隆共享**（`op.cancel()` ⇒ 克隆侧也 stopped）。
 零生产改动；**不重复钉已钉住的构造期边界**。见 [ADR 0099](adr/0099-operation-budget-closed-world.md)、
 [W121 报告](reports/2026-10-16-w121-operation-budget-closed-world.md)。）
+（W122 转入**验收推进**：`tests/registry.yaml` 自 W112 起未被任何轮次改动 ⇒ 判据密度上升但**验收状态零推进**。
+本轮把 `admission-registry` 早已声明的「`tested` 的证据 MUST 指向**真实报告**」补上载体——此前
+`acceptance[].evidence` **零判据**（`grep evidence tests/registry.test.mjs` 只命中 `landing` 内容锚点），
+故 `evidence` 可写空/写不存在路径/指向**未跟踪**文件而**门控全绿**。新增 4 条守卫遍历 registry 自己的键、
+覆盖**全部 11 个 `tested` 项**：**非空 → 落在 `reports/` → 是仓库成员 → 磁盘存在**四步（判定顺序刻意如此，
+**先判 tracked 再判磁盘**，否则断言随本机磁盘状态变化＝违铁律二）+ 闭世界覆盖与非空洞下限 + 两条注入反例。
+⚠️ **实测教训**：registry 的 `evidence` 相对 **`docs/`**，而 `.git/index` 成员集相对**仓库根** ⇒ 判据必须先落
+`docs/` 再判归属；首跑即因漏此而 11/11 假阳性 `not-tracked`。**状态回填只升真有证据者**：A13 升 `tested`
+（静态结构事实，22 项断言在门控实跑）；**A03 维持 `implemented` 即使结构守卫已通过**——剩余缺口是外部真值，
+「守卫通过 ≠ 本项达标」。语义不变量：`MET_STATUSES` 含 `implemented` 与 `tested` ⇒ 升级不改变 met/unmet 归类。
+见 [ADR 0100](adr/0100-tested-evidence-verifiable.md)、[W122 报告](reports/2026-10-16-w122-tested-evidence-verifiable.md)。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。

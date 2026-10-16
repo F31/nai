@@ -1990,6 +1990,31 @@ registry 无 H 条目需改。
 见 [W121 报告](reports/2026-10-16-w121-operation-budget-closed-world.md)、[ADR 0099](adr/0099-operation-budget-closed-world.md)、
 `openspec/changes/archive/2026-10-16-w121-operation-budget-closed-world/`。
 
+### W122（2026-10-16）：`tested` 的证据可核验（registry 状态回填第一批）
+
+**转向**：W113–W121 是判定面守卫轮，`tests/registry.yaml` 自 W112 起未动（`git log W113..HEAD -- tests/registry.yaml`
+为空）⇒ 判据密度上升但**验收状态零推进**。本轮起**从改 registry 状态入手**推进 R1。
+
+**立项判据（实测）**：`admission-registry` 声明「`tested` 仅可用于已有归档实测证据的项目，且证据 MUST 指向真实报告
+与测试计数」，但 `registry.test.mjs` 中 `grep evidence` **只命中三处 `landing` 内容锚点（W93）** ⇒
+`acceptance[].evidence` **零判据**，可写空/写不存在路径/指向**未跟踪**文件而门控全绿。
+
+**裁定**：①**A13 升 `tested`**（命题为静态结构事实；`tests/platform/platform-matrix.test.mjs` 22 项经
+`engineering_checks` 在 portable+full 门控**实跑**，实测 TAP `1..22 / # pass 22`）；②**A03 维持 `implemented`**
+（结构守卫确已实跑通过，但剩余缺口是**外部真值**，本仓无从提供证据 ⇒ 按 spec 不升）；③其余 13 条缺口见报告 §三分类。
+- `tests/registry.test.mjs` 新增 4（52→56）：三方向一起判（非空/在 `reports/`/是仓库成员）+ 闭世界覆盖与非空洞下限
+  + 两条注入反例。**判定顺序先形状 → 再仓库成员 → 最后磁盘**（反序则随本机磁盘状态变化，违铁律二）。
+- `admission-registry` spec 新增 3 条 Requirement（各 1 Scenario）。
+
+**实测教训**：首跑 11/11 假阳性 `not-tracked` —— registry 的 `evidence` 相对 **`docs/`**，`.git/index` 成员集相对
+**仓库根**；判据须先落 `docs/` 再判归属。基准靠推测写会得到恒假阳性或恒真的守卫。
+
+**语义不变量**：`MET_STATUSES = ['implemented','tested']` ⇒ 升级**不改变** met/unmet 归类，对账守卫零影响。
+状态分布：`implemented` 28→27、`tested` 10→11；其余不变。
+
+见 [W122 报告](reports/2026-10-16-w122-tested-evidence-verifiable.md)、[ADR 0100](adr/0100-tested-evidence-verifiable.md)、
+`openspec/changes/archive/2026-10-16-w122-tested-evidence-verifiable/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |
