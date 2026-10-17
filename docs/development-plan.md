@@ -2348,6 +2348,38 @@ exit 101 是**环境瞬态**）；windows **cancelled**（1210s）——但门�
 
 见 [W133 报告](reports/2026-10-17-w133-assembler.md)、`openspec/changes/2026-10-17-w133-assembler/`。
 
+### W134（2026-10-17）：CI 上同一批测试被跑两遍——把「重复」补成一条可判的缺陷
+
+**缝**：起点是「CI 太慢」（windows 腿 21–29 分钟）。先量，结论不是慢，而是**同一件事做两遍**——
+`foundation.yml` 在 `check --profile full`（内含 `cargo test --workspace --exclude <harness>`）之后
+又跑 7 条 `test --suite …` 步，包集**全部**是那次全量运行的子集。本机暖缓存、只计执行：这 7 条合计
+**517 秒**（storage 125 / kernel 108 / scheduler 89 / session 77 / hosts 43 / knowledge 40 / provider 35）。
+
+**为什么四层判据都没看见**：W95 步集闭世界／W97 覆盖闭包（管「漏」不管「重」）／W100 执行配置／
+W101 目标绑定——四条都正确，四条都对「两个目标覆盖的是不是同一批测试」沉默 ⇒ **重复是共同盲区**。
+
+**改动**：删 7 条重复步（workflow 与名册两侧现测 22 → 15）；新增 `scripts/contracts/step-overlap.mjs`
++ `tests/contracts/step-overlap.test.mjs`——两个判定步的覆盖互相包含（含相等）即具名报错，包集从
+dispatch 臂与门控区域**算**出来；覆盖类别闭集 `gate`/`suite`/`non-test-target`，域外具名失败。
+`suite` 类里「体是 `["test", …]`」与「体交给别的函数」（`contracts` 的 C++ 夹具）分开，后者返回
+`null` 而非空集（空集会让包含关系对空集恒真）。
+
+**判据**：新判据 **12/12**（对**未改动**的 workflow 先跑 ⇒ **9 通过 / 1 红**，红的那条正是 7 条重复）；
+注入 **D1–D6 全真红**（1/1/1/7/2/1），三文件 sha256 逐字节还原。**五套既有判据的夹具锚点重勘**：
+它们把被删步名当 `replace` 锚点 ⇒ 删步后注入变**静默 no-op**、「注入后应红」的用例反过来全红；
+改锚到单行 `- name:` 的幸存步，并给三处补「锚点 MUST 命中」的现测断言。
+
+**门控**：`check --profile full` **绿**（`EXIT=0`，6m48s；Rust **1085/0**——本轮零 Rust 测试变动、
+与 W133 逐项吻合；Node **336/0**（+12 = 新判据 12 条）、14 套件（+1）；错误类 0；前端全通过）。
+前两次门控红均为 `LNK1104`（`nai-runtime` → `nai-control-api` **跨目标漂移**），判据四条核实为
+宿主瞬态，处置 = 串行预构建（13m31s，`LNK1104` 0）后再跑，未改代码与断言。
+
+**刻意不做**：不拆 job、不把平台无关判定从 windows 撤掉——`step-config.mjs` 的 R3 明文禁止
+「非平台相关 `ci-only` 判定被平台条件收窄」（那等于让它静默跳过另一个平台），要改得先改模型与
+`tier-payment` 的 `ci` 面，属另一轮；不加编译缓存（`target/` 18G，超配额，且缓存不是「少做一遍」）。
+
+见 [W134 报告](reports/2026-10-17-w134-ci-step-coverage.md)、`openspec/changes/w134-ci-step-coverage/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

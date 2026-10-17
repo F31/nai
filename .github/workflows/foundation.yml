@@ -86,20 +86,23 @@ jobs:
       - name: Scan the diagnostic artifacts for credential material (W130)
         if: always()
         run: cargo xtask check --secrets
-      - name: Storage and credential boundary (Windows native vault only on Windows)
-        run: cargo xtask test --suite storage
-      - name: Kernel registration and binding
-        run: cargo xtask test --suite kernel
-      - name: Plugin hosts and IPC
-        run: cargo xtask test --suite hosts
-      - name: Session leases and independent cancellation
-        run: cargo xtask test --suite session
-      - name: Scheduling and shared budget ledger
-        run: cargo xtask test --suite scheduler
-      - name: API Provider transport and retry (mock server; no paid calls)
-        run: cargo xtask test --suite provider
-      - name: Knowledge algorithms, remote mock transport and local persistence
-        run: cargo xtask test --suite knowledge
+      # ⚠️ W134：这里原本还有 7 条分套件步（`test --suite …`：storage / kernel / hosts /
+      # session / scheduler / provider / knowledge）。它们的包集**全部**包含在上面那条
+      # `check --profile full` 里（`engineering_checks` 跑
+      # `cargo test --workspace --exclude <harness>`，即整个 workspace 的全部测试）
+      # ⇒ 同一批测试在**每个平台腿上各被执行了第二遍**。本机暖缓存实测这 7 条合计 **517 秒**
+      # （storage 125 / kernel 108 / scheduler 89 / session 77 / hosts 43 / knowledge 40 / provider 35），
+      # 而它们跑的东西门控刚刚跑完。
+      #
+      # 删掉它们**不损失任何判定**：覆盖集合仍由门控步提供，而这一点现在由
+      # `tests/contracts/step-overlap.test.mjs`（W134）**判**着——任何两条判定步的测试覆盖
+      # 一旦互相包含就变红，MUST NOT 靠「记得别加回来」。
+      # 归因（哪套件红了）不受影响：门控日志经 `.nai-diagnostics/` 由 `ci-diagnose.mjs`
+      # 转成匿名可读的 annotation。
+      #
+      # ⚠️ 注释也被 `gate-coverage.mjs` 的 `ciXtaskCommands` 扫描（它不剥 YAML 注释）
+      # ⇒ 上面几行**刻意不写** `cargo` + `xtask` 连写，否则一段散文会变成一条「CI 调了
+      # 却不存在的命令」。
       - name: Validate schemas and API contract
         run: node --test tests/contracts/schema.test.mjs tests/contracts/descriptor.test.mjs
       - name: Full three-language contract suite (Linux C++ toolchain)

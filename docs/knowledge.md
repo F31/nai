@@ -248,6 +248,19 @@ H01/H02 缺一个**纯计算**的构造者，H03/H04 缺「对话轮次产生记
 硬凑会逼出「四条都推进了」这类不实陈述。**registry `H01`/`H02` 仍 `pending`**（闭合的是②执行体
 获得真实入参，④真实产生者与 §41.2 初值标定未接线）。见
 [W133 报告](reports/2026-10-17-w133-assembler.md)。）
+（W134 补的是**执行面上的重复**。起点是「CI 太慢」这句抱怨，现测之后结论不是慢，而是**同一件事做两遍**：
+`foundation.yml` 在 `check --profile full`（内含 `cargo test --workspace`）之后又跑了 7 条
+`cargo xtask test --suite …` 步，包集全部是那次全量运行的**子集**——本机暖缓存实测这 7 条合计
+**517 秒纯执行**（第二遍），CI runner 只会更慢。值得写下来的是：**四层既有判据都在，四层都不问这件事**
+（W95 步集闭世界／W97 覆盖闭包／W100 执行配置／W101 目标绑定都正确，都对「两个目标覆盖的是不是
+同一批测试」沉默）⇒ **重复是它们共同的盲区**。补法是把「覆盖关系之间」变成判定对象：两个判定步的覆盖
+集合互相包含（含相等）即具名报错，包集从 dispatch 臂与门控区域**算**出来（MUST NOT 写第二份）。
+⚠️ 两条方法论：①`suite` 类里「体是一条 `["test", …]`」与「体交给别的函数」（`contracts` 的 C++ 夹具）
+MUST 分开——后者返回 `null` 而非空集，空集会让包含关系对空集恒真；②删步会让一批既有判据的
+`replace` 锚点变成**静默 no-op**（注入没发生、断言前提没了 ⇒ 「注入后应当红」的用例反过来全红），
+锚点 MUST 改到**单行 `- name:`** 的幸存步并补「锚点 MUST 命中」的现测。另实测：`ciXtaskCommands`
+**不剥 YAML 注释**，注释里连写 `cargo`+`xtask` 会被当成一条真实 CI 命令（本轮只避开，洞未修）。见
+[W134 报告](reports/2026-10-17-w134-ci-step-coverage.md)。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。

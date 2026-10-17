@@ -17,6 +17,18 @@ import {
 const HOST = '.github/workflows/foundation.yml';
 const GATE = 'xtask/src/lib.rs';
 
+/// 夹具锚点：**单行 `- name:` 的步**。
+///
+/// ⚠️ W134 教训：这些锚点原先指向 `Kernel registration and binding` 等 7 条分套件步，
+/// 而那 7 条被删掉（它们的包集全被门控步覆盖，见 `scripts/contracts/step-overlap.mjs`）
+/// ⇒ `replace` 变成**静默 no-op**、注入根本没发生，于是「注入后应当红」的用例
+/// 反过来全红。锚点 MUST 是那种**删掉它就整条消失**的单行步，并且 MUST 在改动后
+/// 立刻被现测（`assert.notEqual(injected, workflowText)`）确认命中。
+const SCHEMA_STEP = 'Validate schemas and API contract';
+
+/// 唯一幸存的全平台 `local` 步：`localEvidence` 类断言（W75）只能锚在它身上。
+const GATE_STEP = 'Complete engineering foundation (portable steps + frontend workspace)';
+
 /// 凭据文件的**内容**从兑付表自己派生——**不写第二份文件清单**（两份清单会各自漏掉对方的新增）。
 /// 表改了，输入自动跟上。读不到的文件**不抛**：让**判据**去具名报告「未提供」，
 /// 而不是让输入构造的 `ENOENT` 把「判据该报的缺陷」伪装成「测试自己坏了」。
@@ -82,10 +94,12 @@ test('every workflow step is declared, and every declaration still has a step', 
 
 test('an unregistered step is named', async () => {
   const {workflowText, gateSources, reasonInput} = await load();
+  const anchor = `      - name: ${SCHEMA_STEP}\n`;
   const injected = workflowText.replace(
-    '      - name: Kernel registration and binding\n',
-    '      - name: W95 unregistered probe\n        run: node -e "probe"\n      - name: Kernel registration and binding\n',
+    anchor,
+    `      - name: W95 unregistered probe\n        run: node -e "probe"\n${anchor}`,
   );
+  assert.notEqual(injected, workflowText, 'the fixture anchor must hit the workflow');
   const errors = workflowStepErrors(HOST, injected, WORKFLOW_STEPS, gateSources, reasonInput);
   assert.ok(
     errors.some(error => error.includes('W95 unregistered probe') && error.includes('nobody declares')),
@@ -95,13 +109,12 @@ test('an unregistered step is named', async () => {
 
 test('a registered step that vanished is named', async () => {
   const {workflowText, gateSources, reasonInput} = await load();
-  const injected = workflowText.replace(
-    '      - name: Kernel registration and binding\n        run: cargo xtask test --suite kernel\n',
-    '',
-  );
+  // 删掉一条**单行**步：它整条消失，不多留半截 `run:` 块。
+  const injected = workflowText.replace('      - run: pnpm spec:validate\n', '');
+  assert.notEqual(injected, workflowText, 'the fixture anchor must hit the workflow');
   const errors = workflowStepErrors(HOST, injected, WORKFLOW_STEPS, gateSources, reasonInput);
   assert.ok(
-    errors.some(error => error.includes('Kernel registration and binding') && error.includes('does not')),
+    errors.some(error => error.includes('"pnpm spec:validate"') && error.includes('does not')),
     `a vanished step must be named, saw ${JSON.stringify(errors)}`,
   );
 });
@@ -109,13 +122,14 @@ test('a registered step that vanished is named', async () => {
 test('renaming a step fails on both sides', async () => {
   const {workflowText, gateSources, reasonInput} = await load();
   const injected = workflowText.replace(
-    '      - name: Plugin hosts and IPC\n',
-    '      - name: Plugin hosts and IPC (renamed)\n',
+    `      - name: ${SCHEMA_STEP}\n`,
+    `      - name: ${SCHEMA_STEP} (renamed)\n`,
   );
+  assert.notEqual(injected, workflowText, 'the fixture anchor must hit the workflow');
   const errors = workflowStepErrors(HOST, injected, WORKFLOW_STEPS, gateSources, reasonInput);
-  assert.ok(errors.some(error => error.includes('Plugin hosts and IPC (renamed)')), 'the new name must be named');
+  assert.ok(errors.some(error => error.includes(`${SCHEMA_STEP} (renamed)`)), 'the new name must be named');
   assert.ok(
-    errors.some(error => error.includes('"Plugin hosts and IPC"') && error.includes('does not')),
+    errors.some(error => error.includes(`"${SCHEMA_STEP}"`) && error.includes('does not')),
     'the old name must be reported as vanished too',
   );
 });
@@ -124,17 +138,17 @@ test('local coverage has to cite a gate site that exists', async () => {
   const {workflowText, gateSources, reasonInput} = await load();
   // 注入一：凭据指向一个真实文件里不存在的串 ⇒ 假契约。
   const ghost = registryOf(copy => {
-    entry(copy, 'Kernel registration and binding').localEvidence = {file: GATE, marker: '"no-such-gate-marker"'};
+    entry(copy, GATE_STEP).localEvidence = {file: GATE, marker: '"no-such-gate-marker"'};
   });
   assert.ok(
     workflowStepErrors(HOST, workflowText, ghost, gateSources, reasonInput).some(error =>
-      error.includes('Kernel registration and binding') && error.includes('not in that file'),
+      error.includes(GATE_STEP) && error.includes('not in that file'),
     ),
     'a gate marker that does not exist must be reported',
   );
   // 注入二：凭据指向一个没被提供的文件 ⇒ 缺输入必须具名，绝不静默跳过。
   const absent = registryOf(copy => {
-    entry(copy, 'Kernel registration and binding').localEvidence = {file: 'xtask/src/no-such.rs', marker: 'x'};
+    entry(copy, GATE_STEP).localEvidence = {file: 'xtask/src/no-such.rs', marker: 'x'};
   });
   assert.ok(
     workflowStepErrors(HOST, workflowText, absent, gateSources, reasonInput).some(error =>
@@ -144,7 +158,7 @@ test('local coverage has to cite a gate site that exists', async () => {
   );
   // 注入三：根本没有凭据 ⇒ 「本机也跑」是一句空话。
   const bare = registryOf(copy => {
-    delete entry(copy, 'Kernel registration and binding').localEvidence;
+    delete entry(copy, GATE_STEP).localEvidence;
   });
   assert.ok(
     workflowStepErrors(HOST, workflowText, bare, gateSources, reasonInput).some(error =>
@@ -191,8 +205,8 @@ test('a ci-only step must not also claim local coverage', async () => {
 test('infra must not be a back door around the checks', async () => {
   const {workflowText, gateSources, reasonInput} = await load();
   const injected = registryOf(copy => {
-    entry(copy, 'Kernel registration and binding').kind = 'infra';
-    delete entry(copy, 'Kernel registration and binding').localEvidence;
+    // 这一步的 `run` 首行是 `node --test …`，形状上就是一条判定 ⇒ 标成 `infra` 必须被拦。
+    entry(copy, SCHEMA_STEP).kind = 'infra';
   });
   assert.ok(
     workflowStepErrors(HOST, workflowText, injected, gateSources, reasonInput).some(error =>
@@ -227,7 +241,7 @@ test('a legitimate registration is not reported', async () => {
   const {workflowText, gateSources, reasonInput} = await load();
   // 反向：把凭据换成**另一处真的存在**的门控落点 ⇒ MUST NOT 红（判据验「存在」，不验「等于某串」）。
   const other = registryOf(copy => {
-    entry(copy, 'Kernel registration and binding').localEvidence = {
+    entry(copy, GATE_STEP).localEvidence = {
       file: GATE,
       marker: '["check", "--profile", "full"]',
     };

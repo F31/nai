@@ -31,6 +31,11 @@ import {
 } from '../../scripts/contracts/step-config.mjs';
 
 const HOST = '.github/workflows/foundation.yml';
+
+/// 夹具锚点：一条**单行 `- name:`** 的步。W134 删掉了 7 条分套件步（它们的包集全被门控步
+/// 覆盖，见 `scripts/contracts/step-overlap.mjs`），原先锚在 `Kernel registration and binding`
+/// 上的夹具会变成**静默 no-op** ⇒ 注入没发生、断言前提没了。锚点 MUST 现测命中。
+const SCHEMA_STEP = 'Validate schemas and API contract';
 const GATE = 'xtask/src/lib.rs';
 
 /// 判据的输入**全部显式注入**：本模块自己不读磁盘（遍历工作区是 W75 的 F2 根因）。
@@ -490,7 +495,7 @@ test('the judge is orthogonal to W95, which reads the step set rather than its c
   );
 
   // 反向：只改**身份**（步改名）。配置一个字没动 ⇒ 配置判据沉默，步集判据具名。
-  const renamed = patch(workflowText, '      - name: Kernel registration and binding\n', '      - name: Kernel registration and naming\n');
+  const renamed = patch(workflowText, `      - name: ${SCHEMA_STEP}\n`, `      - name: ${SCHEMA_STEP} (renamed)\n`);
   assert.ok(
     workflowStepErrors(HOST, renamed, WORKFLOW_STEPS, gateSources, reasonInput).length > 0,
     'the step-set judge must notice a rename',

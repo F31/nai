@@ -27,6 +27,11 @@ import {
 } from '../../scripts/contracts/workflow-triggers.mjs';
 
 const HOST = '.github/workflows/foundation.yml';
+
+/// 夹具锚点：一条**单行 `- name:`** 的步。W134 删掉了 7 条分套件步（它们的包集全被门控步
+/// 覆盖，见 `scripts/contracts/step-overlap.mjs`），原先锚在 `Kernel registration and binding`
+/// 上的夹具会变成**静默 no-op** ⇒ 注入没发生、断言前提没了。锚点 MUST 现测命中。
+const SCHEMA_STEP = 'Validate schemas and API contract';
 const GATE = 'xtask/src/lib.rs';
 
 /// 凭据文件的**内容**从兑付表自己派生（不写第二份文件清单）。读不到的不抛——
@@ -442,13 +447,13 @@ test('the trigger judge is orthogonal to W95, W100 and W101', async () => {
     'the trigger judge must be the one that notices a dropped trigger',
   );
   // 反向：只改目标绑定 / 步名 ⇒ 触发面判据必须沉默。
-  const retargeted = patch(workflowText, 'run: cargo xtask test --suite provider', 'run: cargo xtask test --suite storage');
+  const retargeted = patch(workflowText, 'run: cargo xtask test --suite contracts', 'run: cargo xtask test --suite upgrade');
   assert.deepEqual(
     workflowTriggerErrors({host: HOST, workflowText: retargeted}),
     [],
     'the trigger judge must not restate the target-binding verdict',
   );
-  const renamed = patch(workflowText, '      - name: Kernel registration and binding\n', '      - name: Kernel registration and naming\n');
+  const renamed = patch(workflowText, `      - name: ${SCHEMA_STEP}\n`, `      - name: ${SCHEMA_STEP} (renamed)\n`);
   assert.deepEqual(
     workflowTriggerErrors({host: HOST, workflowText: renamed}),
     [],

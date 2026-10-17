@@ -208,76 +208,13 @@ export const WORKFLOW_STEPS = [
   },
   {
     host: '.github/workflows/foundation.yml',
-    identity: 'Storage and credential boundary (Windows native vault only on Windows)',
-    kind: 'local',
-    localEvidence: {
-      file: 'xtask/src/lib.rs',
-      marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
-    },
-    target: [{shape: 'xtask', value: 'test --suite storage'}],
-  },
-  {
-    host: '.github/workflows/foundation.yml',
-    identity: 'Kernel registration and binding',
-    kind: 'local',
-    localEvidence: {
-      file: 'xtask/src/lib.rs',
-      marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
-    },
-    target: [{shape: 'xtask', value: 'test --suite kernel'}],
-  },
-  {
-    host: '.github/workflows/foundation.yml',
-    identity: 'Plugin hosts and IPC',
-    kind: 'local',
-    localEvidence: {
-      file: 'xtask/src/lib.rs',
-      marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
-    },
-    target: [{shape: 'xtask', value: 'test --suite hosts'}],
-  },
-  {
-    host: '.github/workflows/foundation.yml',
-    identity: 'Session leases and independent cancellation',
-    kind: 'local',
-    localEvidence: {
-      file: 'xtask/src/lib.rs',
-      marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
-    },
-    target: [{shape: 'xtask', value: 'test --suite session'}],
-  },
-  {
-    host: '.github/workflows/foundation.yml',
-    identity: 'Scheduling and shared budget ledger',
-    kind: 'local',
-    localEvidence: {
-      file: 'xtask/src/lib.rs',
-      marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
-    },
-    target: [{shape: 'xtask', value: 'test --suite scheduler'}],
-  },
-  {
-    host: '.github/workflows/foundation.yml',
-    identity: 'API Provider transport and retry (mock server; no paid calls)',
-    kind: 'local',
-    localEvidence: {
-      file: 'xtask/src/lib.rs',
-      marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
-    },
-    target: [{shape: 'xtask', value: 'test --suite provider'}],
-  },
-  {
-    host: '.github/workflows/foundation.yml',
-    identity: 'Knowledge algorithms, remote mock transport and local persistence',
-    kind: 'local',
-    localEvidence: {
-      file: 'xtask/src/lib.rs',
-      marker: '["test", "--workspace", "--locked", "--exclude", HARNESS]',
-    },
-    target: [{shape: 'xtask', value: 'test --suite knowledge'}],
-  },
-  {
-    host: '.github/workflows/foundation.yml',
+    // W134：这里原有 7 条 `test --suite …` 步（storage / kernel / hosts / session / scheduler /
+    // provider / knowledge）。它们的包集全部包含在 `check --profile full` 里
+    // （`engineering_checks` 的 `cargo test --workspace --exclude <harness>`）⇒ 每个平台腿上
+    // 都在跑第二遍同一批测试。删掉它们**不损失判定**，覆盖仍由门控步提供；
+    // 而这个关系现在由 `tests/contracts/step-overlap.test.mjs` 判着（两两覆盖包含 ⇒ 红）。
+    // ⚠️ 这条注释是**记录**，不是判据：真正的守卫在 `scripts/contracts/step-overlap.mjs`。
+    //
     // 混合步：`schema.test.mjs` 本机跑，`descriptor.test.mjs` 只有 CI 跑（要编译产物）。
     // 只要有**未被本机覆盖的成分**就归 `ci-only`——保守方向，安全（W92：假阳性与假阴性不对称）。
     identity: 'Validate schemas and API contract',

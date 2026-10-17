@@ -15,6 +15,11 @@ import { ciXtaskCommands } from '../../scripts/contracts/gate-coverage.mjs';
 import { TARGET_SHAPES, targetsOf, targetKey, stepTargetErrors } from '../../scripts/contracts/step-target.mjs';
 
 const HOST = '.github/workflows/foundation.yml';
+
+/// 夹具锚点：一条**单行 `- name:`** 的步。W134 删掉了 7 条分套件步（它们的包集全被门控步
+/// 覆盖，见 `scripts/contracts/step-overlap.mjs`），原先锚在 `Kernel registration and binding`
+/// 上的夹具会变成**静默 no-op** ⇒ 注入没发生、断言前提没了。锚点 MUST 现测命中。
+const SCHEMA_STEP = 'Validate schemas and API contract';
 const GATE = 'xtask/src/lib.rs';
 
 /// 凭据文件的**内容**从兑付表自己派生（不写第二份文件清单）。读不到的不抛——
@@ -372,18 +377,19 @@ test('every shipped judging step pays for the target it runs', async () => {
 test('the judge is orthogonal to W95, which reads the step set rather than its target', async () => {
   const { workflowText, gateSources, reasonInput } = await load();
   // 只改**目标**：步的名字、身份、kind、凭据一个字都没动。
-  const retargeted = patch(workflowText, 'run: cargo xtask test --suite provider', 'run: cargo xtask test --suite storage');
+  const retargeted = patch(workflowText, 'run: cargo xtask test --suite contracts', 'run: cargo xtask test --suite upgrade');
   assert.deepEqual(
     workflowStepErrors(HOST, retargeted, WORKFLOW_STEPS, gateSources, reasonInput),
     [],
     'the W95 step-set judge must not read which target a step runs',
   );
   assert.ok(
-    named(stepTargetErrors({host: HOST, workflowText: retargeted}), '"API Provider', 'test --suite storage'),
+    named(stepTargetErrors({host: HOST, workflowText: retargeted}), '"Full three-language', 'test --suite upgrade'),
     'the target judge must be the one that notices a swapped target',
   );
   // 反向：只改**身份**。目标一个字没动 ⇒ 目标判据沉默，步集判据具名。
-  const renamed = patch(workflowText, '      - name: Kernel registration and binding\n', '      - name: Kernel registration and naming\n');
+  const renamed = patch(workflowText, `      - name: ${SCHEMA_STEP}\n`, `      - name: ${SCHEMA_STEP} (renamed)\n`);
+  assert.notEqual(renamed, workflowText, 'the fixture anchor must hit the workflow');
   assert.ok(
     workflowStepErrors(HOST, renamed, WORKFLOW_STEPS, gateSources, reasonInput).length > 0,
     'the step-set judge must notice a rename',
@@ -415,7 +421,7 @@ test('the judge is orthogonal to W84, which reads the tracked set and not the wo
   // ⇒ 由**构造**使前提成立（并集），不依赖提交顺序。**构造 MUST 遍历站点表自己的键**
   // （W101 订正），MUST NOT 只补本轮那一个文件——那正是 W99/W100/W101 各踩一次的坑。
   const withNew = new Set([...tracked, ...declaredMarkerPaths()]);
-  const swapped = patch(workflowText, 'run: cargo xtask test --suite knowledge', 'run: cargo xtask test --suite storage');
+  const swapped = patch(workflowText, 'run: cargo xtask test --suite contracts', 'run: cargo xtask test --suite upgrade');
   assert.deepEqual(
     reachabilityErrors({
       tracked: withNew,
@@ -427,7 +433,7 @@ test('the judge is orthogonal to W84, which reads the tracked set and not the wo
     'the reachability judge must not read the workflow body',
   );
   assert.ok(
-    named(stepTargetErrors({host: HOST, workflowText: swapped}), '"Knowledge algorithms', 'test --suite storage'),
+    named(stepTargetErrors({host: HOST, workflowText: swapped}), '"Full three-language', 'test --suite upgrade'),
     'the target judge must be the one that notices a swapped target',
   );
 });

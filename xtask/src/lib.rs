@@ -100,6 +100,15 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
         root,
         &["--test", "tests/contracts/workflow-triggers.test.mjs"],
     )?;
+    // 在册判定步的**覆盖关系**（W134）：同一 workflow 里，两个判定步的测试覆盖一旦互相包含
+    // （含相等）⇒ 同一批测试被执行了**两遍**。前四层判据（W95 步集 / W97 覆盖闭包 /
+    // W100 执行配置 / W101 目标绑定）都正确，**四条都不问**「这两个目标覆盖的是不是同一批测试」
+    // ⇒ 重复是它们共同的盲区：`foundation.yml` 曾有 7 条 `test --suite …` 步，包集全部包含在
+    // `check --profile full` 的 `cargo test --workspace` 里，本机实测合计 517 秒/平台腿。
+    // 包集从 `xtask/src/lib.rs` 的 dispatch 臂与门控区域**算**出来，MUST NOT 在表里写第二份；
+    // 覆盖类别是闭集（`gate` / `suite` / `non-test-target`），域外取值具名失败。
+    // 同样纯静态：解析 workflow、本文件与成员清单，不需要 protoc。
+    schema::node(root, &["--test", "tests/contracts/step-overlap.test.mjs"])?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,

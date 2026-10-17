@@ -228,10 +228,14 @@ test('a workspace run adapts to new members; an explicit list that forgets one i
 
 test('a CI command that the harness does not dispatch is named', async () => {
   const inputs = await load();
+  const anchor = '      - name: Validate schemas and API contract\n';
   const ghost = inputs.workflowText.replace(
-    '      - name: Kernel registration and binding\n',
-    '      - name: W97 ghost probe\n        run: cargo xtask check --audit\n      - name: Kernel registration and binding\n',
+    anchor,
+    '      - name: W97 ghost probe\n        run: cargo xtask check --audit\n      - name: Validate schemas and API contract\n',
   );
+  // 锚点 MUST 真的命中：锚在一处**已改名/已删除**的步上时，`replace` 是静默 no-op，
+  // 于是注入根本没发生、断言却照样跑——W134 删掉 7 条分套件步时正是这样红了两条。
+  assert.notEqual(ghost, inputs.workflowText, `the anchor step must exist in ${'.github/workflows/foundation.yml'}`);
   assert.ok(
     coverageErrors(withInputs(inputs, {workflowText: ghost})).some(error =>
       error.includes('check --audit') && error.includes('does not dispatch'),
@@ -243,10 +247,12 @@ test('a CI command that the harness does not dispatch is named', async () => {
 test('shell syntax around a CI command must not change its identity', async () => {
   const inputs = await load();
   // 同一条命令带上 `2>&1 | tee …` 与一个 defanging 后缀，签名必须还是 `check --profile full`。
+  const anchor = '      - name: Validate schemas and API contract\n';
   const piped = inputs.workflowText.replace(
-    '      - name: Storage and credential boundary (Windows native vault only on Windows)\n',
-    '      - name: W97 piped probe\n        run: cargo xtask check --profile full 2>&1 | tee "$RUNNER_TEMP/x.log"\n      - name: Storage and credential boundary (Windows native vault only on Windows)\n',
+    anchor,
+    '      - name: W97 piped probe\n        run: cargo xtask check --profile full 2>&1 | tee "$RUNNER_TEMP/x.log"\n      - name: Validate schemas and API contract\n',
   );
+  assert.notEqual(piped, inputs.workflowText, 'the anchor step must exist in the workflow');
   const commands = ciXtaskCommands(piped);
   assert.ok(commands.includes('check --profile full'), 'a piped command must normalise to its signature');
   const errors = coverageErrors(withInputs(inputs, {workflowText: piped}));
