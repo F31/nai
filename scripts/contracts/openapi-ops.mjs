@@ -94,6 +94,7 @@ export const OPENAPI_DOCUMENTS = {
       'get /approvals',
       'post /approvals/{id}/approve',
       'post /approvals/{id}/reject',
+      'get /jobs/{id}',
       'post /upgrades/plan',
     ],
   },

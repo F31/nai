@@ -84,6 +84,16 @@ recover : 读 journal 当前 step → discard | restore | 确认已提交
 
 `checked` 的清单身份比较消除了「换清单成功但 journal 未写」的歧义窗口——不靠猜。
 
+**对外读数：`GET /api/v1/jobs/{id}`**（W138，权限 `job.read`）。它把上面这一行的**当前状态**搬出去，
+`step` 五值逐字、`terminal` 由 `UpgradeStep::terminal()` 派生（控制面不另写判定），
+契约的值域与 `UpgradeStep::ALL` 逐字比对（含顺序）。三态各有其名：「查到了」200、
+「该 id 不命名任何事务」404 `NOT_FOUND`、「作业面未接入」503 `CAPABILITY_NOT_READY`。
+
+**它没有写入方。** `/upgrades/execute` 与 `/upgrades/{id}/rollback` 当前**具名拒绝**（503，
+点名缺平台安装器 `UpgradeHost`），且**不铸** `job_id`——一个指向永远不会被写的 journal 行的 id
+是伪造的可观测面。所以本路径现在能如实回答「没有这条事务」，但**没有**「正在升级」可看。
+「存储正忙」与「没有这条」也是分开的：前者 409 `CONFLICT`。
+
 ## 撤销列表：带期限的可信缓存
 
 `RevocationList { issued_at, expires_at, entries }` 是**三态**，不是集合：
@@ -145,5 +155,6 @@ recover : 读 journal 当前 step → discard | restore | 确认已提交
   见 [W126 报告](reports/2026-10-16-w126-download-resume-and-budget.md) 与 [ADR 0104](adr/0104-download-resume-and-budget.md)。
 - **`semver` 只做交集判断**，不实现完整 SAT 求解：单层 `requires` 足够，多包冲突本轮未覆盖。
 - `nai-upgrade-core` 的第一个 app 级消费者是**控制面**（W137：`nai-control-api` 依赖它，为
-  `/upgrades/plan` 提供成本）；**装配根（`apps/engine`）仍不持有升级事务**——plan 是纯读，
-  不需要运行时状态；execute/rollback 的接线仍是后续工作项。
+  `/upgrades/plan` 提供成本）；W138 起控制面**也读** journal（`JobBackend` 持装配根同一把 store 锁），
+  但**装配根（`apps/engine`）仍不持有升级事务**——没有 `UpgradeTransaction` 的调用点，
+  execute/rollback 只是具名拒绝。所以 journal 里不会有控制面写入的行。

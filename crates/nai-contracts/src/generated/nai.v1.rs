@@ -563,6 +563,12 @@ pub enum ErrorCode {
     Cancelled = 14,
     Conflict = 15,
     Internal = 16,
+    /// The thing named by the request does not exist. Distinct from
+    /// CAPABILITY_ABSENT (nothing implements this surface) and from
+    /// CAPABILITY_NOT_READY (it exists but cannot run yet): "we have no record of
+    /// that transaction" is a different fact from "we have no job surface", and
+    /// collapsing them makes the two indistinguishable to every caller.
+    NotFound = 17,
 }
 impl ErrorCode {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -588,6 +594,7 @@ impl ErrorCode {
             Self::Cancelled => "CANCELLED",
             Self::Conflict => "CONFLICT",
             Self::Internal => "INTERNAL",
+            Self::NotFound => "NOT_FOUND",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -610,6 +617,7 @@ impl ErrorCode {
             "CANCELLED" => Some(Self::Cancelled),
             "CONFLICT" => Some(Self::Conflict),
             "INTERNAL" => Some(Self::Internal),
+            "NOT_FOUND" => Some(Self::NotFound),
             _ => None,
         }
     }

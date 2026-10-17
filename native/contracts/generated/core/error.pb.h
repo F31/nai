@@ -83,12 +83,13 @@ enum ErrorCode : int {
   CANCELLED = 14,
   CONFLICT = 15,
   INTERNAL = 16,
+  NOT_FOUND = 17,
   ErrorCode_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
   ErrorCode_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
 };
 bool ErrorCode_IsValid(int value);
 constexpr ErrorCode ErrorCode_MIN = ERROR_UNSPECIFIED;
-constexpr ErrorCode ErrorCode_MAX = INTERNAL;
+constexpr ErrorCode ErrorCode_MAX = NOT_FOUND;
 constexpr int ErrorCode_ARRAYSIZE = ErrorCode_MAX + 1;
 
 const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* ErrorCode_descriptor();

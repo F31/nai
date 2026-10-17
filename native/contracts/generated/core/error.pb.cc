@@ -98,7 +98,7 @@ const char descriptor_table_protodef_core_2ferror_2eproto[] PROTOBUF_SECTION_VAR
   "etryable\030\004 \001(\010\022\017\n\007message\030\005 \001(\t\0223\n\007detai"
   "ls\030\006 \003(\0132\".nai.v1.ContractError.DetailsE"
   "ntry\032.\n\014DetailsEntry\022\013\n\003key\030\001 \001(\t\022\r\n\005val"
-  "ue\030\002 \001(\t:\0028\001*\365\002\n\tErrorCode\022\025\n\021ERROR_UNSP"
+  "ue\030\002 \001(\t:\0028\001*\204\003\n\tErrorCode\022\025\n\021ERROR_UNSP"
   "ECIFIED\020\000\022\024\n\020INVALID_ARGUMENT\020\001\022\023\n\017UNAUT"
   "HENTICATED\020\002\022\025\n\021PERMISSION_DENIED\020\003\022\025\n\021C"
   "APABILITY_ABSENT\020\004\022\030\n\024CAPABILITY_NOT_REA"
@@ -107,11 +107,12 @@ const char descriptor_table_protodef_core_2ferror_2eproto[] PROTOBUF_SECTION_VAR
   "\013STALE_EPOCH\020\t\022\024\n\020EVIDENCE_EXPIRED\020\n\022\024\n\020"
   "APPROVAL_EXPIRED\020\013\022\023\n\017BUDGET_EXCEEDED\020\014\022"
   "\030\n\024PROVIDER_UNAVAILABLE\020\r\022\r\n\tCANCELLED\020\016"
-  "\022\014\n\010CONFLICT\020\017\022\014\n\010INTERNAL\020\020b\006proto3"
+  "\022\014\n\010CONFLICT\020\017\022\014\n\010INTERNAL\020\020\022\r\n\tNOT_FOUN"
+  "D\020\021b\006proto3"
   ;
 static ::_pbi::once_flag descriptor_table_core_2ferror_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_core_2ferror_2eproto = {
-    false, false, 636, descriptor_table_protodef_core_2ferror_2eproto,
+    false, false, 651, descriptor_table_protodef_core_2ferror_2eproto,
     "core/error.proto",
     &descriptor_table_core_2ferror_2eproto_once, nullptr, 0, 2,
     schemas, file_default_instances, TableStruct_core_2ferror_2eproto::offsets,
@@ -149,6 +150,7 @@ bool ErrorCode_IsValid(int value) {
     case 14:
     case 15:
     case 16:
+    case 17:
       return true;
     default:
       return false;

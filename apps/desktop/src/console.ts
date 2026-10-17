@@ -164,7 +164,8 @@ export const UI_ASSERTIONS: readonly UiAssertion[] = [
   { id: 'mute_ack_honesty', label: '静音 ACK', status: 'implemented' },
   {
     id: 'upgrade_rollback_prompt', label: '升级与回滚提示', status: 'unimplemented',
-    missing: '控制面无升级状态来源（未暴露 nai-upgrade-core 的 plan/journal），界面无从提示升级与回滚',
+    missing: '缺真实渲染的升级面板（UI 层无 DOM）；控制面虽已能读出 journal 步骤（W138 的 GET /jobs/{id}），'
+      + '但没有写入方——平台安装器 nai-upgrade-core::UpgradeHost 无生产实现，执行/回滚具名拒绝，故「能否回滚」仍不可呈现',
   },
 ];
 

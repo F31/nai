@@ -19,6 +19,12 @@ enum ErrorCode {
   CANCELLED = 14;
   CONFLICT = 15;
   INTERNAL = 16;
+  // The thing named by the request does not exist. Distinct from
+  // CAPABILITY_ABSENT (nothing implements this surface) and from
+  // CAPABILITY_NOT_READY (it exists but cannot run yet): "we have no record of
+  // that transaction" is a different fact from "we have no job surface", and
+  // collapsing them makes the two indistinguishable to every caller.
+  NOT_FOUND = 17;
 }
 message ContractError {
   string request_id = 1;

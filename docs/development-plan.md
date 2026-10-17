@@ -2514,6 +2514,48 @@ exe 在盘上不存在），是有界重试（20×8s）过的，**未改代码�
 **只缺 journal/执行状态**那一半。见 [W137 报告](reports/2026-10-17-w137-upgrade-plan-cost-source.md)、
 `docs/adr/0112-upgrade-plan-cost-source.md`、`openspec/changes/archive/2026-10-17-w137-upgrade-plan-cost/`。
 
+### W138（2026-10-17）：O02 的另一半——作业状态接上真实 journal
+
+**起点**是 W137 结尾那句收窄：「§30.1 第 4 条现在只缺 journal/执行状态那一半」。去补那半时现测出三件事：
+`upgrade_journal`（五态机 + `Store` 即 `UpgradeJournal` 的生产实现）**是真的**；
+`impl UpgradeHost for` 全仓只有 `rehearsal.rs:153` 的 `RehearsalHost`（「holds no bytes and touches no disk」）
+⇒ **执行者不存在**；而 `/jobs/{id}` 在控制面**零分支**、execute/rollback 也零分支 ⇒ **「先 202 再轮询」两头都是空的**。
+
+**否决两个省事的做法**：① 让 execute 铸 `job_id` 并写一条 `prepared` 记录再 202——`Prepared` 之后一步都推不动，
+那条记录会永远停在 `prepared`，而读数会让「准备好了」看起来像「正在升级」；② 新增第三个
+`x-implementation-status` 值——`operationErrors` 的判据是「不在已实现表里 ⇒ MUST 没有该标记」，
+加值必须先放宽这条闭世界，而既有表达已经够用。
+
+**改动**：契约新增 `JobView`（`additionalProperties:false`，`step` 五值闭集且注明含顺序）与
+`ErrorCode NOT_FOUND = 17`——16 个码里**没有**「所命名的对象不存在」这一格，于是「该 id 不命名任何事务」
+与「作业面未接入」只能共用一个响应；`/jobs/{id}` 改 200/404/503 并标 `implemented-loopback`，
+execute/rollback 增 503 声明但**仍不**标已实现。控制面加 `JobBackend`（照 `ApprovalBackend` 同形，
+读装配根**同一把** store 锁）、`jobs_get` 三态、`upgrade_refusal` 具名拒绝；`UpgradeStep::ALL` 供
+「契约值域 == 枚举」判据取用。
+
+**顺带补上一个既有缺口（本轮勘定撞上的）**：引擎 `CONTROL_PERMISSIONS` 用满 8 条且**不含** `runtime.upgrade`
+⇒ W137 那个标了 `implemented-loopback` 的 `plan` 对**唯一签发出去的令牌**恒 403。控制面用例自造 `Access`，
+所以一直全绿。同一次改动把 `Access` 的条数上限从裸 `8` 改成从 `PERMISSION_VOCABULARY` 派生，并在**构造时**
+拒绝表外权限名——拼错的授权（`runtime.reed`）原先会被接受，然后那条路由永远 403，**没有任何信号**。
+
+**判据**：控制面 39 → **49**（+10）、`tests/ui/upgrade-job.test.mjs` **9** 条；注入 **I1–I7** 七组逐组真红，
+其中两组特别值得记：**I4** 把拒绝消息缩成非空但无锚点的 `unavailable` 仍被判红（证明「只判非空」不够）；
+**I7** 只**调换**契约枚举里两个值的顺序（集合完全相同）也被判红（证明「顺序也钉住」是判别性的）。
+**I6**（删掉权限行）多条同红——权限是入口闸门，这是如实记录，不是判据重叠。
+
+**门控**：`GATE_EXIT=0`（`CARGO_INCREMENTAL=0` + `CARGO_BUILD_JOBS=1` + 机外 `protoc 21.12`）：
+Rust 101 个目标 / **1122 通过 / 0 失败**；Node 13 个非前端套件 **291** + desktop **5** + `test:ui` **71**
+= **367 通过 / 0 失败**；日志 4126 行内 `LNK1104` 与 `^(error|failures:)` 零命中。
+过程中 clippy 真红一次（`if_same_then_else`，两条 `runtime.upgrade` 分支合并不足）——**改代码**；
+`LNK1104` 8 次、目标 6 个互不相同 ⇒ 宿主瞬态，**有界重试、未改代码**。
+
+**结果**：`O02` **保持 `pending`**。journal 现在有**读者**但没有**写入方**（全仓无 `UpgradeTransaction` 调用点），
+故「正在升级」不可看、「能否回滚」仍不可呈现——§30.1 第 4 条从「只缺 journal/执行状态」再收窄为
+**读者已有、写者仍缺**。「装好了仪表盘而发动机不在」不是能开，MUST NOT 记作作业语义已跑通。
+另 12 条复用 `*jobResponses` 的路由同样铸 `job_id` 而无状态来源，具名登记未修。
+见 [W138 报告](reports/2026-10-17-w138-upgrade-job-state.md)、`docs/adr/0113-upgrade-job-state.md`、
+`openspec/changes/archive/2026-10-17-w138-upgrade-job-state/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

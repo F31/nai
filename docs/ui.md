@@ -10,13 +10,15 @@
 | 审批失效 | **implemented** | `approvalFreshness` / `runApprovalDecision` | 过期、会话换代、已不在队列、无有效期 ⇒ **不发请求**并具名理由 |
 | 模式切换条件 | **unimplemented** | 缺 `POST /sessions/{id}/mode` 实现 | 契约已定义（`schemas/openapi/control.yaml:66`），控制面未实现，界面无从表达切换条件 |
 | 静音 ACK | **implemented** | `describeCommandResult` / `HARDWARE_ACK_NOTE` | 命令结果消息必须写明**控制 ACK 非硬件 ACK**，不得写成「已静音」 |
-| 升级与回滚提示 | **unimplemented** | 缺 `nai-upgrade-core` 的 **journal/执行状态来源** | **W137 已补上 plan 与成本来源**（`POST /upgrades/plan` + `ControlClient.planUpgrade`）；这条断言要的是「升级进行到哪一步、能否回滚」，那要多步事务的 journal 状态面，仍未暴露 |
+| 升级与回滚提示 | **unimplemented** | 缺真实渲染的升级面板（UI 层无 DOM）；控制面**没有执行/回滚的写入方** | **W138 已补上状态读者**：`GET /jobs/{id}` + `ControlClient.fetchJob` + `jobStatusNote` 能把「停在第几步、是不是终态」说清楚。但那一行**只能来自 journal**，而控制面的 execute/rollback 具名拒绝（缺平台安装器 `UpgradeHost`），故「能否回滚」仍不可呈现——**能读出步骤不等于能改变步骤** |
 
 未实现的两条**登记为未实现并点名缺失前置**，不伪造「已覆盖」。这条纪律本身有测试守着：`an unimplemented assertion names the prerequisite it lacks, an implemented one claims none`。
 
 > **别把 O05 与第 4 条混淆**：§30.1 第 4 条是「升级与回滚**提示**」（需要控制面暴露 `plan`/`journal` 状态来源），
 > 与之相关但**不同**的是 O05「升级**成本**显示」。后者的呈现层已在 W49 落地、来源在 W137 落地（见下）；
-> 第 4 条仍缺的**只有 journal/执行状态**那一半——「同一个缺失前置」这句话自 W137 起不再成立。
+> 第 4 条的两个来源**都已落地**（plan 在 W137、journal 读数在 W138），它现在缺的不是「读不到」，
+> 而是**没有写入方与渲染面**：execute/rollback 具名拒绝（缺平台安装器），`apps/desktop` 也没有真实渲染的升级面板。
+> 「状态读得出来」与「升级与回滚提示已实现」是两件事，MUST NOT 因为前者升级后者。
 
 ## 升级成本显示（O05 的库内部分，W49）
 
@@ -81,6 +83,12 @@
 三个键（多一个也拒）、身份为空拒、成本**只由** `parseCostEstimate` 解析（判别性用例：坏成本必须由那一处拒绝）、
 未知分项呈现为原因、部分和不是总额、`COST_DECLARED_BASIS_NOTE` 三点内容锚点（包清单 / 未验签 / 升级事务），
 以及客户端把清单交给 `/upgrades/plan` 且请求体**只有** `manifest`。
+
+`upgrade-job.test.mjs`（9 项，W138）：状态一键清——信封只认契约声明的八个键（多一个 `rollback_allowed`
+也拒）、六个必填缺一即拒、**未知步骤具名拒绝而不猜**、可选的两列只认缺省不认空串、
+`JOB_STEP_LABELS` 的键集与 `JOB_STEPS` 两集相等、状态说明分开说终态与未竟、未知步骤有「不做猜测」的出口、
+`ROLLBACK_UNAVAILABLE_NOTE` 三点内容锚点（安装器 / 只读 / 不提供回退），
+以及客户端对 `/jobs/{id}` **只发 GET 且不带请求体**、空 id 连请求都不发。
 
 ## 边界
 

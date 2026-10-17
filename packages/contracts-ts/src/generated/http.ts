@@ -848,6 +848,7 @@ export interface paths {
             };
             cookie?: never;
         };
+        /** @description Current step of one job, read from its durable journal. The step vocabulary is the upgrade transaction's own five steps and its terminal flag is derived from that vocabulary, so this surface cannot report a state the journal cannot hold. A job the journal has no record of is 404 NOT_FOUND — a different fact from the job surface being absent (503 CAPABILITY_NOT_READY). */
         get: {
             parameters: {
                 query?: never;
@@ -859,19 +860,21 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Authenticated resource status */
+                /** @description Current journal state */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ResourceView"];
+                        "application/json": components["schemas"]["JobView"];
                     };
                 };
                 400: components["responses"]["BadRequest"];
                 401: components["responses"]["Unauthorized"];
                 403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
                 409: components["responses"]["Conflict"];
+                503: components["responses"]["ServiceUnavailable"];
             };
         };
         put?: never;
@@ -1598,6 +1601,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Runs the staged transaction. Today this path refuses by name: the platform installer (the UpgradeHost that stages bytes, snapshots the data directory and swaps the manifest) has no production implementation, so no step can be advanced. It therefore mints no job id — a 202 with an id whose journal row is never written would be a fabricated observable surface. */
         post: {
             parameters: {
                 query?: never;
@@ -1623,6 +1627,7 @@ export interface paths {
                 401: components["responses"]["Unauthorized"];
                 403: components["responses"]["Forbidden"];
                 409: components["responses"]["Conflict"];
+                503: components["responses"]["ServiceUnavailable"];
             };
         };
         delete?: never;
@@ -1642,6 +1647,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Rolls one transaction back to the manifest it came from. Refused by name for the same reason as execute (no platform installer), and a journal record existing does not change that: it proves the transaction happened, not that this surface can undo it. */
         post: {
             parameters: {
                 query?: never;
@@ -1668,7 +1674,9 @@ export interface paths {
                 };
                 401: components["responses"]["Unauthorized"];
                 403: components["responses"]["Forbidden"];
+                404: components["responses"]["NotFound"];
                 409: components["responses"]["Conflict"];
+                503: components["responses"]["ServiceUnavailable"];
             };
         };
         delete?: never;
@@ -1864,6 +1872,28 @@ export interface components {
             /** @enum {string} */
             status: "accepted";
         };
+        /** @description One job as its journal records it. `step` is the upgrade transaction's own vocabulary and `terminal` is derived from it, so a reader cannot report a combination the journal cannot hold. `backup_ref` and `error_code` are optional because they are genuinely absent at some steps — a required field would force a placeholder, which is the same as a lie. */
+        JobView: {
+            job_id: string;
+            /**
+             * @description Discriminator for the shared job id space; only upgrade jobs have a journal today.
+             * @enum {string}
+             */
+            kind: "upgrade";
+            /**
+             * @description Must equal the upgrade journal step vocabulary verbatim, including order; an added step without a contract change fails the judgement rather than being swallowed by an "other" branch.
+             * @enum {string}
+             */
+            step: "prepared" | "migrated" | "checked" | "committed" | "rolled_back";
+            /** @description Derived from the step vocabulary, never decided separately here. */
+            terminal: boolean;
+            from_manifest: string;
+            to_manifest: string;
+            /** @description Present once the consistency backup was taken. */
+            backup_ref?: string;
+            /** @description Present once the transaction converged to rolled_back. */
+            error_code?: string;
+        };
         UpgradePlanRequest: {
             /** @description Package manifest as published by its vendor. Its fields are validated by schemas/config/upgrade-package.schema.json (the upgrade core reads the same file), so they are not restated here. */
             manifest: Record<string, never>;
@@ -1926,7 +1956,7 @@ export interface components {
             request_id: string;
             error: {
                 /** @enum {string} */
-                code: "INVALID_ARGUMENT" | "UNAUTHENTICATED" | "PERMISSION_DENIED" | "CAPABILITY_ABSENT" | "CAPABILITY_NOT_READY" | "VERSION_INCOMPATIBLE" | "RESOURCE_EXHAUSTED" | "DEADLINE_EXCEEDED" | "STALE_EPOCH" | "EVIDENCE_EXPIRED" | "APPROVAL_EXPIRED" | "BUDGET_EXCEEDED" | "PROVIDER_UNAVAILABLE" | "CANCELLED" | "CONFLICT" | "INTERNAL";
+                code: "INVALID_ARGUMENT" | "UNAUTHENTICATED" | "PERMISSION_DENIED" | "CAPABILITY_ABSENT" | "CAPABILITY_NOT_READY" | "VERSION_INCOMPATIBLE" | "RESOURCE_EXHAUSTED" | "DEADLINE_EXCEEDED" | "STALE_EPOCH" | "EVIDENCE_EXPIRED" | "APPROVAL_EXPIRED" | "BUDGET_EXCEEDED" | "PROVIDER_UNAVAILABLE" | "CANCELLED" | "CONFLICT" | "INTERNAL" | "NOT_FOUND";
                 category: string;
                 retryable: boolean;
                 message: string;
@@ -1975,6 +2005,24 @@ export interface components {
         };
         /** @description Stale revision/epoch, expired approval or dependency not ready */
         Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description The object named by the request has no record; NOT_FOUND, not CAPABILITY_ABSENT */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorResponse"];
+            };
+        };
+        /** @description The capability is declared but cannot run yet; the message names what is missing */
+        ServiceUnavailable: {
             headers: {
                 [name: string]: unknown;
             };

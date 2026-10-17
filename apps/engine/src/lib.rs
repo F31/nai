@@ -14,7 +14,7 @@
 use nai_contracts::v1::{FrameMetadata, FrameSlotTicket};
 #[cfg(target_os = "linux")]
 use nai_contracts::v1::{FrameSlotEvent, frame_slot_event::Event};
-use nai_control_api::{Access, ControlApi, serve};
+use nai_control_api::{Access, ControlApi, JobBackend, serve};
 #[cfg(target_os = "linux")]
 use nai_media_core::frame_slots::broker::PeerIdentity;
 use nai_media_core::frame_slots::{
@@ -55,7 +55,11 @@ pub const USAGE: &str = "Usage: nai-engine --data-root <dir> --workspace <id> --
 real devices, production IPC and real provider transport unavailable";
 
 /// Control-surface permissions of the local operator credential.
-// ⚠️ `Access::new` 允许至多 **8** 条权限，本表已**正好用满**。再增一条必须先改那个上限。
+///
+/// The count bound is no longer a bare number: it is derived from
+/// [`nai_control_api::PERMISSION_VOCABULARY`], and a name outside that vocabulary is
+/// rejected when the credential is built. So the list below is checked in two ways —
+/// it cannot exceed the vocabulary, and every entry must exist in it.
 const CONTROL_PERMISSIONS: &[&str] = &[
     "runtime.read",
     "session.read",
@@ -66,6 +70,11 @@ const CONTROL_PERMISSIONS: &[&str] = &[
     // §42.3/§42.4 记忆面。单独成权是为了可以**只**吊销记忆访问而不连带会话读取。
     "memory.read",
     "memory.forget",
+    // 升级面。W137 的 `/upgrades/plan` 与 W138 的 `/jobs/{id}` 都要求它；
+    // 不在本表里意味着那条已实现的路由对**唯一签发的令牌**永远 403——
+    // 「实现了」与「本进程能调到」是两件事，这里补的是后者。
+    "runtime.upgrade",
+    "job.read",
 ];
 const CONTROL_TTL: Duration = Duration::from_secs(3600);
 const PRODUCER: &str = "render-1";
@@ -321,6 +330,9 @@ pub async fn run(config: Config) -> Result<(), String> {
     let shared_session = composition.session();
     let emergency = composition.emergency();
     let approvals = composition.approvals().clone();
+    // 作业状态读取方：读的就是装配根同一个 store 里的 `upgrade_journal`，
+    // 不是一个复制品——复制品会让「刚写进去的那一步」看不见。
+    let jobs = Arc::new(JobBackend::new(composition.store().clone()));
     let shared = Arc::new(Mutex::new(composition));
     // §42.3/§42.4 记忆面接线：控制面拿到的后端就是这个装配根本身。
     // 策略由装配点给定（本轮无配置项，用默认：观众长期记忆**默认关闭**）。
@@ -333,6 +345,7 @@ pub async fn run(config: Config) -> Result<(), String> {
             Some(approvals),
         )
         .map_err(|error| format!("control surface rejected: {error}"))?
+        .with_jobs(jobs)
         .with_memory(memory),
     );
     let listener = TcpListener::bind(("127.0.0.1", config.control_port))

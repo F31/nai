@@ -106,7 +106,22 @@ paths:
         '409': {$ref: '#/components/responses/Conflict'}
   /jobs/{id}:
     parameters: *idParameters
-    get: {x-required-permission: job.read, responses: *readResponses}
+    get:
+      x-required-permission: job.read
+      x-implementation-status: implemented-loopback
+      description: >-
+        Current step of one job, read from its durable journal. The step vocabulary is the upgrade
+        transaction's own five steps and its terminal flag is derived from that vocabulary, so this
+        surface cannot report a state the journal cannot hold. A job the journal has no record of is
+        404 NOT_FOUND — a different fact from the job surface being absent (503 CAPABILITY_NOT_READY).
+      responses:
+        '200': {description: Current journal state, content: {application/json: {schema: {$ref: '#/components/schemas/JobView'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
   /knowledge/snapshots/{id}/publish:
     parameters: *idParameters
     post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: knowledge.publish}
@@ -172,10 +187,36 @@ paths:
         '401': {$ref: '#/components/responses/Unauthorized'}
         '403': {$ref: '#/components/responses/Forbidden'}
   /upgrades/execute:
-    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: runtime.upgrade}
+    post:
+      x-required-permission: runtime.upgrade
+      description: >-
+        Runs the staged transaction. Today this path refuses by name: the platform installer
+        (the UpgradeHost that stages bytes, snapshots the data directory and swaps the manifest) has
+        no production implementation, so no step can be advanced. It therefore mints no job id — a
+        202 with an id whose journal row is never written would be a fabricated observable surface.
+      requestBody: *resourceBody
+      responses:
+        '202': {description: 'Job accepted, not yet executed', content: {application/json: {schema: {$ref: '#/components/schemas/JobAccepted'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
   /upgrades/{id}/rollback:
     parameters: *idParameters
-    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: runtime.upgrade}
+    post:
+      x-required-permission: runtime.upgrade
+      description: >-
+        Rolls one transaction back to the manifest it came from. Refused by name for the same reason
+        as execute (no platform installer), and a journal record existing does not change that: it
+        proves the transaction happened, not that this surface can undo it.
+      requestBody: *resourceBody
+      responses:
+        '202': {description: 'Job accepted, not yet executed', content: {application/json: {schema: {$ref: '#/components/schemas/JobAccepted'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
   /backups:
     post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: storage.backup}
   /restore/preflight:
@@ -197,6 +238,8 @@ components:
     Unauthorized: {description: Identity missing or invalid, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
     Forbidden: {description: Permission denied, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
     Conflict: {description: 'Stale revision/epoch, expired approval or dependency not ready', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    NotFound: {description: 'The object named by the request has no record; NOT_FOUND, not CAPABILITY_ABSENT', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
+    ServiceUnavailable: {description: 'The capability is declared but cannot run yet; the message names what is missing', content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}}
   schemas:
     U64: {type: string, pattern: '^(0|[1-9][0-9]*)$', maxLength: 20, description: Decimal uint64; semantic validator enforces the uint64 range.}
     Command:
@@ -290,6 +333,24 @@ components:
         job_id: {type: string}
         command_id: {type: string}
         status: {type: string, enum: [accepted]}
+    JobView:
+      description: >-
+        One job as its journal records it. `step` is the upgrade transaction's own vocabulary and
+        `terminal` is derived from it, so a reader cannot report a combination the journal cannot
+        hold. `backup_ref` and `error_code` are optional because they are genuinely absent at some
+        steps — a required field would force a placeholder, which is the same as a lie.
+      type: object
+      additionalProperties: false
+      required: [job_id, kind, step, terminal, from_manifest, to_manifest]
+      properties:
+        job_id: {type: string, minLength: 1}
+        kind: {type: string, enum: [upgrade], description: 'Discriminator for the shared job id space; only upgrade jobs have a journal today.'}
+        step: {type: string, enum: [prepared, migrated, checked, committed, rolled_back], description: 'Must equal the upgrade journal step vocabulary verbatim, including order; an added step without a contract change fails the judgement rather than being swallowed by an "other" branch.'}
+        terminal: {type: boolean, description: 'Derived from the step vocabulary, never decided separately here.'}
+        from_manifest: {type: string, minLength: 1}
+        to_manifest: {type: string, minLength: 1}
+        backup_ref: {type: string, description: 'Present once the consistency backup was taken.'}
+        error_code: {type: string, description: 'Present once the transaction converged to rolled_back.'}
     UpgradePlanRequest:
       type: object
       additionalProperties: false
@@ -381,7 +442,7 @@ components:
           additionalProperties: false
           required: [code, category, retryable, message]
           properties:
-            code: {type: string, enum: [INVALID_ARGUMENT, UNAUTHENTICATED, PERMISSION_DENIED, CAPABILITY_ABSENT, CAPABILITY_NOT_READY, VERSION_INCOMPATIBLE, RESOURCE_EXHAUSTED, DEADLINE_EXCEEDED, STALE_EPOCH, EVIDENCE_EXPIRED, APPROVAL_EXPIRED, BUDGET_EXCEEDED, PROVIDER_UNAVAILABLE, CANCELLED, CONFLICT, INTERNAL]}
+            code: {type: string, enum: [INVALID_ARGUMENT, UNAUTHENTICATED, PERMISSION_DENIED, CAPABILITY_ABSENT, CAPABILITY_NOT_READY, VERSION_INCOMPATIBLE, RESOURCE_EXHAUSTED, DEADLINE_EXCEEDED, STALE_EPOCH, EVIDENCE_EXPIRED, APPROVAL_EXPIRED, BUDGET_EXCEEDED, PROVIDER_UNAVAILABLE, CANCELLED, CONFLICT, INTERNAL, NOT_FOUND]}
             category: {type: string}
             retryable: {type: boolean}
             message: {type: string}

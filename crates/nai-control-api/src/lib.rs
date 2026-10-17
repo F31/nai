@@ -39,9 +39,14 @@ impl From<PendingApproval> for PendingApprovalView {
     }
 }
 fn to_contract(error: nai_storage::StorageError) -> ContractError {
+    to_contract_as(error, "approval")
+}
+/// 同一份存储错误换个归因。`category` 是**谁的失败**，不是措辞：把作业面的故障记在
+/// `approval` 名下，值班的人会去翻审批日志。
+fn to_contract_as(error: nai_storage::StorageError, category: &str) -> ContractError {
     ContractError {
         code: error.code as i32,
-        category: "approval".into(),
+        category: category.into(),
         message: error.reason.to_string(),
         ..Default::default()
     }
@@ -143,6 +148,58 @@ impl ApprovalBackend {
     }
 }
 
+/// 作业状态读取方：**只读**持久化的 `upgrade_journal`，不推导、不缓存。
+///
+/// 缺后端时作业路由答 `CAPABILITY_NOT_READY`，MUST NOT 答「没有这条」——「我们还没有作业面」
+/// 与「我们没有这条作业的记录」是两件事，合并会让两者在界面上不可区分（ADR 0113）。
+pub struct JobBackend {
+    store: Arc<Mutex<nai_storage::Store>>,
+}
+impl JobBackend {
+    pub fn new(store: Arc<Mutex<nai_storage::Store>>) -> Self {
+        Self { store }
+    }
+    /// `Ok(None)` = 该 id 不命名任何事务；`Err` = 读取本身失败。两者 MUST NOT 折叠。
+    fn record(&self, job_id: &str) -> Result<Option<JobView>, ContractError> {
+        let operation = Operation::new(Duration::from_secs(5))
+            .map_err(|error| to_contract_as(error.into(), "job"))?;
+        let store = self.store.try_lock().map_err(|_| ContractError {
+            code: ErrorCode::Conflict as i32,
+            category: "job".into(),
+            message: "upgrade journal locked".into(),
+            ..Default::default()
+        })?;
+        store
+            .upgrade_record(&operation, job_id)
+            .map_err(|error| to_contract_as(error, "job"))
+            .map(|record| record.map(JobView::from))
+    }
+}
+
+/// journal 的一行，按契约的样子。`terminal` **由步骤自己的词汇派生**，
+/// 读取方不再判一次——否则「能不能再前进」就有了两个定义。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JobView {
+    pub job_id: String,
+    pub step: nai_storage::UpgradeStep,
+    pub from_manifest: String,
+    pub to_manifest: String,
+    pub backup_ref: Option<String>,
+    pub error_code: Option<String>,
+}
+impl From<nai_storage::UpgradeRecord> for JobView {
+    fn from(record: nai_storage::UpgradeRecord) -> Self {
+        Self {
+            job_id: record.transaction_id,
+            step: record.step,
+            from_manifest: record.from_manifest,
+            to_manifest: record.to_manifest,
+            backup_ref: record.backup_ref,
+            error_code: record.error_code,
+        }
+    }
+}
+
 /// §42.3/§42.4 记忆面结果的三态：**谁的失败**必须分开。
 ///
 /// `Rejected` 是**判定的结论**（§42.3 请求级拒绝、§42.4 陈述不实）；`Fault` 是
@@ -215,6 +272,26 @@ pub trait MemorySurface: Send + Sync {
     fn forget(&self, request: &MemoryForgetRequest) -> MemoryControlResult<MemoryPurgeReport>;
 }
 
+/// 控制面**声明的全部权限名**，也是 `Access` 条数上限的出处。
+///
+/// 这个上限原先是一个裸的 `8`，靠一句注释提醒「再增一条必须先改那个上限」。
+/// 裸数字的补集是盲区：一个拼错的权限名（`runtime.reed`）同样被接受，然后那条路由
+/// 永远 403，而**没有任何信号**说这个授权从来就没有意义——路由表里没有任何分支认它。
+/// 改成词汇表之后，「多少条」与「哪些名字」一起被封闭：条数从表的长度派生，
+/// 表外的名字在**构造时**就失败，而不是在调用时变成一个说不出原因的 403。
+pub const PERMISSION_VOCABULARY: &[&str] = &[
+    "runtime.read",
+    "session.read",
+    "media.mute",
+    "session.takeover",
+    "approval.read",
+    "approval.write",
+    "memory.read",
+    "memory.forget",
+    "runtime.upgrade",
+    "job.read",
+];
+
 /// Root-created, single device credential. Only its hash is retained here.
 pub struct Access {
     hash: Vec<u8>,
@@ -237,7 +314,10 @@ impl Access {
                 .all(|b| b.is_ascii_alphanumeric() || b"_-".contains(&b))
             || device.is_empty()
             || device.len() > 128
-            || permissions.len() > 8
+            || permissions.len() > PERMISSION_VOCABULARY.len()
+            || !permissions
+                .iter()
+                .all(|permission| PERMISSION_VOCABULARY.contains(permission))
             || ttl.is_zero()
             || ttl > Duration::from_secs(3600)
         {
@@ -302,6 +382,9 @@ pub struct ControlApi {
     /// 由 `UpgradePackage::parse` 读同一份文件。
     plan_schema: jsonschema::Validator,
     approvals: Option<Arc<ApprovalBackend>>,
+    /// 作业状态读取方。**缺失 ⇒ `CAPABILITY_NOT_READY`**，MUST NOT 退化成 404：
+    /// 那会把「这个面没接」说成「这条作业不存在」。
+    jobs: Option<Arc<JobBackend>>,
     /// §42.3/§42.4 记忆面后端。**缺失 ⇒ `CAPABILITY_NOT_READY`**，MUST NOT 假成功
     /// （与 `approvals` 同形）。
     memory: Option<Arc<dyn MemorySurface>>,
@@ -310,6 +393,11 @@ impl ControlApi {
     /// 挂上记忆面后端。链式是为了不破坏既有构造器的调用点。
     pub fn with_memory(mut self, memory: Arc<dyn MemorySurface>) -> Self {
         self.memory = Some(memory);
+        self
+    }
+    /// 挂上作业状态后端。与 `with_memory` 同一条理由：链式，不动既有构造点。
+    pub fn with_jobs(mut self, jobs: Arc<JobBackend>) -> Self {
+        self.jobs = Some(jobs);
         self
     }
     /// Owns its session. The composition root should use
@@ -376,6 +464,7 @@ impl ControlApi {
             approval_schema,
             plan_schema,
             approvals,
+            jobs: None,
             memory: None,
         })
     }
@@ -428,6 +517,8 @@ impl ControlApi {
                 Some("session.takeover")
             } else if method == hyper::Method::GET && path == "/api/v1/approvals" {
                 Some("approval.read")
+            } else if method == hyper::Method::GET && path.starts_with("/api/v1/jobs/") {
+                Some("job.read")
             } else if method == hyper::Method::POST
                 && (path.ends_with("/approve") || path.ends_with("/reject"))
                 && path.starts_with("/api/v1/approvals/")
@@ -437,7 +528,11 @@ impl ControlApi {
                 Some("memory.read")
             } else if method == hyper::Method::POST && path == "/api/v1/memory/forget" {
                 Some("memory.forget")
-            } else if method == hyper::Method::POST && path == "/api/v1/upgrades/plan" {
+            } else if method == hyper::Method::POST
+                && (path == "/api/v1/upgrades/plan"
+                    || path == "/api/v1/upgrades/execute"
+                    || (path.starts_with("/api/v1/upgrades/") && path.ends_with("/rollback")))
+            {
                 Some("runtime.upgrade")
             } else {
                 None
@@ -451,6 +546,11 @@ impl ControlApi {
                     )
                 } else if method == hyper::Method::GET && path == "/api/v1/approvals" {
                     self.approvals_list()
+                } else if method == hyper::Method::GET && path.starts_with("/api/v1/jobs/") {
+                    match path.strip_prefix("/api/v1/jobs/") {
+                        Some(id) => self.jobs_get(id),
+                        None => error(404, ErrorCode::CapabilityAbsent, "unknown control route"),
+                    }
                 } else if method == hyper::Method::GET {
                     self.status()
                 } else if request
@@ -524,6 +624,10 @@ impl ControlApi {
                         self.memory_forget(&bytes)
                     } else if path == "/api/v1/upgrades/plan" {
                         self.upgrade_plan(&bytes)
+                    } else if path == "/api/v1/upgrades/execute" {
+                        self.upgrade_refusal("execute")
+                    } else if path.starts_with("/api/v1/upgrades/") && path.ends_with("/rollback") {
+                        self.upgrade_refusal("rollback")
                     } else if let Some(action) = path.strip_prefix("/api/v1/approvals/") {
                         match action.strip_suffix("/approve") {
                             Some(id) => self.approval_action(id, true, &bytes, received),
@@ -979,6 +1083,46 @@ impl ControlApi {
         }
     }
 
+    /// 作业状态的三态。**每一态各说各的真话**：有记录就报记录，没记录报「没有这条」，
+    /// 没接后端报「这个面没接」。任何两态合并都会让第三种被读成第一种。
+    fn jobs_get(&self, job_id: &str) -> HttpResponse {
+        let Some(backend) = self.jobs.as_ref() else {
+            return error_with_category(
+                503,
+                ErrorCode::CapabilityNotReady,
+                "job",
+                "job surface not wired; the engine must inject a journal reader",
+            );
+        };
+        match backend.record(job_id) {
+            Ok(Some(view)) => reply(200, job_view_json(&view)),
+            Ok(None) => error_with_category(
+                404,
+                ErrorCode::NotFound,
+                "job",
+                "no journal record for that job id",
+            ),
+            Err(error) => from_contract(error),
+        }
+    }
+
+    /// 执行与回滚：**具名拒绝**，且不铸作业 id。
+    ///
+    /// 缺的是平台安装器（`UpgradeHost` 的生产实现），不是权限也不是参数，所以既不是 403
+    /// 也不是 400 —— 换个体、改个参数再来都没用。202 + `job_id` 会把「做不到」说成「进行中」：
+    /// 那个 id 指向的 journal 行永远不会被写。
+    fn upgrade_refusal(&self, verb: &str) -> HttpResponse {
+        error_with_category(
+            503,
+            ErrorCode::CapabilityNotReady,
+            "upgrade",
+            &format!(
+                "upgrade {verb} is unavailable: no platform installer (UpgradeHost) is injected, \
+                 so no step can be staged, snapshotted or committed; no job id is minted"
+            ),
+        )
+    }
+
     fn approvals_list(&self) -> HttpResponse {
         let Some(backend) = self.approvals.as_ref() else {
             return error(
@@ -1176,6 +1320,10 @@ fn from_contract(error: ContractError) -> HttpResponse {
     let status = match code {
         ErrorCode::Unauthenticated => 401,
         ErrorCode::PermissionDenied => 403,
+        // 「所命名的对象不存在」不是「参数不合法」：把 404 答成 400 会让调用方去改请求，
+        // 而它该做的是接受「这条不存在」。
+        ErrorCode::NotFound => 404,
+        ErrorCode::CapabilityNotReady => 503,
         ErrorCode::ResourceExhausted => 413,
         ErrorCode::DeadlineExceeded | ErrorCode::ApprovalExpired | ErrorCode::EvidenceExpired => {
             409
@@ -1183,10 +1331,36 @@ fn from_contract(error: ContractError) -> HttpResponse {
         ErrorCode::StaleEpoch | ErrorCode::Conflict => 409,
         _ => 400,
     };
+    // `category` 是**谁的失败**。生产方（`to_contract_as`）已经按面归因，这里保留它；
+    // 原先一律改写成 `control`，等于让作业面的存储故障挂在控制面名下。
+    let category = if error.category.is_empty() {
+        "control"
+    } else {
+        error.category.as_str()
+    };
     reply(
         status,
-        json!({"request_id":"","error":{"code":code.as_str_name(),"category":"control","retryable":error.retryable,"message":error.message}}),
+        json!({"request_id":"","error":{"code":code.as_str_name(),"category":category,"retryable":error.retryable,"message":error.message}}),
     )
+}
+/// 作业状态按契约的样子。可空的两列**缺省即缺省**：契约里它们是可选的，
+/// 而填一个占位值等于替 journal 编造一个它没有的备份引用。
+fn job_view_json(view: &JobView) -> Value {
+    let mut body = json!({
+        "job_id": view.job_id,
+        "kind": "upgrade",
+        "step": view.step.as_str(),
+        "terminal": view.step.terminal(),
+        "from_manifest": view.from_manifest,
+        "to_manifest": view.to_manifest,
+    });
+    if let Some(backup) = &view.backup_ref {
+        body["backup_ref"] = json!(backup);
+    }
+    if let Some(code) = &view.error_code {
+        body["error_code"] = json!(code);
+    }
+    body
 }
 fn utc_ms() -> u64 {
     std::time::SystemTime::now()
@@ -1233,9 +1407,18 @@ fn fault(code: ErrorCode) -> HttpResponse {
 }
 
 fn error(status: u16, code: ErrorCode, message: &str) -> HttpResponse {
+    error_with_category(status, code, "control", message)
+}
+/// 同一形状，换个归因。`category` 必须说明**哪一面**失败，因为它就是给人排查用的那一个字段。
+fn error_with_category(
+    status: u16,
+    code: ErrorCode,
+    category: &str,
+    message: &str,
+) -> HttpResponse {
     reply(
         status,
-        json!({"request_id":"","error":{"code":code.as_str_name(),"category":"control","retryable":false,"message":message}}),
+        json!({"request_id":"","error":{"code":code.as_str_name(),"category":category,"retryable":false,"message":message}}),
     )
 }
 fn cors_headers(response: &mut HttpResponse) {

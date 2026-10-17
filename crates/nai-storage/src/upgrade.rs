@@ -19,6 +19,23 @@ pub enum UpgradeStep {
     RolledBack,
 }
 impl UpgradeStep {
+    /// Every step, in journal order.
+    ///
+    /// This exists so the control-surface contract can be compared against the
+    /// enum instead of restating it: the judgement asserts the contract's `step`
+    /// values equal `ALL` mapped through `as_str`, so renaming a step breaks both
+    /// sides at once. What it cannot catch is *adding* a variant and forgetting to
+    /// add it here — that keeps the contract, `ALL` and the judgement in agreement
+    /// on the old answer. Changing the enum therefore MUST change this array, and
+    /// the residual blind spot is recorded in ADR 0113 rather than papered over.
+    pub const ALL: [Self; 5] = [
+        Self::Prepared,
+        Self::Migrated,
+        Self::Checked,
+        Self::Committed,
+        Self::RolledBack,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Prepared => "prepared",

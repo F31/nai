@@ -85,6 +85,58 @@ export function parseUpgradePlan(value: unknown): UpgradePlan {
   };
 }
 
+/** 作业步骤的值域。与存储的 `UpgradeStep` 五个值逐字相同（控制面侧的判据把契约与枚举钉住，
+ *  这里钉住呈现侧）。`JOB_STEP_LABELS` 的键集 MUST 等于它——两边各写一份，
+ *  就会在「契约加了一态」时继续显示旧的五态而不自知。 */
+export const JOB_STEPS = ['prepared', 'migrated', 'checked', 'committed', 'rolled_back'] as const;
+export type JobStep = (typeof JOB_STEPS)[number];
+
+/** 一条作业在 journal 里的样子。`backup_ref`/`error_code` 是可选的**缺省**，
+ *  不是空串：没备份过就没有这个键，填占位值等于替 journal 编一个它没有的备份。 */
+export type JobView = {
+  job_id: string; kind: 'upgrade'; step: JobStep; terminal: boolean;
+  from_manifest: string; to_manifest: string; backup_ref?: string; error_code?: string;
+};
+
+const JOB_KEYS = ['job_id', 'kind', 'step', 'terminal', 'from_manifest', 'to_manifest', 'backup_ref', 'error_code'] as const;
+const JOB_REQUIRED = ['job_id', 'kind', 'step', 'terminal', 'from_manifest', 'to_manifest'] as const;
+
+/**
+ * 严格解析作业状态信封。
+ *
+ * 未知步骤 MUST 被**具名拒绝**，MUST NOT 被猜成某个已知步骤：猜出来的「进行到哪一步」
+ * 比「不知道」更坏，因为它看起来像事实。
+ *
+ * `terminal` **不在客户端重算**。它是 journal 对步骤词汇派生的结论，客户端再算一遍就是
+ * 同一件事的第二处定义——词汇一改，两处就会不一致，而分歧是静默的。这里只校验它是布尔值，
+ * 然后**原样呈现服务端说的**。
+ */
+export function parseJobView(value: unknown): JobView {
+  if (!object(value)) throw new Error('作业状态结构无效：不是对象');
+  const extra = Object.keys(value).filter((key) => !JOB_KEYS.includes(key as (typeof JOB_KEYS)[number]));
+  if (extra.length > 0) throw new Error(`作业状态结构无效：含未知字段 ${extra.join(',')}`);
+  const missing = JOB_REQUIRED.filter((key) => !(key in value));
+  if (missing.length > 0) throw new Error(`作业状态结构无效：缺少字段 ${missing.join(',')}`);
+  if (typeof value.job_id !== 'string' || value.job_id.length === 0) {
+    throw new Error('作业状态结构无效：job_id 必须是非空字符串');
+  }
+  if (value.kind !== 'upgrade') throw new Error(`作业状态结构无效：未知作业类别 ${String(value.kind)}`);
+  const step = JOB_STEPS.find((candidate) => candidate === value.step);
+  if (step === undefined) throw new Error(`作业状态结构无效：未知步骤 ${String(value.step)}`);
+  if (typeof value.terminal !== 'boolean') throw new Error('作业状态结构无效：terminal 必须是布尔值');
+  for (const key of ['from_manifest', 'to_manifest'] as const) {
+    if (typeof value[key] !== 'string' || value[key].length === 0) {
+      throw new Error(`作业状态结构无效：${key} 必须是非空字符串`);
+    }
+  }
+  for (const key of ['backup_ref', 'error_code'] as const) {
+    if (value[key] !== undefined && (typeof value[key] !== 'string' || value[key].length === 0)) {
+      throw new Error(`作业状态结构无效：${key} 若出现必须是非空字符串`);
+    }
+  }
+  return value as JobView;
+}
+
 export class ControlClient {
   private readonly base: string;
   private readonly token: string;
@@ -168,6 +220,17 @@ export class ControlClient {
    */
   async planUpgrade(manifest: unknown): Promise<UpgradePlan> {
     return parseUpgradePlan(await this.request('/upgrades/plan', { manifest }));
+  }
+
+  /**
+   * 作业状态：读的是控制面从 `upgrade_journal` 取出的当前行。
+   *
+   * 三种结果由状态码分开，客户端**不猜**：200 有记录、404 该 id 不命名任何事务、
+   * 503 作业面根本没接。把它们合并成「查询失败」会让运维分不清「记录丢了」与「功能没上」。
+   */
+  async fetchJob(jobId: string): Promise<JobView> {
+    if (typeof jobId !== 'string' || jobId.length === 0) throw new Error('作业 id 必须是非空字符串');
+    return parseJobView(await this.request(`/jobs/${encodeURIComponent(jobId)}`));
   }
 
   /** 审批与命令共用同一 `SessionCommand` 骨架（`ApprovalCommand = SessionCommand & {candidate_hash, hash_algorithm}`）。 */

@@ -14,6 +14,14 @@
 | POST /approvals/{candidate_hash}/approve | approval.write | 哈希/作用域/CAS/期限复检后，原子提交审批、Approved 状态、审计与决策日志 |
 | POST /approvals/{candidate_hash}/reject | approval.write | 原子提交 Blocked 状态、审计与 critical cancellation 日志 |
 | POST /upgrades/plan | runtime.upgrade | 从请求里的**包清单**算四类成本（未知给原因，绝不给 0）；同步纯读、不下载不暂存故不建作业；**不验签**（验签在 execute 侧） |
+| GET /jobs/{id} | job.read | 该事务在 `upgrade_journal` 里的当前步骤（五值闭集）与终态标志；**只读**，不推导 |
+| POST /upgrades/execute | runtime.upgrade | **具名拒绝** 503（缺平台安装器 `UpgradeHost`），且**不**铸 `job_id` |
+| POST /upgrades/{id}/rollback | runtime.upgrade | 同上；「记录存在」只证明事务发生过，不证明本路径能撤销它 |
+
+`/jobs/{id}` 的三态**各有其名**，MUST NOT 合并：「查到了」200、`该 id 不命名任何事务` 404 `NOT_FOUND`、
+`作业面未接入` 503 `CAPABILITY_NOT_READY`。合并之后「我们这条事务丢了」与「我们还没有这个功能」
+在界面上不可区分。`terminal` 由 `UpgradeStep::terminal()` 派生，控制面不另写一份判定；
+契约的 `step` 值域与枚举逐字比对（含顺序），漂移会当场红。
 
 其他操作没有成功占位。OpenAPI 总体标记 partial-loopback-engineering，只有上述操作标记 implemented-loopback。
 没有插件或设备时 Session 为 created/standby，不标 Ready；status 的 safe_message 明确说明设备未连接。

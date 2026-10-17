@@ -1517,3 +1517,278 @@ async fn the_plan_body_limit_follows_the_manifest_limit_not_the_command_limit() 
     assert_eq!(body["error"]["code"], "RESOURCE_EXHAUSTED");
     assert!(body.get("cost").is_none(), "{body}");
 }
+
+// ---------------------------------------------------------------------------
+// 作业状态（W138）：`GET /api/v1/jobs/{id}` 读的是 `upgrade_journal` 本身。
+//   ① 三态各有其名：「查到了」「没有这条」「这个面没接」。
+//   ② 步骤与终态由枚举派生，控制面不另判一次。
+//   ③ 执行/回滚缺平台安装器 ⇒ 具名拒绝，且**不铸** job_id。
+// ---------------------------------------------------------------------------
+
+/// 一个 journal 行：`(transaction_id, step, backup_ref, error_code)`。
+type JournalRow<'a> = (
+    &'a str,
+    nai_storage::UpgradeStep,
+    Option<&'a str>,
+    Option<&'a str>,
+);
+
+fn seed_journal_store(rows: &[JournalRow<'_>]) -> (tempfile::TempDir, nai_storage::Store) {
+    let dir = tempfile::tempdir().unwrap();
+    let op = Operation::new(nai_storage::BRINGUP_OPERATION).unwrap();
+    let paths = nai_storage::DataPaths::at(dir.path()).unwrap();
+    let mut store = nai_storage::Store::open(paths, &op).unwrap();
+    for (id, step, backup, error) in rows {
+        store
+            .record_upgrade(
+                &op,
+                &nai_storage::UpgradeRecord {
+                    transaction_id: (*id).into(),
+                    from_manifest: "manifest-from".into(),
+                    to_manifest: "manifest-to".into(),
+                    step: *step,
+                    backup_ref: backup.map(Into::into),
+                    error_code: error.map(Into::into),
+                },
+            )
+            .unwrap();
+    }
+    (dir, store)
+}
+
+async fn jobs_harness(
+    permissions: &[&str],
+    rows: &[JournalRow<'_>],
+) -> (Harness2, Arc<Mutex<nai_storage::Store>>) {
+    let (dir, store) = seed_journal_store(rows);
+    let store = Arc::new(Mutex::new(store));
+    let access =
+        Arc::new(Access::new(TOKEN, "device", permissions, Duration::from_secs(10)).unwrap());
+    let api = Arc::new(
+        ControlApi::new(
+            Session::new("s", "w").unwrap(),
+            EmergencyHandle::default(),
+            access,
+        )
+        .unwrap()
+        .with_jobs(Arc::new(JobBackend::new(store.clone()))),
+    );
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let (stop, shutdown) = watch::channel(false);
+    let task = tokio::spawn(serve(listener, api.clone(), shutdown));
+    (
+        Harness2 {
+            api,
+            url,
+            client: reqwest::Client::builder()
+                .no_proxy()
+                .timeout(Duration::from_secs(2))
+                .build()
+                .unwrap(),
+            stop,
+            task,
+            _dir: dir,
+        },
+        store,
+    )
+}
+
+async fn job(h: &Harness2, id: &str) -> (u16, Value) {
+    let response = h
+        .client
+        .get(format!("{}/api/v1/jobs/{id}", h.url))
+        .bearer_auth(TOKEN)
+        .send()
+        .await
+        .unwrap();
+    let status = response.status().as_u16();
+    (status, response.json().await.unwrap())
+}
+
+#[tokio::test]
+async fn a_job_surface_that_is_not_wired_is_not_ready_not_absent() {
+    // 默认 harness 没有作业后端。此时 MUST 答「没接」，MUST NOT 答 404——
+    // 404 会把「这个面没接」说成「这条作业不存在」。
+    let h = harness(&["job.read"], Duration::from_secs(10)).await;
+    let response = h
+        .client
+        .get(format!("{}/api/v1/jobs/anything", h.url))
+        .bearer_auth(TOKEN)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 503);
+    let body: Value = response.json().await.unwrap();
+    assert_eq!(body["error"]["code"], "CAPABILITY_NOT_READY");
+    assert_eq!(body["error"]["category"], "job");
+    let message = body["error"]["message"].as_str().unwrap_or_default();
+    // 内容锚点：拒绝必须说得出**缺的是 journal 读取方**，不是「未知错误」。
+    assert!(message.contains("journal"), "{message}");
+}
+
+#[tokio::test]
+async fn a_job_the_journal_never_recorded_is_not_found() {
+    let (h, _store) = jobs_harness(&["job.read"], &[]).await;
+    let (status, body) = job(&h, "tx-that-never-was").await;
+    assert_eq!(status, 404, "{body}");
+    assert_eq!(body["error"]["code"], "NOT_FOUND");
+    // 「没有这条」MUST NOT 被一个空步骤冒充成「查到了」。
+    assert!(body.get("step").is_none(), "{body}");
+}
+
+#[tokio::test]
+async fn a_job_is_reported_as_the_journal_recorded_it_and_satisfies_the_contract() {
+    let (h, _store) = jobs_harness(
+        &["job.read"],
+        &[(
+            "tx-1",
+            nai_storage::UpgradeStep::Migrated,
+            Some("backup-1"),
+            None,
+        )],
+    )
+    .await;
+    let (status, body) = job(&h, "tx-1").await;
+    assert_eq!(status, 200, "{body}");
+    // 响应交给**它自己声明的** schema（两层 additionalProperties:false）。
+    validates("JobView", &body);
+    assert_eq!(body["job_id"], "tx-1");
+    assert_eq!(body["kind"], "upgrade");
+    assert_eq!(body["step"], "migrated");
+    assert_eq!(body["from_manifest"], "manifest-from");
+    assert_eq!(body["to_manifest"], "manifest-to");
+    assert_eq!(body["backup_ref"], "backup-1");
+}
+
+#[tokio::test]
+async fn every_step_the_journal_can_hold_is_reported_verbatim() {
+    const IDS: [&str; 5] = ["tx-0", "tx-1", "tx-2", "tx-3", "tx-4"];
+    let steps = nai_storage::UpgradeStep::ALL;
+    let rows: Vec<JournalRow> = steps
+        .iter()
+        .zip(IDS)
+        .map(|(step, id)| (id, *step, None, None))
+        .collect();
+    let (h, _store) = jobs_harness(&["job.read"], &rows).await;
+    for (step, id) in steps.iter().zip(IDS) {
+        let (status, body) = job(&h, id).await;
+        assert_eq!(status, 200, "{body}");
+        // 逐字：控制面 MUST NOT 改写、缩写或翻译步骤名。
+        assert_eq!(body["step"], step.as_str(), "step vocabulary drift");
+        // `terminal` MUST 由枚举派生——这里逐态对照它**自己的** `terminal()`，
+        // 于是「控制面另写一份判定」会在某个态上与枚举不一致。
+        assert_eq!(
+            body["terminal"],
+            json!(step.terminal()),
+            "{}",
+            step.as_str()
+        );
+        validates("JobView", &body);
+    }
+}
+
+#[tokio::test]
+async fn the_contract_step_vocabulary_equals_the_journal_enum() {
+    let schema: Value = serde_json::from_str(SCHEMAS_JSON).unwrap();
+    let declared = schema["$defs"]["JobView"]["properties"]["step"]["enum"]
+        .as_array()
+        .expect("JobView.step must declare its vocabulary");
+    let declared: Vec<&str> = declared
+        .iter()
+        .map(|value| value.as_str().unwrap())
+        .collect();
+    let from_enum: Vec<&str> = nai_storage::UpgradeStep::ALL
+        .iter()
+        .map(|step| step.as_str())
+        .collect();
+    // 顺序也钉住：一条 Requirement 的值域是**序列**，不是集合。
+    assert_eq!(
+        declared, from_enum,
+        "the contract and the journal must hold the same steps in the same order"
+    );
+    // 反向：契约里出现的每个值都必须能被枚举解出来（改名会在这里红）。
+    for name in &declared {
+        assert!(
+            nai_storage::UpgradeStep::parse(name).is_some(),
+            "{name} is not a journal step"
+        );
+    }
+}
+
+#[tokio::test]
+async fn the_backup_reference_appears_only_after_it_was_taken() {
+    // 「可选」不是「可以是空串」：没备份过就 MUST 缺这个键，而不是给一个空值。
+    let (h, _store) = jobs_harness(
+        &["job.read"],
+        &[("tx-early", nai_storage::UpgradeStep::Prepared, None, None)],
+    )
+    .await;
+    let (status, body) = job(&h, "tx-early").await;
+    assert_eq!(status, 200, "{body}");
+    validates("JobView", &body);
+    assert!(body.get("backup_ref").is_none(), "{body}");
+}
+
+#[tokio::test]
+async fn the_jobs_route_needs_the_job_permission() {
+    let (h, _store) = jobs_harness(
+        &["runtime.read"],
+        &[("tx-1", nai_storage::UpgradeStep::Prepared, None, None)],
+    )
+    .await;
+    let (status, body) = job(&h, "tx-1").await;
+    assert_eq!(status, 403);
+    assert_eq!(body["error"]["code"], "PERMISSION_DENIED");
+    // 被拒的响应里 MUST NOT 有步骤：403 与「查到了但是空的」必须分得开。
+    assert!(body.get("step").is_none(), "{body}");
+}
+
+#[tokio::test]
+async fn execute_and_rollback_refuse_by_name_and_mint_no_job_id() {
+    let h = harness(&["runtime.upgrade"], Duration::from_secs(10)).await;
+    let command = json!({
+        "command_id": "c1",
+        "expected_state_revision": "0",
+        "ttl_ms": 10000,
+        "resource_ref": "pkg.demo",
+    });
+    for route in ["/api/v1/upgrades/execute", "/api/v1/upgrades/tx-1/rollback"] {
+        let response = post(&h, route, &command).await;
+        let status = response.status().as_u16();
+        let body: Value = response.json().await.unwrap();
+        assert_eq!(status, 503, "{route}: {body}");
+        assert_eq!(body["error"]["code"], "CAPABILITY_NOT_READY");
+        assert_eq!(body["error"]["category"], "upgrade");
+        // **不铸** job_id：一个指向永远不会被写的 journal 行的 id 是伪造可观测面。
+        assert!(body.get("job_id").is_none(), "{route}: {body}");
+        // 内容锚点：拒绝必须点名缺**平台安装器**，只判「非空」等于没判。
+        let message = body["error"]["message"].as_str().unwrap_or_default();
+        assert!(message.contains("UpgradeHost"), "{route}: {message}");
+        assert!(message.contains("installer"), "{route}: {message}");
+    }
+}
+
+#[tokio::test]
+async fn an_id_that_cannot_name_a_transaction_is_a_bad_argument() {
+    // 超长 id 连**命名**都做不到（存储自己拒绝）。这不是「没有这条」，是请求不合法。
+    let (h, _store) = jobs_harness(&["job.read"], &[]).await;
+    let (status, body) = job(&h, &"x".repeat(600)).await;
+    assert_eq!(status, 400, "{body}");
+    assert_eq!(body["error"]["code"], "INVALID_ARGUMENT");
+}
+
+#[tokio::test]
+async fn a_locked_journal_is_a_conflict_not_a_missing_job() {
+    // 读不到 ≠ 没有。「存储正忙」被答成 404 会让运维去查一条根本不存在的记录。
+    let (h, store) = jobs_harness(
+        &["job.read"],
+        &[("tx-1", nai_storage::UpgradeStep::Prepared, None, None)],
+    )
+    .await;
+    let held = store.try_lock();
+    assert!(held.is_ok(), "the test must hold the journal lock");
+    let (status, body) = job(&h, "tx-1").await;
+    assert_eq!(status, 409, "{body}");
+    assert_eq!(body["error"]["code"], "CONFLICT");
+}

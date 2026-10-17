@@ -50,6 +50,41 @@ export const COST_PARTIAL_NOTE = '非总额';
  */
 export const COST_DECLARED_BASIS_NOTE = '金额来自包清单声明，未验签；执行前由升级事务校验签名';
 
+/**
+ * 五个升级步骤的中文标签。
+ *
+ * 键集 MUST 与 `control.ts` 的 `JOB_STEPS` **逐字相等**（判据断言两集相等）：
+ * 只写四个、或写成一个契约里没有的名字，都会让界面在某个真实状态上说不出话。
+ */
+export const JOB_STEP_LABELS: Readonly<Record<string, string>> = {
+  prepared: '已准备（尚未迁移）',
+  migrated: '已迁移（待自检）',
+  checked: '已自检（待提交）',
+  committed: '已提交（升级完成）',
+  rolled_back: '已回滚（终态）',
+};
+
+/**
+ * 执行与回滚的可用性边界，必须与状态一起呈现。
+ *
+ * 控制面这两条路径当前**具名拒绝**（缺平台安装器，见 ADR 0113）。界面若把「事务停在第几步」
+ * 画成「可以点回退」，就把一句做不到的承诺画成了按钮。**能读出步骤不等于能改变步骤。**
+ */
+export const ROLLBACK_UNAVAILABLE_NOTE = '执行与回滚尚未接入（缺平台安装器）；本面板只读状态，不提供回退';
+
+/**
+ * 一句话说清「进行到哪一步、是不是终态」。
+ *
+ * 入参按**结构**取（`step` 是 `string` 而不是 `JobStep`），这样「不认识的步骤」在类型上
+ * 仍然可达——它必须有一个诚实的出口，而不是被类型系统掩盖后落到某个默认标签。
+ * 未知步骤 MUST 具名报缺口，MUST NOT 猜成某个已知步骤。
+ */
+export function jobStatusNote(view: { job_id: string; step: string; terminal: boolean }): string {
+  const label = JOB_STEP_LABELS[view.step];
+  if (label === undefined) return `升级事务 ${view.job_id} 处于未知步骤「${view.step}」；不做猜测`;
+  return `升级事务 ${view.job_id} 处于「${label}」${view.terminal ? '；已到终态，不会再有下一步' : '；尚未到终态'}`;
+}
+
 const LINE_KEYS = ['known', 'unknown'] as const;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

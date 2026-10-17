@@ -318,6 +318,33 @@ cargo xtask test --suite contracts
 文件格式解析器/OCR、完整导入 UI 和媒体 preplay 装配不由这些存储/网关方法冒充实现。
 D09 已满足本规格并归档；真实供应商接入仍需有效凭据与独立认证。
 
+## 升级作业状态：读者已接线，写者仍缺（W138）
+
+`job` 这个 id 空间在契约里一直存在（`/jobs/{id}`、`JobAccepted`、`*jobResponses`），但**两头都是空的**：
+14 条路由复用 `202 + job_id` 而没有任何一条有可轮询的状态来源，`/jobs/{id}` 在控制面**零分支**
+（落到 404 `CapabilityAbsent`）。W138 的做法**不是**给它们都补一个 `JobView`，而是先问「哪一条真有状态来源」：
+
+- **真有**：`upgrade_journal`（`nai-storage`，五态 `prepared→migrated→checked→committed` / `rolled_back`，
+  `Store` 本身就是 `UpgradeJournal` 的生产实现）⇒ `GET /jobs/{id}` 读它，`terminal` 由
+  `UpgradeStep::terminal()` 派生，契约值域与 `UpgradeStep::ALL` **逐字含顺序**比对。
+- **真没有**：`impl UpgradeHost for` 全仓只有 `rehearsal.rs` 的 `RehearsalHost`（不持字节、不落盘）⇒
+  `/upgrades/execute`、`/upgrades/{id}/rollback` **具名拒绝**（503，点名缺平台安装器），**不铸** `job_id`。
+  铸一个指向永远不会被写的 journal 行的 id，就是把「做不到」包装成「进行中」。
+- **其余 12 条**同族路由各自缺**自己的**状态表，具名登记、不修——一起改等于用同一条拒绝掩盖 12 个缺口。
+
+三条可复用的判据：
+
+1. **「没有这条」与「这个面没接」必须是两个码**。现有 `ErrorCode` 16 个值里没有「所命名的对象不存在」，
+   于是这两件事只能共用一个响应。补 `NOT_FOUND = 17` 不是加一个枚举值，是让一个**已经存在但不可表示**
+   的状态有出口——`descriptor.test.mjs` 的「openapi 枚举 == proto 枚举」耦合断言会逼两边同时改。
+2. **靠一个裸数字设上限，补集是盲区**。`Access::new` 原写 `permissions.len() > 8`，注释提醒「再增一条先改上限」。
+   但 8 只管**数量**：一个拼错的 `runtime.reed` 同样被接受，然后那条路由永远 403，**没有任何信号**说这份授权
+   从来无意义。改成从 `PERMISSION_VOCABULARY` 派生并在构造时拒绝表外名字，数量与值域一起封闭。
+3. **实现了 ≠ 本进程调得到**。引擎 `CONTROL_PERMISSIONS` 用满 8 条且**不含** `runtime.upgrade` ⇒
+   W137 的 `plan` 对**唯一签发的令牌**恒 403。这类缺口在「控制面用例自造 Access」的测试里永远看不见。
+
+同族遗漏仍具名在册：12 条 `*jobResponses` 路由没有状态来源；`apps/desktop` 没有渲染的升级面板。
+
 ## 勘误：本机 protoc 前提已解除（W137）
 
 W136 结尾把 `protoc 3.21.12`（`libprotoc 3.21.12`，逐字匹配 `xtask/src/schema.rs::generate()`
