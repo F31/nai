@@ -45,7 +45,7 @@ import {
   MET_STATUSES,
   UNMET_STATUSES,
 } from '../scripts/contracts/pending-decisions.mjs';
-import { readTrackedPaths } from '../scripts/contracts/git-index.mjs';
+import { readTrackedPaths, readUntrackedPaths } from '../scripts/contracts/git-index.mjs';
 import {
   TEST_EXTENSIONS,
   TEST_TIERS,
@@ -57,6 +57,8 @@ import {
   siteShapeErrors,
   extensionErrors,
   reachabilityErrors,
+  pendingRegistrationErrors,
+  pendingTestFiles,
 } from '../scripts/contracts/test-reachability.mjs';
 
 /// 基线文档只读一次：后面的注入用例都在同一份文本上做「最小改动」。
@@ -2146,12 +2148,12 @@ test('the site table is pinned verbatim and the ledger is declared empty', () =>
   assert.deepEqual(TEST_TIERS, ['portable', 'full', 'ci']);
   assert.deepEqual(LOCALLY_UNREACHABLE, [], 'the unreachable ledger is declared empty by this round');
   assert.deepEqual(siteShapeErrors(), [], 'the shipped site table must be self-consistent');
-  // 十六个站点，逐字写死 id：新增/删除站点会让这条红，而不是静静地改变覆盖集。
+  // 十七个站点，逐字写死 id：新增/删除站点会让这条红，而不是静静地改变覆盖集。
   // （W95 新增 `xtask-engineering-workflow`、W96 新增 `xtask-engineering-xtask-commands`、
   // W97 新增 `xtask-engineering-gate-coverage`、W98 新增 `xtask-engineering-npm-scripts`、
   // W99 新增 `xtask-engineering-tier-payment`、W100 新增 `xtask-engineering-step-config`、
   // W101 新增 `xtask-engineering-step-target`、W102 新增 `xtask-engineering-workflow-triggers`、
-  // W134 新增 `xtask-engineering-step-overlap`
+  // W134 新增 `xtask-engineering-step-overlap`、W135 新增 `xtask-pending-registration`
   // ——它们正是这条断言的应有行为：新增一个测试文件而不登记站点，会让 W84 的闭世界与这条
   // 逐字清单**同时**红。）
   assert.deepEqual(
@@ -2172,6 +2174,7 @@ test('the site table is pinned verbatim and the ledger is declared empty', () =>
       'xtask-engineering-workflow',
       'xtask-engineering-workflow-triggers',
       'xtask-engineering-xtask-commands',
+      'xtask-pending-registration',
       'xtask-registry',
     ],
   );
@@ -2226,6 +2229,42 @@ test('the real repository reaches every tracked test file', async () => {
     for (const filePath of resolveSite(site, tracked.paths)) covered.add(filePath);
   }
   assert.ok(covered.size >= 9, `expected at least nine covered test files, got ${covered.size}`);
+});
+
+/// W135：**提交集的另一半**——「未跟踪且未被忽略」的测试文件 MUST 已经登记。
+///
+/// 上面的 F0 只看得见 `.git/index`。W134 的缺陷正好落在这条缝里：新测试文件未登记、且还没
+/// `git add` ⇒ 闭世界看不见它 ⇒ **本机全绿、CI 一 checkout 就红**（run `39016233527` 两平台
+/// `failure`，170 秒早退）。补集判据把这一半补上，两条合起来才是完整提交集。
+///
+/// ⚠️ 这条**依赖 `git` 可执行**（忽略语义只能问 git）——读取失败 MUST 具名失败，MUST NOT
+/// 当成空集：把「不知道」当成「没有」正是 W134 那个缺陷的形状。
+test('the real repository reaches every test file that is about to be committed', async () => {
+  const tracked = await readTrackedPaths('.');
+  assert.equal(tracked.ok, true, tracked.detail ?? 'the tracked-path set must be readable');
+  const pending = await readUntrackedPaths('.');
+  assert.equal(
+    pending.ok,
+    true,
+    `${pending.reason ?? ''} ${pending.detail ?? ''} — without the untracked set the pending half of the commit set is unknowable, and an unknowable set MUST fail rather than pass`,
+  );
+
+  const errors = pendingRegistrationErrors({
+    present: pending.paths,
+    tracked: tracked.paths,
+    sites: TEST_REGISTRATION_SITES,
+  });
+  assert.deepEqual(errors, [], 'a test file that is about to be committed must already be registered');
+
+  // **非空洞**：扫到的条数必须报出来，否则「空错误」可能只是「什么都没扫」。
+  const { scanned, candidates } = pendingTestFiles(pending.paths, tracked.paths);
+  assert.ok(scanned > 0, 'the untracked scan returned nothing — an empty input makes the pending judge vacuous');
+  // 独立复算（不是把判据的返回值再看一眼）：每个「待登记」候选都必须被某个站点的 marker 覆盖。
+  // 它对**空集恒真**，所以上一条 `scanned > 0` 是它的前提——两条必须成对。
+  const uncovered = candidates.filter(
+    filePath => !TEST_REGISTRATION_SITES.some(site => markerMatcher(site).matches(filePath)),
+  );
+  assert.deepEqual(uncovered, [], `pending test files nobody registered: ${JSON.stringify(uncovered)}`);
 });
 
 // ── W122 · `tested` 的证据可核验（admission-registry：Honest backfill mapping with traceable evidence）──

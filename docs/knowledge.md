@@ -261,6 +261,20 @@ MUST 分开——后者返回 `null` 而非空集，空集会让包含关系对�
 锚点 MUST 改到**单行 `- name:`** 的幸存步并补「锚点 MUST 命中」的现测。另实测：`ciXtaskCommands`
 **不剥 YAML 注释**，注释里连写 `cargo`+`xtask` 会被当成一条真实 CI 命令（本轮只避开，洞未修）。见
 [W134 报告](reports/2026-10-17-w134-ci-step-coverage.md)。）
+（W135 补的是**时间的盲区**：W134 修了「漏登记的那一个文件」，没修「漏登记」这一类。提交集 =
+索引集 ∪ 补集，而 W84 的闭世界**只读索引**（`resolveSite` 刻意不用 `readdir`——未跟踪 ⇒ 尚未承诺为
+仓库内容 ⇒ 不能充当覆盖证据，W74/W75）；可 §5 的暂存命令是 `git add -A`，它会把补集收进提交
+⇒ 未登记的测试文件**提交前对判据结构性不可见、提交后立刻可见**：本机全绿、CI 一 checkout 就红，
+且红在一条与该文件无关的断言上。补法是**正交加法**：新读取器只读补集（`git ls-files --others
+--exclude-standard`），并断言 `present ∩ tracked == ∅`，两条判据合起来恰好覆盖提交集一次；
+**MUST NOT** 把 `resolveSite` 的输入换成工作区——那会让**未跟踪的伪造消费者**重新进入覆盖集，
+正是 W74 F2 要修的东西。⚠️ 三条方法论：①**「不可解析 ⇒ 具名失败」在新增读取器上同样成立**——
+派生失败若返回空集，就把「不知道」写成了「没有」，这正是本轮的缺陷形状；②**非空洞要两条前提**：
+`scanned > 0` 只证明输入非空，**不证明清扫谓词不惰性**（注入实测：关掉 `candidates.push` 后真实仓库
+用例与 F0 同时绿，只有喂具名路径的单元用例会红）⇒ 合成输入前提 MUST 钉在真实仓库用例里；
+③**命名会撞上安全扫描**：`xtask/src/secrets.rs` 的 `sk-` 前缀规则 `min_len: 32` 会把
+`xtask-engineering-pending-registration`（`sk-` 后恰好 32 字符）判成 OpenAI 凭据 ⇒ 处置是**命名避让**
+（id 改短），MUST NOT 加豁免削弱判据。见 [W135 报告](reports/2026-10-17-w135-pending-registration.md)。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。

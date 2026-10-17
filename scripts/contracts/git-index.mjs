@@ -10,10 +10,18 @@
 /// 正是「**尚未承诺**为仓库内容」。`git ls-files --cached --others --exclude-standard`
 /// 会把未跟踪但未被忽略的文件收进来 ⇒ 那个伪造的消费者也在集合里，**修不了 F2**。
 ///
+/// ⚠️ 上面那条只对**覆盖**成立（W135 补注）：`git add -A` 确实会把未跟踪且未被忽略的文件
+/// 收进提交 ⇒ 「未登记的新测试文件」这一半由 `readUntrackedPaths` + `pendingRegistrationErrors`
+/// 单独判，两条判据合起来覆盖整个提交集、且互不重叠（前者判「已承诺的」，后者判「即将承诺的」）。
+///
 /// 为什么是「路径」而不是「内容」：已跟踪文件的**路径**恒在索引里，与工作区内容是否已被修改
 /// 无关 ⇒ 不会误伤「改了但还没 `git add`」的老文件。
 import { readFile, stat } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import path from 'node:path';
+
+const execFileAsync = promisify(execFile);
 
 const HEADER_BYTES = 12;
 /// v2/v3/v4 的固定头长度：ctime(8)+mtime(8)+dev/ino(8)+mode(4)+uid/gid(8)+size(4)+object(20)+flags(2)
@@ -148,4 +156,40 @@ export async function readTrackedPaths(root = '.') {
 /// 失败原因 → 一句可诊断的话。守卫在**前提缺失**时必须红，且红得说得清是哪一类。
 export function describeFailure(failure) {
   return `${failure.reason} (${failure.detail}) — the guard asserts that a schema is read by a file that is in the repository; without the tracked-path set it cannot tell repository content from a stray file in the working tree`;
+}
+
+/// 工作区里**未跟踪且未被 git 忽略**的路径——`git add -A` 会收进提交、而 `.git/index` 里还没有的
+/// 那一半（W135）。
+///
+/// ⚠️ **这是本模块唯一派生进程的地方**，与开头的立场（W74：子进程能力是宿主瞬态）**有意冲突**。
+/// 理由与代价都留在这里，而不是留在一句「为了简单」：
+/// - **必须问 git 的理由**：`未跟踪 − 被忽略` 只能由 git 的忽略语义给出（`.gitignore` 的分层
+///   规则、`.git/info/exclude`、全局 excludes、`core.excludesFile`）。自己实现那套匹配会造出一个
+///   **更大的盲区**——一份「我以为被忽略了的文件其实会被提交」的清单，比没有这份清单更坏。
+/// - **代价**：宿主若不能派生进程（W74 观测过 `EBUSY`），这里会失败。调用方 MUST 把它当
+///   **具名失败**报出来（`ok: false` + `reason`），MUST NOT 当成空集——把「不知道」当成
+///   「没有」正是 W134 那个缺陷的形状（本机看不见 ⇒ 本机全绿）。
+/// - 本条**不**推翻开头的立场：覆盖集仍只按 `.git/index` 算（未跟踪的东西不能充当覆盖证据）。
+///   这里读的是**补集**，与覆盖判据互不重叠，由 `pendingRegistrationErrors` 断言。
+export async function readUntrackedPaths(root = '.') {
+  try {
+    const { stdout } = await execFileAsync(
+      'git',
+      ['ls-files', '--others', '--exclude-standard', '-z'],
+      { cwd: root, maxBuffer: 256 * 1024 * 1024, encoding: 'buffer' },
+    );
+    const paths = new Set();
+    // `-z`：路径之间以 NUL 分隔，不做引号转义（非 ASCII 路径不会被转成八进制）。
+    for (const name of stdout.toString('utf8').split('\0')) {
+      if (name !== '') paths.add(name);
+    }
+    return { ok: true, paths };
+  } catch (error) {
+    const code = error && error.code !== undefined ? error.code : 'unknown';
+    return {
+      ok: false,
+      reason: 'spawn',
+      detail: `git ls-files --others --exclude-standard failed (${code})`,
+    };
+  }
 }

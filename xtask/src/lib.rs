@@ -109,6 +109,15 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
     // 覆盖类别是闭集（`gate` / `suite` / `non-test-target`），域外取值具名失败。
     // 同样纯静态：解析 workflow、本文件与成员清单，不需要 protoc。
     schema::node(root, &["--test", "tests/contracts/step-overlap.test.mjs"])?;
+    // **提交集的另一半**（W135）：上面全部判据的输入都是 `.git/index`，于是「新测试文件还没
+    // `git add`」这一半对它们**结构性不可见**——W134 的缺陷正是这样在本机全绿、上一到 CI 就两平台
+    // 同时红（run `39016233527`，170 秒早退）。本步判「未跟踪且未被忽略」的测试文件 MUST 已经
+    // 登记；它需要 `git`（忽略语义只能问 git），读不到就**具名失败**，MUST NOT 当成空集。
+    // 同样纯静态：一次 `git ls-files --others --exclude-standard -z` + 本文件的 marker 表，不编译。
+    schema::node(
+        root,
+        &["--test", "tests/contracts/pending-registration.test.mjs"],
+    )?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,

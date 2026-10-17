@@ -2389,6 +2389,36 @@ dispatch 臂与门控区域**算**出来；覆盖类别闭集 `gate`/`suite`/`no
 
 见 [W134 报告](reports/2026-10-17-w134-ci-step-coverage.md)、`openspec/changes/w134-ci-step-coverage/`。
 
+### W135（2026-10-17）：「未跟踪」不等于「未登记」——补提交集的另一半
+
+**缝**：W134 收口时 CI 抓到的东西本机永远看不见（run `39016233527` 两平台红，annotation 指向
+`the reachability closed world must hold for the real repository`）。W134 修的是**实例**，类还开着：
+提交集 = 索引集 ∪ 补集，而 W84 的闭世界**只读索引**（`resolveSite` 刻意不用 `readdir`，W74/W75：
+未跟踪 ⇒ 尚未承诺为仓库内容 ⇒ 不能充当覆盖证据）。那条理由对**覆盖**成立、对**提交**不成立——
+§5 的暂存命令是 `git add -A`，它会把补集收进提交 ⇒ 未登记的测试文件提交前对判据**结构性不可见**，
+提交后立刻可见 ⇒ 本机绿、CI 一 checkout 就红，且红在一条与该文件无关的断言上。
+现测补集：**24,796** 条未跟踪且未被忽略（全部来自未进 `.gitignore` 的 `target-check/`），其中 test-like **0** 条。
+
+**改动**：新增 `readUntrackedPaths`（`git-index.mjs`，该模块**唯一**派生进程处，例外与代价写在原地）
++ `pendingTestFiles` / `pendingRegistrationErrors`（`test-reachability.mjs`）；`present ∩ tracked ≠ ∅`
+具名失败（补集必须是补集）；接线到 `engineering_checks`、站点表（`xtask-pending-registration`）与
+registry 的真实仓库用例（56 → 57 条）。**刻意不替换** `resolveSite` 的输入——换成工作区会让
+**未跟踪的伪造消费者**重新进入覆盖集，那正是 W74 F2 要修的东西；本轮是正交加法，不是替换。
+
+**判据**：`tests/contracts/pending-registration.test.mjs` **11 条**；注入 **I1–I8** 全真红，
+其中 **I1 不打补丁**——工作区放一个未登记未跟踪的探针文件，新判据红、**旧闭世界 F0 依旧全绿**（盲区现场复现）。
+**I3 抓出一个真空洞**：清扫谓词惰性时真实仓库用例与 F0 同时绿 ⇒ 补「清扫不惰性」前提（合成输入）后 4 红。
+**现场证据**：本轮的测试文件诞生时自己就是未跟踪未登记的新文件，判据**先抓住了它自己**，错误文本逐字点名并给修法。
+
+**门控**：`check --profile full` **绿**（`EXIT=0`，143s；Rust **1085/0**、Node **348/0**、15 套件、
+错误类 0、前端全通过）。三次里前两次红、**成因不同**：①`LNK1104`（宿主瞬态，`tasklist` 无残留）；
+②**真实缺陷**——`secrets::tests::the_workspace_itself_is_clean` 报 5 处 `openai-style`，全部来自新站点 id
+`xtask-engineering-pending-registration`（`sk-` 后恰好 32 字符 = `min_len: 32`）⇒ id 改短为
+`xtask-pending-registration`，单跑该用例 46.20s 通过，**判据未改**（命名避让，不加豁免）。
+
+见 [W135 报告](reports/2026-10-17-w135-pending-registration.md)、
+`openspec/changes/archive/2026-10-17-w135-pending-registration/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

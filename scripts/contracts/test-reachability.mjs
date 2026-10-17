@@ -133,6 +133,17 @@ export const TEST_REGISTRATION_SITES = [
     tier: 'portable',
   },
   {
+    // W135：**补集的判据**——「未跟踪且未被忽略」的测试文件也 MUST 登记。W134 那条站点只解决了
+    // 实例（把漏登记的文件补上），没解决**类**：闭世界的输入是 `.git/index`，新文件在 `git add`
+    // 之前对它不可见，于是本机全绿、CI 红。这条判据自己也在它的受审对象里（自指但不成环：
+    // 它读的是**工作区磁盘**，本行只是一个 marker）。
+    id: 'xtask-pending-registration',
+    host: 'xtask/src/lib.rs',
+    marker: 'tests/contracts/pending-registration.test.mjs',
+    base: '.',
+    tier: 'portable',
+  },
+  {
     id: 'xtask-contracts-suite',
     host: 'xtask/src/schema.rs',
     marker: 'tests/contracts/descriptor.test.mjs',
@@ -235,9 +246,89 @@ export function markerMatcher(site) {
 ///
 /// 刻意**不**用 `readdir`：覆盖集必须按**仓库成员**（`.git/index`）计算，与工作区里
 /// 有无散落文件无关（W75 的仓库范围纪律）。这同时让「未跟踪的探针文件」不参与覆盖集。
+///
+/// ⚠️ 这条只回答「**已承诺**的东西谁覆盖它」（W135 补注）。「**即将承诺**却没人登记」
+/// 是另一半，由 `pendingRegistrationErrors` 判——`git add -A` 会把未跟踪且未被忽略的
+/// 文件收进提交，那一半对这里**结构性不可见**。
 export function resolveSite(site, tracked) {
   const matcher = markerMatcher(site);
   return [...tracked].filter(filePath => matcher.matches(filePath)).sort();
+}
+
+/// 「待登记」的那一半：**未跟踪且未被忽略**的 test-like 文件（= 提交集 \ 索引集）。
+///
+/// 返回 `{scanned, candidates}` 而不是裸数组：「一个都没扫到」与「扫到了但都合格」是两件事，
+/// 前者必须被清点成 `0` 再判，MUST NOT 短路成跳过（W135 的空集纪律）。
+export function pendingTestFiles(present, tracked) {
+  const scanned = present.size;
+  const candidates = [];
+  for (const filePath of present) {
+    if (tracked.has(filePath)) continue;
+    if (!looksLikeTest(filePath)) continue;
+    candidates.push(filePath);
+  }
+  return { scanned, candidates: candidates.sort() };
+}
+
+/// **补集判据**：一个已经在工作区、且 `git add -A` 会收进提交的测试文件，MUST 已经被某个
+/// 登记站点覆盖（W135）。
+///
+/// 它守的是 W134 实测过的那个缺陷：新测试文件**未登记**、且还没 `git add` ⇒ `.git/index` 里没有
+/// ⇒ `reachabilityErrors` 的闭世界**看不见它** ⇒ 本机门控全绿、CI 一 checkout 就红
+/// （run `39016233527` 两平台 `failure`，170 秒早退）。
+/// ⇒ 覆盖集与补集是**同一件事的两半**：`reachabilityErrors` 判「已承诺的谁覆盖它」，
+/// 这里判「即将承诺的有没有人登记」。两条合起来才是完整的提交集。
+///
+/// `deps`：
+/// - `present`：**未跟踪且未被忽略**路径的 `Set`（来自 `readUntrackedPaths`）；
+/// - `tracked`：**已跟踪**路径的 `Set`（来自 `readTrackedPaths`）——用来断言两集真的不相交；
+/// - `sites`：站点表（默认 `TEST_REGISTRATION_SITES`）。
+export function pendingRegistrationErrors(deps = {}) {
+  const { present, tracked } = deps;
+  const sites = deps.sites ?? TEST_REGISTRATION_SITES;
+  const errors = [];
+
+  if (!(present instanceof Set)) {
+    errors.push('pending registration requires the untracked-path set and it was not provided');
+  }
+  if (!(tracked instanceof Set)) {
+    errors.push('pending registration requires the tracked-path set and it was not provided');
+  }
+  if (errors.length > 0) return errors;
+
+  // **补集必须真的是补集**：调用方若把整个提交集塞进来，这里会与闭世界重复判同一批文件
+  // ——「同一件事 MUST NOT 两处定义」的另一面。
+  const overlap = [...present].filter(filePath => tracked.has(filePath));
+  if (overlap.length > 0) {
+    errors.push(
+      `the pending set overlaps .git/index at ${JSON.stringify(overlap.slice(0, 3).sort())}` +
+        `${overlap.length > 3 ? ` (and ${overlap.length - 3} more)` : ''} — pending means "not yet in the index"; ` +
+        'passing the whole commit set here would judge the same files twice',
+    );
+  }
+
+  const { candidates } = pendingTestFiles(present, tracked);
+  for (const filePath of candidates) {
+    if (!isTestFile(filePath)) {
+      const tail = filePath.slice(filePath.lastIndexOf('.'));
+      errors.push(
+        `test-like file ${filePath} is about to be committed with extension ${tail}, which is not one of ` +
+          `${TEST_EXTENSIONS.join(', ')} — a test extension nobody scans is a blind spot`,
+      );
+      continue;
+    }
+    const covered = sites.some(site => markerMatcher(site).matches(filePath));
+    if (!covered) {
+      errors.push(
+        `test file ${filePath} is in the working tree but not in .git/index, and no registration site covers it — ` +
+          'the closed world only reads the index, so until it is registered this file runs nowhere locally and ' +
+          'the gate stays green while CI turns red on the very first checkout: register it in ' +
+          'TEST_REGISTRATION_SITES, add its gate line, and `git add` it in the same commit',
+      );
+    }
+  }
+
+  return errors;
 }
 
 /// 站点表自身的一致性。与 `shapeErrors()` 同一条纪律：挡的是**未来某次合法编辑**
