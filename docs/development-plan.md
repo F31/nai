@@ -2458,6 +2458,8 @@ CI 干净 checkout 是 0 条）⇒ 前提在 CI 上恒假。删掉该断言，�
 `error deleting lock file for incremental compilation session directory … 拒绝访问 (os error 5)`
 ⇒ 宿主持有增量会话目录，非代码）⇒ `CARGO_INCREMENTAL=0` + `CARGO_BUILD_JOBS=1`（**预链接与门控都带**）
 后一次绿：**6m05s**、`EXIT=0`、`LNK1104` 0，Rust **1103 / 0**、Node **348 / 0**（15 套件）、前端 6 步全通过。
+CI run **218**（`39032204063`）**两平台 success**（ubuntu 19/20 步、windows 17/20 步，跳过项全是平台专属
+或「仅失败时执行」的步骤，**bad 0**）⇒ 本机的增量关闭是**环境适配**，未在 CI 侧复现、也没放宽判据。
 
 **结果**：`B07` `pending → implemented`（**不升 `tested`**：`apps/engine` 0 命中，§5.7 五面重校验、
 TTS 时长与播放采样、段落内容与话术三类真实产生者不在仓库内）。见

@@ -156,3 +156,20 @@
 3. **段落内容与话术、TTS 时长、播放采样**：§53 明确属内容创作与运行时，本轮无任何主张。
 4. **`PitchHistory` 没有「被拒的进入也算历史」的选项**：刻意不提供，否则冷却可被绕过。
 5. **`evaluate_pitch` 其余三条 row 的语义未动**：只改 row 3 的读数来源。
+
+## 六、CI 观测（run 218 / `39032204063`，两平台 success）
+
+推送 `6cc17b4cd05d841504f506e9374cd2673aee8991` 后，按「唯一查询参数 + `Cache-Control: no-cache` +
+回读 `head_sha` == 推送 SHA」三件齐观测：
+
+| 平台 | 结论 | 成功步 | 跳过步 | bad |
+|---|---|---|---|---|
+| `foundation (ubuntu-24.04)` | **success** | 19 / 20 | `Publish the gate failure summary as annotations`（仅失败时执行） | **0** |
+| `foundation (windows-latest)` | **success** | 17 / 20 | 同上 + `Install Linux C++ protobuf runtime`、`Full three-language contract suite (Linux C++ toolchain)`（Linux 腿专属） | **0** |
+
+- `status: completed` / `conclusion: success` / `run_attempt: 1` / `head_sha` 回读 == `6cc17b4…`；
+- **逐平台看完整步骤序列**（不只看「非 success」）：两腿的跳过项都是**平台专属或失败才跑**的步骤，
+  没有一条是「本该跑却被跳过」；
+- ⇒ §4.3 的双平台差距**没有在 CI 侧复现**：宿主锁冲突是本机 `target/debug/incremental` 的本地状态，
+  干净 checkout 的 CI 用默认并行度与默认增量设置照常通过。这条差别的结论是
+  「本机 `CARGO_INCREMENTAL=0` 是环境适配、不影响 CI」，**不是**「判据被放宽」。
