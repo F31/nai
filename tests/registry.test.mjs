@@ -2256,9 +2256,14 @@ test('the real repository reaches every test file that is about to be committed'
   });
   assert.deepEqual(errors, [], 'a test file that is about to be committed must already be registered');
 
-  // **非空洞**：扫到的条数必须报出来，否则「空错误」可能只是「什么都没扫」。
-  const { scanned, candidates } = pendingTestFiles(pending.paths, tracked.paths);
-  assert.ok(scanned > 0, 'the untracked scan returned nothing — an empty input makes the pending judge vacuous');
+  // **非空洞**：清扫必须真的会收东西——但**不钉 `scanned > 0`**（W135 勘误）：它是工作区状态，
+  // CI 的干净 checkout 就是 0 条 ⇒ 钉它会让这条用例「本机绿、CI 红」。落点是合成输入前提。
+  const { candidates } = pendingTestFiles(pending.paths, tracked.paths);
+  assert.deepEqual(
+    pendingTestFiles(new Set(['tests/contracts/__sweep_probe__.test.mjs']), new Set()).candidates,
+    ['tests/contracts/__sweep_probe__.test.mjs'],
+    'the pending sweep is inert — then "nothing pending" below means nothing at all',
+  );
   // 独立复算（不是把判据的返回值再看一眼）：每个「待登记」候选都必须被某个站点的 marker 覆盖。
   // 它对**空集恒真**，所以上一条 `scanned > 0` 是它的前提——两条必须成对。
   const uncovered = candidates.filter(

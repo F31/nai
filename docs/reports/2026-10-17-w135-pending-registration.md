@@ -153,17 +153,19 @@ register it in TEST_REGISTRATION_SITES, add its gate line, and `git add` it in t
 
 ## 四、门控
 
-### 4.1 三次，两次红，成因**不同**
+### 4.1 五次，四次红，成因**三类**
 
 | 次 | 结果 | 耗时 | 成因 |
 |---|---|---|---|
 | 第 1 次 | `EXIT=1` | 150s | `LNK1104`：链接 `target\debug\deps\nai_xtask-8cb62b445dfc3b8d.exe` 失败，`tasklist` 无残留进程 ⇒ 宿主瞬态 |
-| 第 2 次 | `EXIT=1` | 179s | **真实缺陷**：`secrets::tests::the_workspace_itself_is_clean` 报 5 处 `openai-style` 命中 |
-| 第 3 次 | **`EXIT=0`** | 143s | — |
+| 第 2 次 | `EXIT=1` | 179s | **真实缺陷（代码）**：`secrets::tests::the_workspace_itself_is_clean` 报 5 处 `openai-style` |
+| 第 3 次 | **`EXIT=0`** | 143s | —（本轮首次全绿） |
+| 第 4 次 | `EXIT=1` | 169s | **真实缺陷（文档）**：同一个 id 在 dev-plan / knowledge / 本报告里又写了 3 遍 ⇒ 3 处命中 |
+| 第 5 次 | **`EXIT=0`** | 180s | —（收口） |
 
-⚠️ 两次红**不是同一个原因**，所以 MUST NOT 记成「宿主动了两遍」：第 1 次是链接期的宿主瞬态
-（错误类同族、`git status` 上本轮的 Rust 改动只有 `xtask/src/lib.rs` 的新增注释与一行 `node` 调用），
-第 2 次是判据抓到了我自己的书写缺陷。
+⚠️ 四次红**不是同一个原因**，所以 MUST NOT 记成「宿主一直在动」：第 1 次是链接期的宿主瞬态，
+第 2/4 次是判据抓到了我自己的书写缺陷（而第 4 次是**改文档时把同一个坑又踩了一遍**——
+修「代码里的 id」不等于修「这个字符串在仓库里的所有出现」）。
 
 ### 4.2 第 2 次：判据把我的命名法判成了凭据
 
@@ -177,7 +179,7 @@ tests/registry.test.mjs:2156
 tests/registry.test.mjs:2168
 ```
 
-全部来自同一个新站点 id：`xtask-engineering-pending-registration`。`xtask/src/secrets.rs` 的规则是
+全部来自同一个新站点 id：`xtask-` + `engineering-pending-registration`。`xtask/src/secrets.rs` 的规则是
 `prefix: "sk-", min_len: 32` —— `xtask-` 里天然含 `sk-`，而 `engineering-pending-registration` 恰好
 **32 个字符**。⇒ 一个**测试站点 id** 被判成了 OpenAI 凭据。
 
@@ -185,17 +187,55 @@ tests/registry.test.mjs:2168
 单跑该用例 `secrets::tests::the_workspace_itself_is_clean` **46.20s 通过**。
 **判据本身没有改**（改的是我的命名）——理由见 §五.5：前缀规则的边界应当由命名避让，而不是由豁免削弱。
 
-### 4.3 绿的那次
+⚠️ **第 4 次门控红是同一个坑的第二次**：改完代码里的 id 之后，我在 dev-plan / knowledge / 本报告里
+又把这个长 id **逐字**写了一遍（3 处：`docs/development-plan.md`、`docs/knowledge.md`、本报告 §4.2）
+⇒ 同一批命中换个文件再来一次。修法是把文档里的写法改成**断开形式**
+（`` `xtask-` + `engineering-pending-registration` ``）：`-` 之后的空格不是 `TOKEN_CHARS`，run 在 12 字符处就断了。
+⇒ **教训**：修「一个字符串撞了扫描器」，落点是**这个字符串在仓库里的所有出现**，不是命中的那一处。
 
-`cargo xtask check --profile full` **`EXIT=0`**，**143s**，`LNK1104` **0** 次：
+### 4.3 收口那次（第 5 次）
+
+`cargo xtask check --profile full` **`EXIT=0`**，**180s**，`LNK1104` **0** 次：
 
 - Rust **1085 / 0**（与 W134 逐项相同——本轮**零** Rust 测试变动，只加了一行 `node --test` 调用）；
 - Node **348 / 0**，**15** 个套件（W134 是 336 / 0、14 套件 ⇒ **+12 / +1**：新判据 11 条 + registry 新增 1 条）；
 - `Running` 83 行 / `Doc-tests` 18 行（与 W134 同形；`100 < 83+18` 是 cargo 既有形状，不作逐轮对比指标）；
 - 错误类（`LNK1104` / `error[E…]` / `error:`）**0**；前端 7 步全通过。
 
+（第 3 次也绿，143s，计数完全相同；第 5 次是 §六 修复之后的收口观测。）
+
 **逐字节还原的边界（如实披露）**：I1–I8 期间三个文件的 `sha256sum -c` 还原核对中，
 两个**源模块**（`test-reachability.mjs` / `git-index.mjs`）逐字节回到注入基线
 （`c5a6600…` / `2f957cd…`）。此后 `test-reachability.mjs` 因 §4.2 的**站点 id 改短**又被合法改了一次
 ⇒ 它最终的字节**不等于**注入基线。这不是还原失败，是「基线之后还有一次真实改动」；
 测试文件也同理（§3.4 的前提是在基线之后补的）。
+
+## 六、勘误：一条**只有 CI 会红**的非空洞前提（已修）
+
+**首推 `85ae008` → run `39021305527` 两平台 `failure`，161 秒早退。** 逐平台的失败步骤是同两步：
+第 10 步 `Complete engineering foundation`、第 12 步（`if: failure()` 的诊断扫描，失败时必然跟着跑）。
+匿名 annotation 在两平台上给出**同一条**断言：
+
+```
+error: 'the untracked scan returned nothing — an empty input makes the pending judge vacuous'
+name: 'AssertionError'
+```
+
+**成因**：`assert.ok(scanned > 0)` 里那个 `scanned` 是**补集的大小**——它是**工作区状态**，不是判定对象。
+本机扫到 **24,796** 条（未被忽略的 `target-check/`），CI 的干净 checkout 扫到 **0** 条。
+⇒ 这条「非空洞前提」在 CI 上**恒假**：判据本身没问题，**前提的输入选错了**。
+这与 W131 记的「本机门控与 CI 并行度不一致」是**同型**的机制性差异：本机绿、CI 红，且都不说明代码有缺陷。
+
+**修法（两处用例 + 一处活规格）**：
+1. 删掉 `scanned > 0`（`tests/contracts/pending-registration.test.mjs` 与 `tests/registry.test.mjs` 各一处），
+   反空洞的落点改为**合成输入**前提（`__sweep_probe__.test.mjs` 必须被扫出来）——它在两种环境里都成立。
+2. 活规格 `openspec/specs/engineering-foundation/spec.md` 的那条 Scenario 就地 1:1 改成两条 `THEN`，
+   并写明「补集的大小 MUST NOT 被当成前提」。归档的变更包是**已发布的历史记录**，原文保留，勘误记在本节。
+
+**复现实验（不靠 CI）**：把补集当空集喂进去 ——
+`pendingRegistrationErrors({present: new Set(), tracked: <真实索引>})` ⇒ `[]`。
+即修复之后，判据的结论**不再依赖**工作区里恰好有多少未跟踪文件。
+
+⚠️ **这是连续第二轮「本机绿 / CI 红」**，两次的机制不同、教训相同：
+W134 是「判据的**输入**少了新文件」（未跟踪 ⇒ 不在扫描集），W135 是「判据的**前提**用了工作区状态」。
+两者都已经写进 `MEMORY.md`。

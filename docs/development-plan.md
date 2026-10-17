@@ -2413,11 +2413,17 @@ registry 的真实仓库用例（56 → 57 条）。**刻意不替换** `resolve
 **门控**：`check --profile full` **绿**（`EXIT=0`，143s；Rust **1085/0**、Node **348/0**、15 套件、
 错误类 0、前端全通过）。三次里前两次红、**成因不同**：①`LNK1104`（宿主瞬态，`tasklist` 无残留）；
 ②**真实缺陷**——`secrets::tests::the_workspace_itself_is_clean` 报 5 处 `openai-style`，全部来自新站点 id
-`xtask-engineering-pending-registration`（`sk-` 后恰好 32 字符 = `min_len: 32`）⇒ id 改短为
+`xtask-` + `engineering-pending-registration`（`sk-` 后恰好 32 字符 = `min_len: 32`）⇒ id 改短为
 `xtask-pending-registration`，单跑该用例 46.20s 通过，**判据未改**（命名避让，不加豁免）。
 
 见 [W135 报告](reports/2026-10-17-w135-pending-registration.md)、
 `openspec/changes/archive/2026-10-17-w135-pending-registration/`。
+**首推红（已修）**：run `39021305527` 两平台 `failure`，161 秒早退，annotation 两次都给出
+`the untracked scan returned nothing — an empty input makes the pending judge vacuous`——
+`assert.ok(scanned > 0)` 的输入是**补集大小**，而那是**工作区状态**（本机 24,796 条来自 `target-check/`，
+CI 干净 checkout 是 0 条）⇒ 前提在 CI 上恒假。删掉该断言，反空洞改由**合成输入**前提承担
+（活规格里那条 Scenario 同步就地订正）。**连续第二轮「本机绿 / CI 红」**：W134 是判据的**输入**少了新文件，
+本轮是判据的**前提**用了工作区状态。
 
 ## 任务依赖与状态
 

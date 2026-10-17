@@ -273,7 +273,7 @@ MUST 分开——后者返回 `null` 而非空集，空集会让包含关系对�
 `scanned > 0` 只证明输入非空，**不证明清扫谓词不惰性**（注入实测：关掉 `candidates.push` 后真实仓库
 用例与 F0 同时绿，只有喂具名路径的单元用例会红）⇒ 合成输入前提 MUST 钉在真实仓库用例里；
 ③**命名会撞上安全扫描**：`xtask/src/secrets.rs` 的 `sk-` 前缀规则 `min_len: 32` 会把
-`xtask-engineering-pending-registration`（`sk-` 后恰好 32 字符）判成 OpenAI 凭据 ⇒ 处置是**命名避让**
+`xtask-` + `engineering-pending-registration`（`sk-` 后恰好 32 字符）判成 OpenAI 凭据 ⇒ 处置是**命名避让**
 （id 改短），MUST NOT 加豁免削弱判据。见 [W135 报告](reports/2026-10-17-w135-pending-registration.md)。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。

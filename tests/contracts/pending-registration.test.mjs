@@ -36,12 +36,12 @@ test('the shipped repository has no unregistered pending test file, and the scan
   const errors = pendingRegistrationErrors({ present: present.paths, tracked: tracked.paths });
   assert.deepEqual(errors, [], 'an unregistered pending test file would turn CI red on the first checkout');
 
-  // **非空洞**：上面那个「空错误」只有在**真的扫过**的前提下才算数。
-  const { scanned, candidates } = pendingTestFiles(present.paths, tracked.paths);
-  assert.ok(
-    scanned > 0,
-    'the untracked scan returned nothing at all — an empty input makes every registration check vacuously true',
-  );
+  // **非空洞**：上面那个「空错误」只有在**清扫真的会收东西**的前提下才算数。
+  // ⚠️ 刻意**不钉** `scanned > 0`：未跟踪集合的**大小是工作区状态**，不是判定对象——
+  // 本机因为有未被忽略的 `target-check/` 扫到 24,796 条，而 CI 是干净 checkout（0 条）
+  // ⇒ 钉它就成了「本机绿、CI 红」的机制性差异（与 W131 同型）。反空洞的落点是下面这条
+  // **合成输入**前提：它在两种环境里都成立。
+  const { candidates } = pendingTestFiles(present.paths, tracked.paths);
   // **前提的第二条：清扫本身不是惰性的**（W135 注入 I3 实测发现的缺口）。`scanned > 0` 只证明
   // 「输入非空」，不证明「清扫会把符合形状的路径收进来」——把 `candidates.push` 关掉之后，本用例
   // 与真实仓库的 F0 **同时**全绿，只有单元用例（把具名路径喂进去的那几条）会红。这条用一个
