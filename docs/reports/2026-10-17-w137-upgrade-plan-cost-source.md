@@ -177,4 +177,37 @@ CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=1 cargo xtask check --profile full
 
 ## 六、CI 观测
 
-_（回填）_
+三件齐：URL 带纳秒 `cb=` 破缓存 + 请求头 `Cache-Control: no-cache` + **回读 `head_sha`**。
+
+| 项 | 值 |
+| --- | --- |
+| 提交 | `bde0f3e`（24 files, +1316 / −22），push `be8ae3b..bde0f3e`（SSH 443） |
+| run | `39040876237`，attempt **1** |
+| `head_sha` 回读 | `bde0f3e97eebc25ead53a99bbba3352042a044c4`——**与推送 SHA 一致** |
+| 结论 | `status: completed` / `conclusion: success` |
+| ubuntu-24.04 | 20 条 steps：**19 success + 1 skipped**，`bad 0` |
+| ubuntu-24.04 耗时 | `14:28:12Z → 14:34:13Z`（**6m01s**） |
+| windows-latest | 20 条 steps：**17 success + 3 skipped**，`bad 0` |
+| windows-latest 耗时 | `14:28:11Z → 14:39:54Z`（**11m43s**） |
+
+两腿跳过的步是**同一套 `if` 条件**的分支，没有一条是本轮改动的相关判据：
+
+- ubuntu 跳过 1 条：「Publish the gate failure summary as annotations」（失败诊断，**只在红的时候跑**）；
+- windows 跳过 3 条：上面那条 +「Install Linux C++ protobuf runtime」+「Full three-language contract
+  suite (Linux C++ toolchain)」——后两条带 Linux 前提，在 Windows 腿上是**设计上不适用**。
+
+台账口径：「跳过」不必然等于「没检查」。这三条的跳过条件都是显式的平台/结论条件，且**在 ubuntu 腿上有
+对应执行**（第 8/14 条在 ubuntu 是 success），所以它们不是判据的盲区。
+
+观测分三次：①`?head_sha=<40 位>` 取 run 列表（`total_count=1`，`in_progress`）；②`/runs/{id}/jobs`
+首次（两腿 `19` 步、`bad 0`，尚未完成）；③同样的 `/jobs` 端点 + 运行级 `/runs/{id}` 取完成态。
+每次单独一次请求、各带独立 `cb=`，共 4 次请求（匿名配额 60/h 按 IP）。
+
+**「20 条 steps」不等于 workflow 的 `- name:` 步数**：其中 1 条是 `Set up job`、4 条是
+`Post Run …` / `Complete job`，真正的 workflow 步是 14 条（编号从 16 直接跳到 30——`if` 未触发的步骤
+不生成记录）。这也印证 MEMORY §4 那条口径：`jobs[].steps` 与 workflow 的 `- name:` 步**不能相减**。
+
+逐平台看的是**完整步骤序列**（MEMORY §4 的口径），其中与本轮改动直接相关的两条都在序列里且 success：
+`Check generated contracts without modifying consumers`（契约无漂移）与
+`Run pnpm exec openspec validate --archived --no-interactive`（归档后 tasks 全勾，本机同命令
+`135 passed / 0 failed`）。
