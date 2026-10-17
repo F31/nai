@@ -144,3 +144,34 @@ xtask/src/lib.rs
 5. **`Running` 行数不可作逐轮对比指标**（`100 < 83+18`），硬指标只有 passed 总数与失败数。
 6. **`target/` 已 18G**（超出常见 CI 缓存配额），故本轮**不加**编译缓存；缓存也不是「少做一遍」，
    与「重复」这一判据无关。
+
+## 六、勘误：一处**本机门控看不见**的缺陷（CI 抓到，已修）
+
+**第一次推送后 CI run `39016233527` 两平台同时 `failure`，170 秒早退**，红在 gate 步（第 10 步）。
+匿名 annotation 给出确切断言：
+
+```
+the reachability closed world must hold for the real repository
+```
+
+**成因**：本轮新增的 `tests/contracts/step-overlap.test.mjs` **没有**登记进
+`scripts/contracts/test-reachability.mjs` 的 `TEST_REGISTRATION_SITES`（W84 的站点表）。
+而这条判据的**扫描集来自 `.git/index` 里的已跟踪路径**——门控跑的时候，那个文件还没 `git add`，
+**未跟踪 ⇒ 不在扫描集 ⇒ 闭世界看不见它**。本机门控因此全绿，CI 一 checkout 就红。
+
+这是「**未跟踪 ≠ 未登记**」：一条用「已跟踪集合」当输入的闭世界断言，对**本轮新文件**是
+**构造性盲**的（与 W101 记过的「铁律一：断言依赖新测试文件在册，而提交前它还没进索引」同源，
+但方向相反——那次是**用例前提**没了，这次是**判据输入**少了）。
+
+**修法（两处，缺一不可）**：
+1. `TEST_REGISTRATION_SITES` 加 `xtask-engineering-step-overlap`（`host: xtask/src/lib.rs`、
+   `marker: tests/contracts/step-overlap.test.mjs`、`tier: portable`）；
+2. `tests/registry.test.mjs` 的**逐字清单**同步 `15 → 16` 个站点 id（逐字清单与闭世界不是重复：
+   前者挡「悄悄改变覆盖集」，后者挡「未登记」）。
+
+修后 `registry` **56/56**、`tier-payment` **22/22**、`step-overlap` **12/12**。
+
+⚠️ **可判性说明**：本机在任何**未提交**状态下都**看不见**这类缺陷——修完之后我把「文件已跟踪」
+这个前提补上了，但**没有**为它新加判据（那需要把「工作区新增文件 vs 站点表」做成一条独立断言，
+属另一轮）。处置口径：**新增测试文件时，站点登记与逐字清单 MUST 与文件同一次提交**。
+

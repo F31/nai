@@ -123,6 +123,16 @@ export const TEST_REGISTRATION_SITES = [
     tier: 'portable',
   },
   {
+    // W134：覆盖关系的判据。⚠️ 缺这一条，本机门控**看不见**——新文件在提交前不进 `.git/index`，
+    // 而本判据的扫描集来自已跟踪路径 ⇒ 「未跟踪」不等于「未登记」，只在 CI 上暴露（实测 run
+    // `39016233527` 两平台同时红在 `the reachability closed world must hold for the real repository`）。
+    id: 'xtask-engineering-step-overlap',
+    host: 'xtask/src/lib.rs',
+    marker: 'tests/contracts/step-overlap.test.mjs',
+    base: '.',
+    tier: 'portable',
+  },
+  {
     id: 'xtask-contracts-suite',
     host: 'xtask/src/schema.rs',
     marker: 'tests/contracts/descriptor.test.mjs',

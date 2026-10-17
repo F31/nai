@@ -2378,6 +2378,13 @@ dispatch 臂与门控区域**算**出来；覆盖类别闭集 `gate`/`suite`/`no
 「非平台相关 `ci-only` 判定被平台条件收窄」（那等于让它静默跳过另一个平台），要改得先改模型与
 `tier-payment` 的 `ci` 面，属另一轮；不加编译缓存（`target/` 18G，超配额，且缓存不是「少做一遍」）。
 
+**CI 首推红（已修）**：run `39016233527` 两平台 `failure`，170 秒早退在 gate 步，annotation 指向
+`the reachability closed world must hold for the real repository`——新增的 `step-overlap.test.mjs`
+**没有**登记进 `TEST_REGISTRATION_SITES`，而那条判据的扫描集来自 `.git/index` 的**已跟踪路径**
+⇒ 门控跑时该文件还没 `git add`、**未跟踪 ⇒ 不在扫描集** ⇒ **本机全绿、CI 必红**。
+修法两处缺一不可：站点表加 `xtask-engineering-step-overlap` + `registry.test.mjs` 的逐字清单 15 → 16。
+**「未跟踪 ≠ 未登记」：以已跟踪集合为输入的闭世界断言，对本轮新文件是构造性盲的。**
+
 见 [W134 报告](reports/2026-10-17-w134-ci-step-coverage.md)、`openspec/changes/w134-ci-step-coverage/`。
 
 ## 任务依赖与状态
