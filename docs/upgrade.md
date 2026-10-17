@@ -123,6 +123,16 @@ recover : 读 journal 当前 step → discard | restore | 确认已提交
 把部分和当作总额，就是分项层面已经避免的同一个「不伪报」违规，只是上升了一层。清单未声明的分项
 即 `Unknown`。
 
+**成本的对外来源是 `POST /api/v1/upgrades/plan`**（W137，权限 `runtime.upgrade`）：控制面收下请求里的
+**包清单**，交给 `CostEstimate::from_package`（定义处只有一处）并把四个分项同步搬出去——不下载、
+不暂存、不迁移，因此**不铸造作业 id**（没有可轮询的进行中状态）。清单结构由
+`schemas/config/upgrade-package.schema.json` 校验，控制面读的就是这一份，不在 OpenAPI 里重述。
+
+两处口径不合并，差异挡在控制面（方向取拒绝）：清单 schema 允许币种 1–8 字符、金额任意大，
+而呈现契约要三字母大写码与 `2^53-1`（消费端 `Number.isSafeInteger` 会悄悄取整）⇒ 这两种包
+被具名拒绝，而不是发一个自己契约不合格的 200。**本路径不验签**（请求里只有清单、没有包体）：
+验签属于 execute 侧的 `UpgradeTransaction`，界面必须把这一点与金额一同呈现。
+
 ## 未做边界
 
 - **没有真实签名链**。`DeterministicVerifier` 是基于 `sha2` 的演练替身，只证明「校验被调用、失败会拦住
@@ -134,4 +144,6 @@ recover : 读 journal 当前 step → discard | restore | 确认已提交
   下载故障语义（断流 / 续传 / 重问预算 / 下载期校验）已在**真实 loopback TCP/HTTP/1.1** 上实测，
   见 [W126 报告](reports/2026-10-16-w126-download-resume-and-budget.md) 与 [ADR 0104](adr/0104-download-resume-and-budget.md)。
 - **`semver` 只做交集判断**，不实现完整 SAT 求解：单层 `requires` 足够，多包冲突本轮未覆盖。
-- `nai-upgrade-core` 尚未被任何 app 依赖，接入装配根是后续工作项。
+- `nai-upgrade-core` 的第一个 app 级消费者是**控制面**（W137：`nai-control-api` 依赖它，为
+  `/upgrades/plan` 提供成本）；**装配根（`apps/engine`）仍不持有升级事务**——plan 是纯读，
+  不需要运行时状态；execute/rollback 的接线仍是后续工作项。

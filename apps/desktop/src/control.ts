@@ -1,4 +1,5 @@
 import type { components } from '@nai/contracts';
+import { parseCostEstimate, type CostEstimate } from './upgrade.ts';
 
 export type RuntimeView = components['schemas']['ResourceView'];
 export type CommandAck = components['schemas']['CommandAck'];
@@ -48,6 +49,42 @@ export function parseRuntime(value: unknown): RuntimeStatus {
   return value as RuntimeStatus;
 }
 
+/** 升级计划：包身份 + 成本。成本载荷的解析**只有一处**（`parseCostEstimate`），
+ *  这里不重复判一遍金额——两处判同一件事，迟早给出两个答案。 */
+export type UpgradePlan = {
+  package_id: string; package_version: string; cost: CostEstimate;
+};
+
+const PLAN_KEYS = ['package_id', 'package_version', 'cost'] as const;
+
+/**
+ * 严格解析升级计划信封：只认这三个键。
+ *
+ * 契约是 `additionalProperties: false`，于是「多一个 `total`」这种**看起来方便**的字段
+ * 会被服务端拒绝；客户端同样 MUST NOT 默默容忍——容忍的后果是前后端对形状的理解悄悄分家。
+ * 成本交给 `parseCostEstimate`，它已经拒绝缺分项、未知分项、非法金额与空原因。
+ */
+export function parseUpgradePlan(value: unknown): UpgradePlan {
+  if (!object(value)) throw new Error('升级计划结构无效：不是对象');
+  const extra = Object.keys(value).filter(
+    (key) => !PLAN_KEYS.includes(key as (typeof PLAN_KEYS)[number]),
+  );
+  if (extra.length > 0) throw new Error(`升级计划结构无效：含未知字段 ${extra.join(',')}`);
+  const missing = PLAN_KEYS.filter((key) => !(key in value));
+  if (missing.length > 0) throw new Error(`升级计划结构无效：缺少字段 ${missing.join(',')}`);
+  if (typeof value.package_id !== 'string' || value.package_id.length === 0) {
+    throw new Error('升级计划结构无效：package_id 必须是非空字符串');
+  }
+  if (typeof value.package_version !== 'string' || value.package_version.length === 0) {
+    throw new Error('升级计划结构无效：package_version 必须是非空字符串');
+  }
+  return {
+    package_id: value.package_id,
+    package_version: value.package_version,
+    cost: parseCostEstimate(value.cost),
+  };
+}
+
 export class ControlClient {
   private readonly base: string;
   private readonly token: string;
@@ -63,7 +100,7 @@ export class ControlClient {
     this.fetcher = fetcher;
   }
 
-  private async request(path: string, body?: components['schemas']['SessionCommand']): Promise<unknown> {
+  private async request(path: string, body?: unknown): Promise<unknown> {
     const response = await this.fetcher(`${this.base}${path}`, {
       method: body ? 'POST' : 'GET', cache: 'no-store', credentials: 'omit', redirect: 'error',
       headers: { Authorization: `Bearer ${this.token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
@@ -120,6 +157,17 @@ export class ControlClient {
 
   async approvals(): Promise<ApprovalsView> {
     return parseApprovals(await this.request('/approvals'));
+  }
+
+  /**
+   * 升级成本：把**包清单**交给控制面去算。
+   *
+   * 前端不算成本：四类分项的算法只有一处（`nai-upgrade-core::cost`），
+   * 在这里重算一遍会让「同一条清单两个答案」。本路径**不验签**，
+   * 界面必须同时呈现 `COST_DECLARED_BASIS_NOTE`。
+   */
+  async planUpgrade(manifest: unknown): Promise<UpgradePlan> {
+    return parseUpgradePlan(await this.request('/upgrades/plan', { manifest }));
   }
 
   /** 审批与命令共用同一 `SessionCommand` 骨架（`ApprovalCommand = SessionCommand & {candidate_hash, hash_algorithm}`）。 */

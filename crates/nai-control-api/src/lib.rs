@@ -11,6 +11,7 @@ use nai_kernel::evaluate::memory::{
 use nai_kernel::session::{CommandLedger, Session, SessionError};
 use nai_media_core::EmergencyHandle;
 use nai_storage::{Operation, PendingApproval};
+use nai_upgrade_core::{Component, CostEstimate, MANIFEST_LIMIT, UpgradePackage};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
@@ -273,6 +274,18 @@ struct State {
     commands: CommandLedger<Value>,
 }
 
+/// 命令体上限。既有口径，MUST NOT 因新端点放大。
+const COMMAND_BODY_LIMIT: usize = 4096;
+
+/// 升级 plan 体的上限。包清单本身允许到 `MANIFEST_LIMIT`，外面还套一层
+/// `{"manifest": …}` 外壳 ⇒ 上限从这里**派生**，MUST NOT 另立一个数字。
+const PLAN_BODY_LIMIT: usize = MANIFEST_LIMIT + 1024;
+
+/// 成本金额的上界。契约里 `known` 是 JS 安全整数（`2^53-1`），因为呈现层用
+/// `Number.isSafeInteger` 判它；超过它就是「这个数在消费端会被悄悄取整」⇒
+/// 拒绝而不是发一个自己契约都不满足的响应。
+const MAX_REPRESENTABLE_AMOUNT: u64 = 9_007_199_254_740_991;
+
 pub struct ControlApi {
     session_id: String,
     workspace: String,
@@ -284,6 +297,10 @@ pub struct ControlApi {
     state: Mutex<State>,
     command_schema: jsonschema::Validator,
     approval_schema: jsonschema::Validator,
+    /// 升级 plan 请求体（`{"manifest": {…}}`）。清单**内部**字段不在契约里重述：
+    /// 结构真相只有一份，在 `schemas/config/upgrade-package.schema.json`，
+    /// 由 `UpgradePackage::parse` 读同一份文件。
+    plan_schema: jsonschema::Validator,
     approvals: Option<Arc<ApprovalBackend>>,
     /// §42.3/§42.4 记忆面后端。**缺失 ⇒ `CAPABILITY_NOT_READY`**，MUST NOT 假成功
     /// （与 `approvals` 同形）。
@@ -325,6 +342,8 @@ impl ControlApi {
         let command_schema = jsonschema::validator_for(&schema).map_err(|e| e.to_string())?;
         schema["$ref"] = json!("#/$defs/ApprovalCommand");
         let approval_schema = jsonschema::validator_for(&schema).map_err(|e| e.to_string())?;
+        schema["$ref"] = json!("#/$defs/UpgradePlanRequest");
+        let plan_schema = jsonschema::validator_for(&schema).map_err(|e| e.to_string())?;
         let session_snapshot = session
             .lock()
             .map_err(|_| "session lock poisoned".to_string())?
@@ -355,6 +374,7 @@ impl ControlApi {
             }),
             command_schema,
             approval_schema,
+            plan_schema,
             approvals,
             memory: None,
         })
@@ -417,6 +437,8 @@ impl ControlApi {
                 Some("memory.read")
             } else if method == hyper::Method::POST && path == "/api/v1/memory/forget" {
                 Some("memory.forget")
+            } else if method == hyper::Method::POST && path == "/api/v1/upgrades/plan" {
+                Some("runtime.upgrade")
             } else {
                 None
             };
@@ -444,19 +466,40 @@ impl ControlApi {
                     )
                 } else {
                     let received = Instant::now();
+                    // 每个端点按自己的载荷定上限：命令 4096，升级 plan 要装得下包清单。
+                    // 一个全局上限会让「清单放不进来」变成静默的 413，而不是可解释的拒绝。
+                    let body_limit = if path == "/api/v1/upgrades/plan" {
+                        PLAN_BODY_LIMIT
+                    } else {
+                        COMMAND_BODY_LIMIT
+                    };
                     let mut bytes = Vec::new();
                     let mut failed = None;
+                    // 已经决定拒绝之后仍然要把体读掉**有界的一段**：直接关连接会带着未读
+                    // 数据发 RST，对端因此看不到那个 413——「拒绝了」就成了不可观测的状态。
+                    // 上限由 `body_limit` 派生（不是一个新数字），超了就放弃排空，接受对端失败。
+                    let mut discarded = 0usize;
+                    let drain_limit = body_limit.saturating_mul(4);
                     while let Some(frame) = request.body_mut().frame().await {
                         match frame {
                             Ok(frame) => {
                                 if let Ok(data) = frame.into_data() {
-                                    if bytes.len() + data.len() > 4096 {
+                                    if failed.is_some() {
+                                        discarded += data.len();
+                                        if discarded > drain_limit {
+                                            break;
+                                        }
+                                        continue;
+                                    }
+                                    if bytes.len() + data.len() > body_limit {
                                         failed = Some(error(
                                             413,
                                             ErrorCode::ResourceExhausted,
-                                            "command body limit",
+                                            "request body limit",
                                         ));
-                                        break;
+                                        bytes.clear();
+                                        discarded = data.len();
+                                        continue;
                                     }
                                     bytes.extend_from_slice(&data);
                                 }
@@ -479,6 +522,8 @@ impl ControlApi {
                         self.memory_read(&bytes)
                     } else if path == "/api/v1/memory/forget" {
                         self.memory_forget(&bytes)
+                    } else if path == "/api/v1/upgrades/plan" {
+                        self.upgrade_plan(&bytes)
                     } else if let Some(action) = path.strip_prefix("/api/v1/approvals/") {
                         match action.strip_suffix("/approve") {
                             Some(id) => self.approval_action(id, true, &bytes, received),
@@ -550,6 +595,82 @@ impl ControlApi {
             "safe_message":"控制状态已连接；真实媒体设备未连接，命令 ACK 不代表声卡静音或播放完成。",
             "device_id":self.access.device,"last_command_seq":state.seq.to_string(),
             "session":{"session_id":snapshot.session_id,"generation_epoch":snapshot.generation_epoch.to_string(),"state_revision":snapshot.state_revision.to_string(),"lifecycle":lifecycle,"mode":mode,"media_state":media}}),
+        )
+    }
+
+    /// §1330 O05：升级成本的**控制面来源**。成本只由 `nai-upgrade-core` 的
+    /// `CostEstimate` 算（MUST NOT 在这里另算一份），本函数只做三件事：严格收下请求、
+    /// 把清单交给**唯一的结构真相**去校验、把结果逐项搬出去。
+    ///
+    /// 三道**表示性**闸门都在这里，且都选拒绝（安全方向）：
+    /// - 币种不是三字母大写代码 ⇒ 呈现层无法把它列成金额；
+    /// - 金额超过 JS 安全整数 ⇒ 消费端会悄悄取整（契约里 `known` 就钉了这个上界）；
+    /// - 清单不合规 ⇒ 具名拒绝，MUST NOT 退化成「全未知」或「全 0」。
+    ///
+    /// 本路径**不验签**：请求里只有清单、没有包体，验签属于 execute 侧
+    /// （`UpgradeTransaction`）。这条边界写在契约描述与 ADR 0112 里。
+    fn upgrade_plan(&self, bytes: &[u8]) -> HttpResponse {
+        let body: Value = match serde_json::from_slice(bytes) {
+            Ok(value) => value,
+            Err(_) => {
+                return error(400, ErrorCode::InvalidArgument, "invalid upgrade plan JSON");
+            }
+        };
+        if !self.plan_schema.is_valid(&body) {
+            return error(
+                400,
+                ErrorCode::InvalidArgument,
+                "upgrade plan schema rejected",
+            );
+        }
+        let encoded = match serde_json::to_vec(&body["manifest"]) {
+            Ok(encoded) => encoded,
+            Err(_) => {
+                return error(400, ErrorCode::InvalidArgument, "invalid package manifest");
+            }
+        };
+        let package = match UpgradePackage::parse(&encoded) {
+            Ok(package) => package,
+            Err(fault) => {
+                // `reason` 是稳定的可移植 token（不是本地化 OS 串），可以如实回给操作员。
+                let message = format!("package manifest rejected: {}", fault.reason);
+                return error(400, ErrorCode::InvalidArgument, &message);
+            }
+        };
+        let estimate = CostEstimate::from_package(&package);
+        if estimate.currency.len() != 3
+            || !estimate.currency.bytes().all(|b| b.is_ascii_uppercase())
+        {
+            return error(
+                400,
+                ErrorCode::InvalidArgument,
+                "package currency is not a three-letter code",
+            );
+        }
+        let mut components = serde_json::Map::new();
+        for (name, component) in estimate.components() {
+            let line = match component {
+                Component::Known(amount) if amount <= MAX_REPRESENTABLE_AMOUNT => {
+                    json!({ "known": amount })
+                }
+                Component::Known(_) => {
+                    return error(
+                        400,
+                        ErrorCode::InvalidArgument,
+                        "package cost exceeds the representable amount range",
+                    );
+                }
+                Component::Unknown(reason) => json!({ "unknown": reason }),
+            };
+            components.insert(name.to_string(), line);
+        }
+        reply(
+            200,
+            json!({
+                "package_id": package.package_id,
+                "package_version": package.package_version,
+                "cost": { "currency": estimate.currency, "components": components },
+            }),
         )
     }
 

@@ -286,6 +286,20 @@ MUST 分开——后者返回 `null` 而非空集，空集会让包含关系对�
 §5.7 的五面重校验在仓库内没有产生者，若只提供 `fresh()`，调用方只能在「撒谎」与「不调用」之间选，
 而前者更可能发生 ⇒ 提供 `unavailable()`，并让它是**拒绝**（不是通过）。
 见 [W136 报告](reports/2026-10-17-w136-selling-loop-executor.md)、`docs/adr/0111-selling-loop-executor.md`。）
+（**W137：O05 的成本来源——把「一处已有答案」接到「一个等答案的界面」上的四条可复用结论**：
+①**「同步还是作业」由有没有可轮询的状态决定，不由接口形状决定**。契约原先给 `/upgrades/plan` 复用了
+`*jobResponses`（202 + `job_id`），但 plan 不下载、不暂存、不迁移 ⇒ 没有任何进行中状态，
+发一个永远查不到东西的 `job_id` 是**伪造可观测面**；判据是「拿 job_id 去 `/jobs/{id}` 能查到什么」。
+②**拒绝必须可见，否则等于没拒**。超出体上限时直接 `break` 后回 413、关闭连接，对端因为带着未读数据
+只收到 **RST**（实测 `ConnectionAborted / 10053`）⇒ 「拒绝了」成了只有服务端知道的状态；
+处置是**有界排空**（`body_limit × 4`，超了才放弃）。由此一条方法论：**写一条「应当被拒」的用例之前，
+先确认这个拒绝在协议上可观测**。③**两处口径不一致时选拒绝，不合并也不放宽**。清单 schema 允许币种
+1–8 字符、金额任意大；呈现契约要三字母大写码与 `2^53-1`（消费端 `Number.isSafeInteger` 会悄悄取整）
+⇒ 控制面拒绝那个包，而不是放宽一条已有 19 项覆盖的呈现判据（放宽是拿判据换覆盖率）。
+④**接缝不是免费的**。`MemorySurface` 之所以要接缝，是因为*状态*在 runtime；成本只依赖清单
+（`CostEstimate::from_package`）⇒ 控制面**直接依赖**比开接缝更小，也避开「接缝声明了但没人实现」
+这一类故障；判据仍是「谁构造它的入参」——若只能由测试构造，那就是假接线。
+见 [W137 报告](reports/2026-10-17-w137-upgrade-plan-cost-source.md)、`docs/adr/0112-upgrade-plan-cost-source.md`。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。
@@ -303,3 +317,20 @@ cargo xtask test --suite contracts
 真实远端端点/凭据缺失，付费 embedding 受 D08 无余额证据约束，真实调用为 Blocked；mock 不标真实集成为 Passed。
 文件格式解析器/OCR、完整导入 UI 和媒体 preplay 装配不由这些存储/网关方法冒充实现。
 D09 已满足本规格并归档；真实供应商接入仍需有效凭据与独立认证。
+
+## 勘误：本机 protoc 前提已解除（W137）
+
+W136 结尾把 `protoc 3.21.12`（`libprotoc 3.21.12`，逐字匹配 `xtask/src/schema.rs::generate()`
+的硬校验）装到**仓库外** `C:/Users/32791/.local/toolcache/protoc-21.12/bin/protoc.exe`，
+本机因此第一次能跑通契约生成物复核（`EXIT=0`，33 能力 / 112 条 protobuf 消息 / 10 个源，no drift）。
+下面两句的「本机缺 protoc」前提**自此不成立**，但它们是**已发布的轮次记录**，按纪律**追加勘误而不就地改**：
+
+1. 「远端适配与本地政策门控」里 W131 段：「只有 CI 的 `cargo xtask schema --check` 能抓，本机缺 protoc」——
+   本机现可抓；W131 当时那条「TS 生成物内容漂移本机无判据」的缺口，机制上已可补。
+2. 同节 W132 段：「另需 protoc 3.21.12 才能改 proto，本机无」——本机现有。
+
+`docs/development-plan.md` 的 4 处同族表述（W129 / W130 两处，以及更早那句「`schema --check` 在宿主机
+跑不了（`EBUSY`）⇒ CI-only ⇒ 本机验不了的改动不满足可自主推进」）已在 W137 小节就地登记勘误
+（同样不改原文，合计 **6** 处：本文件 2 + dev-plan 4）。
+⚠️ 与这条前提相关的两个下载坑（可复用）：GitHub releases 直连报
+`CRYPT_E_REVOCATION_OFFLINE` ⇒ 加 `--ssl-no-revoke`；而 TLS 握手失败是**另一个**坑（`--tlsv1.2 --tls-max 1.2`）。

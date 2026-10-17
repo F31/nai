@@ -41,6 +41,15 @@ export const COST_UNITS_NOTE = '金额为最小货币单位';
 /** 含未知分项时总额的措辞：说「下界」，并说明**不是**总额。 */
 export const COST_PARTIAL_NOTE = '非总额';
 
+/**
+ * 成本来源的边界，必须与金额一起呈现。
+ *
+ * 控制面的 `/upgrades/plan` 只收**包清单**、不验签（清单里没有包体，验签在 execute 侧）。
+ * 于是这里算出来的是**厂商声明值**，不是「已核实的收费」。把这句话省掉，
+ * 界面就把「别人说多少钱」显示成了「要花多少钱」——同一类不伪报，只是换了个位置。
+ */
+export const COST_DECLARED_BASIS_NOTE = '金额来自包清单声明，未验签；执行前由升级事务校验签名';
+
 const LINE_KEYS = ['known', 'unknown'] as const;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

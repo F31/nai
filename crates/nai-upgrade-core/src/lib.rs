@@ -48,7 +48,9 @@ pub use gates::{
     Activation, ActiveSessionGate, DowngradeReport, SessionDrain, SessionGate, downgrade,
     require_rollback_compatible,
 };
-pub use manifest::{FileDecl, Requirement, RuntimeEntry, UpgradeKind, UpgradePackage};
+pub use manifest::{
+    FileDecl, MANIFEST_LIMIT, Requirement, RuntimeEntry, UpgradeKind, UpgradePackage,
+};
 pub use migration::{
     Announcement, Deployment, DeploymentState, ImportedState, MigrationFault, MigrationPlan,
     MigrationRequest, OutputSwitch, PermissionGrant, PermissionMap, RehearsalMigration,

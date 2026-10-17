@@ -13,6 +13,7 @@
 | GET /approvals | approval.read | 当前会话/epoch 的待审批元信息，最多 200 条 |
 | POST /approvals/{candidate_hash}/approve | approval.write | 哈希/作用域/CAS/期限复检后，原子提交审批、Approved 状态、审计与决策日志 |
 | POST /approvals/{candidate_hash}/reject | approval.write | 原子提交 Blocked 状态、审计与 critical cancellation 日志 |
+| POST /upgrades/plan | runtime.upgrade | 从请求里的**包清单**算四类成本（未知给原因，绝不给 0）；同步纯读、不下载不暂存故不建作业；**不验签**（验签在 execute 侧） |
 
 其他操作没有成功占位。OpenAPI 总体标记 partial-loopback-engineering，只有上述操作标记 implemented-loopback。
 没有插件或设备时 Session 为 created/standby，不标 Ready；status 的 safe_message 明确说明设备未连接。

@@ -156,7 +156,21 @@ paths:
   /diagnostics:
     get: {x-required-permission: runtime.observe, responses: *readResponses}
   /upgrades/plan:
-    post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: runtime.upgrade}
+    post:
+      x-required-permission: runtime.upgrade
+      x-implementation-status: implemented-loopback
+      description: >-
+        Synchronous cost estimate computed from the package manifest in the request. Nothing is
+        downloaded, staged or written, so there is no job to poll and no job id is minted. The
+        manifest structure is validated by the upgrade core embedded schema (single source, not
+        restated here). Signing is NOT verified on this path; the execute path verifies before it
+        stages anything.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UpgradePlanRequest'}}}}
+      responses:
+        '200': {description: 'Per-component estimate; a component that cannot be estimated is reported as its reason, never as zero', content: {application/json: {schema: {$ref: '#/components/schemas/UpgradePlanView'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
   /upgrades/execute:
     post: {requestBody: *resourceBody, responses: *jobResponses, x-required-permission: runtime.upgrade}
   /upgrades/{id}/rollback:
@@ -276,6 +290,49 @@ components:
         job_id: {type: string}
         command_id: {type: string}
         status: {type: string, enum: [accepted]}
+    UpgradePlanRequest:
+      type: object
+      additionalProperties: false
+      required: [manifest]
+      properties:
+        manifest: {type: object, description: 'Package manifest as published by its vendor. Its fields are validated by schemas/config/upgrade-package.schema.json (the upgrade core reads the same file), so they are not restated here.'}
+    UpgradePlanView:
+      type: object
+      additionalProperties: false
+      required: [package_id, package_version, cost]
+      properties:
+        package_id: {type: string, minLength: 1}
+        package_version: {type: string, minLength: 1}
+        cost: {$ref: '#/components/schemas/CostView'}
+    CostView:
+      type: object
+      additionalProperties: false
+      required: [currency, components]
+      properties:
+        currency: {type: string, pattern: '^[A-Z]{3}$', description: 'Three-letter uppercase currency code. The manifest schema accepts a wider string; the plan path refuses one that cannot be presented as a currency amount rather than widening this.'}
+        components: {$ref: '#/components/schemas/CostComponents'}
+    CostComponents:
+      type: object
+      additionalProperties: false
+      required: [cloud, download, storage, runtime_delta]
+      properties:
+        cloud: {$ref: '#/components/schemas/CostLine'}
+        download: {$ref: '#/components/schemas/CostLine'}
+        storage: {$ref: '#/components/schemas/CostLine'}
+        runtime_delta: {$ref: '#/components/schemas/CostLine'}
+    CostLine:
+      description: 'A known amount in minor currency units, or the reason it cannot be estimated. A component the manifest leaves out is unknown, never zero: zero is a checkable claim that this part is free.'
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [known]
+          properties:
+            known: {type: integer, minimum: 0, maximum: 9007199254740991, description: 'Minor units, bounded to the largest exactly representable JavaScript integer so a consumer cannot silently round it.'}
+        - type: object
+          additionalProperties: false
+          required: [unknown]
+          properties:
+            unknown: {type: string, minLength: 1}
     ResourceView:
       type: object
       additionalProperties: false

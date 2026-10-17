@@ -1168,6 +1168,7 @@ dependencies = [
  "nai-kernel",
  "nai-media-core",
  "nai-storage",
+ "nai-upgrade-core",
  "reqwest",
  "serde_json",
  "sha2",

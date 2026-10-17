@@ -10,13 +10,13 @@
 | 审批失效 | **implemented** | `approvalFreshness` / `runApprovalDecision` | 过期、会话换代、已不在队列、无有效期 ⇒ **不发请求**并具名理由 |
 | 模式切换条件 | **unimplemented** | 缺 `POST /sessions/{id}/mode` 实现 | 契约已定义（`schemas/openapi/control.yaml:66`），控制面未实现，界面无从表达切换条件 |
 | 静音 ACK | **implemented** | `describeCommandResult` / `HARDWARE_ACK_NOTE` | 命令结果消息必须写明**控制 ACK 非硬件 ACK**，不得写成「已静音」 |
-| 升级与回滚提示 | **unimplemented** | 缺 `nai-upgrade-core` 的状态来源 | 控制面未暴露 plan/journal，界面无从提示升级与回滚 |
+| 升级与回滚提示 | **unimplemented** | 缺 `nai-upgrade-core` 的 **journal/执行状态来源** | **W137 已补上 plan 与成本来源**（`POST /upgrades/plan` + `ControlClient.planUpgrade`）；这条断言要的是「升级进行到哪一步、能否回滚」，那要多步事务的 journal 状态面，仍未暴露 |
 
 未实现的两条**登记为未实现并点名缺失前置**，不伪造「已覆盖」。这条纪律本身有测试守着：`an unimplemented assertion names the prerequisite it lacks, an implemented one claims none`。
 
 > **别把 O05 与第 4 条混淆**：§30.1 第 4 条是「升级与回滚**提示**」（需要控制面暴露 `plan`/`journal` 状态来源），
-> 与之相关但**不同**的是 O05「升级**成本**显示」。后者的呈现层已在 W49 落地（见下），
-> 但两者**都**因同一个缺失前置（控制面未暴露 `nai-upgrade-core` 的计划与成本来源）而未接入界面。
+> 与之相关但**不同**的是 O05「升级**成本**显示」。后者的呈现层已在 W49 落地、来源在 W137 落地（见下）；
+> 第 4 条仍缺的**只有 journal/执行状态**那一半——「同一个缺失前置」这句话自 W137 起不再成立。
 
 ## 升级成本显示（O05 的库内部分，W49）
 
@@ -30,8 +30,15 @@
 | 含未知 ⇒ **下界 + 未知计数**，且**不是**总额 | `totalPresentation` | `含未知分项时总额是下界加未知计数，不是总额` |
 | 缺字段/未知字段/非法金额/空原因 ⇒ **具名拒绝** | `parseCostEstimate` | 十条拒绝用例（缺分项、多分项、负金额、小数、字符串金额、空原因、两者并存、非法货币码、非对象…） |
 
-**它不构成 O05 的完整验收**：`tests/ui` 证明的是**呈现口径**，不是渲染；控制面尚未暴露升级计划与成本来源，
-故该模块**未接入任何界面**（与 §30.1 第 4 条同一缺失前置）。`tests/registry.yaml` 的 **O05 保持 `pending`**。
+**W137 补上来源**：控制面 `POST /upgrades/plan`（权限 `runtime.upgrade`）收下**包清单**、
+交给 `nai-upgrade-core` 的 `CostEstimate`（成本算法的**定义处**，控制面与前端都不另算）
+并把四分量搬出来；桌面端 `parseUpgradePlan` 只判信封，成本一律交给 `parseCostEstimate`。
+这条链上三层各有判据：契约（响应必须满足 `UpgradePlanView` 自己声明的 schema）、
+控制面（权限/清单不合规/币种/金额上界/体上限）、桌面（信封多余键、身份为空、成本解析只有一处）。
+
+**它仍不构成 O05 的完整验收**：`tests/ui` 证明的是**呈现口径与信封**，不是渲染；W137 补的是
+**成本来源**，`apps/desktop` 里**没有真实渲染的升级面板**（也无 DOM 测试环境），生产接线未做。
+⇒ `tests/registry.yaml` 的 **O05 保持 `pending`**，与 O02 同一惯例（界面出现不等于验收达标）。
 
 ## 位置与分层
 
@@ -69,6 +76,11 @@
 4. 两个界面尚不存在的断言被登记为未实现并给出锚点。
 
 `upgrade-cost.test.mjs`（19 项，W49）：见上「升级成本显示」一节——逐项呈现、总额呈现与十条严格解析用例。
+
+`upgrade-plan.test.mjs`（10 项，W137）：信封与来源一侧——只认 `package_id`/`package_version`/`cost`
+三个键（多一个也拒）、身份为空拒、成本**只由** `parseCostEstimate` 解析（判别性用例：坏成本必须由那一处拒绝）、
+未知分项呈现为原因、部分和不是总额、`COST_DECLARED_BASIS_NOTE` 三点内容锚点（包清单 / 未验签 / 升级事务），
+以及客户端把清单交给 `/upgrades/plan` 且请求体**只有** `manifest`。
 
 ## 边界
 

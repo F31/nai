@@ -1249,3 +1249,271 @@ async fn the_third_party_retention_fact_is_forwarded_verbatim() {
         &[Some("provider-retains-30d".to_owned())]
     );
 }
+
+// ---------------------------------------------------------------------------
+// §1330 O05：升级成本的**控制面来源**（W137）
+//
+// 这一组判的是「成本怎么从控制面出来」，不是「成本模型对不对」（那在
+// `nai-upgrade-core` 的 tests/gates.rs）。三条边界在这里各有判据：
+//   ① 权限：没有 `runtime.upgrade` 就到不了成本模型；
+//   ② 形状：响应必须满足**它自己声明的契约**（`UpgradePlanView`）；
+//   ③ 表示性：币种/金额超出呈现范围 ⇒ 具名拒绝，MUST NOT 发一个契约不合格的 200。
+// ---------------------------------------------------------------------------
+
+/// 一份**结构合规**的包清单。只让 `cost` 变化，其余字段固定——
+/// 于是「成本怎么呈现」的每条判据都只钉一个变量。
+fn package_manifest(cost: Value) -> Value {
+    json!({
+        "manifest_schema": 1,
+        "package_id": "plugin.demo",
+        "package_version": "1.2.3",
+        "kind": "plugin",
+        "kernel_range": ">=1.0.0, <2.0.0",
+        "requires": [{ "ref": "cap.one", "range": ">=1.0.0, <2.0.0" }],
+        "hosts": ["inproc"],
+        "os": ["linux"],
+        "architectures": ["x86_64"],
+        "runtime": [{ "id": "rt-cpu", "accel": "cpu" }],
+        "files": [{ "path": "artifacts/one.bin", "sha256": "0".repeat(64), "bytes": "1024" }],
+        "install_bytes": "1024",
+        "migrated_bytes": "2048",
+        "signer_ref": "signer.demo",
+        "license_ref": "license.demo",
+        "migration_ref": "migration.forward",
+        "rollback_range": ">=1.0.0, <1.2.0",
+        "cost": cost,
+    })
+}
+
+fn declared_cost(currency: &str, amounts: [Option<&str>; 4]) -> Value {
+    json!({
+        "currency": currency,
+        "cloud": amounts[0],
+        "download": amounts[1],
+        "storage": amounts[2],
+        "runtime_delta": amounts[3],
+    })
+}
+
+async fn plan(h: &Harness, manifest: Value) -> (u16, Value) {
+    let response = post(h, "/api/v1/upgrades/plan", &json!({ "manifest": manifest })).await;
+    let status = response.status().as_u16();
+    (status, response.json().await.unwrap())
+}
+
+#[tokio::test]
+async fn the_plan_route_needs_the_upgrade_permission_and_says_nothing_else() {
+    let h = harness(&["runtime.read"], Duration::from_secs(10)).await;
+    let (status, body) = plan(
+        &h,
+        package_manifest(declared_cost("CNY", [Some("10"), None, None, None])),
+    )
+    .await;
+    assert_eq!(status, 403);
+    assert_eq!(body["error"]["code"], "PERMISSION_DENIED");
+    // 「被拒」与「算出来是 0」在类型上分开：拒绝的响应里 MUST 没有成本面。
+    assert!(body.get("cost").is_none(), "{body}");
+}
+
+#[tokio::test]
+async fn the_plan_view_satisfies_the_contract_it_declares() {
+    let h = harness(&["runtime.upgrade"], Duration::from_secs(10)).await;
+    let (status, body) = plan(
+        &h,
+        package_manifest(declared_cost(
+            "CNY",
+            [Some("10"), Some("20"), Some("30"), Some("40")],
+        )),
+    )
+    .await;
+    assert_eq!(status, 200, "{body}");
+    // 响应交给**它自己声明的** schema（additionalProperties:false ⇒ 多一个 total 也会红）。
+    validates("UpgradePlanView", &body);
+    assert_eq!(body["package_id"], "plugin.demo");
+    assert_eq!(body["package_version"], "1.2.3");
+    assert_eq!(body["cost"]["currency"], "CNY");
+    assert_eq!(body["cost"]["components"]["cloud"], json!({ "known": 10 }));
+    assert_eq!(
+        body["cost"]["components"]["runtime_delta"],
+        json!({ "known": 40 })
+    );
+}
+
+#[tokio::test]
+async fn a_component_the_manifest_leaves_out_is_a_reason_and_never_zero() {
+    let h = harness(&["runtime.upgrade"], Duration::from_secs(10)).await;
+    let (status, body) = plan(
+        &h,
+        package_manifest(declared_cost("CNY", [Some("10"), None, None, None])),
+    )
+    .await;
+    assert_eq!(status, 200, "{body}");
+    validates("UpgradePlanView", &body);
+    let components = &body["cost"]["components"];
+    assert_eq!(components["cloud"], json!({ "known": 10 }));
+    for name in ["download", "storage", "runtime_delta"] {
+        let line = &components[name];
+        // 未声明的分项 MUST 是**原因**，MUST NOT 被补成 0——0 是「这块免费」的断言。
+        assert!(line.get("known").is_none(), "{name}: {line}");
+        let reason = line["unknown"].as_str().unwrap_or_default();
+        assert!(!reason.trim().is_empty(), "{name}: {line}");
+    }
+}
+
+#[tokio::test]
+async fn an_explicit_zero_is_reported_as_zero() {
+    // 与上一条互为反向：显式的 0 是一个**断言**，被如实呈现为 0，MUST NOT 被当成「未知」。
+    let h = harness(&["runtime.upgrade"], Duration::from_secs(10)).await;
+    let (status, body) = plan(
+        &h,
+        package_manifest(declared_cost(
+            "CNY",
+            [Some("0"), Some("0"), Some("0"), Some("0")],
+        )),
+    )
+    .await;
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(body["cost"]["components"]["cloud"], json!({ "known": 0 }));
+    assert_eq!(body["cost"]["components"]["storage"], json!({ "known": 0 }));
+}
+
+#[tokio::test]
+async fn a_manifest_that_fails_its_schema_is_named_and_yields_no_estimate() {
+    let h = harness(&["runtime.upgrade"], Duration::from_secs(10)).await;
+    let mut broken = package_manifest(declared_cost("CNY", [Some("10"), None, None, None]));
+    // 缺 `cost.runtime_delta`：清单 schema 要求四个分项**都在**（可以为 null）。
+    broken["cost"]
+        .as_object_mut()
+        .unwrap()
+        .remove("runtime_delta");
+    let (status, body) = plan(&h, broken).await;
+    assert_eq!(status, 400);
+    assert_eq!(body["error"]["code"], "INVALID_ARGUMENT");
+    let message = body["error"]["message"].as_str().unwrap_or_default();
+    assert!(message.contains("package manifest rejected"), "{message}");
+    // 失败 MUST NOT 退化成「全未知」「全 0」或空成本面。
+    assert!(body.get("cost").is_none(), "{body}");
+}
+
+#[tokio::test]
+async fn a_request_carrying_anything_beside_the_manifest_is_refused() {
+    let h = harness(&["runtime.upgrade"], Duration::from_secs(10)).await;
+    let manifest = package_manifest(declared_cost("CNY", [Some("10"), None, None, None]));
+    // 多带一个顶层键：调用方若想「顺手给个覆盖价」，那是把判定输入交给调用方。
+    let response = post(
+        &h,
+        "/api/v1/upgrades/plan",
+        &json!({ "manifest": manifest, "override": { "cloud": "0" } }),
+    )
+    .await;
+    assert_eq!(response.status(), 400);
+    let body: Value = response.json().await.unwrap();
+    assert_eq!(body["error"]["code"], "INVALID_ARGUMENT");
+    assert!(body.get("cost").is_none(), "{body}");
+
+    // 连 manifest 都不给 ⇒ 同样是具名拒绝，不是 200 加空成本。
+    let response = post(
+        &h,
+        "/api/v1/upgrades/plan",
+        &json!({ "cost": { "currency": "CNY" } }),
+    )
+    .await;
+    assert_eq!(response.status(), 400);
+}
+
+#[tokio::test]
+async fn a_currency_that_cannot_be_presented_is_refused_rather_than_widened() {
+    // 清单 schema 允许 1..8 个字符，呈现在契约里是三字母大写码。
+    // 两条口径**不**在这里合并：能做的是拒绝这个包，MUST NOT 放宽呈现口径。
+    let h = harness(&["runtime.upgrade"], Duration::from_secs(10)).await;
+    let (status, body) = plan(
+        &h,
+        package_manifest(declared_cost("cny", [Some("10"), None, None, None])),
+    )
+    .await;
+    assert_eq!(status, 400, "{body}");
+    let message = body["error"]["message"].as_str().unwrap_or_default();
+    assert!(message.contains("three-letter"), "{message}");
+    assert!(body.get("cost").is_none(), "{body}");
+}
+
+#[tokio::test]
+async fn an_amount_past_the_representable_range_is_refused() {
+    // 2^53：JS 里 `Number.isSafeInteger` 为假 ⇒ 消费端会悄悄取整。
+    // 契约把上界钉在 2^53-1，于是发一个更大的数是发一个自己契约不合格的 200。
+    let h = harness(&["runtime.upgrade"], Duration::from_secs(10)).await;
+    let (status, body) = plan(
+        &h,
+        package_manifest(declared_cost(
+            "CNY",
+            [Some("9007199254740992"), None, None, None],
+        )),
+    )
+    .await;
+    assert_eq!(status, 400, "{body}");
+    let message = body["error"]["message"].as_str().unwrap_or_default();
+    assert!(message.contains("representable"), "{message}");
+}
+
+#[tokio::test]
+async fn the_plan_body_limit_follows_the_manifest_limit_not_the_command_limit() {
+    // 反向判据：命令体上限是 4096，包清单允许到 65536。
+    // 若上限照抄命令那一份，这里会变成静默的 413，而不是把一个合法清单算出来。
+    let h = harness(&["runtime.upgrade"], Duration::from_secs(10)).await;
+    let mut large = package_manifest(declared_cost("CNY", [Some("10"), None, None, None]));
+    let files: Vec<Value> = (0..300)
+        .map(|index| {
+            json!({
+                "path": format!("artifacts/asset_{index:04}.bin"),
+                "sha256": "0".repeat(64),
+                "bytes": "1024",
+            })
+        })
+        .collect();
+    large["files"] = Value::Array(files);
+    let encoded = serde_json::to_vec(&large).unwrap();
+    assert!(encoded.len() > COMMAND_BODY_LIMIT, "{}", encoded.len());
+    assert!(encoded.len() < MANIFEST_LIMIT, "{}", encoded.len());
+
+    let (status, body) = plan(&h, large).await;
+    assert_eq!(status, 200, "{body}");
+
+    // 另一侧：超过 plan 体上限 ⇒ 具名的 413，MUST NOT 悄悄算一半。
+    // 体量故意只超出一点点（不是几倍）：服务端拒绝后只排空有界的一段，
+    // 过大的体仍会让对端先看到 RST —— 那是排空的边界，不是判据的边界。
+    let mut count = 300;
+    let mut oversized = package_manifest(declared_cost("CNY", [Some("10"), None, None, None]));
+    loop {
+        let files: Vec<Value> = (0..count)
+            .map(|index| {
+                json!({
+                    "path": format!("artifacts/asset_{index:04}.bin"),
+                    "sha256": "0".repeat(64),
+                    "bytes": "1024",
+                })
+            })
+            .collect();
+        oversized["files"] = Value::Array(files);
+        let size = serde_json::to_vec(&json!({ "manifest": oversized }))
+            .unwrap()
+            .len();
+        if size > PLAN_BODY_LIMIT {
+            assert!(
+                size < PLAN_BODY_LIMIT + 4096,
+                "fixture overshoots the drain window"
+            );
+            break;
+        }
+        count += 20;
+    }
+    let response = post(
+        &h,
+        "/api/v1/upgrades/plan",
+        &json!({ "manifest": oversized }),
+    )
+    .await;
+    assert_eq!(response.status(), 413);
+    let body: Value = response.json().await.unwrap();
+    assert_eq!(body["error"]["code"], "RESOURCE_EXHAUSTED");
+    assert!(body.get("cost").is_none(), "{body}");
+}

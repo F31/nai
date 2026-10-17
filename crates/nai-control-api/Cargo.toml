@@ -14,6 +14,7 @@ nai-contracts.workspace = true
 nai-kernel = { path = "../nai-kernel" }
 nai-media-core = { path = "../nai-media-core" }
 nai-storage = { path = "../nai-storage" }
+nai-upgrade-core = { path = "../nai-upgrade-core" }
 serde_json.workspace = true
 jsonschema.workspace = true
 sha2.workspace = true

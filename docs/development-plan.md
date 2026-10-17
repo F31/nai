@@ -2466,6 +2466,54 @@ TTS 时长与播放采样、段落内容与话术三类真实产生者不在仓�
 [W136 报告](reports/2026-10-17-w136-selling-loop-executor.md)、`docs/adr/0111-selling-loop-executor.md`、
 `openspec/changes/archive/2026-10-17-w136-pitch-executor/`。
 
+### W137（2026-10-17）：O05 的成本来源——把「升级成本显示」接上控制面
+
+**缝**：`O05` 自 W15/W49 起 `pending`，notes 自己写着「控制面尚未暴露 `nai-upgrade-core` 的 plan 与
+成本来源」。开工前现测四环：① 模型**已有**（`CostEstimate`，四分量 `Known`/`Unknown`）；② 控制面对
+`/upgrades/plan` **0 命中**（契约声明了三条 upgrade 操作，均未标 `implemented-loopback`）；③ 呈现口径
+已有 19 项覆盖但 `control.ts` **没有**升级方法；④ 包清单来自厂商包。⇒ 缺的形状是**②与③之间少一条线**，
+而①的答案本来就在仓库里，所以这一轮是**接线**而不是造模型。
+
+**在缝上还量到两件事（都不是推测）**：① 契约给 `/upgrades/plan` 复用了 `*jobResponses`（202 + `job_id`），
+但 plan 不下载不暂存 ⇒ 没有可轮询状态，铸 `job_id` 是**伪造可观测面**；② 请求体上限是命令口径的
+**4096**，而清单允许到 **65536** ⇒ 一个合法清单会变成静默 413。修 ②时又量到第三件：拒绝后**直接断开**会
+带着未读数据给对端 **RST**，`413` 于是**不可观测**——「拒绝了」成了只有服务端知道的状态 ⇒ 改成
+**有界排空**（`body_limit × 4`，超了放弃排空）。
+
+**改动**：契约 `/upgrades/plan` 改 200 + `UpgradePlanView`（plan 是同步纯读），新增五个 schema，
+清单结构**不重述**（真相仍在 `schemas/config/upgrade-package.schema.json`）；生成物本机再生。
+控制面新增依赖 `nai-upgrade-core`（shared→shared），执行体 `upgrade_plan` 做四件事：`plan_schema` 校验 →
+`UpgradePackage::parse` → `CostEstimate::from_package` → 四分量搬运；三道**表示性**闸门（币种非三字母
+大写码 / 金额超 `2^53-1` / 清单不合规）各自具名拒绝且**不**产出成本面，方向取拒绝而非放宽既有呈现判据。
+桌面 `parseUpgradePlan` 只认三键、成本一律交给 `parseCostEstimate`；`COST_DECLARED_BASIS_NOTE` 把
+「未验签」与金额一同呈现。
+
+**判据**：控制面 **9** 条（含「响应必须满足它自己声明的 schema」，`additionalProperties:false` ⇒ 多一个
+`total` 也会红）、`tests/ui/upgrade-plan.test.mjs` **10** 条；注入 **I1–I9** 九组逐组真红（未知当 0、
+去币种闸门、去金额上界、权限降为 read、体上限退回 4096、清单失败当成功、跳过体 schema、信封不判多余键、
+成本透传不解析），四个文件 `sha256sum -c` 逐字节还原。
+
+**顺带解除的前提**：W136 结尾装好的 `protoc 3.21.12` 让 `cargo xtask schema --check` 第一次在本机跑绿，
+契约类改动从「只能手工同步生成物 + 靠 CI 兜底」变成普通轮次——本轮就是第一个受益者。
+
+**勘误（本文件 4 处，只追加不改原文）**：W129 小节「只有 CI 的 `cargo xtask schema --check` 能抓（本机缺
+protoc 3.21.12）」、W130 小节「exit 101，**本机无 protoc 无法复现**」、W130 小节末「另需 protoc 3.21.12
+（本机无）」，以及更早一处「该再生的校验入口 `cargo xtask schema --check` 在宿主机**跑不了**（`EBUSY`）——
+**CI-only** ⇒ 本机验不了的改动不满足可自主推进」——这四句的前提**自 W137 起都不成立**：本机现可跑
+`schema --check`（`EXIT=0`，33 能力 / 112 消息 / 10 源，no drift），本轮就是第一个在本机改动契约并
+自行复核的轮次。`docs/knowledge.md` 里同族的两句同样已过期，勘误段追加在该文件末尾（合计 **6** 处）。
+
+**门控**：`cargo xtask check --profile full` **`GATE_EXIT=0`**（`CARGO_INCREMENTAL=0` + `CARGO_BUILD_JOBS=1`
++ 机外 `protoc 21.12`）：Rust 101 个目标 / **1112 通过 / 0 失败**；Node 13 个非前端套件 **291** + 前端
+`test:ui` **62** + `apps/desktop → test` **5** = **358 通过 / 0 失败**；日志 4061 行内 `LNK1104` 与
+`^(error|failures:|thread … panicked)` 均零命中。本轮 `LNK1104` 共 7 次（目标 **6 个互不相同**、报错指向的
+exe 在盘上不存在），是有界重试（20×8s）过的，**未改代码、未放宽判据**。
+
+**结果**：`O05` **保持 `pending`**——本轮补的是**来源**，`apps/desktop` 里没有真实渲染的升级面板
+（`tests/ui` 不带 DOM），「显示」这个动词还没有主语；§30.1 第 4 条也因此从「与 O05 同一缺失前置」收窄为
+**只缺 journal/执行状态**那一半。见 [W137 报告](reports/2026-10-17-w137-upgrade-plan-cost-source.md)、
+`docs/adr/0112-upgrade-plan-cost-source.md`、`openspec/changes/archive/2026-10-17-w137-upgrade-plan-cost/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

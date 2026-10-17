@@ -1555,6 +1555,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** @description Synchronous cost estimate computed from the package manifest in the request. Nothing is downloaded, staged or written, so there is no job to poll and no job id is minted. The manifest structure is validated by the upgrade core embedded schema (single source, not restated here). Signing is NOT verified on this path; the execute path verifies before it stages anything. */
         post: {
             parameters: {
                 query?: never;
@@ -1564,22 +1565,22 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["ResourceCommand"];
+                    "application/json": components["schemas"]["UpgradePlanRequest"];
                 };
             };
             responses: {
-                /** @description Job accepted, not yet executed */
-                202: {
+                /** @description Per-component estimate; a component that cannot be estimated is reported as its reason, never as zero */
+                200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["JobAccepted"];
+                        "application/json": components["schemas"]["UpgradePlanView"];
                     };
                 };
+                400: components["responses"]["BadRequest"];
                 401: components["responses"]["Unauthorized"];
                 403: components["responses"]["Forbidden"];
-                409: components["responses"]["Conflict"];
             };
         };
         delete?: never;
@@ -1862,6 +1863,33 @@ export interface components {
             command_id: string;
             /** @enum {string} */
             status: "accepted";
+        };
+        UpgradePlanRequest: {
+            /** @description Package manifest as published by its vendor. Its fields are validated by schemas/config/upgrade-package.schema.json (the upgrade core reads the same file), so they are not restated here. */
+            manifest: Record<string, never>;
+        };
+        UpgradePlanView: {
+            package_id: string;
+            package_version: string;
+            cost: components["schemas"]["CostView"];
+        };
+        CostView: {
+            /** @description Three-letter uppercase currency code. The manifest schema accepts a wider string; the plan path refuses one that cannot be presented as a currency amount rather than widening this. */
+            currency: string;
+            components: components["schemas"]["CostComponents"];
+        };
+        CostComponents: {
+            cloud: components["schemas"]["CostLine"];
+            download: components["schemas"]["CostLine"];
+            storage: components["schemas"]["CostLine"];
+            runtime_delta: components["schemas"]["CostLine"];
+        };
+        /** @description A known amount in minor currency units, or the reason it cannot be estimated. A component the manifest leaves out is unknown, never zero: zero is a checkable claim that this part is free. */
+        CostLine: {
+            /** @description Minor units, bounded to the largest exactly representable JavaScript integer so a consumer cannot silently round it. */
+            known: number;
+        } | {
+            unknown: string;
         };
         ResourceView: {
             resource_id: string;
