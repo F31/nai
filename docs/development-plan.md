@@ -2279,6 +2279,10 @@ windows 红在步骤 10 门控，经 W130 的匿名 annotation 通道读到失�
 `RUST_TEST_THREADS=4` 下 3 次全绿 ⇒ 给 CI 门控步加 `env: RUST_TEST_THREADS: "4"`（环境适配，
 未动任何期限常量与断言），改后 `workflow.test.mjs` 14/0、`step-config.test.mjs` 16/0 仍绿。
 ⚠️ **根因具名登记不修**：一批期限敏感断言在 CPU 争抢下会误报（W84 同族）。
+**第二次观测**（限并发后）：ubuntu **success**（457s，且 `schema --check` = success ⇒ 上一轮 ubuntu 的
+exit 101 是**环境瞬态**）；windows **cancelled**（1210s）——但门控步 **success**，是 `timeout-minutes: 20`
+**不够用**被砍（W130 实测 windows 全跑完 15m43s，限并发后必然超出）⇒ 超时提到 **35**（预算调整，
+未动期限常量/断言/步骤集合；`workflow.test.mjs` 14/0、`step-config.test.mjs` 16/0 仍绿）。
 
 见 [W131 报告](reports/2026-10-17-w131-local-only-egress.md)、[ADR 0109](adr/0109-local-only-egress.md)、
 `openspec/changes/2026-10-17-w131-local-only-egress/`。

@@ -325,9 +325,57 @@ ubuntu 步骤 9 报 exit **101**，而 windows 同一步 **success**；W130 那�
 
 ⇒ 判定：**无法定性**，随下一轮 CI 重跑观察（若为环境/protoc 安装漂移，重跑即绿）。
 
-### 7.5 第二次观测（限并发后的提交）
+### 7.5 第二次观测（限并发后的提交 `d3797cc`）⇒ ubuntu **success** / windows **cancelled**
 
-_（回填）_
+| 观测 | 结果 |
+|---|---|
+| 触发确认（1 次） | run **38995278526**，`in_progress`，`head_sha` == 推送 SHA ✓ |
+| 完成态（有界循环：第一轮 10 次 × 120s **全部 `in_progress`**；第二轮第 1 次） | **`completed / cancelled`**（10:32 → 10:53） |
 
-API 用量：第一次观测共 **11** 次（触发 1 + 完成态循环 6 + jobs 1 + check-runs 1 + annotations 2 +
-对照用的 W130 jobs 1）。
+逐平台：
+
+| 平台 | 结论 | 耗时 | 关键步骤 |
+|---|---|---|---|
+| ubuntu-24.04 | **success** | **457s**（7m37s） | 步骤 9 `schema --check` **success**；步骤 10 门控 **success** |
+| windows-latest | **cancelled** | **1210s**（20m10s） | 步骤 9 **success**；步骤 10 门控 **success**；步骤 12–13 **success** |
+
+⇒ 两点结论：
+
+1. **ubuntu 上一轮的 exit 101 是环境瞬态，重跑即绿**；本轮与生成相关的两处改动
+   （`backup.schema.json` 的 const 9→10、`backup.ts` 的 9→10）在**两平台**都已被 `schema --check` 核对一致。
+2. **windows 的 `cancelled` 不是失败**：门控步本身 **success**（⇒ 限并发到 4 确实消除了期限超时），
+   但整个 job 在 1210s 被砍——workflow 的 `timeout-minutes: 20` 不够用了。
+   W130 实测 windows 全跑完 15m43s（另一次 15m55s，已逼近上限），限并发后必然超出。
+
+**处置**：`timeout-minutes: 20` → **35**（提交 **`ed28c5f`**，2 files / +9 −1）。
+⚠️ 这是**预算调整，不是放宽判据**：没有改任何期限常量、断言或步骤集合；
+`workflow.test.mjs` **14/0**、`step-config.test.mjs` **16/0** 仍绿。
+
+### 7.6 第三次观测（超时放宽后的提交 `ed28c5f`）⇒ **两平台 success**
+
+| 观测 | 结果 |
+|---|---|
+| 触发确认（1 次） | run **38996838549**，`in_progress`，`head_sha` == 推送 SHA ✓ |
+| 完成态（有界循环，间隔 150s，上限 14 次） | 前 8 次 `in_progress`，**第 9 次 `completed / success`**（10:56 → 11:17） |
+| 完成态第 2 次确认 | 同上：`completed / success`，`head_sha` 回读一致 ✓ |
+
+| 平台 | 结论 | 耗时 | 步骤 9 `schema --check` | 步骤 10 门控 | 非 success 且非 skipped 的步骤 |
+|---|---|---|---|---|---|
+| ubuntu-24.04 | **success** | 521s（8m41s） | success | success | **无** |
+| windows-latest | **success** | 1140s（19m00s） | success | success | **无** |
+
+⇒ 本轮闭环。三次观测串起来看：
+
+1. 第一次（`c010374`）两平台 **failure**：windows 是既有期限超时（对照实验判定与本轮改动无关），
+   ubuntu 是 `schema --check` 的环境瞬态。
+2. 第二次（`d3797cc`，限并发 4）：ubuntu **success**；windows 门控步 **success** 但整个 job 在
+   1210s 被 `timeout-minutes: 20` **cancelled**（跑不完，不是失败）。
+3. 第三次（`ed28c5f`，超时 35）：**两平台 success**，windows 实际只需 **1140s（19m00s）**
+   ——未超原 20 分钟上限，说明第二次的 1210s 里含有机器波动；超时放宽到 35 是为这种波动留余量。
+
+⚠️ **具名登记**：windows CI 总时长已达 **19 分钟**，即便放宽到 35 也只剩一半余量；
+`timeout-minutes` 与「限并发换稳定」这两件事要一起看，后续若再加 suite 需重新评估。
+
+API 用量：第一次 **11** 次（触发 1 + 完成态 6 + jobs 1 + check-runs 1 + annotations 2 +
+对照用的 W130 jobs 1）；第二次 **13** 次（触发 1 + 完成态 11 + jobs 1）；第三次 **11** 次
+（触发 1 + 完成态 9 + jobs 1 + 完成态第 2 次确认 1）。合计 **35** 次。
