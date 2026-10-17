@@ -2343,7 +2343,8 @@ exit 101 是**环境瞬态**）；windows **cancelled**（1210s）——但门�
 缺的是模型侧候选产生者，与 H01/H02 不同型，硬凑会逼出不实陈述。
 
 **门控**：`check --profile full` **绿**（`EXIT=0`，289s；Rust **1085/0**（+12）、Node **324/0**、错误类 0、
-前端全通过；首跑 `LNK1104` 为宿主瞬态，单跑 `demo` 19/19 已排除代码缺陷）。**CI**：_（回填）_。
+前端全通过；首跑 `LNK1104` 为宿主瞬态，单跑 `demo` 19/19 已排除代码缺陷）。**CI**：run `39008291018`
+**两平台 success**（ubuntu 7m / windows 21m，无非 success 且非 skipped 步骤）。
 
 见 [W133 报告](reports/2026-10-17-w133-assembler.md)、`openspec/changes/2026-10-17-w133-assembler/`。
 
