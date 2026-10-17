@@ -175,3 +175,27 @@ the reachability closed world must hold for the real repository
 这个前提补上了，但**没有**为它新加判据（那需要把「工作区新增文件 vs 站点表」做成一条独立断言，
 属另一轮）。处置口径：**新增测试文件时，站点登记与逐字清单 MUST 与文件同一次提交**。
 
+### 6.1 修复后的 CI 结论（两平台 `success`）
+
+| 项 | 值 |
+|---|---|
+| run | `39016724564`（`attempt` 1） |
+| `head_sha` | `4c2eb465815c479b4852a68a8a7e1ddda07a74ce`（与本地 `HEAD` **逐字相同**，已回读核对） |
+| 状态 | `completed` / **`success`**，`created_at` 08:16:11Z → `updated_at` 08:24:03Z（**472 秒**） |
+| job | 2 个（windows-latest / ubuntu-24.04），**两个都 `success`**，各 20 步 |
+| 「非 `success` 且非 `skipped`」的步 | **0**（逐平台完整步骤序列核过，不是只看 job 结论） |
+
+`skipped` 的步只有三类，都是**设计的**：windows 的 `Install Linux C++ protobuf runtime`（第 8 步）与
+`Full three-language contract suite`（第 14 步，Linux C++ 夹具）、以及**两平台都跳**的
+`Publish the gate failure summary as annotations`（第 11 步，`if: failure()` 的诊断步）。
+⇒ 门控步（第 10 步）在**两个平台都真的执行且通过**——这正是修复要证的那一件事。
+
+完成态**查询了两次**（有界循环的 `completed` 观测 + 单独回读），结论一致；`head_sha` 回读等于推送 SHA，
+排除了代理缓存回放的可能。
+
+⚠️ **不主张精确收益**：CI 侧没有本机那样的编译器预热，472 秒**不与** §1.3 的「517 秒/平台腿」直接相减
+（那 517 秒是暖缓存下**纯执行**时间）。可判的只有两件事：①那 7 条步的包集是门控那次
+`cargo test --workspace` 的**子集**（结构事实，由 `step-overlap` 判据守住）；②修复后 CI 从「170 秒早退
+红」变成「472 秒两平台全绿」。
+
+
