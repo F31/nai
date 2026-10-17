@@ -12,6 +12,7 @@
 //! rather than passing invisibly.
 mod common;
 use common::*;
+use nai_kernel::assemble::{AssemblyInput, CandidateFragment, SegmentInput, plan_assembly};
 use nai_kernel::evaluate::assembly::{
     AssemblyPlan, AssemblyRecord, AssemblyRejection, Crop, Fragment, LoggedFragment,
     RebuildRejection, SEGMENT_ORDER, Segment, SegmentBudget, SegmentSlice, SegmentUsage,
@@ -1502,4 +1503,166 @@ fn runtime_assembly_refusal_for(rejection: AssemblyRejection) -> Vec<&'static st
             )
         }
     }
+}
+// ---------------------------------------------------------------------------
+// W133: the producer
+// ---------------------------------------------------------------------------
+
+/// One candidate as a call site would offer it: §41.3's provenance plus the cost §41.2 budgets.
+fn candidate<'a>(id: &'a str, source: SourceKind) -> CandidateFragment<'a> {
+    CandidateFragment {
+        fragment: Fragment {
+            id,
+            source,
+            source_ref: SOURCE_REF,
+            scope: Some(SCOPE),
+            age_ms: None,
+            trust: Trust::Data,
+        },
+        tokens: 10,
+        chars: 40,
+    }
+}
+
+/// §41.2's two mandatory dimensions plus a floor, with no item cap — the call site's choice.
+fn offered_budget() -> SegmentBudget {
+    SegmentBudget {
+        tokens: Some(1_000),
+        chars: Some(4_000),
+        items: None,
+        floor: Some(100),
+    }
+}
+
+/// W133 closes the last gap in the H01/H02 chain. Before this round every `AssemblyPlan` in the
+/// repository was built by hand inside a test, so `record_assembly` had no producer and the chain
+/// could never carry a real assembly — "wired" described a body with no caller. Here the plan
+/// comes from `plan_assembly`, reaches the hash chain, is read back row by row, and is rebuilt
+/// from the chain alone.
+#[test]
+fn a_plan_from_the_assembler_reaches_the_chain_and_rebuilds_from_it() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+    let mut composition = prepared(root);
+
+    // Offered out of §41.1's order on purpose: imposing the order is the assembler's job.
+    let tool = candidate("t1", SourceKind::ToolResult);
+    let policy = candidate("p1", SourceKind::SystemPolicy);
+    let persona = candidate("r1", SourceKind::Scenario);
+    let contract = candidate("c1", SourceKind::Scenario);
+    let evidence = candidate("k1", SourceKind::KnowledgeEvidence);
+
+    let segments = [
+        SegmentInput {
+            segment: "tool_results",
+            candidates: &[tool],
+            budget: Some(offered_budget()),
+        },
+        SegmentInput {
+            segment: "evidence",
+            candidates: &[evidence],
+            budget: Some(offered_budget()),
+        },
+        SegmentInput {
+            segment: "system_policy",
+            candidates: &[policy],
+            budget: Some(offered_budget()),
+        },
+        SegmentInput {
+            segment: "persona",
+            candidates: &[persona],
+            budget: Some(offered_budget()),
+        },
+        SegmentInput {
+            segment: "output_contract",
+            candidates: &[contract],
+            budget: Some(offered_budget()),
+        },
+    ];
+
+    let request = AssemblyInput {
+        model_version: MODEL,
+        prompt_version: PROMPT,
+        segments: &segments,
+    };
+    let planned = plan_assembly(&request).expect("every name is defined by §41.1");
+
+    // §41.1's order, not the offered order: the three uncroppable segments first, then the rest.
+    let ids: Vec<&str> = planned
+        .segments()
+        .iter()
+        .flat_map(|segment| segment.fragments.iter().map(|fragment| fragment.id))
+        .collect();
+    assert_eq!(ids, vec!["p1", "r1", "c1", "k1", "t1"]);
+
+    let outcome = planned
+        .with_plan(|plan| composition.record_assembly(plan, &record(&ids), &fragments(&ids)))
+        .unwrap();
+    assert!(
+        matches!(outcome, AssemblyOutcome::Logged(_)),
+        "both judgements let a legal plan through: {outcome:?}"
+    );
+
+    let rows = composition.read_logged_assemblies(500).unwrap();
+    assert_eq!(rows.len(), 1, "one assembly, one entry");
+
+    let verdict = composition
+        .rebuild_assembly_from_log(&record(&ids), 500)
+        .unwrap();
+    assert!(
+        verdict.rebuildable,
+        "the chain alone reproduces it: {:?}",
+        verdict.rejections
+    );
+    let rebuilt: Vec<&str> = verdict
+        .rebuilt
+        .iter()
+        .map(|(id, _source_ref)| id.as_str())
+        .collect();
+    assert_eq!(rebuilt, ids, "and in the order §41.1 fixes");
+}
+
+/// The other half of the same seam: an assembly the assembler built that §41.1 still refuses must
+/// reach the chain **not at all**. Otherwise "refused" and "logged then forgotten" would look the
+/// same from the log.
+#[test]
+fn an_incomplete_plan_from_the_assembler_appends_nothing() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+    let mut composition = prepared(root);
+
+    // Only the first of §41.1's three uncroppable segments.
+    let policy = candidate("p1", SourceKind::SystemPolicy);
+    let segments = [SegmentInput {
+        segment: "system_policy",
+        candidates: &[policy],
+        budget: Some(offered_budget()),
+    }];
+
+    let request = AssemblyInput {
+        model_version: MODEL,
+        prompt_version: PROMPT,
+        segments: &segments,
+    };
+    let planned = plan_assembly(&request).expect("defined name");
+    let ids = vec!["p1"];
+
+    let outcome = planned
+        .with_plan(|plan| composition.record_assembly(plan, &record(&ids), &fragments(&ids)))
+        .unwrap();
+    match outcome {
+        AssemblyOutcome::NotCallable(refusal) => assert!(
+            refusal
+                .rejections
+                .contains(&AssemblyRejection::UncroppableSegmentMissing.label()),
+            "the missing §41.1 segments are named: {:?}",
+            refusal.rejections
+        ),
+        other => panic!("§41.1 refuses this, so the arm is NotCallable: {other:?}"),
+    }
+
+    assert!(
+        composition.read_logged_assemblies(500).unwrap().is_empty(),
+        "a refused assembly appends nothing"
+    );
 }

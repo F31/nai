@@ -1,5 +1,6 @@
 //! Portable registration/binding kernel. Ready is binding preflight, not host
 //! startup, content authorization, a playback lease or device certification.
+pub mod assemble;
 pub mod bridge;
 pub mod demo;
 pub mod device;

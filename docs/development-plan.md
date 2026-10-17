@@ -2322,10 +2322,30 @@ exit 101 是**环境瞬态**）；windows **cancelled**（1210s）——但门�
 **R2 首跑假绿**给出**第三种成因**：`cfg!(test)` 在**生产 lib** 里恒 false ⇒ 注入自身没改行为 ⇒
 「注入后全绿」MUST 先怀疑注入，MUST NOT 直接记作「判据无判别力」。
 
-**门控**：_（回填）_。**CI**：_（回填）_。
+**门控**：`check --profile full` **绿**（`EXIT=0`，12m24s；Rust **1073/0**、Node **324/0**、错误类 0、
+前端 7 步）。**CI**：run `39004921781`（`head_sha` 回读一致）**两平台 success**，18m32s。
 
 见 [W132 报告](reports/2026-10-17-w132-degradation-visible.md)、[ADR 0110](adr/0110-degradation-visible.md)、
-`openspec/changes/2026-10-17-w132-degradation-visible/`。
+`openspec/changes/archive/2026-10-17-w132-degradation-visible/`。
+
+### W133（2026-10-17）：H01/H02 的缺失生产者——把「装配」从测试里的手工构造变成一段真实路径
+
+**缝**：开工前现测 `grep -rn AssemblyPlan` 排除测试后只有定义与消费两处——**生产代码里没有任何一行
+构造计划**，`record_assembly` 的入参从未被生产过。判定面（W69）与执行体（W104/W106）都已建，两端之间是空的。
+
+**改动**：新建 `crates/nai-kernel/src/assemble.rs` 的 `plan_assembly`——只施加 §41.1 的顺序、只输出被
+提供的段（绝不补空切片）、段内从尾部裁剪并记录被裁项与原因；1–3 段任何预算都不裁；未定义段名具名拒。
+零业务常量（复用 `SEGMENT_ORDER`/`Segment::uncroppable`，上限全来自调用方）。判定面与执行体**零改动**。
+
+**判据**：kernel 新目标 `tests/assemble.rs` **10/10**、runtime `tests/assembly.rs` **27 → 29**；
+九组注入全部真红（3/2/1/1/1/1/1/1/4），三文件 sha256 逐字节还原。registry `H01`/`H02` **仍 `pending`**——
+闭合的是「②执行体获得真实入参」，④真实产生者与 §41.2 初值标定未接线。**H03/H04 本轮未纳入**：
+缺的是模型侧候选产生者，与 H01/H02 不同型，硬凑会逼出不实陈述。
+
+**门控**：`check --profile full` **绿**（`EXIT=0`，289s；Rust **1085/0**（+12）、Node **324/0**、错误类 0、
+前端全通过；首跑 `LNK1104` 为宿主瞬态，单跑 `demo` 19/19 已排除代码缺陷）。**CI**：_（回填）_。
+
+见 [W133 报告](reports/2026-10-17-w133-assembler.md)、`openspec/changes/2026-10-17-w133-assembler/`。
 
 ## 任务依赖与状态
 
