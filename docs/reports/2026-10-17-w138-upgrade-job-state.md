@@ -146,3 +146,31 @@ W137 结尾把 §30.1 第 4 条收窄成一句可判的话：**只缺 journal/�
    **MUST NOT** 记作「已注入验证」。
 4. **两个后端的 `try_lock` 共用同一把 store 锁**：并发时会把对方判成 409。属既有形状的继承，
    改它要重设计锁粒度，不在本轮。
+
+## 六、CI 观测
+
+推送 `bb2abba6fb17de8767a138899d89f6cb343d7059`（`465cb5e..bb2abba  main -> main`，SSH 443）。
+结论按三件齐取：
+
+| 项 | 值 |
+| --- | --- |
+| 运行 id | `39048529222`（`Engineering foundation`） |
+| 回读 `head_sha` | `bb2abba6fb17de8767a138899d89f6cb343d7059` == 推送 SHA ✔ |
+| 完成态 `conclusion` | **`success`** |
+| 缓存破坏 | 每个端点带 `cb=<纳秒>` 且 `Cache-Control: no-cache`；`?head_sha=` 用完整 40 位 |
+| 轮询 | 有界 9 次窗口、单轮 **1** 个请求、间隔 4 分钟，第 4 次取到完成态（未打满匿名配额） |
+
+**逐平台完整步骤序列**（API `jobs[].steps` 口径，每平台 **20** 步——含 `Set up job` / `Post Run …`
+这类包装步，**不**与 workflow 的 `- name:` 步相减）：
+
+- `foundation (ubuntu-24.04)`：`completed / success`，20 步，非 success **1** 个 ——
+  `11:Publish the gate failure summary as annotations = skipped`（门控通过时本就不执行，属健康形状）。
+- `foundation (windows-latest)`：`completed / success`，20 步，非 success **3** 个，全部是 `skipped` 且各有其因 ——
+  `8:Install Linux C++ protobuf runtime`（Windows 不跑 Linux 工具链）、
+  `11:Publish the gate failure summary as annotations`（同上）、
+  `14:Full three-language contract suite (Linux C++ toolchain)`（同上）。
+
+两平台红在**完全不同**的步骤上才需要分开看；本轮两平台都是 success，上面的非 success 项**逐条**核到了原因，
+没有一个是真失败。执行日志匿名读不到，本轮无需走 annotation 通道（没有失败需要解释）。
+
+**回填提交**（docs-only）不写 §九，但按纪律仍做 1 次观测。

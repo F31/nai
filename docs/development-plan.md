@@ -2556,6 +2556,11 @@ Rust 101 个目标 / **1122 通过 / 0 失败**；Node 13 个非前端套件 **2
 见 [W138 报告](reports/2026-10-17-w138-upgrade-job-state.md)、`docs/adr/0113-upgrade-job-state.md`、
 `openspec/changes/archive/2026-10-17-w138-upgrade-job-state/`。
 
+**CI**：推送 `bb2abba`，运行 `39048529222`，回读 `head_sha` 与推送 SHA 一致，
+`foundation (ubuntu-24.04)` 与 `foundation (windows-latest)` 两平台均 `completed / success`
+（各 20 步，API 口径）；非 success 项全部是 `skipped` 且逐条核到原因（Linux C++ protobuf 步在 Windows 不跑、
+门控通过时「发布失败摘要为 annotation」不执行）。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |
