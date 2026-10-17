@@ -8,7 +8,7 @@ use nai_kernel::evaluate::harness::{
     CREDENTIAL_MARKERS, DEGRADE_ORDER, DegradeContext, DegradeLevel, DegradeVerdict,
     DegradedCallContext, FAILURE_LAYERS, FailureLayer, FreeFormViolation, OBSERVATION_LAYERS,
     ObservationLayer, ObservationPolicy, ObservationRecord, ObservationRejection, ViewerText,
-    assert_no_free_form, evaluate_degradation, evaluate_observation,
+    assert_no_free_form, evaluate_degradation, evaluate_observation, render_degradation_notices,
 };
 use std::collections::BTreeMap;
 
@@ -460,4 +460,90 @@ fn free_form_violation_labels_are_distinct() {
     let labels: Vec<&str> = FreeFormViolation::ALL.iter().map(|v| v.label()).collect();
     let unique: std::collections::BTreeSet<&str> = labels.iter().copied().collect();
     assert_eq!(unique.len(), FreeFormViolation::ALL.len());
+}
+
+// ---------------------------------------------------------------------------
+// §47.4 last line: the rendered, interface-facing shape (W132)
+//
+// `DegradeVerdict::visible` is `true` by construction — the judge cannot express "invisible".
+// That makes the judge the wrong place to test "no silent degradation": what it cannot cover is
+// the *transport* from the verdict to the interface. These tests pin the rendering, which is
+// that transport's first hop. The rest is in `nai-runtime/tests/degradation.rs`.
+// ---------------------------------------------------------------------------
+
+/// One verdict renders to exactly one notice — never zero, never two.
+#[test]
+fn one_verdict_renders_to_exactly_one_notice() {
+    let verdicts: Vec<DegradeVerdict> = FAILURE_LAYERS
+        .iter()
+        .map(|layer| evaluate_degradation(*layer, &DegradeContext::all_available()))
+        .collect();
+    let notices = render_degradation_notices(&verdicts);
+    assert_eq!(
+        notices.len(),
+        verdicts.len(),
+        "every judged degradation MUST reach the interface"
+    );
+}
+
+/// Guard ①: the notice carries the **judged** fields, not a paraphrase. Substituting a generic
+/// string for any field fails here, layer by layer.
+#[test]
+fn a_notice_carries_the_judged_fields_verbatim() {
+    for layer in FAILURE_LAYERS {
+        let verdict = evaluate_degradation(layer, &DegradeContext::all_available());
+        let notices = render_degradation_notices(std::slice::from_ref(&verdict));
+        let notice = &notices[0];
+        assert_eq!(notice.layer, layer.label(), "{layer:?} layer label");
+        assert_eq!(notice.code, layer.code(), "{layer:?} code");
+        assert_eq!(notice.level, verdict.level.label(), "{layer:?} level");
+        assert_eq!(
+            notice.actionable,
+            layer.actionable(),
+            "{layer:?} actionable"
+        );
+        assert_eq!(
+            notice.refuses_call,
+            layer.refuses_call(),
+            "{layer:?} refuses"
+        );
+        assert_eq!(notice.drops, layer.drops(), "{layer:?} drops");
+        assert_eq!(
+            notice.keeps_existing_session,
+            layer.keeps_existing_session(),
+            "{layer:?} keeps session"
+        );
+    }
+}
+
+/// Guard ②: the note is specific per layer. One shared string across all six is the
+/// "visible but says nothing" implementation §47.4 exists to rule out.
+#[test]
+fn every_layer_renders_a_distinct_actionable_note() {
+    let verdicts: Vec<DegradeVerdict> = FAILURE_LAYERS
+        .iter()
+        .map(|layer| evaluate_degradation(*layer, &DegradeContext::all_available()))
+        .collect();
+    let notices = render_degradation_notices(&verdicts);
+    let unique: std::collections::BTreeSet<&str> = notices.iter().map(|n| n.actionable).collect();
+    assert_eq!(
+        unique.len(),
+        FAILURE_LAYERS.len(),
+        "a shared note is not an actionable note"
+    );
+}
+
+/// Guard ③: rendering neither deduplicates nor merges. Two failures of the same layer are two
+/// degradation events; collapsing them would hide that it happened twice.
+#[test]
+fn rendering_does_not_collapse_repeated_failures() {
+    let verdict = evaluate_degradation(FailureLayer::Tool, &DegradeContext::all_available());
+    let notices = render_degradation_notices(&[verdict.clone(), verdict]);
+    assert_eq!(notices.len(), 2, "rendering MUST NOT swallow its input");
+}
+
+/// Empty input is a real zero, not a skip.
+#[test]
+fn an_empty_verdict_set_renders_zero_notices() {
+    assert!(render_degradation_notices(&[]).is_empty());
 }

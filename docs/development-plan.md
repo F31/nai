@@ -2287,6 +2287,46 @@ exit 101 是**环境瞬态**）；windows **cancelled**（1210s）——但门�
 见 [W131 报告](reports/2026-10-17-w131-local-only-egress.md)、[ADR 0109](adr/0109-local-only-egress.md)、
 `openspec/changes/2026-10-17-w131-local-only-egress/`。
 
+### W132（2026-10-17）：H17 的 runtime 接线——把「层失败」送到界面
+
+**缝**：`tests/registry.yaml` 的 `H17` notes 写「W66 已落判定面……**仍未接线**」。开工前现测：
+`evaluate_degradation` 与 `assert_no_free_form` 在 `crates/`、`apps/` 里**只被测试引用**（生产零调用点）。
+更关键：`DegradeVerdict::visible` 是**恒为 `true` 的构造常量** ⇒ 「无静默降级」钉在判定面**恒绿、是装饰**；
+真正会坏的是判定到界面的 **transport**。本轮交付这段 transport。
+
+**改动**：①呈现层承载物 `DegradationNotice` + `render_degradation_notices`（kernel：一条判定 ⇒ 一条通知、
+不去重不合并、字段照抄、六层说明互异）；②承载物 `DecisionKind::Degradation`（判 **critical**——telemetry
+写失败会落遥测缓冲 ⇒ 悄悄消失的降级正是静默降级）+ 迁移 `0011-decision-log-degradation-kind.sql`
+（逐列重建、逐字复制含四个哈希列）+ 版本号成套**六处** 10→11；③接线 `crates/nai-runtime/src/degradation.rs`：
+`record_degradation` 入参是**事实**不是判定结果，在生产路径上**真调用**两个判定，判定先于写入、违规零落盘；
+`read_degradation_view` **只从链上解码**（不可解析 ⇒ 具名失败不静默跳过、空链报 `0`、域＝`degradation`）。
+
+**判据**：kernel **29/29**（**24+5**）、runtime **9/9**（新文件）、`nai-storage --lib` **82/82**（81+1 迁移，
+`RUST_TEST_THREADS=4`）、`schema.test.mjs` **30/30**、`registry.test.mjs` **56/56**。
+
+**刻意不做**：不扩展 `CapabilityView` 契约——`CapabilityDescriptor` 描述**插件能力**，把 harness 层失败
+映射进去要编造 `capability_id`/`plugin_id` 且 `PluginState` 无对应取值，那是在说「一个插件失败了」
+而事实是「某一层失败了」；不实陈述比缺口更贵。另需 protoc 3.21.12（本机无）。
+
+**registry**：`H17` notes 就地订正，**`status` 仍 `pending`**——四环里 ①②已建且有覆盖，
+**③调用方（呈现层渲染）与 ④真实产生者（真实界面）未接线**；与 H15/H01/H02 接线轮惯例一致。
+
+**具名登记（三处，本轮不修）**：①真实界面仍未接线（需契约扩展 + 壳体 IPC）；②关键种类的清单是**手写的**
+（`tests/decision_log.rs` 逐字列四个 `DecisionKind`），本轮新增第五个 critical 种类而它**没有变红**——
+它不声明闭世界，故无信号；③`required_str` 在 `assembly.rs` 与 `degradation.rs` 各有一份（合并要改
+`assembly.rs` 的 10 处调用点，属范围外）。另：期限敏感断言在 CPU 争抢下误报（W84 同族，根因未修）。
+
+**判据退化与方法论落点**：**K4 再实证 ADR 0109 的第二个方向**——写「首选级」而非「回退后的级」的坏实现
+让 kernel 29/29 与 runtime 既有 8 条**全绿**（它们全用 `all_available()`，两种写法在该输入下构造性相等），
+**只有本轮新补的回退用例红** ⇒ 处置是**补能走到那一层的输入**，MUST NOT 改判据。
+**R2 首跑假绿**给出**第三种成因**：`cfg!(test)` 在**生产 lib** 里恒 false ⇒ 注入自身没改行为 ⇒
+「注入后全绿」MUST 先怀疑注入，MUST NOT 直接记作「判据无判别力」。
+
+**门控**：_（回填）_。**CI**：_（回填）_。
+
+见 [W132 报告](reports/2026-10-17-w132-degradation-visible.md)、[ADR 0110](adr/0110-degradation-visible.md)、
+`openspec/changes/2026-10-17-w132-degradation-visible/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

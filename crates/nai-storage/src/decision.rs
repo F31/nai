@@ -34,6 +34,13 @@ pub enum DecisionKind {
     Observation,
     /// §41.5: a context assembly, logged as its own ingestible fragments (W104).
     Assembly,
+    /// §47.4 / INV-32: a named degradation, rendered for the interface (W132).
+    ///
+    /// **Critical, not telemetry.** A telemetry write that fails is buffered and the caller sees
+    /// `persisted == false`; a degradation that can be buffered is a degradation the interface
+    /// never shows, which is precisely the silent degradation INV-32 forbids. So this kind fails
+    /// loudly instead.
+    Degradation,
     Decision,
     Guard,
     Cue,
@@ -51,6 +58,7 @@ impl DecisionKind {
             Self::Event => "event",
             Self::Observation => "observation",
             Self::Assembly => "assembly",
+            Self::Degradation => "degradation",
             Self::Decision => "decision",
             Self::Guard => "guard",
             Self::Cue => "cue",
@@ -67,9 +75,11 @@ impl DecisionKind {
     /// remaining chain segments are telemetry (INV-15).
     pub fn criticality(self) -> Criticality {
         match self {
-            Self::Cue | Self::Approval | Self::Cancellation | Self::DutyLease => {
-                Criticality::Critical
-            }
+            Self::Cue
+            | Self::Approval
+            | Self::Cancellation
+            | Self::DutyLease
+            | Self::Degradation => Criticality::Critical,
             _ => Criticality::Telemetry,
         }
     }

@@ -8,6 +8,7 @@
 //! remain engineering drills, not production playback.
 mod assembly;
 mod composition;
+mod degradation;
 mod memory;
 mod observation;
 mod ramp;
@@ -19,6 +20,9 @@ pub use assembly::{
     LoggedCrop, LoggedSegmentBudget, LoggedSegmentUsage,
 };
 pub use composition::{BRINGUP_OPERATION, Composition, ControlAction, DutyEvent, ObservedFault};
+pub use degradation::{
+    DegradationOutcome, DegradationView, FreeFormRefusal, LoggedDegradation, Retained,
+};
 pub use memory::{
     COPY_SITES, CopySite, MemoryAdapter, MemoryForgetError, MemoryReadError, MemoryWriteOutcome,
     MemoryWriteRefusal, PurgeReport,

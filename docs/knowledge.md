@@ -209,6 +209,32 @@ registry）。见 [ADR 0103](adr/0103-storage-bound-roster.md)、[W125 报告](r
 对齐」，不比内容；只有 CI 的 `cargo xtask schema --check` 能抓，本机缺 protoc），与 W129 的同名缺口**同一处**。
 见 [ADR 0109](adr/0109-local-only-egress.md)、
 [W131 报告](reports/2026-10-17-w131-local-only-egress.md)。）
+（W132 补上 H17 的 **runtime 接线**。起点是一个**判定面答不了的问题**：`DegradeVerdict::visible` 是
+`evaluate_degradation` 无条件写入的 `true` ⇒ 判定面**没有「不可见」这一格**，于是「无静默降级」钉在
+判定面**恒绿、是装饰**；真正会坏的是**判定到界面的 transport**，本轮交付的正是它（渲染 → 落盘 → 读回）。
+三条方法论落点：①**构造性事实不能用断言去守，但要把判据搬去它真正能坏的那一跳**——`visible` 恒真不是
+缺陷，可它意味着判据 MUST 落在 transport 上（不做「再断言一次 visible」这种装饰）。②**入参是事实、
+不是判定**：`record_degradation` 收「哪些层失败／还剩什么可用／上下文还留着什么」，**不**收
+「落到哪一级」——后者由 `evaluate_degradation` 在生产路径上算出；收判定结果就是**注入判定**，
+runtime 侧将不再有任何东西保证这个映射（与 W131 的「判定输入 MUST 从存储读出」同族，但方向相反：
+那一条是**读**不能由调用方给，这一条是**判**不能由调用方给）。③**「注入不变红」有第三种成因**：
+本轮 R2 首跑**假绿**，因为写成 `!cfg!(test)` —— 而 `cfg!(test)` 在**生产 lib**（`degradation.rs`
+不是测试 crate）里恒为 `false`，注入**没改到任何行为**。⇒ 「注入后全绿」MUST **先怀疑注入本身**，
+MUST NOT 直接记作「判据无判别力」。**再实证 ADR 0109 的第二个方向（K4）**：写「层首选级」而非
+「回退后落点级」的坏实现，让 kernel **29/29 全绿**、runtime **既有 8 条全绿**——它们**全部**用
+`DegradeContext::all_available()`，在该输入下首选级恒等于回退级，**没有任何既有输入能走到那一层**；
+只有本轮新补的 `a_failure_whose_preferred_level_is_unavailable_shows_the_level_it_walked_down_to`
+（`template_available:false, approved_cache_available:false, human_available:true`）会红。
+**处置＝补能走到那一层的输入，MUST NOT 改判据**。⚠️ **不扩展 `CapabilityView` 契约**：
+`CapabilityDescriptor` 描述的是**插件能力**（`capability_id`/`plugin_id`/`PluginState`），把 harness 的
+层失败映射进去要编造这些字段且 `PluginState` 无对应取值 ⇒ 那是在说「一个插件失败了」，而事实是
+「某一层失败了」。**不实陈述比缺口更贵** ⇒ 具名登记为仍未接线（另需 protoc 3.21.12 才能改 proto，本机无）。
+**`degradation` 判 critical**：telemetry 写失败会落进**遥测缓冲**、调用方只看到 `persisted == false`
+⇒ 一条能悄悄消失的降级正是静默降级；代价（写入失败变硬错误、暴露在热路径）是刻意付的。
+**registry `H17` 仍 `pending`**——四环里①②已建且有覆盖，③调用方（呈现层渲染）与④真实产生者未接线；
+本轮交付的是「降级项清单**存在且可被界面读到**」，**不是**「界面已经显示了它」（与 H15/H01/H02
+接线轮同口径）。见 [ADR 0110](adr/0110-degradation-visible.md)、
+[W132 报告](reports/2026-10-17-w132-degradation-visible.md)。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。

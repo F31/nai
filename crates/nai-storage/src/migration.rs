@@ -2,8 +2,8 @@ use crate::{Operation, Result, error, hash, utc_ms};
 use nai_contracts::v1::ErrorCode;
 use rusqlite::{Connection, TransactionBehavior};
 
-pub(crate) const VERSION: i64 = 10;
-const SQL: [&str; 10] = [
+pub(crate) const VERSION: i64 = 11;
+const SQL: [&str; 11] = [
     include_str!("../../../migrations/sqlite/0001-foundation.sql"),
     include_str!("../../../migrations/sqlite/0002-authority.sql"),
     include_str!("../../../migrations/sqlite/0003-knowledge-index.sql"),
@@ -14,6 +14,7 @@ const SQL: [&str; 10] = [
     include_str!("../../../migrations/sqlite/0008-memory-revocation.sql"),
     include_str!("../../../migrations/sqlite/0009-memory-purge.sql"),
     include_str!("../../../migrations/sqlite/0010-document-local-only.sql"),
+    include_str!("../../../migrations/sqlite/0011-decision-log-degradation-kind.sql"),
 ];
 
 pub(crate) fn verify(connection: &Connection) -> Result<i64> {
@@ -415,5 +416,71 @@ mod tests {
             Some("old-revision"),
             "加列 MUST NOT 挪动当前版本"
         );
+    }
+
+    /// W132: `0011-decision-log-degradation-kind.sql` 给 `decision_log` 的 kind CHECK 加
+    /// `degradation`（§47.4 / INV-32 / H17）。
+    ///
+    /// 要钉的是**三件事**：
+    /// * 重建**逐字**保留了既有行——四个哈希列一个字节都没动（迁移注释声称的正是这一点，
+    ///   而「行还在」比「哈希一致」弱得多）。
+    /// * 升级**前** `degradation` 被 CHECK 拒绝：这是「CHECK 真的是闸门」的判别性证据，
+    ///   否则「升级后能插入」什么都证明不了（一个恒真的插入断言）。
+    /// * 升级**后** `degradation` 可插入——枚举与 CHECK 因此同态。
+    ///
+    /// MUST 在有既有行的库上跑：空表上的重建什么也证明不了。
+    #[test]
+    fn version_eleven_upgrade_keeps_the_chain_verbatim_and_admits_the_degradation_kind() {
+        /// `0011-decision-log-degradation-kind.sql` 的版本号。改它 MUST 同时改用例名。
+        const DEGRADATION_KIND: usize = 11;
+        let mut db = Connection::open_in_memory().unwrap();
+        for (index, sql) in SQL.iter().take(DEGRADATION_KIND - 1).enumerate() {
+            apply(&mut db, &op(), index as i64 + 1, sql).unwrap();
+        }
+        assert_eq!(verify(&db).unwrap(), (DEGRADATION_KIND - 1) as i64);
+        db.execute(
+            "INSERT INTO workspaces(workspace_id,name) VALUES('w','legacy')",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            "INSERT INTO decision_log(seq,workspace_id,session_id,kind,criticality,payload_json,payload_hash,prev_hash,entry_hash,created_at_ms,trace_id) \
+             VALUES(1,'w',NULL,'event','telemetry','{}','payload-hash','0','entry-hash',1,'trace-legacy')",
+            [],
+        )
+        .unwrap();
+        // 判别性前提：升级前 CHECK 不放行 `degradation`。没有这一步，「升级后可插入」
+        // 在一个本来就放行该 kind 的实现上也成立。
+        assert!(
+            db.execute(
+                "INSERT INTO decision_log(seq,workspace_id,session_id,kind,criticality,payload_json,payload_hash,prev_hash,entry_hash,created_at_ms,trace_id) \
+                 VALUES(2,'w',NULL,'degradation','critical','{}','ph','entry-hash','eh',2,'trace-new')",
+                [],
+            )
+            .is_err(),
+            "升级前 kind CHECK MUST 拒绝 degradation"
+        );
+
+        migrate(&mut db, &op()).unwrap();
+        assert_eq!(verify(&db).unwrap(), VERSION);
+
+        let (payload, payload_hash, prev_hash, entry_hash): (String, String, String, String) = db
+            .query_row(
+                "SELECT payload_json,payload_hash,prev_hash,entry_hash FROM decision_log WHERE seq=1",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .unwrap();
+        assert_eq!(payload, "{}", "重建 MUST NOT 改写载荷");
+        assert_eq!(payload_hash, "payload-hash", "重建 MUST 逐字保留哈希列");
+        assert_eq!(prev_hash, "0");
+        assert_eq!(entry_hash, "entry-hash");
+
+        db.execute(
+            "INSERT INTO decision_log(seq,workspace_id,session_id,kind,criticality,payload_json,payload_hash,prev_hash,entry_hash,created_at_ms,trace_id) \
+             VALUES(2,'w',NULL,'degradation','critical','{}','ph','entry-hash','eh',2,'trace-new')",
+            [],
+        )
+        .expect("升级后 kind CHECK MUST 放行 degradation");
     }
 }

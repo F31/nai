@@ -545,6 +545,48 @@ pub struct DegradedCallContext {
     pub has_persona: bool,
 }
 
+/// §47.4: one degradation as the interface will show it.
+///
+/// `DegradeVerdict::visible` is `true` by construction — the judge has no way to express an
+/// invisible degradation, so "no silent degradation" cannot be tested there. What it cannot cover
+/// is the *transport* from the verdict to whatever the operator reads; this type is the first hop
+/// of that transport. `nai-runtime` persists it and reads it back.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DegradationNotice {
+    /// `FailureLayer::label()`.
+    pub layer: &'static str,
+    /// The named error code (INV-32).
+    pub code: &'static str,
+    /// `DegradeLevel::label()` — the §12.2 level reached.
+    pub level: &'static str,
+    /// §12.2 / §47.4: the operator-facing next action.
+    pub actionable: &'static str,
+    pub refuses_call: bool,
+    pub drops: Option<&'static str>,
+    pub keeps_existing_session: bool,
+}
+
+/// §47.4 last line: render judged degradations into what the interface shows.
+///
+/// One verdict renders to exactly one notice: no deduplication, no merging. Two failures of the
+/// same layer are two degradation events, and collapsing them would hide one of them. Every field
+/// is **copied from the verdict** — this is a renderer, not an enricher, so it must never
+/// recompute a code, a level or a next action from anywhere else.
+pub fn render_degradation_notices(verdicts: &[DegradeVerdict]) -> Vec<DegradationNotice> {
+    verdicts
+        .iter()
+        .map(|verdict| DegradationNotice {
+            layer: verdict.layer.label(),
+            code: verdict.code,
+            level: verdict.level.label(),
+            actionable: verdict.actionable,
+            refuses_call: verdict.refuses_call,
+            drops: verdict.drops,
+            keeps_existing_session: verdict.keeps_existing_session,
+        })
+        .collect()
+}
+
 /// INV-32, second half: a degraded call MUST NOT be handed to the model as an empty context
 /// and left to improvise.
 ///
