@@ -45,6 +45,12 @@ pub struct ImportedDocument {
     pub original_artifact_ref: Option<String>,
     pub valid_from_ms: Option<i64>,
     pub valid_until_ms: Option<i64>,
+    /// §13.2 / §281: 标记的文档**不上传**，只走本地词法检索或人工。
+    ///
+    /// **必填、没有 `Default`**：导入是显式动作，所以「这份文档能不能离开本机」这件事
+    /// MUST 由每一次写入表态，MUST NOT 由某个默认值替它回答。漏掉它是一条编译错误，
+    /// 不是一次静默放行。
+    pub local_only: bool,
     pub content: String,
     pub chunks: Vec<ImportChunk>,
 }
@@ -271,9 +277,9 @@ impl Store {
             params![doc.workspace_id, doc.document_id],
         )?;
         tx.execute(
-            "INSERT INTO documents(workspace_id,document_id,source,content_hash,product_scope,status,acl_ref,original_artifact_ref,current_revision) VALUES(?1,?2,?3,?4,?5,'Staged',?6,?7,?8)
-              ON CONFLICT(workspace_id,document_id) DO UPDATE SET content_hash=excluded.content_hash,status='Staged',source=excluded.source,product_scope=excluded.product_scope,acl_ref=excluded.acl_ref,original_artifact_ref=excluded.original_artifact_ref,current_revision=excluded.current_revision",
-             params![doc.workspace_id, doc.document_id, doc.source, content_hash, doc.product_scope, doc.acl_ref, doc.original_artifact_ref,revision],
+            "INSERT INTO documents(workspace_id,document_id,source,content_hash,product_scope,status,acl_ref,original_artifact_ref,current_revision,local_only) VALUES(?1,?2,?3,?4,?5,'Staged',?6,?7,?8,?9)
+              ON CONFLICT(workspace_id,document_id) DO UPDATE SET content_hash=excluded.content_hash,status='Staged',source=excluded.source,product_scope=excluded.product_scope,acl_ref=excluded.acl_ref,original_artifact_ref=excluded.original_artifact_ref,current_revision=excluded.current_revision,local_only=excluded.local_only",
+             params![doc.workspace_id, doc.document_id, doc.source, content_hash, doc.product_scope, doc.acl_ref, doc.original_artifact_ref,revision,doc.local_only],
         )?;
         tx.execute(
             "INSERT INTO document_revisions(workspace_id,document_id,revision,parser_version,published_at_ms,valid_from_ms,valid_until_ms) VALUES(?1,?2,?3,?4,?5,?6,?7)
@@ -517,6 +523,58 @@ impl Store {
             }
         }
         Ok(targets)
+    }
+
+    /// §13.2 / §281 / §563: 这份工作区在这个知识域里**会离开本机**的那份清单，
+    /// 以及被**具名扣留**的那份（标记 `local_only` 的文档不上传）。
+    ///
+    /// 三件事在形状里，不在注释里：
+    ///
+    /// * 域是**活动快照**的成员（`knowledge_active_snapshots` 的 `kb_scope` 指向的快照
+    ///   在 `knowledge_snapshot_documents` 里的成员，且版本等于 `current_revision`），
+    ///   且 `status!='revoked'`。它**不是**「库里现有的全部文档」——没发布过的、
+    ///   发布之后才导入的、已撤销的都不在外发域里。
+    /// * 标记**从存储读出**（`documents.local_only`）。调用方给不了、也改不了这份清单。
+    /// * SQL **故意不筛** `local_only`。写成 `WHERE local_only=0` 会让被扣留的文档
+    ///   直接从结果里消失——那正是本面存在的理由要挡住的那个失败模式：清单看起来只是
+    ///   更短，没人知道少了什么。筛选发生在判定里，并且留下名字。
+    ///
+    /// 每一行之间都复查 `op`，所以被取消的操作不会返回半份清单。
+    pub fn remote_egress_targets(
+        &self,
+        op: &Operation,
+        workspace: &str,
+        kb_scope: &str,
+        actor: &str,
+    ) -> Result<nai_knowledge_core::egress::EgressPlan> {
+        self.start(op)?;
+        access(&self.conn, workspace, actor, "knowledge.read", kb_scope)?;
+        let mut statement = self.conn.prepare(
+            "SELECT d.document_id,d.current_revision,d.local_only FROM documents d \
+             JOIN knowledge_snapshot_documents s ON s.workspace_id=d.workspace_id \
+               AND s.document_id=d.document_id AND s.revision=d.current_revision \
+             JOIN knowledge_active_snapshots a ON a.workspace_id=s.workspace_id \
+               AND a.snapshot_id=s.snapshot_id \
+             WHERE d.workspace_id=?1 AND a.kb_scope=?2 AND d.status!='revoked' \
+               AND d.current_revision IS NOT NULL \
+             ORDER BY d.document_id",
+        )?;
+        let rows = statement.query_map(params![workspace, kb_scope], |row| {
+            Ok(nai_knowledge_core::egress::EgressCandidate {
+                document_id: row.get::<_, String>(0)?,
+                revision: row.get::<_, String>(1)?,
+                // 只有 `0` 是「未被标记」。任何其它值都按**被标记**读——外发是危险方向，
+                // 所以存疑时选不放行那一边，而不是选「它看起来像 0」。
+                local_only: row.get::<_, i64>(2)? != 0,
+            })
+        })?;
+        let mut candidates = Vec::new();
+        for row in rows {
+            op.check()?;
+            candidates.push(row?);
+        }
+        nai_knowledge_core::egress::plan_egress(candidates)
+            .map_err(|refusal| error(ErrorCode::InvalidArgument, refusal.label()))
     }
 
     /// Filtered local retrieval: ACL/product/time first, then exact facts,

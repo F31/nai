@@ -4,6 +4,7 @@ use rusqlite::OptionalExtension;
 use std::{fs, time::Duration};
 mod approval_workflow;
 mod decision_log;
+mod egress_targets;
 mod knowledge_publication;
 mod storage_bounds;
 
@@ -1033,6 +1034,7 @@ fn knowledge_doc(text: &str) -> crate::ImportedDocument {
         valid_from_ms: None,
         valid_until_ms: None,
         content: text.into(),
+        local_only: false,
         chunks: chunks
             .into_iter()
             .map(|chunk| crate::ImportChunk {

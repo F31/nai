@@ -2213,6 +2213,57 @@ W95/W108 的规格不重复写（同一件事两处定义）；③**规格校验
 见 [W130 报告](reports/2026-10-17-w130-diagnostic-artifact-secret-scan.md)、[ADR 0108](adr/0108-diagnostic-artifact-secret-scan.md)、
 `openspec/changes/archive/2026-10-17-w130-diagnostic-artifact-secret-scan/`。
 
+### W131（2026-10-17）：S10 子句一「`local_only` 不外发」
+
+**缝（现测）**：registry `S10` notes 逐字写「**`local_only`/凭证边界已实现**；长期画像未建」，但字面
+`local_only` 在 `crates/`、`apps/`、`xtask/`、`scripts/`、`tests/` 里**零命中**——唯一出现它的地方就是
+registry 这一行自己 ⇒ **可判事实的不实陈述，没有实现体**。基线里 `local_only` 出现 4 次（INV-17 行 89 /
+§13.2 / §281 / §563），口径一致。三条子句逐条现测：①**零落点**；②画像默认关闭**已建且真执行**
+（`MemoryPolicy` 六项在 `admit_write` 里执行，`evaluate/memory.rs` 行 189–222）；
+③撤销与删除按期限清除**已建**（`ForgetTrigger::Ttl` + `revoke_knowledge` + `purge_memory_body`）
+⇒ 本轮范围**只有子句一**。
+
+**改动**：承载物 `migrations/sqlite/0010-document-local-only.sql`
+（`documents.local_only INTEGER NOT NULL DEFAULT 0`）+ 版本号成套**六处**同步（`migration::VERSION` 9→10、
+`SQL` 数组、`backup.schema.json` const、Rust 契约样本断言、`schema.test.mjs` 样本含「上一版 MUST 被拒」+1、
+TS 生成物）；`ImportedDocument.local_only` **必填无默认**。判定面 `crates/nai-knowledge-core/src/egress.rs`
+（`plan_egress`：两桶闭世界 + 具名扣留 + 判定单元 `(document_id, revision)` + 空集报 0）。
+执行体 `Store::remote_egress_targets`（域＝活动快照 ∩ 未撤销 ∩ `kb_scope`，标记**从存储读出**，
+非 0 的存疑取值按**被标记**读）。
+
+**判据**：判定面 4 条 + 执行体 8 条 + 迁移 1 条。`nai-knowledge-core` **55/55**、
+`nai-storage --lib` **81/81**、`schema.test.mjs` **30/30**、`registry.test.mjs` **56/56**。
+**注入验证 13 条**真跑：**12 条真红**且红的断言层／用例逐条可归因（注入 1 vs 2 红的**断言层**不同
+⇒ 具名扣留与闭世界是两条独立判据；注入 8 vs 9 红的**用例**不同 ⇒ 两条域判据互不顶替）；
+5 个被注入文件全部 `sha256sum -c` 逐字节还原。
+
+**刻意不做（三条，理由写进 ADR 0109）**：①判定面**不带 policy 参数**——「上传是否被允许」是
+`sync` 的 `allow_document_upload`，同一开关答两次会漂移（W88/PD-31）；②**不引入新的条数上限**——
+规模由 `MAX_SNAPSHOT_DOCUMENTS` 界定，再造一个数是第二处定义且**永不🔥**（装饰不是判据）；
+③不动 `sync` 的入参。
+
+**registry**：`S10` **保持 `implemented`**（不升 `tested`）——四环里①判定面②执行体已建并有测试覆盖，
+但③调用方**未闭合**（`RemoteGateway::sync` 不消费这份清单、其入参仍由调用方给），④真实产生者**无**
+（`sync` 零生产调用点）⇒ **没有任何代码路径会真的执行「按这份清单外发」**，与 ADR 0108 的 `S07` 同口径。
+notes 就地 1:1 订正了那句不实陈述；**长期画像未建**（原有缺口，未变）。
+
+**具名登记三处**（MUST NOT 顺手修）：①`sync` 不消费这份清单 ⇒ 「外发一定经过这份清单」**没有**
+结构性保证，只有「存在这样一份清单」；②老行一律读到 `0`，其含义是「**从未被标记**」而**不是**
+「已核实可外发」（后者是没有人做过的核对）；③**TS 生成物内容漂移本机无判据**——注入把
+`backup.ts` 的 `db_schema_version` 改回 9，`schema.test.mjs` **30/30 全绿**（那份判据只断言
+「文件存在与清单对齐」，不比内容），只有 CI 的 `cargo xtask schema --check` 能抓（本机缺 protoc 3.21.12），
+与 W129 已登记的同名缺口是**同一处**。
+
+**一处判据退化（本轮修掉）**：域里 `JOIN knowledge_active_snapshots` 这一句**最初没有任何既有用例能走到
+它那一层**（既有两次发布的用例里修订都变了，旧快照行被 `s.revision=d.current_revision` 天然挡掉）。
+这是 W127 第二种成因「注入不变红 ≠ 注入坏了」的**另一个方向**：不是被更早的闸门短路，而是**判据根本
+没有覆盖那一层**。处置是**补能走到那一层的输入**（两次发布且修订未变 / 两个 `kb_scope`），不是改判据。
+
+**门控**：_（回填）_
+
+见 [W131 报告](reports/2026-10-17-w131-local-only-egress.md)、[ADR 0109](adr/0109-local-only-egress.md)、
+`openspec/changes/2026-10-17-w131-local-only-egress/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

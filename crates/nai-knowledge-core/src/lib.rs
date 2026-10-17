@@ -3,6 +3,7 @@
 //! No Python sidecar and no provider/device code here.
 pub mod chinese;
 pub mod chunk;
+pub mod egress;
 pub mod rank;
 pub mod remote;
 pub mod vector;
@@ -12,6 +13,7 @@ use nai_security::Operation;
 
 pub use chinese::{MAX_TOKENS_PER_TEXT, tokenize};
 pub use chunk::{Chunk, ChunkError, split_document};
+pub use egress::{EgressCandidate, EgressError, EgressPlan, EgressWithholding, plan_egress};
 pub use rank::fuse;
 pub use remote::{
     RemoteError, RemoteGateway, RemoteKnowledgeClient, RerankOutcome, rerank_evidence,

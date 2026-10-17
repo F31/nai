@@ -2,8 +2,8 @@ use crate::{Operation, Result, error, hash, utc_ms};
 use nai_contracts::v1::ErrorCode;
 use rusqlite::{Connection, TransactionBehavior};
 
-pub(crate) const VERSION: i64 = 9;
-const SQL: [&str; 9] = [
+pub(crate) const VERSION: i64 = 10;
+const SQL: [&str; 10] = [
     include_str!("../../../migrations/sqlite/0001-foundation.sql"),
     include_str!("../../../migrations/sqlite/0002-authority.sql"),
     include_str!("../../../migrations/sqlite/0003-knowledge-index.sql"),
@@ -13,6 +13,7 @@ const SQL: [&str; 9] = [
     include_str!("../../../migrations/sqlite/0007-decision-log-assembly-kind.sql"),
     include_str!("../../../migrations/sqlite/0008-memory-revocation.sql"),
     include_str!("../../../migrations/sqlite/0009-memory-purge.sql"),
+    include_str!("../../../migrations/sqlite/0010-document-local-only.sql"),
 ];
 
 pub(crate) fn verify(connection: &Connection) -> Result<i64> {
@@ -361,6 +362,58 @@ mod tests {
         assert_eq!(
             purged, None,
             "老行的清除时刻 MUST 是 NULL（未清除），MUST NOT 是 0"
+        );
+    }
+
+    /// W131: `0010-document-local-only.sql` 给 `documents` 加 `local_only`（§13.2 / §281）。
+    ///
+    /// 要钉的是**两件事**：
+    /// * 老行在新列上读到 **0**。这里的 `0` 含义是「**从未被标记**」——它是升级时点的
+    ///   既定值，**不是**「已核实这份文档可以外发」。两种说法差得很远：前者是历史事实，
+    ///   后者是一个没人做过的核对。本用例只钉前者，轮次报告按前者写。
+    /// * `status` 与 `current_revision` **一字未动**——加列不是重建。
+    ///
+    /// 同样 MUST 在一个**已有行**的库上跑：空表上的 `ALTER TABLE` 什么也证明不了。
+    #[test]
+    fn version_ten_upgrade_keeps_documents_and_reads_the_new_mark_as_unmarked() {
+        /// `0010-document-local-only.sql` 的版本号。改它 MUST 同时改用例名。
+        const DOCUMENT_LOCAL_ONLY: usize = 10;
+        let mut db = Connection::open_in_memory().unwrap();
+        for (index, sql) in SQL.iter().take(DOCUMENT_LOCAL_ONLY - 1).enumerate() {
+            apply(&mut db, &op(), index as i64 + 1, sql).unwrap();
+        }
+        assert_eq!(verify(&db).unwrap(), (DOCUMENT_LOCAL_ONLY - 1) as i64);
+        db.execute(
+            "INSERT INTO workspaces(workspace_id,name) VALUES('w','legacy')",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            "INSERT INTO documents(workspace_id,document_id,source,content_hash,product_scope,status,acl_ref,current_revision) \
+             VALUES('w','doc-legacy','txt','old-revision','sku','Staged','acl','old-revision')",
+            [],
+        )
+        .unwrap();
+
+        migrate(&mut db, &op()).unwrap();
+        assert_eq!(verify(&db).unwrap(), VERSION);
+
+        let (mark, status, revision): (i64, String, Option<String>) = db
+            .query_row(
+                "SELECT local_only,status,current_revision FROM documents WHERE document_id='doc-legacy'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(
+            mark, 0,
+            "老行在新列上 MUST 读到 0（从未被标记），不是因为有人核实过它可以外发"
+        );
+        assert_eq!(status, "Staged", "加列 MUST NOT 改写文档状态");
+        assert_eq!(
+            revision.as_deref(),
+            Some("old-revision"),
+            "加列 MUST NOT 挪动当前版本"
         );
     }
 }

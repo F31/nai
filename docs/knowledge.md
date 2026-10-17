@@ -179,6 +179,36 @@ registry）。见 [ADR 0103](adr/0103-storage-bound-roster.md)、[W125 报告](r
 诊断包/崩溃转储在仓库内**无产生者** ⇒ 建不了，缺口仍在。
 见 [ADR 0108](adr/0108-diagnostic-artifact-secret-scan.md)、
 [W130 报告](reports/2026-10-17-w130-diagnostic-artifact-secret-scan.md)。）
+（W131 把 S10 子句一「`local_only` 不外发」补上，起点是**registry notes 里的一个不实陈述**：
+它逐字写「`local_only`/凭证边界已实现」，而字面 `local_only` 在全仓**零命中**——唯一出现它的地方就是
+那一行自己。**教训：候选清单 MUST 逐轮现测，且「已实现」这种声明 MUST 回实现体核对，MUST NOT 由 notes
+的字面推断**（本轮正是靠现测才发现 claims 与代码不一致；另两条子句现测**已建且真执行**，故范围只收
+到子句一）。三条方法论落点：①**判定输入 MUST 从被断言的对象读出**——“哪些文档会离开本机” MUST 由
+`documents.local_only` 读出，MUST NOT 由调用方当参数给（调用方给不了、也改不了那份上传范围）；
+对应地**写入侧与读回侧都要注入**（注入 13：INSERT 的 `local_only` 换成常量 `0`，读回侧再正确也白搭）。
+②**存疑取值选不放行那一边**：列是 `INTEGER`，SQLite 不限死 0/1 ⇒ 只有 `0` 是「未被标记」、其余一律按
+**被标记**读（`!= 0`），注入 `== 1` 即红。③**永不🔥的守卫是装饰，不是判据**：可外发集合的规模已由
+`MAX_SNAPSHOT_DOCUMENTS` 构造性界定 ⇒ 判定面**不**再造一个条数上限（那是同一件事的第二处定义，
+而且域里永远到不了界）；同理**不**替 `sync` 再答一次「上传是否被允许」（同一开关答两次会漂移，W88/PD-31）。
+⚠️ **W127「注入不变红 ≠ 注入坏了」的第二个方向——判据根本没有覆盖那一层**：本轮跑到
+`JOIN knowledge_active_snapshots` 时发现**没有任何既有用例能走到那一层**（既有两次发布的用例里修订都变了，
+旧快照行被 `s.revision=d.current_revision` 天然挡掉）⇒ 判据不是被更早的闸门短路，而是**没有输入能走到它**。
+**处置＝补能走到那一层的输入**（两次发布且修订未变 / 两个 `kb_scope` 各有活动快照），**MUST NOT 改判据**；
+补上后两条注入各红**不同**的用例 ⇒ 两条域判据互不顶替。**注入 13 条真跑、12 条真红**：注入 1（扣留判据失效）
+与注入 2（静默丢弃）红的**断言层**不同（行 46 vs 行 41）⇒ 具名扣留与闭世界是两条独立判据。
+⚠️ **注入验证的基线 MUST 是 fmt-clean 的最终字节**（W129 的坑本轮**再次**抓到：新加用例里的 `execute(...)`
+需折行，`cargo fmt --all --check` 红 ⇒ 先修再取基线，否则 `sha256sum -c` 核对的是过渡态）。
+**规格侧**：三条 ADDED 的正文**提前**自查为 268 / 250 / 106 字符（≤500），刻意**不 MODIFIED** 既有的
+`Remote knowledge contract and revocation`（其正文已很长，加条款会越界）⇒ 避开 W130 那种「归档后才红」。
+**registry `S10` 保持 `implemented`**——四环里①判定面②执行体已建且有覆盖，但③调用方**未闭合**
+（`RemoteGateway::sync` 不消费这份清单、入参仍由调用方给）、④真实产生者**无**（`sync` 零生产调用点）
+⇒ **没有任何代码路径会真的执行「按这份清单外发」**，与 W130 的 `S07` 同口径。**具名登记**：①`sync`
+不消费 ⇒ 「外发一定经过这份清单」**没有**结构性保证；②老行读到 `0` 的含义是「**从未被标记**」而**不是**
+「已核实可外发」（后者是没有人做过的核对，MUST NOT 写成前者的同义词）；③**TS 生成物内容漂移本机无判据**
+（注入把 `backup.ts` 的版本号改回 9、`schema.test.mjs` 仍 **30/30 全绿**——那份判据只断言「文件存在与清单
+对齐」，不比内容；只有 CI 的 `cargo xtask schema --check` 能抓，本机缺 protoc），与 W129 的同名缺口**同一处**。
+见 [ADR 0109](adr/0109-local-only-egress.md)、
+[W131 报告](reports/2026-10-17-w131-local-only-egress.md)。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。
