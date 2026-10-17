@@ -175,8 +175,49 @@ MUST NOT 改判据去迁就。⇒ 先问「有没有输入能走到那一层」�
 
 ## 六、提交与推送
 
-_（回填）_
+一次提交：**`3bc7aa2d4492436ef914206a5b3faee06a35c033`**（`feat(w132): H17 的 runtime 接线——把「层失败」送到界面`），
+**22 文件，+1481 / −12**：
+
+| 组 | 文件 |
+|---|---|
+| 承载物 | `migrations/sqlite/0011-decision-log-degradation-kind.sql`、`schemas/config/backup.schema.json`、`packages/contracts-ts/src/generated/config/backup.ts`、`tests/contracts/schema.test.mjs`（升版六处成套，`db_schema_version` 随迁移 +1） |
+| 呈现层 | `crates/nai-kernel/src/evaluate/harness.rs`（新增，5 条渲染判据） |
+| 接线 | `crates/nai-runtime/src/degradation.rs`（新增） |
+| 登记 | `tests/registry.yaml`（H17 记 `pending`，判定见 §四） |
+| 规格 | `openspec/changes/2026-10-17-w132-degradation-visible/{proposal,design,tasks}.md` + `specs/agent-harness/spec.md`，并入 `openspec/specs/agent-harness/spec.md` |
+| 文档 | 本报告、`docs/adr/0110-degradation-visible.md`、`docs/development-plan.md`、`docs/knowledge.md` |
+
+推送至 `origin/main`（本仓库走 SSH 443）。**推送这一事实不由命令输出承担、而由 CI 承担**：
+run `39004921781` 的 `head_sha` 就是 `3bc7aa2…`——没推上去就不会有这个 run（§七）。
 
 ## 七、CI 观测（触发确认 1 次 + 完成态 ≥2 次）
 
-_（回填）_
+按三件齐观测（唯一查询参数 + `Cache-Control: no-cache` + 回读 `head_sha` == 推送 SHA）：
+
+- run **`39004921781`**（`Engineering foundation`），`status: completed` / `conclusion: success` /
+  `run_attempt: **1**` / `head_sha` 回读 == `3bc7aa2d4492436ef914206a5b3faee06a35c033`；
+- 触发到完成：`05:04:30Z → 05:23:02Z`（**18m32s**）；
+- **逐平台看完整步骤序列**（不只看「非 success」，否则会被 skipped 淹没）：
+
+| 平台 | 结论 | 成功步 | 跳过步 | bad |
+|---|---|---|---|---|
+| `foundation (ubuntu-24.04)` | **success** | 26 / 27 | `Publish the gate failure summary as annotations`（仅失败时执行） | **0** |
+| `foundation (windows-latest)` | **success** | 24 / 27 | 同上 + `Install Linux C++ protobuf runtime`、`Full three-language contract suite (Linux C++ toolchain)`（Linux 腿专属） | **0** |
+
+耗时：ubuntu `05:04:33 → 05:12:12`（**7m39s**），windows `05:04:33 → 05:23:02`（**18m29s**）。
+
+⚠️ **口径提示（不拿数字硬算）**：本 run 两腿的 `jobs[].steps` 各 **27**，而当前（W136）同 workflow 各 **20**。
+这两组都是 **API 口径**——它把 `Set up job` / `Post Run actions/checkout` 等**包装步**也算作 step
+（workflow 文件今天只有 13 条实步：3 个 `uses:` + 10 个 `- name:`）⇒ API 步数与文件步数**不是同一口径**。
+W134 删掉的 **7 条 `test --suite …` 重复步**（报告口径是 `foundation.yml` 22 → 15）恰好也是 7，
+但两处同为 7 **MUST NOT 相减或互证**：一边含包装步、一边是文件里的步。
+
+**能同口径比的只有耗时**（同一 API、同一 workflow、同一矩阵，两次都 `attempt 1`）：
+
+| 平台 | W132（run `39004921781`） | W136（run `39032204063`） | 差 |
+|---|---|---|---|
+| `ubuntu-24.04` | **7m39s** | **5m58s** | −1m41s |
+| `windows-latest` | **18m29s** | **11m43s** | **−6m46s** |
+
+差额方向与「删掉 7 条重复步」一致，但**不主张精确收益**：两次的依赖缓存命中不同，W134 §1.3 已记过
+同一条纪律（472 秒不与 517 秒相减）。
