@@ -193,12 +193,137 @@ SELECT d.document_id, d.current_revision, d.local_only
 
 ## 五、门控（`cargo xtask check --profile full`）
 
-_（回填）_
+共跑 **5 次**（均带 `CARGO_BUILD_JOBS=1`；r1–r4 带 `RUST_TEST_THREADS=1`，r5 带 `RUST_TEST_THREADS=4`）：
+
+| 跑次 | 结果 | 耗时 | 红的成因 |
+|---|---|---|---|
+| r1 | 红 | 3m18s | `LNK1104` 打不开 `target/debug/deps/pipeline-12fd291c622b7a2b.exe`（test "pipeline"） |
+| r2 | 红 | 0m33s | `LNK1104` 打不开 `engine-3b76f48caecf3f08.exe`（test "engine"） |
+| r3 | 红 | 0m25s | `LNK1104` 打不开 `nai_engine-ccd542a792799fb7.exe`（bin "nai-engine" test） |
+| r4 | **绿** | **7m51s** | ——（`RUST_TEST_THREADS=1`） |
+| r5 | **绿** | **5m23s** | ——（`RUST_TEST_THREADS=4`，CI 限并发后的复核；计数与 r4 **逐项一致**，见下） |
+
+**四条替代判据**（判「宿主瞬态」而非「代码缺陷」）：
+
+| # | 判据 | 本轮实测 |
+|---|---|---|
+| ① | 错误类同族且全在 bring-up／夹具 | 三次都是 `LNK1104`，**全在链接期**——`test result` 计数为 **0**，一条测试都没跑；日志里同时刷满 `error deleting lock file for incremental compilation session directory … 拒绝访问 (os error 5)` |
+| ② | 失败集合每次漂移、不绑定用例 | 三次红的**目标各不相同**且都在 `apps/engine` 包内：`pipeline` → `engine` → `nai_engine` bin |
+| ③ | 相关文件 `git status` 为空 | `git status --porcelain -- apps/ crates/nai-engine` ⇒ **空**（本轮未改 `apps/`） |
+| ④ | 同一份代码限并发下逐目标能过 | 单独跑 `cargo test -p nai-engine --test pipeline` ⇒ **13/13 绿**（15.85s）；`--test engine` ⇒ **2/2 绿**（1.64s） |
+
+补充核实：**排除磁盘满**（E 盘剩 **48.3 GB**、`target/debug/deps/` 可写）。
+⇒ 判为**宿主瞬态**（文件锁被外部进程占用），**未改任何代码**。
+
+处置：改用**有界重试预热**（`cargo test --workspace --locked --exclude nai-xtask --no-run`，
+上限 10 次）⇒ **第 6 次成功**把 workspace 的测试目标链接齐（前 5 次各红在不同目标），
+随后门控**一次即绿**。
+
+⚠️ 这再次印证 W130 的结论：**限并发只是减轻，不是消除**——r1–r3 全在
+`CARGO_BUILD_JOBS=1` 下红。故结论不落在「限并发后全绿」上。
+
+### r4 计数（最终绿，7m51s）
+
+| 项 | 本轮 | W130 对照 |
+|---|---|---|
+| Rust | **1058 passed / 0 failed** | 1045（W129 为 1037）⇒ **+13** == 本轮新增 4 判定面 + 8 执行体 + 1 迁移，逐项吻合 |
+| `^     Running ` | **81**（80 目标 + 1 条 cargo 自回显的 xtask 包装行） | 80（79 + 1）⇒ +1 个目标（新增 `tests/egress.rs`） |
+| `   Doc-tests` | **18** | 18 |
+| `test result` 条数 | **98**（80 + 18） | 97（79 + 18） |
+| Node | **13 套件 324 passed / 0 failed** | 324/0（持平） |
+| 错误类（`LNK1104` / `error[` / `out of memory` / `FAILED` / `panicked`） | **0** | 0 |
+
+前端门控 7 步全过（`packages/contracts-ts` → typecheck/build、`apps/desktop` → typecheck/build/test、
+`<root>` → test:ui），末行 `[frontend] 全部步骤通过（工程基础，非渲染/人工 UI 验收）`。
+
+门控在**全部改动定稿之后**重跑，故日志字节与提交字节对应。
 
 ## 六、提交与推送
 
-_（回填）_
+- 一次提交 **`c010374`**（22 files changed, **+1319 / −13**）
+- 暂存命令：`git add -A -- . ':!.commitmsg_*.txt' ':!target-check' ':!.gate-w131.sh'
+  ':!.prewarm-w131.sh' ':!.sha256-w131.txt'`（临时脚本与 SHA256 基线文件被显式隔离）
+- 推送：`62695e7..c010374`（SSH 443，`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）
+- 完整 SHA：`c010374be308531d413e71e1ec5c8f855b6d3740`；`git rev-parse HEAD origin/main` 两者一致
 
 ## 七、CI 观测（触发确认 1 次 + 完成态 ≥2 次）
 
+### 7.1 第一次观测（提交 `c010374`）⇒ **两平台都 failure**
+
+观测三件齐：`cb=$(date +%s%N)` + `Cache-Control: no-cache` + 回读完整 40 位 `head_sha`。
+
+| 观测 | 查询参数 | 回读 `head_sha` | 结论 |
+|---|---|---|---|
+| 触发确认（1 次） | `runs?per_page=3&cb=…` | `c010374be308531d413e71e1ec5c8f855b6d3740` == 推送 SHA ✓ | run **38992263793**，`in_progress` |
+| 完成态（有界循环，间隔 120s，上限 10 次） | `runs?per_page=3&head_sha=<40 位>&cb=…` | 同上 ✓ | 前 5 次 `in_progress`，**第 6 次 `completed / failure`**（09:47→09:57） |
+
+两平台的失败**不在同一步骤**：
+
+| 平台 | job id | 失败步骤 | 结论 |
+|---|---|---|---|
+| ubuntu-24.04 | 117277007758 | 步骤 9 `Check generated contracts without modifying consumers`（`cargo xtask schema --check`），exit **101** | 后续 14 步全部 skipped |
+| windows-latest | 117277007629 | **步骤 9 `success`**，步骤 10 `Complete engineering foundation`（`cargo xtask check --profile full`）failure | 后续 skipped |
+
+⚠️ 注意 windows 的步骤 9 **success** ⇒ 本轮版本号成套第六处（TS 生成物 `backup.ts` 的
+`db_schema_version: 10`）**已被 CI 的生成器核对通过**，与 `backup.schema.json` 的 const 一致。
+
+### 7.2 定位：CI 日志与 annotation
+
+`GET /actions/jobs/{id}/logs` 匿名返回 **403**（`Must have admin rights to Repository.`）⇒ 读不到 CI 日志。
+改走 W130 建的诊断通道：`GET /repos/…/check-runs/{id}/annotations`（**匿名可读**）⇒ windows **12** 条 /
+ubuntu **2** 条。windows 的失败行：
+
+```
+test tests::storage_bounds::the_managed_artifact_count_bound_counts_distinct_paths ... FAILED
+thread '...' panicked at crates\nai-storage\src\tests\storage_bounds.rs:398:27:
+called `Result::unwrap()` on an `Err` value:
+  StorageError { code: DeadlineExceeded, reason: "operation stopped", position: None }
+test tests::storage_bounds::the_revocation_batch_bound_counts_distinct_document_revisions
+  has been running for over 60 seconds
+```
+
+⇒ `Operation` 的 **5s 期限**被超过（W84 起登记的同一族签名）。
+
+### 7.3 本机复现与对照实验（**判为既有基线，与本轮改动无关**）
+
+本机门控此前是**手工**带 `RUST_TEST_THREADS=1` 跑的，而 CI 用**默认并行度** ⇒ 两者不一致，
+这正是「本机门控绿而 CI 红」的机制性原因。用 **CI 同款并行度**复现：
+
+| 实验 | 结果 |
+|---|---|
+| 带本轮新增 8 条，默认并行度 ×3 | 3 次里 **2 次红**（81 条中红 3 / 0 / 1 条），红的用例**每次都不同**：`approval_workflow::list_is_bounded…`、`decision_log::critical_write…`、`a_backup_artifact_over_the_declared_ceiling…`、`approval_workflow::approved_candidates_cannot_be_rejected` |
+| **摘掉**本轮新增 8 条，默认并行度 ×3 | **3 次全红**（71 条中红 2 条/次）：`decision_log::failed_flush_rolls_back…`、`configuration_uses_same_schema…`、`approval_workflow::stored_display_text…`、`an_artifact_at_the_declared_ceiling…` |
+| 带本轮新增 8 条，`RUST_TEST_THREADS=4` ×3 | **3 次全绿**（81/81，78.06s / 77.07s / 79.17s，较默认并行度只增约 10s） |
+
+⇒ **对照实验是决定性的**：摘掉本轮新增用例后并行度下**仍然 3 次全红**，而带上时还有 1 次全绿
+⇒ 该不稳定**与本轮改动无关**，是既有基线（且不是「最后一根稻草」）。红的全部是**既有**的期限敏感
+用例，本轮新增的 8 条 egress 用例**一次都没红过**。
+
+**处置**：CI 与本机门控统一限并发到 4（`.github/workflows/foundation.yml` 门控步加
+`env: RUST_TEST_THREADS: "4"`）。这是**环境适配，不是放宽判据**——没有改任何期限常量、
+没有改任何断言。改后本机 `workflow.test.mjs` **14/0**、`step-config.test.mjs` **16/0** 仍绿。
+
+⚠️ **具名登记、本轮不修的根因**：仓库里有一批**期限敏感**的断言（依赖 `Operation` 的 5s 期限），
+在 CPU 争抢下会**误报**为「操作超时」。真正的修法是让这些断言不依赖墙钟/负载（W84 的同族问题），
+超出本轮范围。
+
+### 7.4 ubuntu 的 `schema --check`（**无法本机复现，具名登记**）
+
+ubuntu 步骤 9 报 exit **101**，而 windows 同一步 **success**；W130 那次 CI（run 38982577116）
+两平台的步骤 9 都是 success ⇒ 变化发生在这两轮之间。
+
+本机**无 protoc**（`which protoc` 为空），而 `xtask/src/schema.rs::generate` 的第一件事就是
+校验 `protoc --version` 必须逐字等于 `libprotoc 3.21.12` ⇒ **本机跑不了该入口，无法复现**。
+本轮与生成相关的改动只有两处（`backup.schema.json` 的 const 9→10、`backup.ts` 的 9→10），
+而这两处已被 **windows 的 success 验证一致**；`crates/nai-contracts/src/generated/` 下
+**没有** config 生成物（只有 `catalog.rs`/`control_http.rs`/`nai.v1.rs`/`remote_knowledge.rs`），
+不存在第七处未同步的承载物。
+
+⇒ 判定：**无法定性**，随下一轮 CI 重跑观察（若为环境/protoc 安装漂移，重跑即绿）。
+
+### 7.5 第二次观测（限并发后的提交）
+
 _（回填）_
+
+API 用量：第一次观测共 **11** 次（触发 1 + 完成态循环 6 + jobs 1 + check-runs 1 + annotations 2 +
+对照用的 W130 jobs 1）。

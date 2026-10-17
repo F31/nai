@@ -50,8 +50,19 @@ jobs:
       # 诊断产物落在**仓库内的约定目录** `.nai-diagnostics/`（已被 .gitignore 排除），
       # 由凭据扫描器按登记表 `.nai-diagnostics` 遍历——产物必须住在扫描器看得见的地方，
       # 否则「日志里没有明文密钥」只能靠人看。
+      # RUST_TEST_THREADS=4 是**环境适配，不是放宽判据**：仓库里有一批期限敏感的用例
+      # （`Operation` 的 5s 期限，见 W84），在默认并行度（= runner 核数）下会因 CPU 争抢
+      # 随机超时——本机实测 `cargo test -p nai-storage --lib`：默认并行度 3 次里 2 次红且
+      # 每次红的用例都不同（`decision_log` / `approval_workflow` / 备份体积上限各出现过），
+      # 摘掉本轮新增的 8 条用例后**仍然 3 次全红** ⇒ 与本轮改动**无关**，是既有基线；
+      # 限到 4 后 3 次全绿且总时长只增约 10s。⚠️ 根因（期限敏感断言在负载下会误报）**未修**，
+      # 具名登记在 reports/2026-10-17-w131-local-only-egress.md §7.3。
+      # 本机门控此前是手工带 RUST_TEST_THREADS=1 跑的，CI 用默认值 ⇒ 两者不一致，这是
+      # 「本机门控绿而 CI 红」的机制性原因。
       - name: Complete engineering foundation (portable steps + frontend workspace)
         shell: bash
+        env:
+          RUST_TEST_THREADS: "4"
         run: |
           set -o pipefail
           mkdir -p .nai-diagnostics

@@ -92,6 +92,32 @@
      那份判据只断言「文件存在与清单对齐」，不比内容。能抓它的只有 CI 的 `cargo xtask schema --check`
      （`xtask/src/schema.rs` 的 `("ts", "packages/contracts-ts/src/generated")` + `differences`），
      本机缺 protoc 3.21.12 跑不了。与 W129 已登记的同名缺口是**同一处**，本轮再确认一次，不新增判据。
+## 勘误（2026-10-17，随 `c010374` 之后的 CI 观测追加）
+
+首提交 `c010374` 的 CI **两平台都 failure**，定位后判为**既有基线**，与本轮改动无关：
+
+1. **windows** 红在门控步（`cargo xtask check --profile full`）。经本仓 W130 建的**匿名 annotation**
+   通道（`GET /repos/…/check-runs/{id}/annotations`；`GET /actions/jobs/{id}/logs` 匿名返回 403）读到
+   失败行：`tests::storage_bounds::the_managed_artifact_count_bound_…` 报
+   `StorageError { DeadlineExceeded, "operation stopped" }`——`Operation` 的 **5s 期限**被超过。
+2. **本机以 CI 同款默认并行度复现**（本机门控此前是**手工**带 `RUST_TEST_THREADS=1` 跑的，
+   CI 用默认值 ⇒ 两者不一致，这正是「本机门控绿而 CI 红」的机制性原因）：
+   - 带本轮新增 8 条用例，默认并行度 ×3 ⇒ 3 次里 **2 次红**，红的用例**每次都不同**；
+   - **摘掉**本轮新增 8 条，默认并行度 ×3 ⇒ **3 次全红**；
+   - `RUST_TEST_THREADS=4` ×3 ⇒ **3 次全绿**（总时长只增约 10s）。
+   ⇒ 对照实验是决定性的：**与本轮改动无关**（本轮新增的 8 条用例一次都没红过，红的都是既有的
+   期限敏感用例）。
+3. 处置：门控步加 `env: RUST_TEST_THREADS: "4"`。**这是环境适配，不是放宽判据**——没有改任何
+   期限常量、没有改任何断言。
+4. ⚠️ **根因具名登记、本轮不修**：一批**期限敏感**的断言在 CPU 争抢下会**误报**（W84 的同族问题）。
+   真正的修法是让这些断言不依赖墙钟/负载，超出本轮范围。
+5. **ubuntu** 另有一步红：`cargo xtask schema --check` exit 101，而 windows 同一步 **success**；
+   W130 那次 CI 两平台该步都 success。本机**无 protoc**（`generate` 的第一件事就是校验
+   `libprotoc 3.21.12`）⇒ **无法本机复现**。本轮与生成相关的改动只有两处
+   （`backup.schema.json` 的 const 9→10、`backup.ts` 的 9→10），已被 **windows 的 success 验证一致**；
+   `crates/nai-contracts/src/generated/` 下**没有** config 生成物 ⇒ 不存在第七处未同步的承载物。
+   ⇒ **无法定性**，具名登记，随 CI 重跑观察。
+
 - **注入验证暴露的一处判据退化（本轮修掉）**：域里 `JOIN knowledge_active_snapshots` 这一句，
   **最初没有任何既有用例能走到它那一层**——既有两次发布的用例里文档修订都变了，旧快照的行被
   `s.revision=d.current_revision` 天然挡掉。这是 W127 记下的第二种成因「注入不变红 ≠ 注入坏了」，

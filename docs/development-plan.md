@@ -2259,7 +2259,26 @@ notes 就地 1:1 订正了那句不实陈述；**长期画像未建**（原有�
 这是 W127 第二种成因「注入不变红 ≠ 注入坏了」的**另一个方向**：不是被更早的闸门短路，而是**判据根本
 没有覆盖那一层**。处置是**补能走到那一层的输入**（两次发布且修订未变 / 两个 `kb_scope`），不是改判据。
 
-**门控**：_（回填）_
+**门控**：共跑 **4 次**——r1–r3 红，每次红在 `apps/engine` 内**不同**的链接目标
+（`pipeline` → `engine` → `nai_engine` bin）且**全在链接期**（`test result` 计数为 0，一条测试都没跑），
+日志刷满 `error deleting lock file … 拒绝访问 (os error 5)`；r4 绿（**7m51s**）。
+四条替代判据：错误类同族且全在 bring-up／失败集合**跨目标漂移**／`apps/` `git status` 为空／
+逐目标单独跑全绿（`pipeline` 13/13、`engine` 2/2）；另核实 E 盘剩 48.3GB 且目录可写 ⇒ **排除磁盘满**，
+判为**宿主瞬态，未改任何代码**。处置＝**有界重试预热**把 workspace 测试目标链接齐（第 6 次成功），
+随后门控一次即绿。⚠️ 再次印证：**限并发只是减轻不是消除**（r1–r3 全在 `CARGO_BUILD_JOBS=1` 下红）。
+最终计数：Rust **1058 passed / 0 failed**（W130 为 1045 ⇒ **+13** == 4 判定面 + 8 执行体 + 1 迁移）、
+`Running` **81**（80 目标 + 1 包装行）+ `Doc-tests` **18** ⇒ **98** 条 `test result`、Node **13 套件 324/0**、
+错误类 **0**；前端门控 7 步全过。
+
+**CI 首跑两平台都 failure，定位后判为既有基线**：ubuntu 红在步骤 9 `cargo xtask schema --check`
+（exit 101，**本机无 protoc 无法复现**，windows 同步 success；W130 时两平台都 success）；
+windows 红在步骤 10 门控，经 W130 的匿名 annotation 通道读到失败行
+（`storage_bounds::the_managed_artifact_count_bound_...` 报 `DeadlineExceeded / "operation stopped"`，
+即 `Operation` 的 5s 期限超时）。**本机以 CI 同款默认并行度复现**：带本轮 8 条用例 3 次里 2 次红、
+红的用例每次不同；**摘掉本轮 8 条后仍 3 次全红** ⇒ **与本轮改动无关**，是既有基线；
+`RUST_TEST_THREADS=4` 下 3 次全绿 ⇒ 给 CI 门控步加 `env: RUST_TEST_THREADS: "4"`（环境适配，
+未动任何期限常量与断言），改后 `workflow.test.mjs` 14/0、`step-config.test.mjs` 16/0 仍绿。
+⚠️ **根因具名登记不修**：一批期限敏感断言在 CPU 争抢下会误报（W84 同族）。
 
 见 [W131 报告](reports/2026-10-17-w131-local-only-egress.md)、[ADR 0109](adr/0109-local-only-egress.md)、
 `openspec/changes/2026-10-17-w131-local-only-egress/`。
