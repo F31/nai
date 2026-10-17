@@ -13,8 +13,9 @@
 //! * an interval rule evaluated on a decreasing series, where the gap underflows.
 
 use nai_kernel::evaluate::selling::{
-    ActionCue, CLAIM_KINDS, Checkpoint, Claim, ClaimKind, Entrance, FactRef, PitchPlan,
-    PitchPolicy, PitchRejection, PitchVerdict, SEGMENT_ORDER, SegmentKind, evaluate_pitch,
+    ActionCue, CLAIM_KINDS, Checkpoint, Claim, ClaimKind, Entrance, FactRef, PitchHistory,
+    PitchPlan, PitchPolicy, PitchRejection, PitchVerdict, SEGMENT_ORDER, SegmentKind,
+    evaluate_pitch, evaluate_transition,
 };
 
 const COOLDOWN_MS: u32 = 1_000;
@@ -469,4 +470,165 @@ fn a_cue_with_no_constrained_claim_needs_no_binding() {
         claims: vec![],
     }];
     assert!(judge(&plan(&CLEAN_SEGMENTS, &NO_ENTRANCES, &cues), &[]).allowed);
+}
+
+// ---------------------------------------------------------------------------
+// W136: cooldown is about the segment's own history, not about adjacent pairs
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_repeat_with_another_segment_in_between_still_hits_the_cooldown() {
+    // The discriminating sample: **no adjacent pair repeats a segment**, so a checker written as
+    // `windows(2) + same segment` sees nothing here. §53 says 「同一段落的重复进入」, which is a
+    // statement about the segment's own last entry — `selling` came back at 20 while its cooldown
+    // is 1000, and the fact that `spec` ran in between does not reset it.
+    let entrances: [Entrance; 3] = [
+        Entrance {
+            segment: SegmentKind::Selling,
+            at_ms: 0,
+        },
+        Entrance {
+            segment: SegmentKind::Spec,
+            at_ms: 600,
+        },
+        Entrance {
+            segment: SegmentKind::Selling,
+            at_ms: 900,
+        },
+    ];
+    let verdict = judge(&plan(&CLEAN_SEGMENTS, &entrances, &NO_CUES), &[]);
+    assert!(
+        verdict
+            .rejections
+            .contains(&PitchRejection::CooldownNotElapsed),
+        "同段重复的冷却按该段自己的上次进入算，中间插了别的段不重置: {:?}",
+        verdict.rejections
+    );
+    assert_eq!(verdict.cooldown_violations, vec!["selling"]);
+    assert!(
+        !verdict.rejections.contains(&PitchRejection::SwitchTooSoon),
+        "切换间隔本身满足（600ms / 300ms 均 ≥ 100ms）——两条规则必须分开判定"
+    );
+}
+
+#[test]
+fn a_repeat_exactly_at_the_cooldown_boundary_is_allowed() {
+    // The other side of the same boundary: `<` not `<=`. A guard that also refused the boundary
+    // would be answering a different question than §53's 「不早于」.
+    let entrances: [Entrance; 2] = [
+        Entrance {
+            segment: SegmentKind::Selling,
+            at_ms: 0,
+        },
+        Entrance {
+            segment: SegmentKind::Selling,
+            at_ms: COOLDOWN_MS,
+        },
+    ];
+    let verdict = judge(&plan(&CLEAN_SEGMENTS, &entrances, &NO_CUES), &[]);
+    assert!(verdict.allowed, "{:?}", verdict.rejections);
+    assert!(verdict.cooldown_violations.is_empty());
+}
+
+#[test]
+fn the_incremental_transition_agrees_with_the_batch_verdict() {
+    // A live loop advances one entry at a time; the batch judge replays the whole timeline. Both
+    // call `evaluate_transition`, and this pins that they answer the same thing for the same
+    // timeline — otherwise the running loop and the audit would disagree.
+    let timeline: [Entrance; 3] = [
+        Entrance {
+            segment: SegmentKind::Selling,
+            at_ms: 0,
+        },
+        Entrance {
+            segment: SegmentKind::Spec,
+            at_ms: 600,
+        },
+        Entrance {
+            segment: SegmentKind::Selling,
+            at_ms: 900,
+        },
+    ];
+    let policy = policy(&[]);
+    let mut history = PitchHistory::default();
+    let mut incremental = Vec::new();
+    for entrance in timeline {
+        for rejection in evaluate_transition(&history, entrance, &policy) {
+            if !incremental.contains(&rejection) {
+                incremental.push(rejection);
+            }
+        }
+        history.record(entrance);
+    }
+    let batch = evaluate_pitch(&plan(&CLEAN_SEGMENTS, &timeline, &NO_CUES), &policy);
+    assert_eq!(incremental, batch.rejections);
+}
+
+#[test]
+fn the_first_entrance_has_no_interval_rule_to_break() {
+    // With no history there is no previous entry and no previous entry of the segment. A
+    // transition judge that reported a refusal here would be reading "no history" as a violation.
+    let policy = policy(&[]);
+    let history = PitchHistory::default();
+    let refusals = evaluate_transition(
+        &history,
+        Entrance {
+            segment: SegmentKind::AfterSales,
+            at_ms: 0,
+        },
+        &policy,
+    );
+    assert!(refusals.is_empty(), "{refusals:?}");
+    assert_eq!(history.last(), None);
+    assert_eq!(history.last_entry_of(SegmentKind::AfterSales), None);
+}
+
+#[test]
+fn a_decreasing_transition_reports_only_the_monotonic_refusal() {
+    // The interval rules are undefined on a decreasing series. Reporting `SwitchTooSoon` here
+    // would be an underflow artefact (`u32` subtraction) dressed up as a rule violation.
+    let policy = policy(&[]);
+    let mut history = PitchHistory::default();
+    history.record(Entrance {
+        segment: SegmentKind::Selling,
+        at_ms: 5_000,
+    });
+    let refusals = evaluate_transition(
+        &history,
+        Entrance {
+            segment: SegmentKind::Selling,
+            at_ms: 4_000,
+        },
+        &policy,
+    );
+    assert_eq!(refusals, vec![PitchRejection::EntranceTimesDecrease]);
+}
+
+#[test]
+fn the_history_keeps_the_latest_entry_of_each_segment() {
+    // Folding "what happened" into "what was allowed" would let a violation erase its own
+    // evidence; recording is unconditional and keeps the later time.
+    let mut history = PitchHistory::default();
+    history.record(Entrance {
+        segment: SegmentKind::Spec,
+        at_ms: 300,
+    });
+    history.record(Entrance {
+        segment: SegmentKind::Selling,
+        at_ms: 900,
+    });
+    history.record(Entrance {
+        segment: SegmentKind::Spec,
+        at_ms: 1_400,
+    });
+    assert_eq!(history.last_entry_of(SegmentKind::Spec), Some(1_400));
+    assert_eq!(history.last_entry_of(SegmentKind::Selling), Some(900));
+    assert_eq!(history.last_entry_of(SegmentKind::Scenario), None);
+    assert_eq!(
+        history.last(),
+        Some(Entrance {
+            segment: SegmentKind::Spec,
+            at_ms: 1_400
+        })
+    );
 }

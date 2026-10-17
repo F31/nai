@@ -275,6 +275,17 @@ MUST 分开——后者返回 `null` 而非空集，空集会让包含关系对�
 ③**命名会撞上安全扫描**：`xtask/src/secrets.rs` 的 `sk-` 前缀规则 `min_len: 32` 会把
 `xtask-` + `engineering-pending-registration`（`sk-` 后恰好 32 字符）判成 OpenAI 凭据 ⇒ 处置是**命名避让**
 （id 改短），MUST NOT 加豁免削弱判据。见 [W135 报告](reports/2026-10-17-w135-pending-registration.md)。）
+
+（**W136：B07 执行体——判据从「快照」变「逐步」时的三条可复用结论**：①**「一致性」不是充分判据**。
+把冷却的两侧（批次与增量）同时退回同一个弱读数后，「增量与批次答案相同」那条用例**仍然绿**——
+它证明的是两处调用同一函数，不证明那个函数对。⇒ 一致性样本 MUST 与**判别性样本**并存
+（判别性样本 =「旧实现会放行」的那一种输入）；②**判据增强要改读数来源，不是调松断言**。
+冷却原先只比较相邻同段的一对，`selling@0 → spec@600 → selling@900`（冷却 1000ms）被判合规，
+而规格写的是「同一段落的**重复进入**」⇒ 改按该段自己的上次进入算，边界另一侧（`gap == cooldown`）
+仍须放行，否则「不早于」被读成「晚于」；③**不可测的状态 MUST 有可表示的取值**。
+§5.7 的五面重校验在仓库内没有产生者，若只提供 `fresh()`，调用方只能在「撒谎」与「不调用」之间选，
+而前者更可能发生 ⇒ 提供 `unavailable()`，并让它是**拒绝**（不是通过）。
+见 [W136 报告](reports/2026-10-17-w136-selling-loop-executor.md)、`docs/adr/0111-selling-loop-executor.md`。）
 响应为 `deny_unknown_fields` 的有界 DTO，坏响应返回 Invalid，不静默变 empty。
 `rerank_evidence` 只重排已合法证据 ID，未知 ID 丢弃；子预算耗尽保留 base 为 partial，整体取消/超时停止。
 `Store::remote_delete_targets` 返回本地 tombstone 后的 kb-scoped 删除目标；远端失败不回滚本地失效。

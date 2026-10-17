@@ -11,6 +11,7 @@ mod composition;
 mod degradation;
 mod memory;
 mod observation;
+mod pitch;
 mod ramp;
 pub mod supervisor;
 mod upgrade;
@@ -28,6 +29,10 @@ pub use memory::{
     MemoryWriteRefusal, PurgeReport,
 };
 pub use observation::{ObservationOutcome, ObservationRefusal};
+pub use pitch::{
+    PitchInput, PitchRefusal, PitchRunner, RECHECK_FACES, RecheckFace, RecheckOutcome,
+    ResumeRecheck,
+};
 pub use ramp::{RampOutcome, RampRefusal};
 pub use supervisor::{
     Binaries, FramePoolArgs, RenderWorkerSpec, StandbyReason, Supervisor, SupervisorFault,

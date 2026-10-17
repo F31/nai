@@ -106,6 +106,10 @@ pub struct Composition {
     duty_active: bool,
     duty_expiry_logged: bool,
     trace_seq: u64,
+    /// B07: the selling loop this composition is running, if any. Absent until
+    /// `begin_pitch`, because a loop that was never started has no progress to
+    /// report — `None` and "started, at segment zero" are different facts.
+    pitch: Option<crate::pitch::PitchRunner>,
 }
 
 impl Composition {
@@ -185,6 +189,7 @@ impl Composition {
             duty_active: false,
             duty_expiry_logged: false,
             trace_seq: 0,
+            pitch: None,
         })
     }
 
@@ -306,6 +311,70 @@ impl Composition {
             .try_lock()
             .map_err(|_| err(ErrorCode::Conflict, "decision store busy"))?;
         Ok(store.decision_buffer_stats())
+    }
+
+    // -----------------------------------------------------------------------
+    // B07: the selling loop's call sites
+    //
+    // The kernel judges a plan; these are the places a *running* composition
+    // asks it, one entry at a time. Every refusal is returned, never swallowed:
+    // a caller that ignores it cannot end up ahead of the rules, because a
+    // refused step leaves the runner's timeline untouched.
+    // -----------------------------------------------------------------------
+
+    /// Start the selling loop with a composition plan.
+    ///
+    /// Returns the number of segments one cycle carries. A plan that could never
+    /// run is refused **here**, before any segment is entered.
+    pub fn begin_pitch(&mut self, input: crate::pitch::PitchInput<'_>) -> Result<usize> {
+        let runner = crate::pitch::PitchRunner::start(input).map_err(RuntimeError::from)?;
+        let per_cycle = runner.progress().1;
+        self.pitch = Some(runner);
+        Ok(per_cycle)
+    }
+
+    /// The running loop, if one was started.
+    pub fn pitch(&self) -> Option<&crate::pitch::PitchRunner> {
+        self.pitch.as_ref()
+    }
+
+    fn pitch_runner(&mut self) -> Result<&mut crate::pitch::PitchRunner> {
+        self.pitch.as_mut().ok_or_else(|| {
+            err(
+                ErrorCode::InvalidArgument,
+                "no selling loop is running: begin_pitch was never called",
+            )
+        })
+    }
+
+    /// Enter the next segment at `at_ms`. Fail closed on refusal.
+    pub fn enter_segment(&mut self, at_ms: u32) -> Result<nai_kernel::evaluate::selling::Entrance> {
+        self.pitch_runner()?
+            .enter(at_ms)
+            .map_err(RuntimeError::from)
+    }
+
+    /// Take a checkpoint at the current position (§5.7).
+    pub fn pause_pitch(
+        &mut self,
+        completed_sentence_ids: Vec<String>,
+    ) -> Result<nai_kernel::evaluate::selling::Checkpoint> {
+        self.pitch_runner()?
+            .pause(completed_sentence_ids)
+            .map_err(RuntimeError::from)
+    }
+
+    /// Resume at the checkpoint's segment after an interjection.
+    ///
+    /// §5.7's re-check is an **input**: the guard and knowledge layers produce
+    /// it, and a face they could not measure is a refusal, not a pass.
+    pub fn resume_pitch(
+        &mut self,
+        recheck: &crate::pitch::ResumeRecheck,
+    ) -> Result<nai_kernel::evaluate::selling::SegmentKind> {
+        self.pitch_runner()?
+            .resume(recheck)
+            .map_err(RuntimeError::from)
     }
 
     /// Appends one decision-log entry, graded by the storage owner. Critical

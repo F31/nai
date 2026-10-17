@@ -2430,6 +2430,40 @@ CI 干净 checkout 是 0 条）⇒ 前提在 CI 上恒假。删掉该断言，�
 为 **0**；`skipped` 只有第 8 步（Linux C++ protobuf，windows 侧）、第 11 步（失败时才跑的诊断注释，两平台）、
 第 14 步（三语言契约套件，windows 侧）——与既有形状一致，不是本轮引入。
 
+### W136（2026-10-17）：B07 的执行体——「讲品循环」从一次判定变成会跑的东西
+
+**缝**：`B07` 自 W68 起登记 `pending`，notes 自己写着「交付的是**判定面**」。开工前现测四环：
+判定面已有（`evaluate_pitch` 判一整份 plan 的快照，19 项测试），而 `nai-runtime` 对
+`selling`/`PitchRunner` **0 命中**、`Composition` 无相关方法、`apps/engine` 的 `Script` 无讲品概念
+⇒ 缺的正是第②③环。判定面的**形状**说明了原因：它判的是整条时间线的快照，而循环是**一次进一段**的，
+每一步要问「现在能进这一段吗」——快照判定没有「上一次进入是什么时候」这个状态。
+
+**顺带修掉一条弱判据**：冷却原先只比较**相邻且同段**的一对（`windows(2)` + 同段），于是
+`selling@0 → spec@600 → selling@900`（冷却 1000ms）被判**合规**——它一对相邻同段都没有，而卖点
+在 300ms 后就回来了。规格写的是「同一段落的**重复进入**」⇒ 读数改成该段自己的上次进入。
+
+**改动**：kernel 新增 `PitchHistory`（最后一次 + 每段最后一次 + 计数）与 `evaluate_transition`，
+`evaluate_pitch` 的 row 3 **逐条重放**它（同一件事只定义一处）；runtime 新增 `pitch.rs` 的
+`PitchRunner`（`start` 先整份判定、`enter` **fail closed**、`pause`/`resume` 过 §5.7 检查点）与
+`ResumeRecheck`（五面 × 三态，`Unavailable` 是**拒绝**）；`Composition` 加五个调用方方法。
+拒绝分四族四码：`INVALID_ARGUMENT` / `CONFLICT` / `EVIDENCE_EXPIRED` / `CAPABILITY_NOT_READY`。
+
+**判据**：kernel `tests/selling.rs` **19 → 25**、runtime `tests/pitch.rs` 新增 **12** 条；
+注入 **I1–I7** 七组逐组真红，五个文件 `sha256sum -c` 逐字节还原。I1 顺带证明一件事：
+把冷却两侧同时退回弱读数时，`the_incremental_transition_agrees…`（增量与批次一致）**仍然绿**
+⇒ 「一致性」不是充分判据，**判别性样本（旧实现放行的那一种输入）不可省**。
+
+**门控**：首跑 **88s** 红在 clippy（`collapsible_if` 5 处，**真缺陷**）；随后 **31 次**红在 `LNK1104`
+且**失败目标两两不同**（逐目标单跑全绿、目录可写、无残留进程，并伴随
+`error deleting lock file for incremental compilation session directory … 拒绝访问 (os error 5)`
+⇒ 宿主持有增量会话目录，非代码）⇒ `CARGO_INCREMENTAL=0` + `CARGO_BUILD_JOBS=1`（**预链接与门控都带**）
+后一次绿：**6m05s**、`EXIT=0`、`LNK1104` 0，Rust **1103 / 0**、Node **348 / 0**（15 套件）、前端 6 步全通过。
+
+**结果**：`B07` `pending → implemented`（**不升 `tested`**：`apps/engine` 0 命中，§5.7 五面重校验、
+TTS 时长与播放采样、段落内容与话术三类真实产生者不在仓库内）。见
+[W136 报告](reports/2026-10-17-w136-selling-loop-executor.md)、`docs/adr/0111-selling-loop-executor.md`、
+`openspec/changes/archive/2026-10-17-w136-pitch-executor/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

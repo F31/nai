@@ -160,6 +160,94 @@ pub struct Entrance {
     pub at_ms: u32,
 }
 
+/// The state one transition decision needs: the last entrance overall, and the last entrance
+/// **of each segment**.
+///
+/// Row 3 has two rules with two different subjects — 「同一段落的**重复进入**不早于段落级冷却」
+/// and 「任意**相邻**两次进入不早于最小切换间隔」. The first is about one segment's own
+/// history, so it cannot be answered from the adjacent pair alone; a live loop that advances one
+/// entry at a time and a batch plan that carries its whole timeline MUST therefore agree on a
+/// single state shape, or the same timeline would be judged differently by the two callers.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PitchHistory {
+    last: Option<Entrance>,
+    last_by_segment: [Option<u32>; 4],
+    count: usize,
+}
+
+impl PitchHistory {
+    /// Replay a whole timeline into the state, in order.
+    pub fn from_entrances(entrances: &[Entrance]) -> Self {
+        let mut history = Self::default();
+        for entrance in entrances {
+            history.record(*entrance);
+        }
+        history
+    }
+
+    /// How many entrances the timeline carries — the loop's progress, without a second counter
+    /// that could drift from the state it describes.
+    pub fn count(&self) -> usize {
+        self.count
+    }
+
+    /// The most recent entrance, whatever the segment.
+    pub fn last(&self) -> Option<Entrance> {
+        self.last
+    }
+
+    /// When this segment was last entered, if ever.
+    pub fn last_entry_of(&self, segment: SegmentKind) -> Option<u32> {
+        self.last_by_segment[segment.index()]
+    }
+
+    /// Record an entrance. Recording is unconditional: the history is what *happened*, not what
+    /// was allowed, so a violation is not allowed to erase its own evidence.
+    pub fn record(&mut self, entrance: Entrance) {
+        self.count += 1;
+        // Keep the latest only; a caller that replays out of order gets the same state a
+        // monotonic replay would produce for the maximum, which is why the monotonic rule stays
+        // a separate refusal rather than being folded into this bookkeeping.
+        if self.last.is_none_or(|last| entrance.at_ms >= last.at_ms) {
+            self.last = Some(entrance);
+        }
+        let slot = &mut self.last_by_segment[entrance.segment.index()];
+        if slot.is_none_or(|at| entrance.at_ms >= at) {
+            *slot = Some(entrance.at_ms);
+        }
+    }
+}
+
+/// §53 row 3, judged for **one** transition.
+///
+/// The batch judge ([`evaluate_pitch`]) and a live loop both call this, so「哪条规则被违反」有
+/// 唯一定义。Cooldown reads the segment's own last entry; switching reads the previous entry
+/// overall. Both are statements about an interval, and an interval is undefined on a decreasing
+/// series — so a decrease is refused **by name** and the interval rules are not evaluated at all.
+pub fn evaluate_transition(
+    history: &PitchHistory,
+    next: Entrance,
+    policy: &PitchPolicy<'_>,
+) -> Vec<PitchRejection> {
+    let mut rejections = Vec::new();
+    let monotonic = history.last().is_none_or(|last| next.at_ms >= last.at_ms);
+    if !monotonic {
+        rejections.push(PitchRejection::EntranceTimesDecrease);
+        return rejections;
+    }
+    if let Some(previous) = history.last_entry_of(next.segment)
+        && next.at_ms - previous < policy.cooldown_ms
+    {
+        rejections.push(PitchRejection::CooldownNotElapsed);
+    }
+    if let Some(last) = history.last()
+        && next.at_ms - last.at_ms < policy.min_switch_ms
+    {
+        rejections.push(PitchRejection::SwitchTooSoon);
+    }
+    rejections
+}
+
 // ---------------------------------------------------------------------------
 // §53 row 4 / §5.4: fact-bound action cues
 // ---------------------------------------------------------------------------
@@ -355,28 +443,31 @@ pub fn evaluate_pitch(plan: &PitchPlan<'_>, policy: &PitchPolicy<'_>) -> PitchVe
     }
 
     // ---- §53 row 3: cooldown and switching ----
-    let non_decreasing = plan
-        .entrances
-        .windows(2)
-        .all(|pair| pair[1].at_ms >= pair[0].at_ms);
-    if !non_decreasing {
-        rejections.push(PitchRejection::EntranceTimesDecrease);
-    } else {
-        for pair in plan.entrances.windows(2) {
-            let gap = pair[1].at_ms - pair[0].at_ms;
-            if pair[1].segment == pair[0].segment
-                && gap < policy.cooldown_ms
-                && !cooldown_violations.contains(&pair[1].segment.label())
-            {
-                cooldown_violations.push(pair[1].segment.label());
-            }
-            if gap < policy.min_switch_ms {
-                rejections.push(PitchRejection::SwitchTooSoon);
+    //
+    // Replayed through [`evaluate_transition`] one entrance at a time, so the batch verdict and
+    // a live loop cannot disagree about a transition. Cooldown is the segment's own last entry
+    // (§53: 「同一段落的**重复进入**」), which a checker that looks only at adjacent pairs
+    // misses: `selling@0 → spec@10 → selling@20` has no adjacent same-segment pair at all.
+    let mut history = PitchHistory::default();
+    for entrance in plan.entrances {
+        for rejection in evaluate_transition(&history, *entrance, policy) {
+            match rejection {
+                PitchRejection::CooldownNotElapsed => {
+                    if !cooldown_violations.contains(&entrance.segment.label()) {
+                        cooldown_violations.push(entrance.segment.label());
+                    }
+                }
+                other => {
+                    if !rejections.contains(&other) {
+                        rejections.push(other);
+                    }
+                }
             }
         }
-        if !cooldown_violations.is_empty() {
-            rejections.push(PitchRejection::CooldownNotElapsed);
-        }
+        history.record(*entrance);
+    }
+    if !cooldown_violations.is_empty() {
+        rejections.push(PitchRejection::CooldownNotElapsed);
     }
 
     // ---- §53 row 4: fact-bound action cues ----
