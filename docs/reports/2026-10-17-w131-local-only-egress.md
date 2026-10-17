@@ -246,6 +246,10 @@ SELECT d.document_id, d.current_revision, d.local_only
 - 推送：`62695e7..c010374`（SSH 443，`ssh.github.com:443` + `StrictHostKeyChecking=accept-new`）
 - 完整 SHA：`c010374be308531d413e71e1ec5c8f855b6d3740`；`git rev-parse HEAD origin/main` 两者一致
 
+**第二次提交**（CI 限并发修复，见 §7.3）：**`d3797cc`**（4 files / +184 −3，
+`.github/workflows/foundation.yml` + ADR 0109 勘误段 + 报告 §七 + dev-plan），
+push `c010374..d3797cc`，完整 SHA `d3797cc4b921a7e826a882e5489ee260ddfd4512`。
+
 ## 七、CI 观测（触发确认 1 次 + 完成态 ≥2 次）
 
 ### 7.1 第一次观测（提交 `c010374`）⇒ **两平台都 failure**

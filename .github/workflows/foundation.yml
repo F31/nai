@@ -14,7 +14,11 @@ jobs:
       matrix:
         os: [ubuntu-24.04, windows-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    # 20 分钟已从「有余量」变成「不够用」：W130 实测 windows 全跑完 15m43s（15m55s 那次逼近上限），
+    # 而本轮给门控限并发（RUST_TEST_THREADS=4，见下方门控步的注释）之后 windows 在 **1210s** 被
+    # **cancelled**——不是失败，是**跑不完**（门控步本身已 success，后续各 suite 没跑完就被砍）。
+    # ⇒ 提到 35，给限并发后的 windows 留出余量。
+    timeout-minutes: 35
     env:
       OPENSPEC_TELEMETRY: '0'
     steps:
