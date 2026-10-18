@@ -185,6 +185,33 @@ annotation 通道去取执行日志的地方。
 
 两个平台的 `skipped` 集合与 W144 逐条相同——本轮既没改 workflow，也没新增 CI-only 步。
 
+### 回填 run 的一次失败（如实登记，不改判据）
+
+回填提交 **`2e3d049`** → run **`39114817313`**：ubuntu `success`，**windows `failure`**，红在
+第 10 步 `Complete engineering foundation (portable steps + frontend workspace)`（随后 13–16
+全部因前置失败被跳过；第 11 步失败摘要注解步这次触发了，执行日志正是从那 12 条 annotation 读到的）。
+两条失败用例同在一个二进制里：
+
+| 用例 | 位置 | 错误 |
+| --- | --- | --- |
+| `telemetry_is_buffered_when_persistence_fails_while_critical_is_reported` | `crates/nai-runtime/tests/composition.rs:412` | `StorageError { code: DeadlineExceeded, reason: "operation stopped" }` |
+| `prepare_without_profile_is_rejected` | 同文件 `:124`（`create_workspace(..).unwrap()`） | 同上 |
+
+`DeadlineExceeded` + `"operation stopped"` 是 `StorageError` 从 `nai_security::SecurityError`
+原样搬 code 的那条路径（`nai-storage/src/lib.rs:105`），即**操作预算到期**；测试用的是
+`BRINGUP_OPERATION = 30s`。
+
+判它是**宿主瞬态而不是本轮回归**，四条：①该提交只改两份 docs（+25 −2），Rust 零变更；
+②**同一份代码**的目标提交 run `39114038861` 在 windows 上是绿的；③本机
+`cargo test -p nai-runtime --test composition` → **14 passed / 0 failed，整个文件 1.39s**——
+离 30s 预算差 20 倍，说明不是预算定得太紧，而是那次 runner 卡了一下；④同一二进制里另外 12 条
+同时通过（不是整文件系统性失败）。
+
+处置：**不改代码、不放宽判据、不动 30s 预算**（宿主瞬态不得靠改被测系统的常量来吸收）。
+按纪律这条只登记、不追绿：本段随一次 docs-only 提交入库，那一轮的结论另记；若后续再红在**同一对
+用例**上、而本机仍在秒级通过，则升级为具名登记（§八 第 5 条）去查「预算 vs runner 卡顿」的归因，
+而不是把常量往上抬。
+
 ## 八、具名登记（本轮发现但不做）
 
 1. **`kind` 的正面路径仍需一次真实作业。** 探针对它是硬失败——这不是缺口被忽略，而是
@@ -196,3 +223,8 @@ annotation 通道去取执行日志的地方。
 4. **`tests/job-surface.json` 没有 schema。** 它的形状由两个读者各自假定（Node 侧规则 ③④ 会报
    「不是对象」「取值不在闭集」，Rust 侧会 `panic` 在 `blockedBy`/`split_once` 上）。一份 JSON Schema
    可以让失败更早、措辞更统一，但它会引入第三个读者与第三个形状定义，本轮不动。
+5. **`BRINGUP_OPERATION = 30s` 在 CI 的 windows runner 上偶发不够（一次样本）。** 事实与否定证据见
+   §七 末段：两条 `composition.rs` 用例同时撞到 `DeadlineExceeded`，而本机整文件 1.39s。今天**没有**
+   足够样本判定「预算是紧的」还是「runner 卡了一下」，所以不做任何改动；下一次复现应当连同 runner
+   的排队/冷启动信息一起记，再决定这条该落在常量、夹具还是 runner 选择上。**MUST NOT 直接抬常量**——
+   那会把「谁该为慢负责」这个问题从台账里抹掉。

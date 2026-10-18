@@ -2824,7 +2824,11 @@ I2 把 `knowledge/import` 翻成 `refuses_without_installer`（期望 503 得 40
 
 **CI**：提交 `b078105` → run **`39114038861`** `completed / success`，`head_sha` 完整 40 位一致；
 两平台各 20 条步骤记录（编号跳 16→30，是 `if` 未触发的步不生成记录），仅 `11`（失败摘要注解）
-与 Linux-only 的 `8`/`14` 被跳过，与 W144 逐条相同。
+与 Linux-only 的 `8`/`14` 被跳过，与 W144 逐条相同。回填提交 `2e3d049` → run **`39114817313`**：
+ubuntu success / **windows failure**，红在第 10 步，两条 `composition.rs` 用例同时撞
+`DeadlineExceeded`（`BRINGUP_OPERATION = 30s` 到期）；该提交 Rust 零变更、同码目标提交 windows 绿、
+本机整文件 14 passed / 1.39s ⇒ 判为宿主瞬态，**未改代码、未放宽判据、未抬常量**，登记在报告
+§七 末段与 §八 第 5 条。
 
 
 
