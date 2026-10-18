@@ -136,7 +136,28 @@ CARGO_BUILD_JOBS=1`，`PROTOC` 指向 3.21.12）。
 
 ## 七、CI 观测
 
-_（回填）_
+提交 **`ecada66`**（9 文件 / +1019 −20）→ run **`39119935777`**（`Engineering foundation`），
+`completed / success`，`head_sha` 与推送 SHA **完整 40 位一致**
+（`ecada6698277766e4eea63987b4c4394e84b73d4`）。
+
+判结论三件齐（唯一查询参数 `cb=<纳秒>` + `Cache-Control: no-cache` + 回读 `head_sha`）；
+完成态查了 **5 次**（115s 间隔的有界轮询）：ubuntu 第 3 次 completed、windows 第 5 次，
+两平台同时 `success`。
+
+逐平台看**完整步骤序列**：两平台各 **20** 条记录，编号 `1–16` 然后跳到 `30–33`
+（17–29 是 `if` 未触发、不生成记录的步 ⇒ 条数不能与 workflow 的 `- name:` 相减）：
+
+| 平台 | 状态 | 跳过的步 |
+| --- | --- | --- |
+| `foundation (ubuntu-24.04)` | success | 11（失败摘要注解，仅失败时触发） |
+| `foundation (windows-latest)` | success | 8（Linux C++ protobuf 运行时）/ 11 / 14（三语言契约套件） |
+
+关键步全部 success：9 生成物无漂移核对、10 `check --profile full`、12 诊断产物凭据扫描、
+13 schema 与 API 契约、15 `pnpm spec:validate`、16 `openspec validate --archived`。
+`skipped` 集合与 W145 逐条相同——本轮既没改 workflow，也没新增 CI-only 步。
+
+**本机那个链接期瞬态在 CI 上没有复现**：CI 的 windows runner 一次过。这不改变本机那四次的判定
+（本机与 CI 的并行度、增量状态、扫描软件都不同），但它是「环境瞬态」的第五条旁证。
 
 ## 八、具名登记（本轮发现但不做）
 
