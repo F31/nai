@@ -162,7 +162,28 @@ I4 是本轮最要紧的一条：它证明探针**能区分「没分支」与「
 
 ## 七、CI 观测
 
-_（回填）_
+提交 **`b078105`**（12 文件 / +798 −47）→ run **`39114038861`**（`Engineering foundation`），
+`completed / success`，`head_sha` 与推送 SHA **完整 40 位一致**
+（`b078105f3415631e37f0ea2c245eee0dd334b395`）。
+
+判结论三件齐：唯一查询参数 `cb=<纳秒>` + `Cache-Control: no-cache` + 回读 `head_sha`；
+完成态查了 **5 次**（120s 间隔的有界轮询，第 5 次两平台同时 completed）：ubuntu 第 3 次
+completed、windows 第 5 次。
+
+逐平台看**完整步骤序列**（`jobs[].steps` 各 **20** 条，编号从 16 直接跳到 30——
+17–29 是 `if` 未触发、不生成记录的步，所以条数不能与 workflow 的 `- name:` 相减）：
+
+| 平台 | 状态 | 跳过的步 | 说明 |
+| --- | --- | --- | --- |
+| `foundation (ubuntu-24.04)` | success | 11 | 失败摘要注解步（仅失败时触发） |
+| `foundation (windows-latest)` | success | 8 / 11 / 14 | 8 = Linux C++ protobuf 运行时；14 = 三语言契约套件（Linux 工具链） |
+
+两平台都跑到的关键步全部 success：9 生成物无漂移核对、10 `check --profile full`（Rust 门控 +
+前端门控）、12 诊断产物凭据扫描（W130）、13 schema 与 API 契约、15 `pnpm spec:validate`、
+16 `openspec validate --archived`。**两平台红在不同步骤**这种情况本轮没有出现，也没有需要走
+annotation 通道去取执行日志的地方。
+
+两个平台的 `skipped` 集合与 W144 逐条相同——本轮既没改 workflow，也没新增 CI-only 步。
 
 ## 八、具名登记（本轮发现但不做）
 
