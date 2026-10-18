@@ -3,9 +3,11 @@
 //! 三条纪律决定了这里的形状：
 //!
 //! 1. **扫描集不含判据自己**。被扫的是生产源码（`store.rs` / `knowledge.rs` /
-//!    `publication.rs` / `utterance_status.rs`）。`tests.rs:483` 与
-//!    `approval_workflow.rs:202` 断言里钉的 `12` / `14` **故意**留裸字面量 ——
-//!    那两处是**判别性**断言，改成引用常量就变成「常量比常量」，恒绿。
+//!    `publication.rs` / `utterance_status.rs`）。判据这边反过来**故意**留裸字面量：
+//!    它钉的是「落盘的数据是几」，那是数据契约（`tests.rs:485` 与 `migration.rs:555`
+//!    的 `12`、`approval_workflow.rs:202` 的 `14`、本文件的 `1` 与 `6`）。改成引用
+//!    常量就成了「常量比常量」，恒绿 —— 逐处理由见
+//!    `record_candidate_stores_one_and_approve_writes_six`。
 //! 2. **守卫不给自己开后门**：扫描集**含** `utterance_status.rs` 自己，
 //!    所以它写的注释里也不能出现 `status=11` 这种形式。
 //! 3. **先行反方向自检**：扫描函数本身要先用一段内联样本证明它抓得到、也放得过，
@@ -178,12 +180,56 @@ fn the_cascade_guard_protects_exactly_the_band_it_names() {
     }
 }
 
-/// 把一条候选记成 `status`，然后走真实的 `Store::approve`。
-/// 返回 `approve` 的结果 —— 判据只看它成功与否，不猜它失败在哪个前置。
-fn attempt_approval(status: i64) -> crate::Result<()> {
+/// **W143（N4）**：写入面两个「活」取值必须由**字面量**钉在存储里。
+///
+/// 这里允许裸字面量、而生产源码里禁止（文件头第 1 条纪律），理由与 `tests.rs:485`（12）
+/// 和 `approval_workflow.rs:202`（14）是同一条：它钉的不是「常量写成了几」，而是
+/// 「**落盘的数据**是几」。`utterances.status` 是数据契约 —— `0001-foundation.sql` 的
+/// `DEFAULT 1`、`0012` 的取值域 CHECK、既有库里已经躺着的历史行。常量写错会被编译期与
+/// `utterance_status` 自己的用例发现；常量改了而数据没跟着迁移，只有这里会红。
+/// 换成引用常量就成了「常量比常量」，恒绿。
+///
+/// 与既有三处合起来，写入面四个取值各有字面覆盖：`12`（`tests.rs:485` 撤销触发的级联、
+/// `migration.rs:555` 重建后保留）、`14`（`approval_workflow.rs:202` 拒绝）、
+/// `1` 与 `6`（本条）。两条断言都从**存储**读回，不看调用方给的值。
+#[test]
+fn record_candidate_stores_one_and_approve_writes_six() {
     let dir = tempfile::tempdir().unwrap();
     let mut storage = store(dir.path());
     setup(&mut storage);
+    let (cue, hash) = seed_candidate(&mut storage);
+    assert_eq!(
+        stored_status(&storage, &hash),
+        1,
+        "`record_candidate` 必须把候选落成待批准（1）"
+    );
+    storage
+        .approve(
+            &op(),
+            "test-workspace",
+            "operator",
+            &Approval {
+                approval_id: "approval-write-path".into(),
+                session_id: cue.session_id.clone(),
+                candidate_hash: hash.clone(),
+                hash_algorithm: "sha256-canonical-v1".into(),
+                actor_id: "model-claim".into(),
+                action_scope: "speak".into(),
+                expires_at_utc_ms: cue.expires_at_utc_ms,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        stored_status(&storage, &hash),
+        6,
+        "`approve` 必须把同一条候选改成已批准（6）"
+    );
+}
+
+/// 造一条**真实**候选：起会话 → 发一条权威事实 → 登记候选。
+/// 三条判据都从这里取样本 —— 同一段前置不该在文件里躺三份，否则改一处漏两处。
+fn seed_candidate(storage: &mut Store) -> (PerformanceCue, String) {
     storage
         .create_session(&op(), "test-workspace", "operator", "session-test")
         .unwrap();
@@ -200,13 +246,41 @@ fn attempt_approval(status: i64) -> crate::Result<()> {
             &[("sku", "price", "1")],
         )
         .unwrap();
+    (cue, hash)
+}
+
+/// 把候选的 `status` 直写成 `status`。这是**夹具**而非生产路径（生产里没有「随便改成某个值」
+/// 的能力），用来模拟「库里的行已经是别的状态」这件既有事实。
+fn set_status(storage: &Store, hash: &str, status: i64) {
     storage
         .conn
         .execute(
             "UPDATE utterances SET status=?1 WHERE text_hash=?2",
-            params![status, &hash],
+            params![status, hash],
         )
         .unwrap();
+}
+
+/// 判据的输入 MUST 从存储读出，MUST NOT 由调用方给。
+fn stored_status(storage: &Store, hash: &str) -> i64 {
+    storage
+        .conn
+        .query_row(
+            "SELECT status FROM utterances WHERE text_hash=?1",
+            params![hash],
+            |row| row.get::<_, i64>(0),
+        )
+        .unwrap()
+}
+
+/// 把一条候选记成 `status`，然后走真实的 `Store::approve`。
+/// 返回 `approve` 的结果 —— 判据只看它成功与否，不猜它失败在哪个前置。
+fn attempt_approval(status: i64) -> crate::Result<()> {
+    let dir = tempfile::tempdir().unwrap();
+    let mut storage = store(dir.path());
+    setup(&mut storage);
+    let (cue, hash) = seed_candidate(&mut storage);
+    set_status(&storage, &hash, status);
     storage.approve(
         &op(),
         "test-workspace",
@@ -230,35 +304,8 @@ fn cascade_outcome(status: i64) -> i64 {
     let dir = tempfile::tempdir().unwrap();
     let mut storage = store(dir.path());
     setup(&mut storage);
-    storage
-        .create_session(&op(), "test-workspace", "operator", "session-test")
-        .unwrap();
-    storage
-        .publish_fact(&op(), "operator", &fact(), None)
-        .unwrap();
-    let hash = storage
-        .record_candidate(
-            &op(),
-            "test-workspace",
-            "operator",
-            &candidate(),
-            &[("sku", "price", "1")],
-        )
-        .unwrap();
-    storage
-        .conn
-        .execute(
-            "UPDATE utterances SET status=?1 WHERE text_hash=?2",
-            params![status, &hash],
-        )
-        .unwrap();
+    let (_cue, hash) = seed_candidate(&mut storage);
+    set_status(&storage, &hash, status);
     crate::store::recover(&mut storage.conn, &op(), false).unwrap();
-    storage
-        .conn
-        .query_row(
-            "SELECT status FROM utterances WHERE text_hash=?1",
-            params![&hash],
-            |row| row.get::<_, i64>(0),
-        )
-        .unwrap()
+    stored_status(&storage, &hash)
 }

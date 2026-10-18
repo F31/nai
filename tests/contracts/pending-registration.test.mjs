@@ -37,16 +37,17 @@ test('the shipped repository has no unregistered pending test file, and the scan
   assert.deepEqual(errors, [], 'an unregistered pending test file would turn CI red on the first checkout');
 
   // **非空洞**：上面那个「空错误」只有在**清扫真的会收东西**的前提下才算数。
-  // ⚠️ 刻意**不钉** `scanned > 0`：未跟踪集合的**大小是工作区状态**，不是判定对象——
-  // 本机因为有未被忽略的 `target-check/` 扫到 24,796 条，而 CI 是干净 checkout（0 条）
-  // ⇒ 钉它就成了「本机绿、CI 红」的机制性差异（与 W131 同型）。反空洞的落点是下面这条
-  // **合成输入**前提：它在两种环境里都成立。
+  // ⚠️ 刻意**不钉** `scanned > 0`：未跟踪集合的**大小是工作区状态**，不是判定对象 ——
+  // 干净 checkout 上它本来就是 0 条（W143 之前本机还多出 `target-check/` 那 12G scratch 的
+  // 24,796 条，该目录现已进 `.gitignore`）⇒ 钉它就成了「有 scratch 的工作区绿、干净 checkout 红」
+  // 的机制性差异（与 W131 同型）。反空洞的落点是下面那条**合成输入**前提：它的输入自造，
+  // 因此在两种环境里都成立。
   const { candidates } = pendingTestFiles(present.paths, tracked.paths);
   // **前提的第二条：清扫本身不是惰性的**（W135 注入 I3 实测发现的缺口）。`scanned > 0` 只证明
   // 「输入非空」，不证明「清扫会把符合形状的路径收进来」——把 `candidates.push` 关掉之后，本用例
   // 与真实仓库的 F0 **同时**全绿，只有单元用例（把具名路径喂进去的那几条）会红。这条用一个
-  // **合成**输入把「清扫不是死的」钉在本用例里：它会随 `present` 退化成恒真，因此必须与
-  // `scanned > 0` 成对出现，且两条都排在「真实仓库无待登记文件」之前。
+  // **合成**输入（不读 `present`，所以不会随工作区变空而退化）把「清扫不是死的」钉在本用例里；
+  // 它与上面那条「真实补集里没有待登记文件」互为对照：**合成样本管谓词，真实样本管这份仓库**。
   const sweepProbe = pendingTestFiles(new Set(['tests/contracts/__sweep_probe__.test.mjs']), new Set());
   assert.deepEqual(
     sweepProbe.candidates,

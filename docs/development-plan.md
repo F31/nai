@@ -2397,7 +2397,7 @@ dispatch 臂与门控区域**算**出来；覆盖类别闭集 `gate`/`suite`/`no
 未跟踪 ⇒ 尚未承诺为仓库内容 ⇒ 不能充当覆盖证据）。那条理由对**覆盖**成立、对**提交**不成立——
 §5 的暂存命令是 `git add -A`，它会把补集收进提交 ⇒ 未登记的测试文件提交前对判据**结构性不可见**，
 提交后立刻可见 ⇒ 本机绿、CI 一 checkout 就红，且红在一条与该文件无关的断言上。
-现测补集：**24,796** 条未跟踪且未被忽略（全部来自未进 `.gitignore` 的 `target-check/`），其中 test-like **0** 条。
+现测补集：未跟踪且未被忽略的条目**全部**来自当时未进 `.gitignore` 的 `target-check/`（12G 构建 scratch），其中 test-like **0** 条；该目录已于 W143 进 `.gitignore` ⇒ 本机与 CI 的补集都是 0（此处不再记计数：它是**工作区状态**，记下来只会再次过期）。
 
 **改动**：新增 `readUntrackedPaths`（`git-index.mjs`，该模块**唯一**派生进程处，例外与代价写在原地）
 + `pendingTestFiles` / `pendingRegistrationErrors`（`test-reachability.mjs`）；`present ∩ tracked ≠ ∅`
@@ -2420,8 +2420,7 @@ registry 的真实仓库用例（56 → 57 条）。**刻意不替换** `resolve
 `openspec/changes/archive/2026-10-17-w135-pending-registration/`。
 **首推红（已修）**：run `39021305527` 两平台 `failure`，161 秒早退，annotation 两次都给出
 `the untracked scan returned nothing — an empty input makes the pending judge vacuous`——
-`assert.ok(scanned > 0)` 的输入是**补集大小**，而那是**工作区状态**（本机 24,796 条来自 `target-check/`，
-CI 干净 checkout 是 0 条）⇒ 前提在 CI 上恒假。删掉该断言，反空洞改由**合成输入**前提承担
+`assert.ok(scanned > 0)` 的输入是**补集大小**，而那是**工作区状态**（当时本机多出的条目全来自未进 `.gitignore` 的 `target-check/`，CI 干净 checkout 是 0 条；该目录已于 W143 进 `.gitignore`）⇒ 前提在 CI 上恒假。删掉该断言，反空洞改由**合成输入**前提承担
 （活规格里那条 Scenario 同步就地订正）。**连续第二轮「本机绿 / CI 红」**：W134 是判据的**输入**少了新文件，
 本轮是判据的**前提**用了工作区状态。
 
@@ -2671,6 +2670,44 @@ Node 15 套 367 通过；前端 7 步全过）。中途 `LNK1104` 两次门控 +
 `foundation (ubuntu-24.04)` 与 `foundation (windows-latest)` 两平台均 `completed / success`
 （各 20 步，API 口径）；非 success 项全部是 `skipped`（门控通过时的失败摘要步、Windows 侧两个
 Linux-only 步）。
+
+### W143（2026-10-18）：三条「没有判定面」的尾巴（N4/N5/N6）
+
+**起点**是 W141 报告 §八剩下的三条。它们的共同形态不是「改哪一行」，而是「**该不该被守**」——
+既没有守卫在看，也没人说清不守的代价。
+
+**N4（判据补缺）**：写入面有四个取值，裸字面量只钉了 `12`（撤销级联、重建保留）与 `14`（拒绝），
+`1`（待批准）与 `6`（已批准）一条都没有 —— 而这两个恰是**活着**的两个。新增
+`record_candidate_stores_one_and_approve_writes_six`：两条断言都走生产路径、都从存储读回、
+都不引用常量。**为什么这里允许裸字面量**：它钉的是「落盘的数据是几」，不是「常量写成几」——
+`utterances.status` 是数据契约（`DEFAULT 1`、`0012` 的 CHECK、既有库里的历史行），
+常量改了而数据没迁，只有这里会红。两次注入（`1→2`、`6→5`）各自**只**令该用例红，
+`left/right` 分别指向两条断言 ⇒ 具判别性。顺手把三处复写的样本前置收成
+`seed_candidate` / `set_status` / `stored_status`。`nai-storage` 94 → **95**。
+
+**N5（构建缓存进忽略集）**：`target-check/`（12G、W112 起的第二份 `CARGO_TARGET_DIR`）一直未忽略
+⇒ 24,797 条补集里的 24,796 条来自它，既是两次暂存事故的源头，也让「未跟踪也要登记」这条判据
+在本机与 CI 上形状不同。加 `/target-check/` 后复测补集 **0**。**具名代价**：那 24,796 条退出
+凭据扫描域。接受它的理由不是「无害」，是：CI 上从不存在它（变动只让两边**一致**）、
+它与 `/target/` 同类、需要被扫的产物应当**进仓库**（`/.nai-diagnostics/` 是先例）。
+三处复述旧前提的表述分流订正：`pending-registration.test.mjs` 与 `development-plan.md` 就地改；
+W135 报告追加勘误段；归档的 W135 变更**不改**（冻结快照）。订正时另抓到一处本来就不对的笔误：
+那段注释说配对物是 `scanned > 0`，而它在 W135 同轮就被删掉了。
+
+**N6（Why 段上限的裁定）**：三路互证 —— ①1414 字符 Why 的探针变更下 `validate --all --strict`
+仍 `44 passed / 0 failed`（它根本不读 `proposal.md`）；②`validateChange()` 的**唯一**调用点是
+`archive.js:1153`，包在 `if (!json)` 里、上游注释写明 non-blocking（此前记作「无调用方」，本轮订正）；
+③存量 139 目录 / 137 可解析 / **32 份超 1000** / 最长 2611。**裁定：不设门控** —— 执行点在依赖里
+且它自己选择不阻塞；它守的是阅读性而非行为（给不出「只有它错时才红」的样本）；存量证明它从未
+被当作硬约束。代价是四条事实进 ADR 与本报告，本轮变更的 Why 段实测 **638** 字符（样本，不是判据）。
+
+见 [W143 报告](reports/2026-10-18-w143-boundary-closeout.md)、`docs/adr/0117-repository-boundary-ignores-and-why-limit.md`、
+`openspec/changes/archive/2026-10-18-w143-boundary-closeout/`。
+
+**诚实边界**：不设门控就是**没有人检查**，那行提示 MUST NOT 被引用成「已通过」；扫描域真的变小了
+（判据输入面的收窄，不是零代价）；2 份归档 proposal 结构性缺段（缺 Why / 缺 What Changes）至今
+无人修，且不会被任何判据检查；`13`/`15` 两个幽灵值仍是「有分类、无写入者」。
+
 
 
 ## 任务依赖与状态

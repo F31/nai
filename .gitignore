@@ -1,4 +1,10 @@
 /target/
+# 本机门控用的第二份构建缓存（`CARGO_TARGET_DIR=target-check`，W112 起沿用）。
+# 与 `/target/` 同类：构建产物，不入库。W143 之前它没被忽略 ⇒ 12G 一直留在
+# `git ls-files --others` 的补集里（24,796 条），既是暂存事故的源头，也让
+# `pending-registration` 的补集判据在本机与 CI 之间形状不同。忽略它不改变任何判据的
+# 判定口径：补集**大小**从来不是判定对象（见该测试里「刻意不钉 scanned > 0」那段）。
+/target-check/
 node_modules/
 dist/
 .env
