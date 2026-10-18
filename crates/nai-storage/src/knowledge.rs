@@ -5,6 +5,7 @@ use crate::{
     Operation, Result, Store, error, hash, id, sql_int,
     store::{access, audit},
     utc_ms,
+    utterance_status::{STATUS_INVALIDATED, cascade_guard},
 };
 use nai_contracts::v1::{
     AuthoritativeFact, ErrorCode, Evidence, RetrievalStatus, authoritative_fact,
@@ -480,9 +481,22 @@ impl Store {
             rusqlite::params_from_iter(sql_params),
         )?;
         for chunk in &chunk_ids {
-            tx.execute("UPDATE utterances SET status=12 WHERE workspace_id=?1 AND utterance_id IN (SELECT utterance_id FROM evidence_links WHERE workspace_id=?1 AND evidence_id IN(?2,?3)) AND status NOT IN(11,12,13,14,15)", params![workspace, format!("chunk:{chunk}"), format!("vector:{chunk}")])?;
+            tx.execute(
+                &format!(
+                    "UPDATE utterances SET status={} WHERE workspace_id=?1 AND utterance_id IN (SELECT utterance_id FROM evidence_links WHERE workspace_id=?1 AND evidence_id IN(?2,?3)) AND status NOT IN({})",
+                    STATUS_INVALIDATED,
+                    cascade_guard()
+                ),
+                params![workspace, format!("chunk:{chunk}"), format!("vector:{chunk}")],
+            )?;
         }
-        tx.execute("UPDATE approvals SET revoked_at_ms=?2 WHERE workspace_id=?1 AND candidate_hash IN (SELECT text_hash FROM utterances WHERE workspace_id=?1 AND status=12) AND revoked_at_ms IS NULL", params![workspace, utc_ms()?])?;
+        tx.execute(
+            &format!(
+                "UPDATE approvals SET revoked_at_ms=?2 WHERE workspace_id=?1 AND candidate_hash IN (SELECT text_hash FROM utterances WHERE workspace_id=?1 AND status={}) AND revoked_at_ms IS NULL",
+                STATUS_INVALIDATED
+            ),
+            params![workspace, utc_ms()?],
+        )?;
         tx.execute("INSERT INTO invalidation_outbox(workspace_id,reason,resource_id,old_revision,new_revision,created_at_ms) VALUES(?1,'knowledge_revoked',?2,'','revoked',?3)", params![workspace, document_id.or(product_scope).unwrap_or("*"), utc_ms()?])?;
         audit(
             &tx,

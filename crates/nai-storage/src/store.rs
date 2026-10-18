@@ -1,4 +1,10 @@
-use crate::{DataPaths, Operation, Result, error, hash, id, migration, sql_int, utc_ms};
+use crate::{
+    DataPaths, Operation, Result, error, hash, id, migration, sql_int, utc_ms,
+    utterance_status::{
+        PENDING_BAND_HI, PENDING_BAND_LO, STATUS_APPROVED, STATUS_INVALIDATED, STATUS_PENDING,
+        STATUS_REJECTED, cascade_guard, usable_guard,
+    },
+};
 use nai_contracts::v1::{
     Approval, AuthoritativeFact, ErrorCode, MemoryRecord, PerformanceCue, SessionSnapshot,
     authoritative_fact,
@@ -146,7 +152,11 @@ pub(crate) fn recover(conn: &mut Connection, op: &Operation, restore: bool) -> R
         [now],
     )?;
     tx.execute(
-        "UPDATE utterances SET status=12 WHERE status NOT IN(11,12,13,14,15)",
+        &format!(
+            "UPDATE utterances SET status={} WHERE status NOT IN({})",
+            STATUS_INVALIDATED,
+            cascade_guard()
+        ),
         [],
     )?;
     tx.execute("UPDATE tts_cache SET valid=0", [])?;
@@ -261,7 +271,14 @@ impl Store {
         tx.execute("INSERT INTO permission_grants VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT(workspace_id,actor_id,permission,resource_scope) DO UPDATE SET revision=excluded.revision,revoked_at_ms=excluded.revoked_at_ms",params![workspace,actor,permission,resource,revision,revoked])?;
         if !granted {
             tx.execute("UPDATE approvals SET revoked_at_ms=?2 WHERE workspace_id=?1 AND revoked_at_ms IS NULL",params![workspace,utc_ms()?])?;
-            tx.execute("UPDATE utterances SET status=12 WHERE workspace_id=?1 AND status NOT IN(11,12,13,14,15)",[workspace])?;
+            tx.execute(
+                &format!(
+                    "UPDATE utterances SET status={} WHERE workspace_id=?1 AND status NOT IN({})",
+                    STATUS_INVALIDATED,
+                    cascade_guard()
+                ),
+                [workspace],
+            )?;
             tx.execute(
                 "UPDATE tts_cache SET valid=0 WHERE workspace_id=?1",
                 [workspace],
@@ -447,7 +464,14 @@ impl Store {
         }
         let now = utc_ms()?;
         tx.execute("UPDATE approvals SET revoked_at_ms=?1 WHERE workspace_id=?2 AND session_id=?3 AND revoked_at_ms IS NULL", params![now,revoked.workspace_id,revoked.session_id])?;
-        tx.execute("UPDATE utterances SET status=12 WHERE workspace_id=?1 AND session_id=?2 AND status NOT IN(11,12,13,14,15)", params![revoked.workspace_id,revoked.session_id])?;
+        tx.execute(
+            &format!(
+                "UPDATE utterances SET status={} WHERE workspace_id=?1 AND session_id=?2 AND status NOT IN({})",
+                STATUS_INVALIDATED,
+                cascade_guard()
+            ),
+            params![revoked.workspace_id, revoked.session_id],
+        )?;
         audit(
             &tx,
             &revoked.workspace_id,
@@ -524,8 +548,21 @@ impl Store {
             ],
         )?;
         if let Some(old) = current {
-            tx.execute("UPDATE utterances SET status=12 WHERE workspace_id=?1 AND utterance_id IN(SELECT utterance_id FROM evidence_links WHERE workspace_id=?1 AND product_id=?2 AND field_key=?3 AND fact_revision=?4) AND status NOT IN(11,12,13,14,15)",params![fact.workspace_id,fact.product_id,fact.field_key,old])?;
-            tx.execute("UPDATE approvals SET revoked_at_ms=?2 WHERE workspace_id=?1 AND candidate_hash IN(SELECT text_hash FROM utterances WHERE workspace_id=?1 AND status=12) AND revoked_at_ms IS NULL",params![fact.workspace_id,utc_ms()?])?;
+            tx.execute(
+                &format!(
+                    "UPDATE utterances SET status={} WHERE workspace_id=?1 AND utterance_id IN(SELECT utterance_id FROM evidence_links WHERE workspace_id=?1 AND product_id=?2 AND field_key=?3 AND fact_revision=?4) AND status NOT IN({})",
+                    STATUS_INVALIDATED,
+                    cascade_guard()
+                ),
+                params![fact.workspace_id, fact.product_id, fact.field_key, old],
+            )?;
+            tx.execute(
+                &format!(
+                    "UPDATE approvals SET revoked_at_ms=?2 WHERE workspace_id=?1 AND candidate_hash IN(SELECT text_hash FROM utterances WHERE workspace_id=?1 AND status={}) AND revoked_at_ms IS NULL",
+                    STATUS_INVALIDATED
+                ),
+                params![fact.workspace_id, utc_ms()?],
+            )?;
             // Conservative workspace invalidation until the D09 cache dependency index exists.
             tx.execute(
                 "UPDATE tts_cache SET valid=0 WHERE workspace_id=?1",
@@ -601,7 +638,10 @@ impl Store {
             return Err(error(ErrorCode::StaleEpoch, "candidate epoch mismatch"));
         }
         let pending: i64 = self.conn.query_row(
-            "SELECT COUNT(*) FROM utterances u WHERE u.workspace_id=?1 AND u.session_id=?2 AND u.generation_epoch=?3 AND u.expires_at_ms>?4 AND u.status BETWEEN 1 AND 5 AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.workspace_id=u.workspace_id AND a.session_id=u.session_id AND a.generation_epoch=u.generation_epoch AND a.candidate_hash=u.text_hash)",
+            &format!(
+                "SELECT COUNT(*) FROM utterances u WHERE u.workspace_id=?1 AND u.session_id=?2 AND u.generation_epoch=?3 AND u.expires_at_ms>?4 AND u.status BETWEEN {} AND {} AND NOT EXISTS(SELECT 1 FROM approvals a WHERE a.workspace_id=u.workspace_id AND a.session_id=u.session_id AND a.generation_epoch=u.generation_epoch AND a.candidate_hash=u.text_hash)",
+                PENDING_BAND_LO, PENDING_BAND_HI
+            ),
             params![workspace, cue.session_id, epoch, utc_ms()?], |r| r.get(0))?;
         if pending >= MAX_PENDING_CANDIDATES {
             return Err(error(
@@ -626,7 +666,10 @@ impl Store {
         // display_text is stored alongside the hash: the approval binds to the hash,
         // but the operator has to approve what would actually be broadcast.
         tx.execute(
-            "INSERT INTO utterances(utterance_id,workspace_id,session_id,generation_epoch,status,text_hash,expires_at_ms,actual_played,display_text) VALUES(?1,?2,?3,?4,1,?5,?6,0,?7)",
+            &format!(
+                "INSERT INTO utterances(utterance_id,workspace_id,session_id,generation_epoch,status,text_hash,expires_at_ms,actual_played,display_text) VALUES(?1,?2,?3,?4,{},?5,?6,0,?7)",
+                STATUS_PENDING
+            ),
             params![
                 cue.utterance_id,
                 workspace,
@@ -952,7 +995,7 @@ impl Store {
                 "approval expiry or hash algorithm invalid",
             ));
         }
-        let valid:i64=self.conn.query_row("SELECT COUNT(*) FROM utterances u JOIN sessions s ON s.session_id=u.session_id WHERE u.workspace_id=?1 AND u.session_id=?2 AND u.generation_epoch=?3 AND s.generation_epoch=u.generation_epoch AND u.text_hash=?4 AND u.expires_at_ms>?5 AND u.status NOT IN(12,13,14,15) AND NOT EXISTS(SELECT 1 FROM evidence_links e LEFT JOIN facts f ON f.workspace_id=e.workspace_id AND f.product_id=e.product_id AND f.field_key=e.field_key WHERE e.workspace_id=u.workspace_id AND e.utterance_id=u.utterance_id AND e.product_id IS NOT NULL AND (f.revision IS NULL OR f.revision<>e.fact_revision OR f.valid_from_ms>?5 OR f.valid_until_ms<=?5))",params![workspace,input.session_id,sql_int(input.generation_epoch)?,input.candidate_hash,now],|r|r.get(0))?;
+        let valid:i64=self.conn.query_row(&format!("SELECT COUNT(*) FROM utterances u JOIN sessions s ON s.session_id=u.session_id WHERE u.workspace_id=?1 AND u.session_id=?2 AND u.generation_epoch=?3 AND s.generation_epoch=u.generation_epoch AND u.text_hash=?4 AND u.expires_at_ms>?5 AND u.status IN({}) AND NOT EXISTS(SELECT 1 FROM evidence_links e LEFT JOIN facts f ON f.workspace_id=e.workspace_id AND f.product_id=e.product_id AND f.field_key=e.field_key WHERE e.workspace_id=u.workspace_id AND e.utterance_id=u.utterance_id AND e.product_id IS NOT NULL AND (f.revision IS NULL OR f.revision<>e.fact_revision OR f.valid_from_ms>?5 OR f.valid_until_ms<=?5))",usable_guard()),params![workspace,input.session_id,sql_int(input.generation_epoch)?,input.candidate_hash,now],|r|r.get(0))?;
         if valid == 0 {
             return Err(error(
                 ErrorCode::ApprovalExpired,
@@ -984,7 +1027,18 @@ impl Store {
                 approval.encode_to_vec()
             ],
         )?;
-        tx.execute("UPDATE utterances SET status=6 WHERE workspace_id=?1 AND session_id=?2 AND generation_epoch=?3 AND text_hash=?4", params![workspace, approval.session_id, sql_int(approval.generation_epoch)?, approval.candidate_hash])?;
+        tx.execute(
+            &format!(
+                "UPDATE utterances SET status={} WHERE workspace_id=?1 AND session_id=?2 AND generation_epoch=?3 AND text_hash=?4",
+                STATUS_APPROVED
+            ),
+            params![
+                workspace,
+                approval.session_id,
+                sql_int(approval.generation_epoch)?,
+                approval.candidate_hash
+            ],
+        )?;
         audit(
             &tx,
             workspace,
@@ -1024,7 +1078,7 @@ impl Store {
         )? {
             return Ok(false);
         }
-        let count:i64=self.conn.query_row("SELECT COUNT(*) FROM approvals a JOIN sessions s ON s.session_id=a.session_id JOIN utterances u ON u.session_id=a.session_id AND u.text_hash=a.candidate_hash WHERE a.workspace_id=?1 AND a.session_id=?2 AND a.generation_epoch=?3 AND s.generation_epoch=a.generation_epoch AND a.candidate_hash=?4 AND a.revoked_at_ms IS NULL AND a.expires_at_ms>?5 AND u.expires_at_ms>?5 AND u.status NOT IN(12,13,14,15) AND NOT EXISTS(SELECT 1 FROM evidence_links e LEFT JOIN facts f ON f.workspace_id=e.workspace_id AND f.product_id=e.product_id AND f.field_key=e.field_key WHERE e.workspace_id=u.workspace_id AND e.utterance_id=u.utterance_id AND e.product_id IS NOT NULL AND (f.revision IS NULL OR f.revision<>e.fact_revision OR f.valid_from_ms>?5 OR f.valid_until_ms<=?5)) AND EXISTS(SELECT 1 FROM permission_grants p WHERE p.workspace_id=a.workspace_id AND p.actor_id=a.actor_id AND p.permission='approval.write' AND p.resource_scope='*' AND p.revoked_at_ms IS NULL)",params![workspace,session,sql_int(epoch)?,candidate,utc_ms()?],|r|r.get(0))?;
+        let count:i64=self.conn.query_row(&format!("SELECT COUNT(*) FROM approvals a JOIN sessions s ON s.session_id=a.session_id JOIN utterances u ON u.session_id=a.session_id AND u.text_hash=a.candidate_hash WHERE a.workspace_id=?1 AND a.session_id=?2 AND a.generation_epoch=?3 AND s.generation_epoch=a.generation_epoch AND a.candidate_hash=?4 AND a.revoked_at_ms IS NULL AND a.expires_at_ms>?5 AND u.expires_at_ms>?5 AND u.status IN({}) AND NOT EXISTS(SELECT 1 FROM evidence_links e LEFT JOIN facts f ON f.workspace_id=e.workspace_id AND f.product_id=e.product_id AND f.field_key=e.field_key WHERE e.workspace_id=u.workspace_id AND e.utterance_id=u.utterance_id AND e.product_id IS NOT NULL AND (f.revision IS NULL OR f.revision<>e.fact_revision OR f.valid_from_ms>?5 OR f.valid_until_ms<=?5)) AND EXISTS(SELECT 1 FROM permission_grants p WHERE p.workspace_id=a.workspace_id AND p.actor_id=a.actor_id AND p.permission='approval.write' AND p.resource_scope='*' AND p.revoked_at_ms IS NULL)",usable_guard()),params![workspace,session,sql_int(epoch)?,candidate,utc_ms()?],|r|r.get(0))?;
         op.check()?;
         Ok(count > 0)
     }
@@ -1051,16 +1105,18 @@ impl Store {
         access(&self.conn, workspace, actor, "approval.read", "*")?;
         let now = utc_ms()?;
         let mut statement = self.conn.prepare(
+            &format!(
             "SELECT u.text_hash, a.approval_id, u.expires_at_ms, u.status,
                 (SELECT COUNT(*) FROM evidence_links e WHERE e.workspace_id=u.workspace_id AND e.utterance_id=u.utterance_id),
                 u.display_text
              FROM utterances u JOIN sessions s ON s.session_id=u.session_id
              LEFT JOIN approvals a ON a.workspace_id=u.workspace_id AND a.session_id=u.session_id AND a.candidate_hash=u.text_hash AND a.generation_epoch=?6 AND a.revoked_at_ms IS NULL AND a.expires_at_ms>?5
              WHERE u.workspace_id=?1 AND u.session_id=?2 AND u.generation_epoch=?3 AND s.generation_epoch=u.generation_epoch
-                AND u.expires_at_ms>?5 AND u.status BETWEEN 1 AND 5 AND a.approval_id IS NULL
+                AND u.expires_at_ms>?5 AND u.status BETWEEN {} AND {} AND a.approval_id IS NULL
                 AND NOT EXISTS(SELECT 1 FROM approvals previous WHERE previous.workspace_id=u.workspace_id AND previous.session_id=u.session_id AND previous.generation_epoch=u.generation_epoch AND previous.candidate_hash=u.text_hash)
                AND NOT EXISTS(SELECT 1 FROM evidence_links e LEFT JOIN facts f ON f.workspace_id=e.workspace_id AND f.product_id=e.product_id AND f.field_key=e.field_key WHERE e.workspace_id=u.workspace_id AND e.utterance_id=u.utterance_id AND e.product_id IS NOT NULL AND (f.revision IS NULL OR f.revision<>e.fact_revision OR f.valid_from_ms>?5 OR f.valid_until_ms<=?5))
              ORDER BY u.rowid LIMIT ?4",
+                PENDING_BAND_LO, PENDING_BAND_HI),
         )?;
         let rows = statement.query_map(
             params![
@@ -1114,12 +1170,14 @@ impl Store {
         access(&self.conn, workspace, actor, "approval.read", "*")?;
         let now = utc_ms()?;
         let record=self.conn.query_row(
+            &format!(
             "SELECT u.text_hash, a.approval_id, u.expires_at_ms, u.status,
                     (SELECT COUNT(*) FROM evidence_links e WHERE e.workspace_id=u.workspace_id AND e.utterance_id=u.utterance_id),
                     u.display_text
              FROM utterances u JOIN sessions s ON s.session_id=u.session_id
              LEFT JOIN approvals a ON a.workspace_id=u.workspace_id AND a.session_id=u.session_id AND a.candidate_hash=u.text_hash AND a.generation_epoch=?4 AND a.revoked_at_ms IS NULL AND a.expires_at_ms>?3
-             WHERE u.workspace_id=?1 AND u.session_id=?2 AND u.generation_epoch=?4 AND s.generation_epoch=u.generation_epoch AND u.text_hash=?5 AND u.expires_at_ms>?3 AND u.status NOT IN(12,13,14,15)",
+             WHERE u.workspace_id=?1 AND u.session_id=?2 AND u.generation_epoch=?4 AND s.generation_epoch=u.generation_epoch AND u.text_hash=?5 AND u.expires_at_ms>?3 AND u.status IN({})",
+            usable_guard()),
             params![workspace, session, now, sql_int(epoch)?, candidate],
             |r| Ok(PendingApproval { candidate_hash: r.get(0)?, approval_id: r.get(1)?, expires_at_utc_ms: r.get::<_,i64>(2)? as u64, status: r.get(3)?, evidence_count: r.get::<_,i64>(4)? as u64, display_text: r.get(5)? }),
         ).optional()?.ok_or_else(|| error(ErrorCode::DeadlineExceeded, "approval not found or expired"))?;
@@ -1161,7 +1219,10 @@ impl Store {
             .conn
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let updated = tx.execute(
-            "UPDATE utterances SET status=14 WHERE workspace_id=?1 AND session_id=?2 AND generation_epoch=?3 AND text_hash=?4 AND expires_at_ms>?5 AND status BETWEEN 1 AND 5 AND EXISTS(SELECT 1 FROM sessions s WHERE s.workspace_id=utterances.workspace_id AND s.session_id=utterances.session_id AND s.generation_epoch=utterances.generation_epoch)",
+            &format!(
+                "UPDATE utterances SET status={} WHERE workspace_id=?1 AND session_id=?2 AND generation_epoch=?3 AND text_hash=?4 AND expires_at_ms>?5 AND status BETWEEN {} AND {} AND EXISTS(SELECT 1 FROM sessions s WHERE s.workspace_id=utterances.workspace_id AND s.session_id=utterances.session_id AND s.generation_epoch=utterances.generation_epoch)",
+                STATUS_REJECTED, PENDING_BAND_LO, PENDING_BAND_HI
+            ),
             params![workspace, session, sql_int(epoch)?, candidate, now],
         )?;
         if updated == 0 {

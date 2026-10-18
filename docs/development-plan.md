@@ -2594,6 +2594,33 @@ Rust 101 个目标 / **1122 通过 / 0 失败**；Node 13 个非前端套件 **2
 `foundation (ubuntu-24.04)` 与 `foundation (windows-latest)` 两平台均 `completed / success`
 （各 20 步，API 口径）；非 success 项全部是 `skipped`（门控通过时的失败摘要步、Windows 侧两个 Linux-only 步）。
 
+### W141（2026-10-18）：utterance 取值域——一处声明、白名单化可用性
+
+承接 W139 第 5 结论与 N1（`utterances.status` 是裸整数且三套口径互相矛盾，W139 明确记为「独立一轮」）。
+`crates/nai-storage/src/utterance_status.rs`（新，零新增依赖）：四个有写入者的具名取值
+（`1` 待批准 / `6` 已批准 / `12` 已失效 / `14` 已拒绝）+ 三条带（待批准带 `1..=5`、不可用带 `12..=15`、
+级联保护带 `11..=15`）+ `StatusClass` 五值闭世界（`classify()` 全域覆盖）+
+`usable()` 白名单。生产源码里 6 + 3 + 3 + 9 + 3 处 status 裸字面量全部改为派生。
+
+**分歧点 11 不裁定**：它留在 `ProtectedOnly`（只受级联保护、不是终态也不是活跃），
+并具名登记为「语义未定、本仓零写入者」。本轮既**不合并**（保留两个集合）也**不放宽**（不把 11 加进可用集），
+而是把差异归因到一处声明。
+
+判据新增 8 条（`src/tests/status_domain.rs` 5 + 模块内 3），`nai-storage` 82 → 90。
+注入 4 组全部真红；**首跑暴露一处盲区**（`usable_values()` 扫的区间太窄 ⇒ `usable()` 退化时
+行为判据不红）⇒ 修派生链为扫全域后复测 4 条红。还原后 `sha256sum -c` 3/3 逐字节 OK。
+
+**行为只变一处**：`11`、`7..=10`、`16..`、`0`、负数由「可用」变「不可用」；
+已写入的取值判定完全不变，故既有用例全绿。
+
+**诚实边界**：11 的语义仍未裁定；数据库层面**仍无** CHECK 约束（本轮只锁住代码一侧）；
+`tests/registry.yaml` 88 条里没有对应条目 ⇒ **不**标任何条目为 `tested`。
+
+见 [W141 报告](reports/2026-10-18-w141-utterance-status-domain.md)、`docs/adr/0115-utterance-status-domain.md`、
+`openspec/changes/archive/2026-10-18-w141-utterance-status-domain/`。
+
+**CI**：_（回填）_
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

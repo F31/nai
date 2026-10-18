@@ -3,6 +3,7 @@ use crate::{
     Operation, Result, SnapshotPublish, Store, error, hash, id,
     store::{access, audit},
     utc_ms,
+    utterance_status::{STATUS_INVALIDATED, cascade_guard},
 };
 use nai_contracts::v1::{ErrorCode, SessionSnapshot};
 use rusqlite::{
@@ -442,8 +443,21 @@ pub(crate) fn revoke_revision(
         "INSERT OR IGNORE INTO knowledge_document_revocations VALUES(?1,?2,?3,?4,?5,?6)",
         params![workspace, document, revision, kb, reason, utc_ms()?],
     )?;
-    conn.execute("UPDATE utterances SET status=12 WHERE workspace_id=?1 AND utterance_id IN(SELECT e.utterance_id FROM evidence_links e JOIN utterances u ON u.workspace_id=e.workspace_id AND u.utterance_id=e.utterance_id LEFT JOIN session_knowledge_bindings b ON b.workspace_id=u.workspace_id AND b.session_id=u.session_id JOIN knowledge_snapshot_chunks c ON c.workspace_id=e.workspace_id AND e.evidence_id='chunk:'||c.chunk_id AND (e.doc_revision IS NULL OR e.doc_revision=c.doc_revision) WHERE c.workspace_id=?1 AND c.document_id=?2 AND c.doc_revision=?3 AND (?4='*' OR b.kb_scope=?4)) AND status NOT IN(11,12,13,14,15)",params![workspace,document,revision,kb])?;
-    conn.execute("UPDATE approvals SET revoked_at_ms=?2 WHERE workspace_id=?1 AND candidate_hash IN(SELECT text_hash FROM utterances WHERE workspace_id=?1 AND status=12) AND revoked_at_ms IS NULL",params![workspace,utc_ms()?])?;
+    conn.execute(
+        &format!(
+            "UPDATE utterances SET status={} WHERE workspace_id=?1 AND utterance_id IN(SELECT e.utterance_id FROM evidence_links e JOIN utterances u ON u.workspace_id=e.workspace_id AND u.utterance_id=e.utterance_id LEFT JOIN session_knowledge_bindings b ON b.workspace_id=u.workspace_id AND b.session_id=u.session_id JOIN knowledge_snapshot_chunks c ON c.workspace_id=e.workspace_id AND e.evidence_id='chunk:'||c.chunk_id AND (e.doc_revision IS NULL OR e.doc_revision=c.doc_revision) WHERE c.workspace_id=?1 AND c.document_id=?2 AND c.doc_revision=?3 AND (?4='*' OR b.kb_scope=?4)) AND status NOT IN({})",
+            STATUS_INVALIDATED,
+            cascade_guard()
+        ),
+        params![workspace, document, revision, kb],
+    )?;
+    conn.execute(
+        &format!(
+            "UPDATE approvals SET revoked_at_ms=?2 WHERE workspace_id=?1 AND candidate_hash IN(SELECT text_hash FROM utterances WHERE workspace_id=?1 AND status={}) AND revoked_at_ms IS NULL",
+            STATUS_INVALIDATED
+        ),
+        params![workspace, utc_ms()?],
+    )?;
     conn.execute("INSERT INTO invalidation_outbox(workspace_id,reason,resource_id,old_revision,new_revision,created_at_ms) VALUES(?1,?2,?3,?4,'revoked',?5)",params![workspace,reason,document,revision,utc_ms()?])?;
     conn.execute(
         "UPDATE tts_cache SET valid=0 WHERE workspace_id=?1",

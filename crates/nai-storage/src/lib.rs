@@ -16,6 +16,9 @@ mod snapshot;
 mod store;
 mod upgrade;
 pub use upgrade::{UpgradeRecord, UpgradeStep};
+/// `utterances.status` 的取值域声明处。SQL 里的每个 status 数字都由它派生，
+/// 故**没有**第二处可以定义这个域。
+pub(crate) mod utterance_status;
 
 use nai_contracts::v1::ErrorCode;
 pub use nai_security::Operation;
