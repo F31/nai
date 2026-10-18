@@ -1,9 +1,14 @@
 //! Portable media authorization and media-basics timeline. No PCM/device
 //! implementation or hardware ACK synthesis.
 pub mod frame_slots;
+pub mod lineage;
 pub mod mixing;
 pub mod playback;
 pub mod timeline;
+pub use lineage::{
+    FacetKind, LineageError, LineageId, LineageNode, LineageRef, LineageRegistry, LineageReport,
+    NodeState, RECYCLE_GRACE_MS,
+};
 pub use mixing::{
     AudioMixer, CaptureLease, CapturePath, CaptureRegistry, DeviceId, DeviceObservation,
     ECHO_TEST_TTL_MS, EchoState, Gain, MAX_AUTO_QUEUE, MixError, MixMode, MixSnapshot,
@@ -71,6 +76,9 @@ pub struct MediaGate {
     deadline: Option<Instant>,
     queue: VecDeque<String>,
     capacity: usize,
+    lineage: LineageRegistry,
+    cancellation: Option<LineageReport>,
+    reclamation: Option<LineageReport>,
 }
 impl MediaGate {
     /// Diagnostic rehearsal frame admission only; no guard/approval bypass for
@@ -106,6 +114,9 @@ impl MediaGate {
             deadline: None,
             queue: VecDeque::new(),
             capacity,
+            lineage: LineageRegistry::new(session, epoch_floor),
+            cancellation: None,
+            reclamation: None,
         }
     }
     pub fn emergency(&self) -> EmergencyHandle {
@@ -152,12 +163,37 @@ impl MediaGate {
         {
             return Err(MediaError::Unauthorized);
         }
-        self.epoch = lease.generation_epoch;
+        let cancelled = self.rearm_lineage(&lease, utc_ms);
         self.armed_revision = arm_revision;
         self.deadline = Some(now + Duration::from_millis(ttl));
         self.lease = Some(lease);
-        self.queue.clear();
+        self.cancellation = Some(cancelled);
         Ok(())
+    }
+    /// Install a new generation: cancel and name what was in flight, move the
+    /// scope, and declare the recoverable row of every utterance the lease
+    /// admits. The queue stays the ordering authority; the lineage is the one
+    /// that can name what a cancellation dropped.
+    fn rearm_lineage(&mut self, lease: &PlaybackLease, utc_ms: u64) -> LineageReport {
+        let cancelled = self.lineage.cancel_scope();
+        self.epoch = lease.generation_epoch;
+        // Accepted by construction: `arm` has already refused a non-increasing
+        // epoch, and the scope is this gate's own session plus the epoch just
+        // installed.
+        let _ = self.lineage.advance_epoch(self.epoch);
+        let recycle_at_ms = lease.expires_at_utc_ms.saturating_add(RECYCLE_GRACE_MS);
+        for utterance_id in &lease.allowed_utterance_ids {
+            let _ = self.lineage.register(
+                LineageId::new(&self.session, utterance_id, self.epoch),
+                FacetKind::UtteranceRow,
+                recycle_at_ms,
+            );
+        }
+        self.queue.clear();
+        // Reclaim after cancelling, so a node whose grace has already come due
+        // is taken in this arm instead of lingering until the next one.
+        self.reclamation = Some(self.lineage.reclaim(utc_ms));
+        cancelled
     }
     pub fn poll(&mut self, now: Instant) -> Result<(), MediaError> {
         let error = if self.emergency.revision() != self.armed_revision {
@@ -168,9 +204,13 @@ impl MediaGate {
             None
         };
         if let Some(error) = error {
+            // Name what the expiry or the mute dropped before clearing the
+            // queue, so the caller can report a manifest instead of a number.
+            let cancelled = self.lineage.cancel_scope();
             self.lease = None;
             self.deadline = None;
             self.queue.clear();
+            self.cancellation = Some(cancelled);
             return Err(error);
         }
         Ok(())
@@ -265,6 +305,16 @@ impl MediaGate {
         if self.queue.len() >= self.capacity {
             return Err(MediaError::Capacity);
         }
+        // Accepted by construction: `validate` has already required that the
+        // lease admits this utterance under this gate's session and epoch, so
+        // the `UtteranceRow` parent is registered.
+        let recycle_at_ms = proof.cue.expires_at_utc_ms.saturating_add(RECYCLE_GRACE_MS);
+        let _ = self.lineage.register(
+            LineageId::new(&self.session, &proof.cue.utterance_id, self.epoch),
+            FacetKind::PendingGate,
+            recycle_at_ms,
+        );
+        self.reclamation = Some(self.lineage.reclaim(utc_ms));
         self.queue.push_back(proof.cue.utterance_id.clone());
         Ok(())
     }
@@ -281,7 +331,29 @@ impl MediaGate {
         }
         // Final P0 check immediately before crossing the consumption boundary.
         self.poll(now)?;
+        // The queue names an order; the lineage names the child. If the two
+        // disagree there is nothing in flight to consume, so refuse rather than
+        // consume blind.
+        let id = LineageId::new(&self.session, &proof.cue.utterance_id, self.epoch);
+        if self.lineage.release(&id, FacetKind::PendingGate).count() == 0 {
+            return Err(MediaError::Stale);
+        }
         self.queue.pop_front().ok_or(MediaError::Stale)
+    }
+    /// The lineage registry this gate maintains: which utterances it has
+    /// admitted, and which facade children hang off them.
+    pub fn lineage(&self) -> &LineageRegistry {
+        &self.lineage
+    }
+    /// Take the report of the last scope cancellation. `Some(empty)` means a
+    /// cancellation ran and named nothing; `None` means none has run at all —
+    /// the two are deliberately different facts.
+    pub fn take_cancellation(&mut self) -> Option<LineageReport> {
+        self.cancellation.take()
+    }
+    /// Take the report of the last reclamation.
+    pub fn take_reclamation(&mut self) -> Option<LineageReport> {
+        self.reclamation.take()
     }
 }
 

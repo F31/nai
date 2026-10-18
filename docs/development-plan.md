@@ -2561,6 +2561,37 @@ Rust 101 个目标 / **1122 通过 / 0 失败**；Node 13 个非前端套件 **2
 （各 20 步，API 口径）；非 success 项全部是 `skipped` 且逐条核到原因（Linux C++ protobuf 步在 Windows 不跑、
 门控通过时「发布失败摘要为 annotation」不执行）。
 
+### W139（2026-10-18）：勘定——utterance × frame-slot × mix-queue 的因果链该建在哪一层
+
+**纯勘定轮，不改代码**。量出六条结论：① 身份宽度从 4 递减到 0（混流层是 0、`MediaGate` 队列元素是裸
+`String`）；② epoch 在生产路径上消失（只在 `#[cfg(test)]` 夹具里）；③ 今天唯一有父键的是 SQL 那一行
+`utterances`（`FK→sessions`）；④ 同一件未遂的事写了三遍且三遍都不报告（`arm`/`poll` 的 `queue.clear()`、
+`AudioMixer::takeover` 报计数不报清单）；⑤ SQL 已有 6 条级联 `SET status=12 … NOT IN(11..15)`，
+终态口径三处打架，分歧点在 11；⑥ **三层在任何一条进程路径里都不共存**（`AudioMixer::new` 的 11 处
+全在 tests）。
+
+于是答案不是「挑一层」，而是**只有 `MediaGate` 那一层有生产装配者**。
+落点 **(e)**：新建 lineage registry，挂在 `MediaGate` 所在的 `(session, epoch)` 作用域。
+见 [W139 报告](reports/2026-10-18-w139-causal-chain-appraisal.md)。
+
+### W140（2026-10-18）：媒体因果链——把「清队列」改成点名并报告
+
+按 W139 落点 (e) 动手。`crates/nai-media-core/src/lineage.rs`（新，零新增依赖）：`LineageId` 三元组、
+`FacetKind` 五值闭集、`NodeState` 四值且终态由**一处**派生、`LineageRegistry`、`LineageReport`
+（`count()` 由 `manifest.len()` 派生）。`MediaGate` 的 `arm`/`poll` 从 `queue.clear()` 改为
+**取消并点名**；`enqueue` 登记 `PendingGate` 子节点，`consume` 释放它并在两视图不一致时**拒绝**。
+
+三条判据形状（先写死再实现）：清点 vs 计数成对、终态含显式 `cancelled`/`recycled` 两格且一处派生、
+宽限 `recycle_at_ms` 是**值**不是 `sleep`。判据 7 条（`tests/lineage.rs`）+ 接线 4 条（`tests/gate.rs`），
+注入 4 组全部真红，还原后 `sha256sum -c` 逐字节 `OK`。
+
+**诚实边界**：`FacetKind` 五值里只有 `UtteranceRow` 与 `PendingGate` 有登记者；
+`enqueue`/`consume` 在生产路径上**没有调用者**；registry 88 条里没有对应条目，故**不**标任何条目为 `tested`。
+见 [W140 报告](reports/2026-10-18-w140-media-causal-lineage.md)、`docs/adr/0114-media-causal-lineage.md`、
+`openspec/changes/archive/2026-10-18-w140-media-causal-lineage/`。
+
+**CI**：_（回填）_
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

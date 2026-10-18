@@ -232,6 +232,115 @@ fn completion_requires_actual_matching_ack_and_cancelled_tasks_never_complete() 
 }
 
 #[test]
+fn arm_declares_the_recoverable_row_of_every_admitted_utterance() {
+    let (lease, _cue, _approval, _facts) = fixture();
+    let now = Instant::now();
+    let mut gate = MediaGate::new("s", 2);
+    // A cancellation that ran and named nothing is reported as an empty
+    // manifest, not skipped: `None` means no cancellation ran at all.
+    assert!(gate.take_cancellation().is_none());
+    gate.arm(lease.clone(), 1000, now).unwrap();
+    let first = gate
+        .take_cancellation()
+        .expect("arm reports a cancellation");
+    assert_eq!(first.count(), 0);
+    assert!(first.is_empty());
+    let row = LineageId::new("s", "u", 1);
+    assert_eq!(
+        gate.lineage()
+            .node(&row, FacetKind::UtteranceRow)
+            .unwrap()
+            .state,
+        NodeState::InFlight
+    );
+    assert_eq!(gate.lineage().in_flight(), 1);
+    assert_eq!(gate.lineage().len(), lease.allowed_utterance_ids.len());
+}
+
+#[test]
+fn rearming_names_the_generation_it_dropped() {
+    let (mut lease, _cue, _approval, _facts) = fixture();
+    let now = Instant::now();
+    let mut gate = MediaGate::new("s", 2);
+    gate.arm(lease.clone(), 1000, now).unwrap();
+    lease.generation_epoch = 2;
+    lease.expires_at_utc_ms = 20_600;
+    // The clock is past the previous generation's recorded grace, so the old
+    // row is both named by the cancellation and taken by the reclamation.
+    gate.arm(lease, 20_000, now).unwrap();
+    let dropped = gate.take_cancellation().expect("rearm reports a cascade");
+    assert_eq!(dropped.count(), 1);
+    assert_eq!(dropped.manifest.len(), dropped.count());
+    assert_eq!(dropped.manifest[0].id, LineageId::new("s", "u", 1));
+    assert_eq!(dropped.manifest[0].kind, FacetKind::UtteranceRow);
+    assert_eq!(dropped.manifest[0].state, NodeState::Cancelled);
+    // Only the newest generation is still held.
+    assert_eq!(gate.lineage().len(), 1);
+    assert_eq!(gate.lineage().scope_epoch(), 2);
+}
+
+#[test]
+fn a_mute_names_what_it_dropped_rather_than_reporting_a_number() {
+    let (lease, cue, approval, facts) = fixture();
+    let now = Instant::now();
+    let mut gate = MediaGate::new("s", 2);
+    gate.arm(lease, 1000, now).unwrap();
+    gate.enqueue(&proof(&cue, &approval, &facts), 1000, now)
+        .unwrap();
+    assert_eq!(gate.lineage().in_flight(), 2);
+    gate.emergency().mute();
+    assert_eq!(gate.poll(now), Err(MediaError::Muted));
+    let dropped = gate.take_cancellation().expect("mute reports a cascade");
+    assert_eq!(dropped.count(), 2);
+    assert_eq!(dropped.manifest.len(), dropped.count());
+    let row = LineageId::new("s", "u", 1);
+    assert!(
+        dropped
+            .manifest
+            .iter()
+            .any(|r| r.id == row && r.kind == FacetKind::UtteranceRow)
+    );
+    assert!(
+        dropped
+            .manifest
+            .iter()
+            .any(|r| r.id == row && r.kind == FacetKind::PendingGate)
+    );
+    assert_eq!(gate.queued(), 0);
+    assert_eq!(gate.lineage().in_flight(), 0);
+}
+
+#[test]
+fn enqueue_registers_the_gate_child_and_consume_releases_it() {
+    let (lease, cue, approval, facts) = fixture();
+    let now = Instant::now();
+    let mut gate = MediaGate::new("s", 2);
+    gate.arm(lease, 1000, now).unwrap();
+    gate.enqueue(&proof(&cue, &approval, &facts), 1000, now)
+        .unwrap();
+    let row = LineageId::new("s", "u", 1);
+    assert_eq!(
+        gate.lineage()
+            .node(&row, FacetKind::PendingGate)
+            .unwrap()
+            .state,
+        NodeState::InFlight
+    );
+    assert_eq!(
+        gate.consume(&proof(&cue, &approval, &facts), 1000, now),
+        Ok("u".into())
+    );
+    assert_eq!(
+        gate.lineage()
+            .node(&row, FacetKind::PendingGate)
+            .unwrap()
+            .state,
+        NodeState::Released
+    );
+    assert_eq!(gate.queued(), 0);
+}
+
+#[test]
 fn mute_precedes_epoch_cancellation_even_when_command_ledger_is_full() {
     use nai_kernel::session::{CommandLedger, Session, SessionError};
     let now = Instant::now();
