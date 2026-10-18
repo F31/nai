@@ -143,7 +143,18 @@ YAML 展开后它们是**同一个对象**（`a === b` 为真），而 `structur
 
 ## 七、CI 观测
 
-_（回填）_
+推送 `a01962f`（`a01962f27f215155321a55466e13f68c21731eea`），运行 **`39109328945`**。
+判结论三件齐：唯一查询参数 `cb=`（纳秒）、请求头 `Cache-Control: no-cache`、
+回读 `head_sha` 与推送 SHA **完整 40 位**一致，且已看到 `conclusion`。
+
+| 平台 | 状态 | 步骤（API 口径） | `skipped` |
+| --- | --- | --- | --- |
+| `foundation (windows-latest)` | `completed / success` | 20 | 第 8 / 11 / 14 步 |
+| `foundation (ubuntu-24.04)` | `completed / success` | 20 | 第 11 步 |
+
+两平台的 `skipped` 分布与 W130 起的形状逐条一致。步骤条数是 **API 口径**
+（含 `Set up job` / `Post Run …` / `Complete job`），与 workflow 的 `- name:` 步数
+**不能相减**，此处不作条数断言。
 
 ## 八、具名登记（本轮发现但不做）
 
