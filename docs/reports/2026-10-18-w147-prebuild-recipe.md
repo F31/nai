@@ -104,11 +104,56 @@ I3 是**两两层都有信号**的情形，如实记录：门控换覆盖形态�
 
 ## 六、门控
 
-_（回填）_
+`cargo xtask check --profile full`（`CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=1`）→ **第 2 次 `EXIT=0`**。
+
+| 项 | 值 |
+| --- | --- |
+| 门控内 `Compiling` | **0** |
+| 门控内 `LNK1104` | **0** |
+| Rust | **1147 / 0**（102 条 `test result` 行，与本轮 Rust 零改动一致） |
+| Node | **381 / 0**（15 组，+7） |
+| `validate --all --strict` | 归档前 **44 / 0**；归档后 **43 / 0** |
+| `validate --archived` | 归档后 **144 / 0**（提交时是 `143 / 1`，见末段） |
+
+**处方有效性的直接证据**：按 §三 那两条 `--no-run` 预构建后（第一条 7 个 `Compiling`、`LNK1104` 0；
+第二条 1 个 `Compiling`），门控内部 **0 个包重编、0 次 `LNK1104`**。也就是说门控这一步没有编译任何
+东西，它验证的正是预构建那批单元——W146 缺的就是这一环。
+
+**第 1 次 `EXIT=1` 与代码无关**：registry 的「待登记」检查（`tests/registry.test.mjs:2242`，57 例里
+红 1 例）报出 `.w147bak/gate-coverage.test.mjs` —— 我为注入备份建的临时目录里有一份**测试文件副本**，
+工作区可见、`.git/index` 里没有。判据是对的（它防的正是「未跟踪 ≠ 未登记」），处置是把备份删掉。
+附带一条纪律：注入备份 MUST NOT 用 `*.test.mjs` 结尾的文件名，否则跑门控时会把门控自己打红。
+
+**⚠️ 流程缺陷（如实记下）**：归档后我立刻跑了 `--archived`，输出是 `143 / 1`
+（`✗ 4 incomplete tasks (22/26)`）——两条闭环任务（提交观测、回填）当时确实还没做完。我把「回填后
+会绿」当成前提，**先行提交并推送**，而 `--archived` 正是 CI 第 16 步 ⇒ 两平台必红（§七）。正确顺序
+是：闭环任务勾完、两条 validate 都绿，再提交。这一条与 W146 那次「回填占位未填就勾任务」同族：
+**判据早就报了，是我没让它在提交前绿**。
 
 ## 七、CI 观测
 
-_（回填）_
+提交 **`f1c5093`**（12 文件 / +825 −8）→ run **`39123291976`**（`Engineering foundation`），
+`completed / failure`，`head_sha` 完整 40 位一致（`f1c5093f155bdae216e22b090bae715452f611c3`）。
+判结论三件齐（唯一查询参数 `cb=<纳秒>` + `Cache-Control: no-cache` + 回读 `head_sha`）；
+完成态由 90 s 间隔的有界轮询在第 8 次看到（首查 run 已在跑，约 11 分钟后转 `completed`）。
+
+**两平台红在同一处**：
+
+| 平台 | 状态 | 红在哪 | 之前的步全绿到 |
+| --- | --- | --- | --- |
+| `foundation (ubuntu-24.04)` | failure | 第 **16** 步 `openspec validate --archived` | 第 15 步 `pnpm spec:validate` |
+| `foundation (windows-latest)` | failure | 同上 | 同上 |
+
+逐平台看**完整步骤序列**：两平台各 **20** 条记录，编号 `1–16` 后跳 `30–33`（`if` 未触发的步不生成
+记录 ⇒ 条数不能与 workflow 的 `- name:` 相减）。被跳过的步与 W146 逐条相同（`8`/`14` Linux-only、
+`11` 仅失败时触发）。关键步全部 success：9 生成物无漂移、10 `check --profile full`、12 凭据扫描、
+13 schema 与 API 契约、15 `pnpm spec:validate` —— 其中第 10 步在**干净 checkout** 上全绿，
+说明本轮的判据与文档改动不依赖任何本机状态（这正是 W147 判据那条「非空洞前提 MUST NOT 用工作区
+状态当输入」的要求）。
+
+**成因与处置**：第 16 步跑的就是 `--archived`，而提交时归档的 `tasks.md` 还差两条闭环任务。
+勾完 → 本机 `--archived` **144 / 0** → 回填提交（docs-only）后再观测一次；那一次的结果记在
+`.workbuddy/memory` 的当日段，本报告记录的是**代码提交**这一次的观测。
 
 ## 八、具名登记（本轮发现但不做）
 

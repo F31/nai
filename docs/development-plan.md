@@ -2916,9 +2916,22 @@ I4 删标记块 ⇒ 25/26/27/28/30/31；I5 文档多一条命令 ⇒ 25/27/28/31
 见 [W147 报告](reports/2026-10-18-w147-prebuild-recipe.md)、
 [ADR 0121](adr/0121-prebuild-recipe-unit-set.md)、`openspec/changes/w147-prebuild-recipe/`。
 
-**门控**：_（回填）_
+**门控**：`cargo xtask check --profile full` → **第 2 次 `EXIT=0`**。按处方两条 `--no-run` 预构建后
+（7 + 1 个 `Compiling`）门控内部 **`Compiling` 0 / `LNK1104` 0** —— 即门控没编译任何东西，验证的正是
+预构建那批单元；Rust **1147 / 0**（102 行）、Node **381 / 0**（15 组，+7）；
+`validate --all --strict` **44/0**（归档前）／**43/0**（归档后）、`--archived` **144/0**。
+首次 `EXIT=1` 红在 registry 的待登记检查：注入备份目录里有一份 `*.test.mjs` 副本
+⇒ 与代码无关，删掉即绿（但这条也说明注入备份的目录名 MUST NOT 像测试文件）。
 
-**CI**：_（回填）_
+**⚠️ 顺序错误（本轮记一笔）**：归档后 `--archived` 当时是 `143 / 1`（两条闭环任务未勾），我把
+「回填后会绿」当前提**先提交推送** ⇒ CI 第 16 步正是 `--archived`，两平台必红。闭环任务勾完 =
+`144 / 0`。教训：`--archived` 在 CI 执行面里，它 MUST 在**推送前**绿，不是回填后才绿。
+
+**CI**：提交 `f1c5093`（12 文件 / +825 −8）→ run **`39123291976`** `completed / failure`，
+`head_sha` 完整 40 位一致；两平台各 20 条步骤记录（编号 `1–16` 后跳 `30–33`），**红在同一处**：
+第 16 步 `openspec validate --archived`（成因即上一条），其余关键步全 success —— 特别是第 10 步
+`check --profile full` 在**干净 checkout** 上全绿。回填提交（docs-only）后再观测一次，结果记在
+当日记忆。
 
 ## 任务依赖与状态
 

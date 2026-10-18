@@ -43,6 +43,8 @@
 
 - [x] `cargo xtask check --profile full`（第 2 次 `EXIT=0`；首次红在 registry 的待登记检查——备份目录里
       有一份测试文件副本，与代码无关，删掉即绿）
-- [x] `openspec validate --all --strict`（44/0）与归档后 `--archived`（144/0）
-- [ ] 一次 commit + push + CI 双平台观测
-- [ ] 回填报告 §六/§七 与 plan 两处占位
+- [x] `openspec validate --all --strict`（归档前 **44/0**、归档后 **43/0**）；`--archived` 在**提交时是
+      `143 / 1`**（22/26 任务未勾），勾完闭环任务后 **144 / 0** ⇒ 顺序错了，见报告 §六末段
+- [x] 一次 commit + push + CI 双平台观测（提交 `f1c5093` → run `39123291976`：两平台**同一处红**在
+      第 16 步 `openspec validate --archived`，成因就是上一条的顺序错误，不是代码缺陷）
+- [x] 回填报告 §六/§七 与 plan 两处占位
