@@ -50,7 +50,11 @@ cargo test --locked --package nai-xtask --lib --no-run
 `build` 0，同样不判脏。上面两个事实合起来才是「预构建为什么会失效」的完整答案，只答 clippy
 那一半会把处置引到错误的落点。两条 `--no-run` 与门控两个测试步的对应关系由
 `tests/contracts/gate-coverage.test.mjs` 对账（文档漏 `--no-run`、改任一旗标、门控侧换覆盖形态都会红），
-实测数字见 [W147 报告](reports/2026-10-18-w147-prebuild-recipe.md)。
+实测数字见 [W147 报告](reports/2026-10-18-w147-prebuild-recipe.md)。**块外不得再出现处方**：
+活文档（仓库根与 `docs/` 下，`docs/adr/`、`docs/reports/` 两段历史除外）的**围栏内**任何带
+`--no-run` 的 `cargo` 命令都 MUST 是这个块里的某一条，副本一律具名失败并带路径与行号
+（[ADR 0122](adr/0122-prebuild-complement-closed-world.md)）。散文里的命令不在判据域内——
+围栏里的是可复制执行的，散文里的是用来说明的（本段上方那条 `build --all-targets` 反例即属后者）。
 
 内存受限的宿主可用 cargo 原生开关约束并发（如 `CARGO_BUILD_JOBS=2 cargo xtask check --profile portable`）：
 默认并发下全量链接 30 余个带 debuginfo 的测试二进制可能触到系统提交限制（本机实测 `os error 1455`），

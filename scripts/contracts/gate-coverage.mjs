@@ -393,15 +393,164 @@ export function commandSignature(tokens) {
   return [...tokens].sort().join(' ');
 }
 
+/// 判据扫的**活文档**域：仓库根与 `docs/` 下任意深度的 `.md`。
+///
+/// 为什么排除 `docs/adr/` 与 `docs/reports/`：那是**已发布的历史记录**，按纪律不可就地订正。
+/// 实测（W148）：`docs/adr/0121-prebuild-recipe-unit-set.md` 与
+/// `docs/reports/2026-10-18-w147-prebuild-recipe.md` 里就各有围栏内的处方副本——
+/// 把历史圈引的处方判成「第二真源」，是把「记录该有的样子」判成缺陷，而唯一能消除它的
+/// 动作恰好是纪律禁止的（改历史）。故按**路径段**排除，MUST NOT 按文件名前缀。
+export const HISTORY_DOC_SEGMENTS = ['docs/adr/', 'docs/reports/'];
+
+/// 一个路径是不是判据域内的活文档。**域只有这一处定义**：测试从 `.git/index` 取路径集合，
+/// 再用这个函数划分；测试若自己再写一份正则，域的边界就有两处，改一处不会让另一处跟上。
+export function isLiveDocument(path) {
+  if (typeof path !== 'string' || path === '') return false;
+  if (!path.endsWith('.md')) return false;
+  if (HISTORY_DOC_SEGMENTS.some(segment => path.startsWith(segment))) return false;
+  return path.startsWith('docs/') || !path.includes('/');
+}
+
+/// 一段 Markdown 里**围栏内**的行（围栏行本身不算）。返回 `[{number, text}]`，行号从 1 起。
+///
+/// 围栏不配对 ⇒ 抛。一条没闭合的围栏会把后面整份文档吞进「围栏内」，而「块外不得有处方」
+/// 判的正是这条边界——边界不可判定时 MUST 报错，MUST NOT 猜一个。
+export function fencedLines(text) {
+  if (typeof text !== 'string' || text === '') {
+    throw new Error('the document text was not provided, so what lies inside a fence cannot be delimited');
+  }
+  const rows = text.split('\n');
+  const out = [];
+  let open = null;
+  for (let i = 0; i < rows.length; i += 1) {
+    const trimmed = rows[i].trim();
+    const marker = /^(`{3,}|~{3,})(.*)$/.exec(trimmed);
+    if (marker !== null) {
+      if (open === null) {
+        open = {char: marker[1][0], length: marker[1].length, number: i + 1};
+        continue;
+      }
+      // 只有**同字符、不短于开启、且其后不挂信息串**的才算闭合。
+      // 同字符但更短或后面挂着 `bash` 的那种（围栏内再举一条围栏）是内容，不是边界。
+      const closes = marker[1][0] === open.char && marker[1].length >= open.length && marker[2].trim() === '';
+      if (closes) {
+        open = null;
+        continue;
+      }
+      out.push({number: i + 1, text: trimmed});
+      continue;
+    }
+    if (open !== null) out.push({number: i + 1, text: trimmed});
+  }
+  if (open !== null) {
+    throw new Error(`the fenced block opened at line ${open.number} is never closed, so what lies inside a fence is not decidable`);
+  }
+  return out;
+}
+
+/// 一行围栏内容是不是一条**预构建处方**。判据只用 `--no-run` 认它：
+/// 不带这个旗标的 `cargo test …` 是门控那一步**本身**，活文档里到处都有（说明、示例、对比），
+/// 拿它当第二真源会把说明判成缺陷；带 `--no-run` 的命令才唯一地是「手工预构建」。
+/// 注释行不是命令；`$ ` 提示符与 shell 语法成分先剥掉，签名用 `commandSignature`（顺序无关）。
+export function prebuildPrescription(line) {
+  const trimmed = String(line ?? '').trim();
+  if (trimmed === '') return null;
+  const withoutPrompt = trimmed.startsWith('$ ') ? trimmed.slice(2).trim() : trimmed;
+  if (withoutPrompt.startsWith('#')) return null;
+  const parts = stripShellSyntax(withoutPrompt).split(' ').filter(Boolean);
+  const at = parts.indexOf('cargo');
+  if (at < 0) return null;
+  const tokens = parts.slice(at + 1);
+  if (!tokens.includes('--no-run')) return null;
+  return {
+    text: withoutPrompt,
+    signature: commandSignature(tokens.filter(token => token !== '--no-run')),
+  };
+}
+
+/// **块外不得有第二份处方**——补集闭世界。
+///
+/// 要回答的问题：`docs/engineering.md` 的标记块是不是处方的**唯一**出处。
+/// 判据只扫**围栏内**的行，理由不是「散文不可能写错」，而是：围栏内的行是**可复制执行**的，
+/// 散文里的命令是**用来说明的**（L34–36 那条反例 `cargo build --workspace --all-targets`
+/// 就是说明为什么它不成立）。判据要是也扫散文，就得为那条反例开一个豁免名单，
+/// 而豁免名单正是判据退化的入口。
+///
+/// 匹配用**多重集**而非集合：块自身那两行天然命中，配额被它们消费之后，任何第三处出现
+/// （同文档块外 / 别的活文档）都必然落空 ⇒ 具名。配额先由承载块的那份文档消费，
+/// 所以被点名的是**副本**，不是块本身。
+export function strayPrebuildErrors({documentText, documents, documentPath} = {}) {
+  const only = message => ({errors: [message], documentsScanned: 0, fencedLinesScanned: 0, prescriptionsScanned: 0});
+  let recipe;
+  try {
+    recipe = documentedPrebuildSteps(documentText);
+  } catch (error) {
+    return only(`the documented prebuild recipe could not be located, so no stray copy can be judged: ${error.message}`);
+  }
+  const quota = new Map();
+  let quorum = 0;
+  for (const line of recipe) {
+    const prescription = prebuildPrescription(line);
+    // 这一行的缺陷（不是 `cargo`、或 `--no-run` 不是恰好一次）由对账那几条规则报，不在这里重报。
+    if (prescription === null) continue;
+    quorum += 1;
+    quota.set(prescription.signature, (quota.get(prescription.signature) ?? 0) + 1);
+  }
+  const siblings = documents instanceof Map ? [...documents] : Object.entries(documents ?? {});
+  if (siblings.length === 0) {
+    return only('no sibling document was provided, so "the recipe has no second copy" would hold over an empty set');
+  }
+
+  const errors = [];
+  let documentsScanned = 0;
+  let fencedLinesScanned = 0;
+  let prescriptionsScanned = 0;
+  const sources = [[documentPath ?? 'the document carrying the prebuild block', documentText], ...siblings];
+  for (const [label, text] of sources) {
+    let rows;
+    try {
+      rows = fencedLines(text);
+    } catch (error) {
+      errors.push(`${label}: ${error.message}`);
+      continue;
+    }
+    documentsScanned += 1;
+    fencedLinesScanned += rows.length;
+    for (const row of rows) {
+      const prescription = prebuildPrescription(row.text);
+      if (prescription === null) continue;
+      prescriptionsScanned += 1;
+      const left = quota.get(prescription.signature) ?? 0;
+      if (left > 0) {
+        quota.set(prescription.signature, left - 1);
+        continue;
+      }
+      errors.push(
+        `${label}:${row.number} carries "${prescription.text}" — a second copy of a prebuild step; the documented block is the single source of the recipe, and a copy that no rule reads is the copy that drifts`,
+      );
+    }
+  }
+  const matched = quorum - [...quota.values()].reduce((total, count) => total + count, 0);
+  if (quorum > 0 && matched < quorum) {
+    errors.push(
+      `the documented recipe carries ${quorum} prebuild command(s), but only ${matched} of them were found inside a fenced block — an unfenced prescription is not copyable, and it escapes the scan that looks for copies`,
+    );
+  }
+  return {errors, documentsScanned, fencedLinesScanned, prescriptionsScanned};
+}
+
 /// **预构建处方 ↔ 门控测试步**的对账。
 ///
 /// 要回答的问题：改完代码先手工预构建再跑门控时，预构建编的**是不是门控要跑的那批单元**。
 /// 答错的代价是「预构建绿、门控仍要从头链接」，而它看起来像宿主抖动（W146 曾据此把成因写成
 /// clippy 作废产物，实测否证）。故判据的形状是：文档每条命令 MUST 等于门控某条测试步 **+ 恰好一个
 /// `--no-run`**，且**双向一一对应**——少一条覆盖不到、多一条是漂移出的第二条真源。
+///
+/// 补集在 `strayPrebuildErrors` 里（W148）：块内对上了不等于块外没有第二份。两者合起来才是
+/// 「处方只有一处出处」——只判块内，则「别处再抄一条」永远看不见。
 export function prebuildRecipeErrors(inputs) {
   const errors = [];
-  const {harnessText, documentText, identifiers = new Map()} = inputs ?? {};
+  const {harnessText, documentText, documents, documentPath, identifiers = new Map()} = inputs ?? {};
   if (typeof harnessText !== 'string' || harnessText === '') {
     return ['the harness source was not provided, so no gate test step can be judged'];
   }
@@ -484,6 +633,8 @@ export function prebuildRecipeErrors(inputs) {
       errors.push(`the documented recipe covers "cargo ${entry.raw} --no-run" ${count} times while the gate runs it ${entry.count} time(s) — a duplicated step is not the same step`);
     }
   }
+  // 补集最后判：块内的对应关系已经全部报过，这里的每一条都是「块外还有一份」。
+  errors.push(...strayPrebuildErrors({documentText, documents, documentPath}).errors);
   return errors;
 }
 

@@ -20,7 +20,12 @@ import {
   commandSignature,
   PREBUILD_BLOCK,
   coverageErrors,
+  isLiveDocument,
+  fencedLines,
+  prebuildPrescription,
+  strayPrebuildErrors,
 } from '../../scripts/contracts/gate-coverage.mjs';
+import { readTrackedPaths, describeFailure } from '../../scripts/contracts/git-index.mjs';
 
 const ROOT_TOML = 'Cargo.toml';
 const HARNESS = 'xtask/src/lib.rs';
@@ -37,6 +42,16 @@ async function load() {
     memberTomls.set(member, await readFile(`${member}/Cargo.toml`, 'utf8'));
   }
   const harnessText = await readFile(HARNESS, 'utf8');
+  // 活文档集由 `.git/index` 派生（W75/W135）：遍历工作区会把未跟踪的临时文件算进来，
+  // 而 `docs/` 下还有已被 `.gitignore` 掉的东西。域的划分只在 `isLiveDocument` 一处定义。
+  const index = await readTrackedPaths('.');
+  assert.ok(index.ok, describeFailure(index));
+  const liveDocs = [...index.paths].filter(isLiveDocument).sort();
+  const documents = new Map();
+  for (const path of liveDocs) {
+    if (path === ENGINEERING_DOC) continue;
+    documents.set(path, await readFile(path, 'utf8'));
+  }
   return {
     rootToml,
     memberTomls,
@@ -47,6 +62,11 @@ async function load() {
     ]),
     workflowText: await readFile(WORKFLOW, 'utf8'),
     documentText: await readFile(ENGINEERING_DOC, 'utf8'),
+    documentPath: ENGINEERING_DOC,
+    // 除承载块的那份之外的活文档——补集判据的输入。**不含** `ENGINEERING_DOC` 本身：
+    // 同一份事实给两处，测试改一处就会让另一处停在旧值，判据看到的是两套输入。
+    documents,
+    liveDocs,
     // 标识符的值**从包清单派生**，不写死：`HARNESS` 的真源是 `xtask/Cargo.toml` 的 `name`。
     identifiers: new Map([['HARNESS', packageNames(memberTomls).get('xtask')]]),
   };
@@ -645,4 +665,111 @@ test('flag order is not the judged property, but a duplicate line is', async () 
     commandSignature(['test', '--locked', '--lib']),
     'a dropped target flag must change the signature',
   );
+});
+
+// W148：上面七条判的是**块内**。块内对上了不等于块外没有第二份——补集是另一半。
+
+const STRAY_LINE = 'cargo test --workspace --exclude nai-xtask --locked --no-run';
+
+function withSibling(inputs, path, text) {
+  return {...inputs, documents: new Map(inputs.documents).set(path, text)};
+}
+
+test('the prebuild recipe has no second copy anywhere in the live documents', async () => {
+  const inputs = await load();
+  const stray = strayPrebuildErrors(inputs);
+  assert.deepEqual(stray.errors, [], `the shipped live documents must carry no second copy, saw ${JSON.stringify(stray.errors)}`);
+  // 非空洞三件：域真的取到了文档、围栏真的被解析出内容、处方真的被数到。
+  assert.ok(inputs.documents.size > 0, 'the sibling document set must not be empty');
+  assert.equal(stray.documentsScanned, inputs.documents.size + 1, 'every live document must have been scanned');
+  assert.equal(inputs.liveDocs.length, inputs.documents.size + 1, 'the live set is the siblings plus the judged document');
+  assert.ok(stray.fencedLinesScanned > 0, 'the fence parser must have seen fenced content');
+  const documented = documentedPrebuildSteps(inputs.documentText)
+    .map(prebuildPrescription)
+    .filter(prescription => prescription !== null);
+  assert.ok(documented.length > 0, 'the recipe must carry prebuild commands');
+  assert.equal(
+    stray.prescriptionsScanned,
+    documented.length,
+    'every fenced prebuild prescription in the live documents must be one of the documented ones',
+  );
+  // 前提断言之外，判据自己也要拒绝空集：调用方漏传 siblings 时必须红，不能对空集恒真。
+  assert.ok(
+    strayPrebuildErrors({documentText: inputs.documentText, documents: new Map(), documentPath: ENGINEERING_DOC})
+      .errors.some(error => error.includes('over an empty set')),
+    'an empty sibling set must be named rather than read as "no second copy"',
+  );
+  // 域外（历史记录）**确实**还有副本：这不是遗漏，是「历史不可就地订正」的必然结果，
+  // 也证明这条排除是必要的——把历史纳入域，判据会因记录该有的样子而永久红。
+  const history = await readFile('docs/adr/0121-prebuild-recipe-unit-set.md', 'utf8');
+  assert.ok(
+    fencedLines(history).some(row => prebuildPrescription(row.text) !== null),
+    'the excluded history really does quote the recipe — otherwise the exclusion would be decoration',
+  );
+  assert.ok(
+    !inputs.liveDocs.some(path => path.startsWith('docs/adr/') || path.startsWith('docs/reports/')),
+    'the history segments must stay outside the judged domain',
+  );
+});
+
+test('a prebuild copied into a fence outside the block is named, prose is not', async () => {
+  const inputs = await load();
+  const fenced = `\`\`\`bash\n${STRAY_LINE}\n\`\`\`\n`;
+  // 同文档块外：第二份处方，块内那两条已经对上了，这一条没有任何规则读它。
+  const appended = `${inputs.documentText}\n${fenced}`;
+  const sameDocument = strayPrebuildErrors({...inputs, documentText: appended});
+  assert.ok(
+    sameDocument.errors.some(error => error.startsWith(`${ENGINEERING_DOC}:`) && error.includes('a second copy of a prebuild step')),
+    `a copy outside the block in the judged document must be named, saw ${JSON.stringify(sameDocument.errors)}`,
+  );
+  // 别的活文档：同样具名，且带上路径与行号（否则读者无法定位）。
+  const elsewhere = strayPrebuildErrors(withSibling(inputs, 'docs/runtime.md', fenced));
+  assert.ok(
+    elsewhere.errors.some(error => error.startsWith('docs/runtime.md:2') && error.includes(STRAY_LINE)),
+    `a copy in another live document must be named with its line, saw ${JSON.stringify(elsewhere.errors)}`,
+  );
+  // 同一条命令写成**散文**（行内代码、无围栏）：MUST NOT 红。散文里的命令是用来说明的，
+  // 判它就得为 engineering.md L34–36 那条反例开豁免名单。
+  const prose = withSibling(inputs, 'docs/runtime.md', `预构建不要写成 \`${STRAY_LINE}\` 之外的形状。\n`);
+  assert.deepEqual(
+    prebuildRecipeErrors(prose),
+    [],
+    'a command mentioned in prose is an explanation, not a prescription',
+  );
+  // 围栏不配对 ⇒ 具名：边界不可判定时不许猜（一条没闭合的围栏会把后面整份文档吞进去）。
+  const unbalanced = withSibling(inputs, 'docs/runtime.md', `\`\`\`bash\n${STRAY_LINE}\n`);
+  assert.ok(
+    strayPrebuildErrors(unbalanced).errors.some(error => error.startsWith('docs/runtime.md:') && error.includes('is never closed')),
+    'an unbalanced fence must be named rather than read as "everything after it is fenced"',
+  );
+  // 补集真的接到了对账入口上：不是一条只有测试会调的孤立函数。
+  assert.ok(
+    prebuildRecipeErrors(withSibling(inputs, 'docs/runtime.md', fenced)).some(error =>
+      error.includes('a second copy of a prebuild step'),
+    ),
+    'the complement must be composed into the reconciliation entry point',
+  );
+});
+
+test('a flag profile no fixture carries is still carried through, one command per array', () => {
+  // W148：既有夹具几乎都带 `--locked`，于是「只保留某类旗标」的过滤（白名单）在它们身上是**恒等变换**
+  // ——判据零信号（实测：注入白名单过滤 ⇒ 31/31 全绿）。这条用例给四种旗标剖面，
+  // 断言「N 个 `["test", …]` 数组进 ⇒ N 条命令出，且逐 token 等于原文」。
+  const source = [
+    'let bare = &["test"];',
+    'let scoped = &["test", "-p", "nai-kernel"];',
+    'let lib = &["test", "--lib", "--no-run"];',
+    'let workspace = &["test", "--workspace", "--exclude", HARNESS];',
+    'let notATest = &["check", "--workspace"];',
+  ].join('\n');
+  const { commands, unresolvable } = testCommandsOf(source, new Map([['HARNESS', 'nai-xtask']]));
+  assert.deepEqual(unresolvable, [], 'every operand here is resolvable');
+  assert.deepEqual(commands, [
+    ['test'],
+    ['test', '-p', 'nai-kernel'],
+    ['test', '--lib', '--no-run'],
+    ['test', '--workspace', '--exclude', 'nai-xtask'],
+  ]);
+  // 条数是判据的一半：任何「按旗标挑命令」的过滤都会让这里少一条，而逐条 deepEqual 会连带报出是哪一条。
+  assert.equal(commands.length, 4, 'one command per `["test", …]` array, and only those');
 });
