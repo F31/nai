@@ -6,8 +6,8 @@
 - 关联：[ADR 0082](0082-assembly-log-wiring.md)（H02 的 runtime 接线，本轮的模板与直接前驱）、
   [ADR 0083](0083-ramp-enablement-log-wiring.md)（H18 的同型接线）、
   [ADR 0081](0081-observation-log-wiring.md)（H15 的同型接线）、
-  [ADR 0027](0027-trace-id-single-definition.md)（trace 生成器一处定义）、
-  [ADR 0015](0015-decision-log-criticality.md)（critical 与 telemetry 的分级）
+  ~~ADR 0027~~（trace 生成器一处定义；原链接 `0027-trace-id-single-definition.md` 从未存在，见文末「勘误（W151，指针）」）、
+  [ADR 0019](0019-composition-root-boundary.md)（critical 与 telemetry 的分级）
 
 ## 背景
 
@@ -239,3 +239,22 @@ W106 做的正是 (ii)，外加 §41.5 补上的两个承载物。
 - W127 的落地形状：逐行作为独立**条目**判定（一个条目就是一次装配）；承载判据 = 片段标识**多重集**
   （含重复、**不计顺序**）；判定为**存在性**；无条目承载 ⇒ 具名 `rebuild.not_in_one_entry`，
   且 `unlogged_ids` 对**整条链**重新派生。见 [ADR 0105](0105-rebuild-in-one-entry.md)。
+
+## 勘误（W151，指针）
+
+关联列表里的 `ADR 0027` 原链接到 `0027-trace-id-single-definition.md`，**该文件从未存在**。
+`git log --follow docs/adr/0027-deployment-lifecycle-boundary.md` 显示 ADR 0027 自创建起就是
+「部署生命周期的边界」，与 trace 生成器无关。W151 新增的链接判据（ADR 0125）把它报成断链，
+处置是**降级为纯文本**，不是改指一个编号：
+
+- 「trace 生成器一处定义」的实际落点是 **ADR 0081 决策 6**——「`next_trace` 放宽到 `pub(crate)`，
+  **不**新增第二个 trace 生成器」，它应用的是 ADR 0064「一处定义、两处使用」；
+- **编号不可复原**：原文写的 `0027` 与任何 trace 相关的 ADR 都不对应 ⇒ MUST NOT 猜一个上去。
+  猜错会把一条断链换成一个**看起来能点、内容不对**的指针，那比断链更坏；
+- 正文里同源的「ADR 0027『一处定义』」写法（本 ADR 的正文段）指涉同一件事，同样不可复原，
+  保留原文不改写——权威表述是本段。
+- `ADR 0015` 原链接到 `0015-decision-log-criticality.md`，同样**从未存在**：ADR 0015 是
+  「V3.6 升为唯一实现基线」。「critical 与 telemetry 的分级」的正文出处是 **ADR 0019 决策 5**
+  （`docs/adr/0019-composition-root-boundary.md:25` 逐字：「决策日志分级：critical
+  （cancellation/duty_lease 等）失败即错误；telemetry 允许缓冲」）⇒ 该处已**就地订正**为
+  ADR 0019。这是两类处置的差别：**指错了但指得回来 ⇒ 订正**；**指的东西不存在 ⇒ 降级 + 勘误**。

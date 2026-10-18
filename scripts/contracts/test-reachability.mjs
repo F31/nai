@@ -160,6 +160,14 @@ export const TEST_REGISTRATION_SITES = [
     tier: 'portable',
   },
   {
+    // 文档内部指针的可达性（W151）：同样跑在 `engineering_checks` 里 ⇒ `portable`。
+    id: 'xtask-doc-links',
+    host: 'xtask/src/lib.rs',
+    marker: 'tests/contracts/doc-links.test.mjs',
+    base: '.',
+    tier: 'portable',
+  },
+  {
     id: 'xtask-contracts-suite',
     host: 'xtask/src/schema.rs',
     marker: 'tests/contracts/descriptor.test.mjs',

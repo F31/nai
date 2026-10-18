@@ -5,7 +5,7 @@
 - 轮次：W104
 - 关联：[ADR 0081](0081-observation-log-wiring.md)（H15 的同型接线，本轮的模板）、
   [ADR 0064](0064-openapi-document-set-closure.md)（一处定义、两处使用）、
-  [ADR 0027](0027-trace-id-single-definition.md)（trace 生成器一处定义）、
+  ~~ADR 0027~~（trace 生成器一处定义；原链接 `0027-trace-id-single-definition.md` 从未存在，见文末「勘误（W151，指针）」）、
   [ADR 0045](0045-approval-display-text-boundary.md)（`db_schema_version` 与 `migration::VERSION` 同步）
 
 ## 背景
@@ -176,3 +176,17 @@ kind TEXT NOT NULL CHECK(kind IN('event','observation',…,'duty_lease'))
 - 变更：`openspec/changes/archive/2026-10-14-w104-assembly-log-wiring/`
 - 报告：[`docs/reports/2026-10-14-w104-assembly-log-wiring.md`](../reports/2026-10-14-w104-assembly-log-wiring.md)
 - 前序：W69（判定面）、W103（同型接线）、W54（桌面壳）、W68（讲品循环）——同型的「缺失对象」轮次
+
+## 勘误（W151，指针）
+
+关联列表里的 `ADR 0027` 原链接到 `0027-trace-id-single-definition.md`，**该文件从未存在**。
+`git log --follow docs/adr/0027-deployment-lifecycle-boundary.md` 显示 ADR 0027 自创建起就是
+「部署生命周期的边界」，与 trace 生成器无关。W151 新增的链接判据（ADR 0125）把它报成断链，
+处置是**降级为纯文本**，不是改指一个编号：
+
+- 「trace 生成器一处定义」的实际落点是 **ADR 0081 决策 6**——「`next_trace` 放宽到 `pub(crate)`，
+  **不**新增第二个 trace 生成器」，它应用的是 ADR 0064「一处定义、两处使用」；
+- **编号不可复原**：原文写的 `0027` 与任何 trace 相关的 ADR 都不对应 ⇒ MUST NOT 猜一个上去。
+  猜错会把一条断链换成一个**看起来能点、内容不对**的指针，那比断链更坏；
+- 正文里同源的「ADR 0027『一处定义』」写法（本 ADR 的正文段）指涉同一件事，同样不可复原，
+  保留原文不改写——权威表述是本段。

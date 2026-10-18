@@ -34,7 +34,7 @@ Rust/TS/C++（109 消息）；12 类消息互通 fixture 覆盖了大整数与 u
   到期会逻辑关闭控制并撤权（EmergencyHandle + poll），迟到控制不得恢复。
 - 输出只发布「最新一份」pending 诊断状态（try_lock + skipped 计数），writer 阻塞不阻塞看门狗 owner。
 - `main.rs` 仅 `--watchdog-drill <session> <trusted-floor>` 可启动，其余参数返回退出码 2。
-- `MediaGate::with_epoch_floor` 释放 epoch floor 构造：新旧资料见下文测试与 [ADR 0016](adr/0016-output-watchdog-drill-boundary.md)。
+- `MediaGate::with_epoch_floor` 释放 epoch floor 构造：新旧资料见下文测试与 [ADR 0016](../adr/0016-output-watchdog-drill-boundary.md)。
 
 ### tests/support/lease_source.rs（tests 专用，stdlib 编译）
 

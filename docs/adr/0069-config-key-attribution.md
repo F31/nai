@@ -3,8 +3,8 @@
 - 状态：接受
 - 日期：2026-10-13
 - 相关：[ADR 0068](0068-config-surface-key-consumption.md)（W90：受判 `required` 键的三分类闭世界，
-  **只覆盖 `runtime` 一份 schema**、读取形状是**裸键名**）；[ADR 0051](0051-*.md)／
-  [ADR 0052](0052-*.md)／[ADR 0053](0053-repository-scoped-evidence.md)（W73–W75 的**文件级**守卫）；
+  **只覆盖 `runtime` 一份 schema**、读取形状是**裸键名**）；[ADR 0051](0051-registry-schema-wiring-and-ledger-lifetime.md)／
+  [ADR 0052](0052-consumption-guard-boundaries.md)／[ADR 0053](0053-repository-scoped-evidence.md)（W73–W75 的**文件级**守卫）；
   [ADR 0067](0067-viewer-memory-single-answering-point.md)（`viewer_memory_enabled` 的未决接线）；
   `schemas/config/*.schema.json`、`crates/nai-storage/src/store.rs`、`crates/nai-storage/src/snapshot.rs`、
   `crates/nai-runtime/src/composition.rs`、`apps/engine/src/pipeline.rs`、

@@ -2,7 +2,7 @@
 
 - 轮次：**W90**（承接 W89 遗留 1 的母题）
 - 日期：2026-10-13
-- 变更：[`w90-config-surface-consumption`](../changes/archive/2026-10-13-w90-config-surface-consumption/)
+- 变更：[`w90-config-surface-consumption`](../../openspec/changes/archive/2026-10-13-w90-config-surface-consumption/)
 - 裁决：[ADR 0068](../adr/0068-config-surface-key-consumption.md)
 
 ## 一、判断

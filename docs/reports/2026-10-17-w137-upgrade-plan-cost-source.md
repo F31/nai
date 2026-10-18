@@ -1,7 +1,7 @@
 # W137：O05 的成本来源——把「升级成本显示」接上控制面
 
 日期：2026-10-17　基线：`docs/直播数字人 + 智能体系统技术方案 V3.11.md`（§1330 O05、§30.1、§900）
-ADR：[0112](adr/0112-upgrade-plan-cost-source.md)　变更：`openspec/changes/archive/2026-10-17-w137-upgrade-plan-cost/`
+ADR：[0112](../adr/0112-upgrade-plan-cost-source.md)　变更：`openspec/changes/archive/2026-10-17-w137-upgrade-plan-cost/`
 
 ## 一、勘定（先量，再动手）
 

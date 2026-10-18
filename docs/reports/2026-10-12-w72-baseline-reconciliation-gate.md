@@ -2,7 +2,7 @@
 
 - 日期：2026-10-12
 - 变更：`openspec/changes/w72-baseline-reconciliation-gate/`（归档后为 `openspec/changes/archive/2026-10-12-w72-baseline-reconciliation-gate/`）
-- 裁决：[ADR 0050](adr/0050-baseline-registry-reconciliation.md)（对账门控；缺口①的括号语义裁定；四情形规格订正）
+- 裁决：[ADR 0050](../adr/0050-baseline-registry-reconciliation.md)（对账门控；缺口①的括号语义裁定；四情形规格订正）
 - 基线：**`docs/直播数字人 + 智能体系统技术方案 V3.10.md` 零改动**（本轮是**加断言**，不是升基线）
 - 登记：`tests/registry.yaml` **88** 条不变、**归属不变**、**一条 `status` 未动**（H18 与 B07 仍 `pending`）
 - 承接：W71 报告「未做与遗留」里如实登记的**两处门控缺口**（缺口②为主线，缺口①需先裁定括号语义）。**本轮关闭两者。**

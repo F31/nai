@@ -7,7 +7,7 @@
   [ADR 0082](0082-assembly-log-wiring.md)、[ADR 0081](0081-observation-log-wiring.md)
   （H01/H18/H02/H15 的同型接线，本轮的直接前驱）；
   [ADR 0067](0067-viewer-memory-single-answering-point.md)（观众记忆开关的单一应答点，本轮的写侧半边）、
-  [ADR 0027](0027-trace-id-single-definition.md)（一处定义）
+  ~~ADR 0027~~（一处定义；原链接 `0027-trace-id-single-definition.md` 从未存在，见文末「勘误（W151，指针）」）
 
 ## 背景
 
@@ -155,3 +155,17 @@ W106 的 `AssemblyOutcome` 是四态，因为 H01 有**两项**判定（可调�
 - 报告：`docs/reports/2026-10-14-w107-memory-write-gate-wiring.md`
 - 活文档：`docs/runtime.md`、`docs/storage.md`、`docs/kernel.md`、`docs/development-plan.md`、`AGENTS.md`
 - 登记：`tests/registry.yaml`（H03 追加接线说明、H04 追加开放问题；**两条 `status` 未改**）
+
+## 勘误（W151，指针）
+
+关联列表里的 `ADR 0027` 原链接到 `0027-trace-id-single-definition.md`，**该文件从未存在**。
+`git log --follow docs/adr/0027-deployment-lifecycle-boundary.md` 显示 ADR 0027 自创建起就是
+「部署生命周期的边界」，与 trace 生成器无关。W151 新增的链接判据（ADR 0125）把它报成断链，
+处置是**降级为纯文本**，不是改指一个编号：
+
+- 「trace 生成器一处定义」的实际落点是 **ADR 0081 决策 6**——「`next_trace` 放宽到 `pub(crate)`，
+  **不**新增第二个 trace 生成器」，它应用的是 ADR 0064「一处定义、两处使用」；
+- **编号不可复原**：原文写的 `0027` 与任何 trace 相关的 ADR 都不对应 ⇒ MUST NOT 猜一个上去。
+  猜错会把一条断链换成一个**看起来能点、内容不对**的指针，那比断链更坏；
+- 正文里同源的「ADR 0027『一处定义』」写法（本 ADR 的正文段）指涉同一件事，同样不可复原，
+  保留原文不改写——权威表述是本段。

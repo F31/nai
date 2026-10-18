@@ -3,7 +3,7 @@
 - 日期：2026-10-11
 - 变更：`openspec/changes/w56-agent-harness-and-interop/`（归档后为 `openspec/changes/archive/2026-10-11-w56-agent-harness-and-interop/`）
 - 基线：`docs/直播数字人 + 智能体系统技术方案 V3.8.md`（新增**第四部分** §40–§48）
-- ADR：[0047](adr/0047-design-baseline-v38.md)（**替代 ADR 0042 的决策 1**；ADR 0042 的决策 2/3 继续有效）
+- ADR：[0047](../adr/0047-design-baseline-v38.md)（**替代 ADR 0042 的决策 1**；ADR 0042 的决策 2/3 继续有效）
 - 新能力：`agent-harness`（**10 条需求 / 27 个场景**）；修改 `admission-registry`（**1 条需求 / 4 个场景**）
 - 承接：用户指令「AI 智能体应具备 Harness 的工程化能力，结合数字人技术，面向专业直播和实时互动场景，
   可以通过开放接口（如 MCP、A2A 等）进行连接，具备记忆、意图识别、语义缓存、工具调用、Skill 能力扩展、

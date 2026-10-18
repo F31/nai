@@ -3,7 +3,7 @@
 - 日期：2026-10-18
 - 起点：W144 报告 §五第 1 条 / §八第 2 条（「`blockedBy` 取值缺执行面判据」）
 - 基线：`docs/直播数字人 + 智能体系统技术方案 V3.11.md`（§30.1 第 4 条 / §662 O02）
-- ADR：[0119](adr/0119-blockedby-proved-by-router.md)；变更：
+- ADR：[0119](../adr/0119-blockedby-proved-by-router.md)；变更：
   `openspec/changes/w145-blockedby-behavioural-proof`（归档后位于 `openspec/changes/archive/`）
 
 ## 一、勘定与现测

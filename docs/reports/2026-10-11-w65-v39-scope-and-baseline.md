@@ -2,8 +2,8 @@
 
 - 日期：2026-10-11
 - 变更：`openspec/changes/w65-v39-scope-and-baseline/`（归档后为 `openspec/changes/archive/2026-10-11-w65-v39-scope-and-baseline/`）
-- 方案：[V3.9 方案](直播数字人%20%2B%20智能体系统技术方案%20V3.9.md)（新增**第五部分 §49–§57**）
-- 裁决：[ADR 0048](adr/0048-design-baseline-v39.md)（基线 V3.8 → V3.9；ADR 0047 决策 1 被替代）
+- 方案：[V3.9 方案](../直播数字人%20%2B%20智能体系统技术方案%20V3.9.md)（新增**第五部分 §49–§57**）
+- 裁决：[ADR 0048](../adr/0048-design-baseline-v39.md)（基线 V3.8 → V3.9；ADR 0047 决策 1 被替代）
 - 取证：[V3.8 方案评审裁定](2026-10-11-v38-review-adjudication.md)（K1–K18 / U1–U10 / D1–D7）
 - 登记：`tests/registry.yaml` 的 **29** 条由 `r1`/`r2` 改为 `capability_pack`（**状态一律不动，仍为 `pending`**）
 - 承接：W56 把 Harness 写进 V3.8 基线；W57 落下该轨道的第一个判定面；**本轮不再加能力，而是重排范围与订正规范**

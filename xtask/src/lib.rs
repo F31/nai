@@ -138,6 +138,13 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
     // 派生 ⇒ 未跟踪的归档目录域外。
     // 同样纯静态：读索引与 `openspec/` 下的文本，不需要 protoc。
     schema::node(root, &["--test", "tests/contracts/spec-merge.test.mjs"])?;
+    // **断链**（W151）：`docs/` 下的相对链接是「记录的记录」——报告指向 ADR、ADR 指向基线、
+    // 报告指向归档变更——而没有任何一层门控解析 markdown 链接（`--strict` / `--archived` /
+    // registry / 各条契约判据都不读）。实测 794 条相对链接里 36 处走不到（32 断链 + 4 通配），
+    // 跨 20 份文件、全是已发布记录 ⇒ 零信号。本步判「每条相对链接的落点都在 `.git/index` 里」，
+    // 目录算存在、通配直接失败、外部链接不判（域边界写在 ADR 0125）。
+    // 同样纯静态：读索引与 markdown 文本，不需要 protoc。
+    schema::node(root, &["--test", "tests/contracts/doc-links.test.mjs"])?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,

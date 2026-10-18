@@ -125,7 +125,7 @@ S09/R01/R03/A01 保持 implemented、O02 pending，均不标 tested（对端认�
 workspace 测试、check-deps(17包)、portable(fmt/clippy)、registry 通过；contracts/schema 生成检查在本机
 因 node 无法 spawn 子进程（EBUSY）未执行（本轮未改任何 protobuf/JSON schema/OpenAPI，catalog 通过），如实记录。
 见 [引擎指南](engine.md)、[Provider 指南](provider.md)、[ADR 0022](adr/0022-engine-manual-event-pipeline-boundary.md)
-与 [报告](reports/2026-10-10-engine-manual-event-pipeline.md)。
+与 [报告](reports/2026-10-09-engine-manual-event-pipeline.md)。
 已归档为 `openspec/changes/archive/2026-10-10-engine-manual-event-pipeline/`，12/12 任务完成；24 个主规格与 26 项归档校验通过。
 R07 取得桩回放判据、S01 补真实进程链路证据，均保持 implemented 不自动升级；真实 Provider、播放 ACK、设备与 Windows 认证未做。
 下一主线：`engine-text-to-playback-ack`（TTS → 2D → 播放 ACK 段）。
@@ -3053,12 +3053,49 @@ W4 放宽段标记闭世界 ⇒ **只红 `#4`**；W5 `REMOVED` 走通用措辞 �
 **闭环**：本机门控 `EXIT=0`，Rust **1147-0**（102 个测试二进制）、Node **392-0（17 组）**，
 `Compiling` / `LNK1104` / `error[` 均 **0**；归档后 `--all --strict` **43/0**、`--archived` **147/0**。
 提交 `9a831d7` 的 CI run **39137459252** 两平台（`ubuntu-24.04` / `windows-latest`）**success**，
-`--archived` 那一步在两边都绿。一处订正：CI `steps` 里被 `if` 跳过的步**是有记录的**
-（`conclusion: skipped`），旧表述「未触发不生成记录」不成立；「不能按数量断言」这条结论不变。
+`--archived` 那一步在两边都绿；回填提交 `c473dda` 的 run **39139125558** 也是 **success**
+（`head_sha` 回读一致，9 文件 / `+135 −3`）。
+一处订正：CI `steps` 里被 `if` 跳过的步**是有记录的**（`conclusion: skipped`），
+旧表述「未触发不生成记录」不成立；「不能按数量断言」这条结论不变。
 
 见 [W150 报告](reports/2026-10-18-w150-spec-merge.md)、
 [ADR 0124](adr/0124-spec-merge-reconciliation.md)、
 `openspec/changes/archive/2026-10-18-w150-spec-merge-reconciliation/`。
+
+### W151（2026-10-18）：文档内部指针的可达性 —— 判「能不能走到」，处置分「订正」与「降级」
+
+先量 ADR 0124 残余第 1 条（归档 `tasks.md` 段结构）：147 份齐备，但 **39 份没有 `## ` 段**
+（任务平铺）、段标题 **375 种**（**311 种只出现一次**）、**52 个段内 0 条任务** ⇒ 「结构」在
+这份语料里**没有统一形状**，能写的只剩「非空 + 全勾选」，而后者已被 `validate --archived` 覆盖
+⇒ 不立项（残余继续留在 ADR 0124，不擅自删——那是 ADR 级动作）。
+
+转向同族有**现成红**的一格：`docs/` 328 份已跟踪 markdown、**831** 条链接、**794** 条相对，
+其中 **36 处走不到**（32 断链 + 4 通配），跨 **25** 份文件、全是已发布记录；而仓内**没有任何
+判据解析 markdown 链接** ⇒ 现有门控零信号。类型分布：缺 `../` 15、多一层 `docs/` 4、基线文件名
+缺 `../` 5、目录深度 2、兄弟文档写成子目录 2、日期笔误 2、ADR 文件名笔误 1、通配 4、
+指向**从未存在**的文件 8。
+
+**判据**（`scripts/contracts/doc-links.mjs`，纯函数可注入）：相对链接的落点 MUST 在 `.git/index`
+里（域与 W75 同源）；**目录算存在**（6 条早期报告指向归档目录，判它等于要求正确记录改写法）；
+**通配直接失败且措辞不同**（`0051-*.md` 是「没说清」，不是「说错了」）；越界 / 非法 `%` MUST
+分类失败、MUST NOT 静默跳过；外部 / 协议相对 / 纯锚点在域外。三条空集守卫（文档集空、索引空、
+在域内链接为 0）各自具名失败。
+
+**处置分两类**：可复原的 28 处**就地订正 URL**（差分只含 URL 字符串，决策正文一字未动）；
+不可复原的 8 处**降级为纯文本 + 该记录末尾追加勘误段**——`0027-trace-id-single-definition.md`
+的编号与任何 trace 相关 ADR 都不对应，`git log --follow` 证明 ADR 0027 自创建起就是部署生命周期
+⇒ **MUST NOT 猜一个编号**；`0015-decision-log-criticality.md` 则指得回来（ADR 0019 决策 5），
+就地订正。6 份 ADR 各带一段同源勘误：读者可能从任意一份进来。
+
+**9 条用例 + 六组注入**（逐次 `sha256sum -c` 还原，基线 `81e17f52…a898`）：I1 关掉目录豁免 ⇒
+**2 红**；I2 放行通配 ⇒ **只红 1 条**（真实语料已无通配 ⇒ 判别性样本）；I3 少看一份文档 ⇒ 只红 1 条；
+I4 外部链接入域 ⇒ 3 红；I5 去掉零链接守卫 ⇒ 只红 1 条；I6 越界不判 ⇒ 2 红。
+接线：`engineering_checks` 加一步（纯静态）+ 站点 `xtask-doc-links`（`portable`）+
+逐字清单「十九个」→「二十个」。
+
+见 [W151 报告](reports/2026-10-18-w151-doc-links.md)、
+[ADR 0125](adr/0125-doc-link-reachability.md)、
+`openspec/changes/archive/2026-10-18-w151-doc-link-reachability/`。
 
 ## 任务依赖与状态
 
@@ -3103,7 +3140,7 @@ D 表是 V3.5 追溯；开发按切片发布线（Slice-0/R1/R2/R3/实验，基�
 | W07 | Provider 核心与适配器 | A02 前置 | 已实现/实测（D08）；新增 `TextGenerator` 接缝与 rehearsal-only 确定性桩（W10 A1），以及 `SpeechSynthesizer` 接缝与 rehearsal-only 语音桩（W10 A2）；真实付费生成与真实 TTS Blocked |
 | W08 | 默认智能体、守门与手工平台 | S01–S04 | 已实现/实测（D10/D13） |
 | W09 | 最小桌面控制台 | S02、R01、O02 | loopback 控制与审批 API 子切片已实现/实测；W38 补上桌面审批面板与 UI 层 `tests/ui`（15 项）；真实候选来源、证据详情、完整预检与生产 root 接线未开始；O02 保持 pending |
-| W10 | 集成与故障注入 | R01–R03、R07、A01 | 引擎真实装配：控制面+监督+broker/keeper单帧投递、强杀撤权、预热期halt不提交已实测；手工事件链路（归一化/检索→决策→守门→生成→决策日志哈希链，同事件同桩重放一致，守门缺失/陈旧epoch/注入失败不外发）以真实 engine 进程实测，见 [报告](reports/2026-10-10-engine-manual-event-pipeline.md)；链路终点已延到「语音合成→真实RGBA帧→双水位提交→播放完成ACK」（仅完整完成落 `PlaybackAck`，演练软件替身非设备），见 [报告](reports/2026-10-10-engine-text-to-playback-ack.md)；真实 TTS、设备/硬件播放ACK与正式IPC未做 | [报告](reports/2026-10-10-engine-text-to-playback-ack.md) |
+| W10 | 集成与故障注入 | R01–R03、R07、A01 | 引擎真实装配：控制面+监督+broker/keeper单帧投递、强杀撤权、预热期halt不提交已实测；手工事件链路（归一化/检索→决策→守门→生成→决策日志哈希链，同事件同桩重放一致，守门缺失/陈旧epoch/注入失败不外发）以真实 engine 进程实测，见 [报告](reports/2026-10-09-engine-manual-event-pipeline.md)；链路终点已延到「语音合成→真实RGBA帧→双水位提交→播放完成ACK」（仅完整完成落 `PlaybackAck`，演练软件替身非设备），见 [报告](reports/2026-10-10-engine-text-to-playback-ack.md)；真实 TTS、设备/硬件播放ACK与正式IPC未做 | [报告](reports/2026-10-10-engine-text-to-playback-ack.md) |
 
 W11 及之后（R1 工作项）在对应切片启动时建任务卡；本表不预建未到切片的目录或空占位。
 

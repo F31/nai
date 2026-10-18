@@ -2,9 +2,9 @@
 
 - 日期：2026-10-13
 - 变更：`openspec/changes/w93-landing-content-anchor/`
-- 相关：[ADR 0071](docs/adr/0071-landing-content-anchor.md)、
-  [ADR 0066](docs/adr/0066-decided-in-repo-landing.md)（第六态与 `landing` 的由来）、
-  [ADR 0070](docs/adr/0070-decidable-in-repo-settlement.md)（W92 把该态从 2 条扩到 4 条）
+- 相关：[ADR 0071](../adr/0071-landing-content-anchor.md)、
+  [ADR 0066](../adr/0066-decided-in-repo-landing.md)（第六态与 `landing` 的由来）、
+  [ADR 0070](../adr/0070-decidable-in-repo-settlement.md)（W92 把该态从 2 条扩到 4 条）
 
 ## 一、判断
 

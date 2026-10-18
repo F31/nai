@@ -2,7 +2,7 @@
 
 - 日期：2026-10-13
 - 类型：**升基线（订正版）**——**不加能力、不改发布线归属、不改任何 `status`**
-- 产出：[V3.11 方案](直播数字人%20%2B%20智能体系统技术方案%20V3.11.md)（追加**第 59 章**）、[ADR 0065](../adr/0065-design-baseline-v311.md)、
+- 产出：[V3.11 方案](../直播数字人%20%2B%20智能体系统技术方案%20V3.11.md)（追加**第 59 章**）、[ADR 0065](../adr/0065-design-baseline-v311.md)、
   `openspec/changes/archive/2026-10-13-w87-baseline-v311-archive-boundary/`
 - 上游登记：W78 §八第 8 条（[归档](../../openspec/changes/archive/2026-10-12-w78-capability-pack-granularity/)），另被 W79–W86 §八逐轮复述（**连续八轮未收录**）
 

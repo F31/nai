@@ -3,7 +3,7 @@
 - 状态：接受
 - 日期：2026-10-13
 - 相关：[ADR 0067](0067-viewer-memory-single-answering-point.md)（其遗留 1 的母题「配置面 `required` 键
-  MUST 有消费者」）；[ADR 0051](0051-*.md)／[ADR 0052](0052-*.md)／[ADR 0053](0053-repository-scoped-evidence.md)
+  MUST 有消费者」）；[ADR 0051](0051-registry-schema-wiring-and-ledger-lifetime.md)／[ADR 0052](0052-consumption-guard-boundaries.md)／[ADR 0053](0053-repository-scoped-evidence.md)
   （W73–W75 的**文件级**消费守卫：具名例外、来源自负其责、证据来源限仓库内）；
   [ADR 0054](0054-pending-decisions-ledger.md) 遗留 5（「再写一份 schema 是同一件事的第二处定义」）；
   `schemas/config/runtime.schema.json`、`crates/nai-storage/src/store.rs`、

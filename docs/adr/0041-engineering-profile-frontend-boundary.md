@@ -2,7 +2,7 @@
 
 - 状态：接受
 - 日期：2026-10-11
-- 相关：[ADR 0001](0001-workspace-layout-and-naming.md)、`openspec/specs/engineering-foundation/spec.md`、`xtask/src/frontend.rs`、`scripts/frontend-gate.mjs`
+- 相关：[ADR 0001](0001-project-name-and-design-baseline.md)、`openspec/specs/engineering-foundation/spec.md`、`xtask/src/frontend.rs`、`scripts/frontend-gate.mjs`
 
 ## 背景
 

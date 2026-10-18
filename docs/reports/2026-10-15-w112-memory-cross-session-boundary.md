@@ -119,6 +119,6 @@ session / viewer_scoped_id 隔离；(b) ControlApi `self.access` 的场绑定鉴
 - 查询纪律：单次 + `Cache-Control: no-cache` + 缓存破坏参数 `cb`；本轮 GitHub API 调用 < 10，未触限流。
 - 回填提交（docs-only）本身 MUST 另做 1 次观测（先例 run 109 回填提交曾 failure ⇒ 不观测就是赌）。
 
-见 [ADR 0090](adr/0090-memory-cross-session-boundary.md)、
-[kernel.md](kernel.md)、[runtime.md](runtime.md)、
+见 [ADR 0090](../adr/0090-memory-cross-session-boundary.md)、
+[kernel.md](../kernel.md)、[runtime.md](../runtime.md)、
 `openspec/changes/archive/2026-10-15-w112-memory-cross-session-boundary/`。

@@ -2,7 +2,7 @@
 
 - 日期：2026-10-13
 - 变更：`openspec/changes/w94-precondition-freshness/`
-- ADR：[0072](docs/adr/0072-precondition-freshness.md)
+- ADR：[0072](../adr/0072-precondition-freshness.md)
 - 起始：`HEAD == origin/main == 21ee78c`，工作区干净，无活动变更，归档 91 个
 
 ## 一、母题

@@ -2,7 +2,7 @@
 
 - 轮次：**W91**（承接 W90 遗留 2 的母题）
 - 日期：2026-10-13
-- 变更：[`w91-config-key-attribution`](../changes/archive/2026-10-13-w91-config-key-attribution/)
+- 变更：[`w91-config-key-attribution`](../../openspec/changes/archive/2026-10-13-w91-config-key-attribution/)
 - 裁决：[ADR 0069](../adr/0069-config-key-attribution.md)
 
 ## 一、判断
