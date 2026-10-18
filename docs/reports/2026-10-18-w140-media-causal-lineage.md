@@ -113,7 +113,19 @@ I4 让一条**既有**用例也变红，说明 `consume` 那条一致性拒绝�
 
 ## 七、CI 观测
 
-_（回填）_
+推送 **`a75074a`**，运行 **`39082021461`**，回读 `head_sha` = `a75074a85d9a50da1e0f4488c9f441b5f649eaad`
+与推送 SHA **完整 40 位一致**（三件齐：`cb=` 纳秒唯一参数 + `Cache-Control: no-cache` + 回读 `head_sha`）。
+
+| 平台 | 结论 | 步数（API 口径） |
+| --- | --- | --- |
+| `foundation (ubuntu-24.04)` | `completed / success` | 20 |
+| `foundation (windows-latest)` | `completed / success` | 20 |
+
+逐平台看完**整条步骤序列**。非 success 项全部是 `skipped` 且逐条核到原因：
+`Publish the gate failure summary as annotations` 在门控通过时不执行（两平台同）；
+`Install Linux C++ protobuf runtime` 与 `Full three-language contract suite (Linux C++ toolchain)`
+只在 Linux 跑（Windows 侧 skipped）。步号从 16 跳到 30 是 `if` 未触发的步**不生成记录**（既有口径，
+MUST NOT 拿 `jobs[].steps` 条数与 workflow 的 `- name:` 步数相减）。
 
 ## 八、具名登记（本轮发现但不做）
 
