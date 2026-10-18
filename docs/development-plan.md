@@ -2619,7 +2619,9 @@ Rust 101 个目标 / **1122 通过 / 0 失败**；Node 13 个非前端套件 **2
 见 [W141 报告](reports/2026-10-18-w141-utterance-status-domain.md)、`docs/adr/0115-utterance-status-domain.md`、
 `openspec/changes/archive/2026-10-18-w141-utterance-status-domain/`。
 
-**CI**：_（回填）_
+**CI**：推送 `7d9839b`，运行 `39092207440`，回读 `head_sha` 与推送 SHA 一致，
+`foundation (ubuntu-24.04)` 与 `foundation (windows-latest)` 两平台均 `completed / success`
+（各 20 步，API 口径）；非 success 项全部是 `skipped`（门控通过时的失败摘要步、Windows 侧两个 Linux-only 步）。
 
 ## 任务依赖与状态
 
