@@ -3093,6 +3093,14 @@ I4 外部链接入域 ⇒ 3 红；I5 去掉零链接守卫 ⇒ 只红 1 条；I6
 接线：`engineering_checks` 加一步（纯静态）+ 站点 `xtask-doc-links`（`portable`）+
 逐字清单「十九个」→「二十个」。
 
+**闭环**：本机门控 `EXIT=0`，Rust **1147-0**（102 个测试二进制）、Node **401-0（18 组，+9 用例 +1 组）**，
+`LNK1104` / `error[` 均 **0**；归档后 `--all --strict` **43/0**、`--archived` **148/0**。
+提交 `b98ddd4`（37 文件 / `+950 −38`）的 CI run **39142112811** 两平台 **success**
+（`head_sha` 回读一致；`steps` 各 20 条、被跳过 1 / 3 条、非 success 且非 skipped **0 / 0**），
+第 10 步（新增用例的承载步）与第 16 步（`--archived`）两边都绿。
+一处如实披露：预构建那步报 `exit code 1104`（`LNK1104` 打不开 `nai_xtask-…exe`），
+紧接着门控 `EXIT=0`、102 条 `test result: ok` ⇒ 判宿主瞬态、**不改代码**，根因仍未判。
+
 见 [W151 报告](reports/2026-10-18-w151-doc-links.md)、
 [ADR 0125](adr/0125-doc-link-reachability.md)、
 `openspec/changes/archive/2026-10-18-w151-doc-link-reachability/`。
