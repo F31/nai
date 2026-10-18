@@ -144,6 +144,14 @@ export const TEST_REGISTRATION_SITES = [
     tier: 'portable',
   },
   {
+    // 归档记录的结构判据（W149）：跑在 `engineering_checks` 里，因此最低一层是 `portable`。
+    id: 'xtask-archived-proposal',
+    host: 'xtask/src/lib.rs',
+    marker: 'tests/contracts/archived-proposal.test.mjs',
+    base: '.',
+    tier: 'portable',
+  },
+  {
     id: 'xtask-contracts-suite',
     host: 'xtask/src/schema.rs',
     marker: 'tests/contracts/descriptor.test.mjs',

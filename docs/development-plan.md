@@ -2974,6 +2974,45 @@ W147 §八第 1 条（`LNK1104` 宿主成因）仍未判，需动宿主配置。
 [ADR 0122](adr/0122-prebuild-complement-closed-world.md)、
 `openspec/changes/archive/2026-10-18-w148-prebuild-complement/`。
 
+### W149（2026-10-18）：归档记录的结构判据 —— 判全部归档、归一化只到大小写、例外进自清理台账
+
+承接 W143 §八第 1 条（悬了 5 轮）。它一直没被接手，因为「修」是改已发布的历史记录、「不修」是
+让未来任何「全量 proposal 可解析」判据都得先开例外。本轮把它量成数字，并证实现有门控**零信号**：
+
+**语料**（`openspec/changes/archive/` 实测，共 **145** 个变更目录、每个都有 `proposal.md`）：
+143 份有 `## Why` + `## What Changes`；缺 `What Changes` 的 **1** 份（`2026-10-09-engine-assembly`
+写的是 `## What`）；两段都缺的 **1** 份（`2026-10-10-w31-golden-set-payload` 全中文标题）；
+段存在但正文为空的 **0** 份。标题变体实测：`Why` 只有一种写法，`What Changes` 138 / `What changes` 5
+⇒ 归一化只需大小写不敏感，`s` 可选是为了不把 5 份正常文档判红。
+
+**零信号的证明**：`openspec validate --archived` 对上面两份都是 `✓`（**145 / 0**）。它判「能不能解析」，
+不判「有没有把话说完」；而 `archive.js` 的 `validateChange()` 是 non-blocking（ADR 0117）⇒ 新归档
+缺 Why 只在归档那一刻打一行警告，之后没人再问。本轮补的就是这一段。
+
+**判据**（`scripts/contracts/archived-proposal.mjs`，纯函数可注入）：每份归档 proposal MUST 有
+`## Why` 与 `## What Changes` 且**正文非空**；归一化只到大小写与 `Changes` 的 `s`（`## What` 与
+`## 为什么` **不**接受，边界两侧都有断言）；域 = 归档目录下**任意**已跟踪文件 → 变更名，因此
+「目录在、proposal 不在」一等公民失败。例外进台账（`{change, missing, sinceBaseline, reason}`），
+三项纪律：**具名 / 相称 / 自清理**。⚠️ 第一版忘了让例外**抑制**它盖住的报错，真实语料直接红 3 条
+——例外不抑制就不是例外，只是把红字旁边加了一行注释。
+
+**3 条用例 + 四组注入**（逐次 sha256 还原，基线 `316d5cfd…92a8`）：W1 关台账查询 ⇒ 2 红；
+W2 归一化放宽成 `## What` ⇒ **3 红 / 0 绿**；W3 去掉空段判据 ⇒ **只红 `#2`**；W4 域只认
+`proposal.md` ⇒ **只红 `#3`**。后两组各只红一条，是「只有它错时才红」的样本。
+
+**接线**：`engineering_checks` 多一步（纯静态，不需 protoc）+ `TEST_REGISTRATION_SITES` 一条
+`tier: portable` 站点。既有七层判据在新增站点后全绿（pending-registration 11/0、tier-payment 22/0、
+gate-coverage 34/0、step-config 16/0、step-target 16/0、step-overlap 12/0、workflow-triggers 15/0）。
+
+见 [W149 报告](reports/2026-10-18-w149-archived-proposal.md)、
+[ADR 0123](adr/0123-archived-proposal-structure.md)、
+`openspec/changes/archive/2026-10-18-w149-archived-proposal/`。
+
+**收口**：门控 `full` **第 3 次 `EXIT=0`**（第 1 次红在站点表的逐字清单 + 新文件未进索引，
+第 2 次红在 `LNK1104` 宿主瞬态——两次都不是代码缺陷，处置分别是补登记/`git add` 与单独链接一次）；
+Compiling 0 / LNK1104 0 / Rust 1147-0 / Node **387-0（16 组，+3 用例 +1 组）**；
+`validate --all --strict` 44 前 / **43** 后、`--archived` **146 / 0**（推送前绿）。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

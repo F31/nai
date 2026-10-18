@@ -118,6 +118,17 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
         root,
         &["--test", "tests/contracts/pending-registration.test.mjs"],
     )?;
+    // **归档记录的结构**（W149）：`openspec validate --archived` 只回答「归档过的东西能不能解析」，
+    // 不回答「它有没有把话说完」。实测 145 份归档 proposal 里 2 份缺段（一份写 `## What`、
+    // 一份全中文标题），它们在 `--archived` 里都是 ✓（145 / 0）⇒ 现有门控对这条零信号；而
+    // `archive.js` 的 `validateChange()` 是 non-blocking（ADR 0117），新归档缺 Why 只打警告。
+    // 本步要求每份归档 proposal 有 `## Why` 与 `## What Changes` 且**非空**，例外进具名台账
+    // （相称 + 自清理）。判据是纯函数，域由测试从 `.git/index` 派生 ⇒ 未跟踪的归档目录域外。
+    // 同样纯静态：读索引与 `openspec/changes/archive/` 下的文本，不需要 protoc。
+    schema::node(
+        root,
+        &["--test", "tests/contracts/archived-proposal.test.mjs"],
+    )?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,

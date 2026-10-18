@@ -123,6 +123,13 @@ V3.11 是唯一实现基线（ADR 0065；此前 ADR 0049 升 V3.10、ADR 0048 �
 8. 验证主规格和归档：`pnpm spec:validate`、
    `pnpm exec openspec validate --archived --no-interactive`。
 
+`--archived` 只回答「归档过的东西能不能解析」，**不回答**「它有没有把话说完」：实测 145 份归档
+proposal 里有 2 份缺段，`--archived` 对它们都是 ✓（145 / 0）。补这半边的是一条门控判据
+（`tests/contracts/archived-proposal.test.mjs`）：每份归档 proposal MUST 有 `## Why` 与
+`## What Changes` 且正文非空，标题只按大小写归一（`## What` / `## 为什么` 不被接受）；
+不合规的 MUST 具名失败，唯一放行方式是**具名台账**，且台账 MUST 相称（声明缺口 == 实测缺口）
+并**自清理**（文档补齐后条目仍在 ⇒ 失败）。理由见 [ADR 0123](adr/0123-archived-proposal-structure.md)。
+
 可用 `OPENSPEC_TELEMETRY=0` 禁用 CLI 遥测；CI 已设置该变量。
 现有 OpenCode 指令为 `/opsx-propose`、`/opsx-apply`、`/opsx-archive`、`/opsx-explore`。
 当前会话通过 CLI 完成同一流程，新增的命令/技能在重新启动 OpenCode 后加载。
