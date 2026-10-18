@@ -2623,6 +2623,44 @@ Rust 101 个目标 / **1122 通过 / 0 失败**；Node 13 个非前端套件 **2
 `foundation (ubuntu-24.04)` 与 `foundation (windows-latest)` 两平台均 `completed / success`
 （各 20 步，API 口径）；非 success 项全部是 `skipped`（门控通过时的失败摘要步、Windows 侧两个 Linux-only 步）。
 
+### W142（2026-10-18）：utterance 取值域下沉到 schema（N1）
+
+**起点**是 W141 报告 §八 的 N1：那一轮只锁住代码一侧，`migrations/sqlite/0001-foundation.sql` 里
+这一列仍是 `status INTEGER NOT NULL DEFAULT 1`，直连数据库写 `7` / `0` / `-1` / `16` 照样成功，
+而读侧会把它归成 `StatusClass::Unassigned` —— **数据损坏被当成一个合法状态**。
+
+**决定一：CHECK 的域 = `classify` 不肯命名的那一批**（`1..=5` ∪ `6` ∪ `11` ∪ `12..=15`）。
+于是 `0`、`7..=10`、`16..`、负数在存储里**不可表示**。否决了「只拒明显越界」（那等于把
+`7..=10` 留在库里，而它们正是 W141 白名单化排除的那批）与「用两条 BETWEEN」（会放过带内新增值，
+且无法与派生结果逐字比对）。
+
+**决定二：整表重建必须在外键生效下完成**。`Store::open` 在 `migrate` **之前**打开
+`foreign_keys`，而 `PRAGMA foreign_keys` 在事务内是 no-op（实测仍是 `1`）⇒ 迁移关不掉强制。
+实测三条变体：无 defer ⇒ `DROP TABLE` 报 `FOREIGN KEY constraint failed`；
+`defer ON` 但缺 `OFF` ⇒ 行插回来了、`foreign_key_check` 为空，但 `COMMIT` 仍报同一条错
+（延迟违规是**计数**不是重新求值）；两者都在才成功。**这两个坑只在有数据的库上现形**。
+
+**决定三：把 W141 那条判据的前提改掉，不是关掉它**。域外取值已写不进存储 ⇒ 原来
+`[7,8,9,10,16,0,-1]` 那批样本无法构造。处置是拆两处：「域内但不可用」（`11`/`12`/`13`/`14`/`15`）
+仍在 `status_domain.rs` 走真实 `Store::approve`；域外拒绝搬到 `status_schema.rs`，
+判定位置从**调用时**前移到**写入时**（更早的闸门）。
+
+**判据新增 4 条**（`status_schema.rs` 3 + `migration.rs` 升级用例 1），`nai-storage` 90 → **94**。
+期望值从 `classify` **派生**、读的是**存储里的建表语句**（不是迁移文件文本）—— 绑死两个方向：
+改域不写迁移 ⇒ 红；改列表不改域 ⇒ 红。注入 4 组全部真红：I1 列表放宽 ⇒ 3 条；
+I2 缺 `defer ON` ⇒ 1 条；I3 缺 `defer OFF` ⇒ 1 条（**与 I2 同一条用例、同形消息，
+不能区分缺哪一份，归因靠两次独立注入**）；I4 `PENDING_BAND_HI` 5→7 ⇒ 3 条。
+还原后 `sha256sum -c` 4/4 逐字节 OK。
+
+**诚实边界**：`Unassigned` 仍留在 Rust（全域函数的完备性），升级后只是**造不出**未分类的数据；
+`11` 的语义仍未裁定；迁移只在本机 SQLite 上实测（不是两套实现互证），证据是「一条真实子行」
+级别的，**不是**生产库规模；`registry.yaml` 88 条仍无对应条目 ⇒ **不**标任何条目。
+W141 那句「数据库层面**仍无** CHECK 约束」由本轮解除，ADR 0115 已追加勘误段。
+
+见 [W142 报告](reports/2026-10-18-w142-utterance-status-check.md)、`docs/adr/0116-utterance-status-check.md`、
+`openspec/changes/archive/2026-10-18-w142-utterance-status-check/`。
+
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

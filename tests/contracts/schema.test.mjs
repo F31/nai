@@ -148,7 +148,7 @@ test('avatar and UI schemas reject missing license fields or arbitrary HTML/scri
   assert.equal(check.ui(ui),false);
 });
 test('backup schema requires bounded hashes/versions and rejects escaping content paths', () => {
-  const backup = {schema_version:1,db_schema_version:11,created_at_utc_ms:'1',runtime_version:'0.1.0',contract_catalog_sha256:'a'.repeat(64),sensitive_scope:'configuration-facts-audit-registered-content;credential-references-only',database:{path:'state.sqlite3',sha256:'b'.repeat(64),bytes:1024},artifacts:[{path:`knowledge/${'c'.repeat(64)}`,sha256:'c'.repeat(64),bytes:5}]};
+  const backup = {schema_version:1,db_schema_version:12,created_at_utc_ms:'1',runtime_version:'0.1.0',contract_catalog_sha256:'a'.repeat(64),sensitive_scope:'configuration-facts-audit-registered-content;credential-references-only',database:{path:'state.sqlite3',sha256:'b'.repeat(64),bytes:1024},artifacts:[{path:`knowledge/${'c'.repeat(64)}`,sha256:'c'.repeat(64),bytes:5}]};
   assert.equal(check.backup(backup),true);
   assert.equal(check.backup({...backup,db_schema_version:2}),false);
   // Pin the immediately-previous version too: a schema-version bump is a
@@ -165,7 +165,8 @@ test('backup schema requires bounded hashes/versions and rejects escaping conten
   // W132 现测复核：六处 = ①`migration::VERSION` ②`SQL` 数组(+`include_str!`)
   // ③`backup.schema.json` const ④Rust 契约样本断言(`tests/knowledge_publication.rs`)
   // ⑤本样本 + 上一版被拒 ⑥`packages/contracts-ts/src/generated/config/backup.ts`。
-  assert.equal(check.backup({...backup,db_schema_version:10}),false);
+  // W142 现测复核：仍是这六处（升到 12 时逐个数过，未新增承载物）。
+  assert.equal(check.backup({...backup,db_schema_version:11}),false);
   const bad=structuredClone(backup);bad.artifacts[0].path='../../outside';assert.equal(check.backup(bad),false);
   bad.artifacts=[];bad.database.bytes=268435457;assert.equal(check.backup(bad),false);
 });

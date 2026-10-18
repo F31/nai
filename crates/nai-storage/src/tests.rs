@@ -7,6 +7,7 @@ mod decision_log;
 mod egress_targets;
 mod knowledge_publication;
 mod status_domain;
+mod status_schema;
 mod storage_bounds;
 
 fn op() -> Operation {

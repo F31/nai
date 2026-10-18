@@ -76,3 +76,20 @@ W139 的阻断 ① 写得很直接：「`status` 是裸整数且三种终态口�
   级联保护带行为（走真实 `store::recover`）。
 - `utterance_status.rs` 模块内 3 条：闭世界与反方向、白名单、两带一致且不相交。
 - 四组注入全部真红且可归因，随后逐字节还原（`sha256sum -c` 3/3 OK）。
+
+## 勘误（W142，2026-10-18）
+
+本 ADR 的两句陈述在本轮之后已不成立，**原文保留**，订正记在这里：
+
+1. 「给列加约束需要迁移，属独立一轮」—— 那一轮就是 **W142**：
+   `migrations/sqlite/0012-utterance-status-domain.sql` 给该列补上
+   `CHECK(status IN(1,2,3,4,5,6,11,12,13,14,15))`（域 = `classify` 不返回 `Unassigned` 的取值）。
+   见 ADR 0116。
+2. 「若将来有代码真的写入 `7..=10` 或 `11`，它会静默变得不可用」—— 前半句已不可能：
+   `7..=10`、`0`、`16..`、负数在升级后**写不进存储**，写入时即被拒绝；`11` 仍在域内，
+   仍然「可写但不可用」，这一点与本 ADR 一致，未变。
+
+3. 第三条勘误是**用例名**：本 ADR「验证」段提到的
+   `a_candidate_whose_status_was_never_declared_is_not_approvable` 在 W142 改名为
+   `a_candidate_whose_status_is_not_usable_is_not_approvable`（域外样本无法构造，
+  那半数样本移到了 `tests/status_schema.rs`）。判定内容与位置见 ADR 0116「决定三」。

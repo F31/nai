@@ -13,7 +13,7 @@
 
 use super::*;
 use crate::utterance_status::{
-    PENDING_BAND_LO, STATUS_APPROVED, STATUS_INVALIDATED, usable, usable_guard,
+    PENDING_BAND_LO, STATUS_APPROVED, STATUS_INVALIDATED, STATUS_REJECTED, usable, usable_guard,
 };
 use rusqlite::params;
 
@@ -122,13 +122,20 @@ fn the_sql_guard_and_the_rust_predicate_agree_value_by_value() {
     }
 }
 
-/// **本轮唯一的行为变化**：可用性从黑名单改成白名单。
+/// **W141 的唯一行为变化**：可用性从黑名单改成白名单。
 ///
 /// 改动前是 `status NOT IN(12,13,14,15)` ⇒ 11 与 7..=10、16.. 都被当成可用
 /// （「没被列入黑名单」被读成了「可用」，而可用是危险方向）。
 /// 改动后只认**声明过**的取值。这条判据在改动前会红 —— 它不是回归，是新增的判定。
+///
+/// ⚠️ **W142 修了这条判据的前提**：`0012-utterance-status-domain.sql` 给这一列补上取值域
+/// 的 CHECK 之后，`7..=10` / `16` / `0` / 负数**写不进存储**了，原来那一半样本在此处已无法
+/// 构造。判据没有被关掉，也没有被放宽 —— 它分成了两处：
+/// * 「域内但不可用」（11 / 12 / 13 / 14 / 15）仍在这里走真实的 `Store::approve`；
+/// * 「域外」的拒绝搬到 `status_schema.rs`，判定位置从**调用时**前移到**写入时**
+///   （更早的闸门，不是更弱的判据）。
 #[test]
-fn a_candidate_whose_status_was_never_declared_is_not_approvable() {
+fn a_candidate_whose_status_is_not_usable_is_not_approvable() {
     // 对照组：待批准（1）与已批准（6）必须仍可批准，否则下面那片红只是「approve 一直失败」。
     for status in [PENDING_BAND_LO, STATUS_APPROVED] {
         let outcome = attempt_approval(status);
@@ -137,8 +144,9 @@ fn a_candidate_whose_status_was_never_declared_is_not_approvable() {
             "status={status} 是声明过的可用态，必须可批准：{outcome:?}"
         );
     }
-    // 被判定的一侧：只受级联保护（11）、未分配（7..=10）、越出已声明域（16）一律拒绝。
-    for status in [7, 8, 9, 10, 11, 16, 0, -1] {
+    // 被判定的一侧：域内但不可用的取值一律拒绝 —— 含仅受级联保护的 11（旧黑名单写法会放行它，
+    // 所以这条仍是判别性的）、三个终态 12/14 与两个零写入者的幽灵值 13/15。
+    for status in [11, STATUS_INVALIDATED, 13, STATUS_REJECTED, 15] {
         let outcome = attempt_approval(status);
         assert!(
             outcome.is_err(),

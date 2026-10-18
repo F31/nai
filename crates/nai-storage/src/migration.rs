@@ -2,8 +2,8 @@ use crate::{Operation, Result, error, hash, utc_ms};
 use nai_contracts::v1::ErrorCode;
 use rusqlite::{Connection, TransactionBehavior};
 
-pub(crate) const VERSION: i64 = 11;
-const SQL: [&str; 11] = [
+pub(crate) const VERSION: i64 = 12;
+const SQL: [&str; 12] = [
     include_str!("../../../migrations/sqlite/0001-foundation.sql"),
     include_str!("../../../migrations/sqlite/0002-authority.sql"),
     include_str!("../../../migrations/sqlite/0003-knowledge-index.sql"),
@@ -15,6 +15,7 @@ const SQL: [&str; 11] = [
     include_str!("../../../migrations/sqlite/0009-memory-purge.sql"),
     include_str!("../../../migrations/sqlite/0010-document-local-only.sql"),
     include_str!("../../../migrations/sqlite/0011-decision-log-degradation-kind.sql"),
+    include_str!("../../../migrations/sqlite/0012-utterance-status-domain.sql"),
 ];
 
 pub(crate) fn verify(connection: &Connection) -> Result<i64> {
@@ -482,5 +483,110 @@ mod tests {
             [],
         )
         .expect("升级后 kind CHECK MUST 放行 degradation");
+    }
+
+    /// W142（N1）：`0012-utterance-status-domain.sql` 给 `utterances.status` 补上取值域的
+    /// CHECK。它同样靠整表重建，但**比 0011 多一个维度**：`utterances` 有子表
+    /// （`evidence_links` 外键指进来），而 `Store::open` 在 `migrate` **之前**就把
+    /// `foreign_keys` 打开了 ⇒ 重建是在**外键生效**的状态下跑的。
+    ///
+    /// 这条用例因此钉的是四件事，其中后两件只有 `0012` 里那一对
+    /// `defer_foreign_keys` pragma **都在**时才成立（实测：缺 ON ⇒ `DROP TABLE` 直接
+    /// `FOREIGN KEY constraint failed`；缺 OFF ⇒ 行插回来了但 `COMMIT` 仍失败，
+    /// 而此刻 `PRAGMA foreign_key_check` 是空的）：
+    /// * 升级**前**这一列接受域外值（判别性前提，否则「升级后拒绝」在本来就拒绝的实现上
+    ///   同样成立）；
+    /// * 升级**后**域外值被 CHECK 拒绝、域内值照旧可写；
+    /// * 既有行**逐字**保留（含 `display_text` 与 `actual_played`）；
+    /// * **子行仍在且外键完好** —— 重建没有顺手把 `evidence_links` 清掉。
+    ///
+    /// MUST 在有既有行**且带子行**的库上跑：空表上重建，那两个 pragma 一个都测不出来。
+    #[test]
+    fn version_twelve_upgrade_enforces_the_utterance_status_domain_on_a_populated_database() {
+        /// `0012-utterance-status-domain.sql` 的版本号。改它 MUST 同时改用例名。
+        const UTTERANCE_STATUS_DOMAIN: usize = 12;
+        let mut db = Connection::open_in_memory().unwrap();
+        // 与生产同形：`store::open` 先打开外键再迁移。
+        db.pragma_update(None, "foreign_keys", true).unwrap();
+        for (index, sql) in SQL.iter().take(UTTERANCE_STATUS_DOMAIN - 1).enumerate() {
+            apply(&mut db, &op(), index as i64 + 1, sql).unwrap();
+        }
+        assert_eq!(verify(&db).unwrap(), (UTTERANCE_STATUS_DOMAIN - 1) as i64);
+        db.execute(
+            "INSERT INTO workspaces(workspace_id,name) VALUES('w','legacy')",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            "INSERT INTO sessions(session_id,workspace_id) VALUES('s','w')",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            "INSERT INTO utterances(utterance_id,workspace_id,session_id,generation_epoch,status,text_hash,expires_at_ms,actual_played,display_text) \
+             VALUES('u1','w','s',0,12,'text-hash',4102444800000,0,'legacy text')",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            "INSERT INTO evidence_links(workspace_id,utterance_id,evidence_id) VALUES('w','u1','e1')",
+            [],
+        )
+        .unwrap();
+        // 判别性前提：升级前该列接受域外值 —— 这正是本迁移要补的洞。
+        db.execute("UPDATE utterances SET status=7 WHERE utterance_id='u1'", [])
+            .expect("升级前这一列没有任何 CHECK，域外值必然写得进去");
+        db.execute(
+            "UPDATE utterances SET status=12 WHERE utterance_id='u1'",
+            [],
+        )
+        .unwrap();
+
+        migrate(&mut db, &op()).unwrap();
+        assert_eq!(verify(&db).unwrap(), VERSION);
+
+        let (status, hash, played, text): (i64, String, i64, String) = db
+            .query_row(
+                "SELECT status,text_hash,actual_played,display_text FROM utterances WHERE utterance_id='u1'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .unwrap();
+        assert_eq!(status, 12, "重建 MUST 逐字保留 status");
+        assert_eq!(hash, "text-hash", "重建 MUST 逐字保留 text_hash");
+        assert_eq!(played, 0);
+        assert_eq!(text, "legacy text", "重建 MUST 逐字保留 display_text");
+        assert_eq!(
+            db.query_row("SELECT COUNT(*) FROM evidence_links", [], |row| row
+                .get::<_, i64>(0))
+                .unwrap(),
+            1,
+            "重建 MUST NOT 顺手清掉子行（0012 的两个 defer pragma 就是为这一点存在的）"
+        );
+        assert!(
+            db.prepare("PRAGMA foreign_key_check")
+                .unwrap()
+                .query([])
+                .unwrap()
+                .next()
+                .unwrap()
+                .is_none(),
+            "重建后外键 MUST 完好"
+        );
+
+        let refused = db
+            .execute("UPDATE utterances SET status=7 WHERE utterance_id='u1'", [])
+            .unwrap_err();
+        assert!(
+            refused.to_string().contains("CHECK constraint failed"),
+            "拒绝 MUST 由 CHECK 给出、可归因：{refused}"
+        );
+        for value in [1, 6, 11, 13, 14, 15] {
+            db.execute(
+                "UPDATE utterances SET status=?1 WHERE utterance_id='u1'",
+                [value],
+            )
+            .unwrap_or_else(|error| panic!("status={value} 在声明域内 MUST 可写：{error}"));
+        }
     }
 }
