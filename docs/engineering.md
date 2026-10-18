@@ -130,6 +130,14 @@ proposal 里有 2 份缺段，`--archived` 对它们都是 ✓（145 / 0）。�
 不合规的 MUST 具名失败，唯一放行方式是**具名台账**，且台账 MUST 相称（声明缺口 == 实测缺口）
 并**自清理**（文档补齐后条目仍在 ⇒ 失败）。理由见 [ADR 0123](adr/0123-archived-proposal-structure.md)。
 
+`--archived` 与 `--all --strict` 各自正确，也**共同沉默**于两者**之间**：`archive` 把 delta 挪进归档
+目录，但主规格那一侧没人问。实测把一条 `### Requirement:` 改名（等价于「归档了但没合入」）之后
+两层仍 43 / 0 与 146 / 0。补这一格的是一条门控判据（`tests/contracts/spec-merge.test.mjs`）：
+按归档目录名顺序重放 `ADDED` / `MODIFIED` / `REMOVED`，与主规格逐能力比对，**两个方向各自具名**
+（归档了没合入 / 没有归档出处）；delta 的 `##` 段标记是闭世界，放不进段里的 Requirement 具名失败
+而不是静默跳过。判据只判 Requirement **名**，不判正文。理由见
+[ADR 0124](adr/0124-spec-merge-reconciliation.md)。
+
 可用 `OPENSPEC_TELEMETRY=0` 禁用 CLI 遥测；CI 已设置该变量。
 现有 OpenCode 指令为 `/opsx-propose`、`/opsx-apply`、`/opsx-archive`、`/opsx-explore`。
 当前会话通过 CLI 完成同一流程，新增的命令/技能在重新启动 OpenCode 后加载。

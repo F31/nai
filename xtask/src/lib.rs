@@ -129,6 +129,15 @@ fn engineering_checks(root: &Path) -> Result<(), String> {
         root,
         &["--test", "tests/contracts/archived-proposal.test.mjs"],
     )?;
+    // **归档了 ≠ 合入了**（W150）：`openspec archive` 只把 delta 挪进归档目录，不保证那几条
+    // `### Requirement:` 已经写进 `openspec/specs/<capability>/spec.md`。实测（W150）手工改掉一条
+    // Requirement 名后，`validate --all --strict` 仍 43 / 0、`validate --archived` 仍 146 / 0
+    // ⇒ 两层现有门控对这段距离**零信号**。本步按归档目录名顺序重放 ADDED / MODIFIED / REMOVED，
+    // 逐能力与主规格比对，**两个方向各自具名**（归档了没合入 / 主规格里没有归档出处），
+    // 段标记是闭世界（不认识就具名失败，不静默跳过）。判据是纯函数，域由测试从 `.git/index`
+    // 派生 ⇒ 未跟踪的归档目录域外。
+    // 同样纯静态：读索引与 `openspec/` 下的文本，不需要 protoc。
+    schema::node(root, &["--test", "tests/contracts/spec-merge.test.mjs"])?;
     run(root, &["fmt", "--all", "--check"])?;
     run(
         root,

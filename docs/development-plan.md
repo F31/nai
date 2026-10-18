@@ -3015,6 +3015,45 @@ Compiling 0 / LNK1104 0 / Rust 1147-0 / Node **387-0（16 组，+3 用例 +1 组
 提交 `c838982` → run `39132041750` 两平台 **success**（20 条记录/平台，`1–16` 跳 `30–33`，
 第 10、16 步均 success；完成态 3 次查询同结论，约 12 分 18 秒）。
 
+### W150（2026-10-18）：归档增量与主规格的对账 —— 顺序重放、两方向具名、不判先存性
+
+接手 ADR 0123 残余第 1 条。先量那条残余：归档 `tasks.md` **146/146** 齐备、`specs/` **146/146**
+齐备、`specs/` 里没有 `spec.md` 的 **0** ⇒ 这一半今天**零信号**，照抄立项只会写出一条必然全绿、
+没有真实失效模式的判据。于是转向同一份登记里更硬的一格：**「归档了」与「合入了」之间**。
+
+**语料**（实测）：178 份归档 delta、**539** 条 delta Requirement、主能力 **43**、主规格 **497** 条；
+段标记只有 `ADDED Requirements` 164 / `MODIFIED Requirements` 34 / `REMOVED` **0**，非标记标题只有
+`Purpose` 53；按标记计数 `ADDED 497 / MODIFIED 42 / REMOVED 0`；两方向零例外（delta 缺 **0**、
+主规格无出处 **0**）；逐能力 **43/43 相等**；空 delta / 段外 Requirement / 重名 / 头部异常均 **0**；
+主规格与 delta **都不含代码围栏** ⇒ 不需要围栏解析（与 W148 正相反，那里必须解析）。
+
+**零信号的证明**：把 `local-autonomy` 一条 `### Requirement:` 手工改名（等价于「归档了但没合入」），
+`validate --all --strict` 仍 **43 / 0**、`validate --archived` 仍 **146 / 0**。探针后
+`sha256sum -c` 逐字节还原（`0538cdf9…f438`）。
+
+**判据**（`scripts/contracts/spec-merge.mjs`，纯函数可注入）：按归档目录名（日期前缀）**顺序重放**
+`ADDED` / `MODIFIED` / `REMOVED`，逐能力与主规格比对；**两方向各自具名**——`delta − 主规格` 是
+「归档了但没合入」、`主规格 − delta` 是「没有归档出处」，`REMOVED` 的另一方向单独措辞（「删了却没删」，
+它有出处，只是出处说删掉）；段标记是**闭世界**，放不进段里的 Requirement 具名失败而非静默跳过；
+能力整体缺席只报**一条**；读不到 `spec.md` 的能力报一条后**跳过比对**（拿残缺集去比会把「不知道」
+写成「没有」）。三处是量完决定**不写**：不写成 `deepEqual(重放, 主规格)`（把两种失败压成一句）、
+不判 `MODIFIED`/`REMOVED` 的先存性（实测 2 条合法反例：`w02-w03-admission-hardening`、
+`engine-broker-frame-delivery` 改的是各自 delta 之前就存在的 Requirement）、不判 Requirement 正文
+（两次合法手改主规格 `971391d` / `a8a9a64` 都只动正文、没动名字）。
+
+**5 条用例 + 五组注入**（逐次 sha256 还原，基线 `c8109b2c…b4cd`）：W1 集合并集 ⇒ **2 红**（`#2` `#3`）；
+W2 去掉 `delta ⇒ 主规格` ⇒ **2 红**（`#3` `#4`）；W3 去掉 `主规格 ⇒ delta` ⇒ **2 红**（`#3` `#4`）；
+W4 放宽段标记闭世界 ⇒ **只红 `#4`**；W5 `REMOVED` 走通用措辞 ⇒ **只红 `#3`**。
+真实语料：`changesChecked 146 / deltasChecked 178 / capabilitiesCompared 43 / requirementsReplayed 497`，
+`errors []`；非空洞的关键一项是「重放出的 497」与「主规格数出的 497」相等——两个数字独立算出。
+
+**接线**：`engineering_checks` 多一步（纯静态，不需 protoc）+ `TEST_REGISTRATION_SITES` 增加
+`xtask-spec-merge`（`tier: portable`）+ 逐字清单「十八个」→「十九个」。
+
+见 [W150 报告](reports/2026-10-18-w150-spec-merge.md)、
+[ADR 0124](adr/0124-spec-merge-reconciliation.md)、
+`openspec/changes/archive/2026-10-18-w150-spec-merge-reconciliation/`。
+
 ## 任务依赖与状态
 
 | ID | 任务 | 依赖 | 状态 | 完成证据 |

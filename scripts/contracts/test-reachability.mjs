@@ -152,6 +152,14 @@ export const TEST_REGISTRATION_SITES = [
     tier: 'portable',
   },
   {
+    // 归档增量与主规格的对账（W150）：同样跑在 `engineering_checks` 里 ⇒ `portable`。
+    id: 'xtask-spec-merge',
+    host: 'xtask/src/lib.rs',
+    marker: 'tests/contracts/spec-merge.test.mjs',
+    base: '.',
+    tier: 'portable',
+  },
+  {
     id: 'xtask-contracts-suite',
     host: 'xtask/src/schema.rs',
     marker: 'tests/contracts/descriptor.test.mjs',
