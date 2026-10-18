@@ -21,7 +21,7 @@
 - 新增实现 `xtask/src/sbom.rs`（含 11 项单测：许可分类、锁文件解析与两类具名拒绝、渲染确定性、范围自述）。
 - 新增规格 `supply-chain-sbom`：规定覆盖范围、组件字段、**许可不得被静默改写**、确定性、
   以及产物必须自带范围与「不能用作什么」的声明。
-- 新增 [ADR 0043](../../adr/0043-sbom-generation-and-scope.md)：裁决生成方式、格式与范围边界，
+- 新增 [ADR 0043](../../../../docs/adr/0043-sbom-generation-and-scope.md)：裁决生成方式、格式与范围边界，
   并记录被否方案（`cargo-cyclonedx` / `cargo-sbom` / `syft` / 解析 `cargo tree` 文本）。
 
 ## Capabilities

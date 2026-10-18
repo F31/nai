@@ -70,7 +70,7 @@ audit 非空            ⇒ Defective
 ### 2.5 不判什么
 
 不联网、不读文件、不测量耗时、不校验 JSON Schema（那是 `upgrade-core`/工具链的事）、
-不新增 xtask 命令与证据目录（§30.1 未为演示包指定目录；真值来自真实演练）。详见 [ADR 0044](../../docs/adr/0044-demo-package-readiness-boundary.md)。
+不新增 xtask 命令与证据目录（§30.1 未为演示包指定目录；真值来自真实演练）。详见 [ADR 0044](../../../../docs/adr/0044-demo-package-readiness-boundary.md)。
 
 ## 3. O05：成本显示（`apps/desktop/src/upgrade.ts`）
 

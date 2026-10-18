@@ -22,7 +22,7 @@
 - `tauri-build` 在 Windows 上需要 WebView2 的导入库；`tauri` 的构建链会访问网络获取平台组件。
   把这些拉进 workspace ⇒ `cargo xtask check --profile portable|full` 的结论将取决于**本机是否装了 WebView2、
   网络是否可达、nuget 是否响应**。那是主机事实，不是仓库事实。
-- 这正是 [ADR 0041](0041-engineering-profile-frontend-boundary.md) 已经裁过的禁忌：
+- 这正是 [ADR 0041](../../../../docs/adr/0041-engineering-profile-frontend-boundary.md) 已经裁过的禁忌：
   「让门控依赖『pnpm 在 PATH 且垫片与本机 ABI 匹配』，等于把**主机环境事实**混进门控结论」。
 - 而且 workspace 成员数会从 19 变化 ⇒ 历轮报告的 `check-deps` 口径、测试目标数、通过数全部需要重新解释。
 

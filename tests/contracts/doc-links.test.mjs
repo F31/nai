@@ -3,31 +3,33 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { readTrackedPaths, describeFailure } from '../../scripts/contracts/git-index.mjs';
 import {
-  DOC_SUFFIX,
-  DOCS_ROOT,
   docLinkErrors,
+  documentPathsOf,
   isExternalTarget,
   linkTargetsOf,
+  maskCode,
   resolveTargetOf,
 } from '../../scripts/contracts/doc-links.mjs';
 
-/// W151：**文档内部指针的可达性**（ADR 0125）。
+/// W151 立项、W152 扩域：**文档内部指针的可达性**（ADR 0125 / ADR 0126）。
 ///
-/// 判据守的是一段**没人看管**的距离：`docs/` 里的相对链接是「记录的记录」——报告指向 ADR、
+/// 判据守的是一段**没人看管**的距离：文档之间的相对链接是「记录的记录」——报告指向 ADR、
 /// ADR 指向基线、报告指向归档变更——而**没有任何门控解析 markdown 链接**。W151 实测
-/// 794 条相对链接里有 36 处走不到（32 断链 + 4 通配），跨 20 份文件，全部是已发布记录。
+/// `docs/` 的 793 条相对链接里有 36 处走不到；W152 把域扩到全仓（991 份已跟踪 `*.md`、
+/// 963 条链接、925 条相对），又量出 3 处。扩域同时暴露了一个判据缺陷：**代码段里的链接形状
+/// 不是指针**——`docs/` 恰好零样本，而 `openspec/` 有 4 条（规格里举的坏例子）。
 ///
 /// 本文件分三层，**各自有独立输入域**：
 /// 1. 真实语料（域来自 `.git/index`）——只证明「今天为绿」，且域是**全量**而非抽样；
 /// 2. 合成样本——每条规则各有一个「只有它错时才红」的样本（断链 / 目录 / 通配 / 外部 /
-///    纯锚点 / 越界 / 不可解析 / 两个空集）；
-/// 3. 域函数本身（`linkTargetsOf` / `resolveTargetOf` / `isExternalTarget`）。
+///    纯锚点 / 越界 / 不可解析 / 代码段 / 两个空集）；
+/// 3. 域函数本身（`linkTargetsOf` / `resolveTargetOf` / `isExternalTarget` / `maskCode`）。
 
 /// 真实语料：文档集与索引都从 `.git/index` 派生（未跟踪的文件不在域内）。
 async function loadCorpus() {
   const index = await readTrackedPaths('.');
   assert.ok(index.ok, describeFailure(index));
-  const paths = [...index.paths].filter(path => path.startsWith(DOCS_ROOT) && path.endsWith(DOC_SUFFIX));
+  const paths = documentPathsOf(index.paths);
   const documents = [];
   for (const path of paths) documents.push({ path, text: await readFile(path, 'utf8') });
   return { index, paths, documents, tracked: [...index.paths] };
@@ -46,19 +48,29 @@ const TRACKED = [
   'openspec/changes/archive/2026-01-01-c/proposal.md',
 ];
 
-test('every relative pointer under docs/ resolves to a tracked path', async () => {
+test('every relative pointer in this repository resolves to a tracked path', async () => {
   const { paths, documents, tracked } = await loadCorpus();
   const result = docLinkErrors({ documents, tracked });
 
   assert.deepEqual(result.errors, [], 'a pointer nobody can follow must be fixed or named, not tolerated');
 
-  // 非空洞四件：域非空、域是**全量**（索引里每一份 docs/*.md 都进过判定，不是抽样）、
+  // 非空洞四件：域非空、域是**全量**（索引里每一份 *.md 都进过判定，不是抽样）、
   // 在域内的链接非零（否则「零错误」只是因为一条都没看）、文档数守恒。
   assert.ok(paths.length > 0, 'the documentation set is not empty');
   assert.equal(result.documentsChecked, paths.length, 'every tracked document must be judged, not a sample');
   assert.ok(result.linksChecked > 0, 'the corpus must carry relative links, or the green means nothing');
   const seen = new Set(documents.map(entry => entry.path));
   assert.equal(seen.size, paths.length, 'the derived document set must not collapse two paths into one');
+
+  // 域**真的**是全仓，不是 `docs/`：缩回去会让 3 条归档文档的断链重新隐形，而「零错误」看不出差别。
+  assert.ok(
+    paths.some(path => path.startsWith('openspec/')),
+    'the domain must reach beyond docs/, or narrowing it back would be invisible',
+  );
+  assert.ok(
+    paths.some(path => !path.includes('/')),
+    'the domain must include top-level documents such as README.md',
+  );
 });
 
 test('a broken pointer is named with its file and line, and nothing else is', () => {
@@ -103,6 +115,48 @@ test('a glob is rejected outright — it names several files and therefore none'
 
   // `?` 同样是通配，同样不走「文件不存在」那条。
   assert.match(errorsOf([doc('docs/a.md', '见 [x](00?.md)。')], TRACKED)[0], /is a glob/);
+});
+
+test('a link shape inside a code span is a quotation, not a pointer', () => {
+  // 规格里要能举坏例子：`[ADR 0016](adr/0016-…md)` 写在反引号里，它是**被引用的文本**。
+  // 判它等于要求作者不能举例。`docs/` 恰好零样本，只有扩域到 `openspec/` 才看得见这 4 条。
+  assert.deepEqual(
+    errorsOf([doc('docs/a.md', '见 [b](b.md)。而 `[ADR 0016](adr/0016-…md)` 是举的例子。')], TRACKED),
+    [],
+  );
+
+  // 围栏块同理：示例代码里出现的链接形状不指向任何地方。
+  assert.deepEqual(
+    errorsOf([doc('docs/a.md', '见 [b](b.md)。', '```md', '[x](nowhere.md)', '```')], TRACKED),
+    [],
+  );
+
+  // **判别性**：同一个形状一旦落在代码段之外，就必须照旧判红——否则「遮蔽」变成「不判」。
+  const outside = errorsOf([doc('docs/a.md', '见 [ADR 0016](adr/0016-x.md)。')], TRACKED);
+  assert.equal(outside.length, 1, JSON.stringify(outside));
+  assert.match(outside[0], /nothing at that path is tracked/);
+
+  // 链接与反引号同处一行：真指针不能被一起吞掉（按行跳过含反引号的行就会犯这个错）。
+  const mixed = docLinkErrors({
+    documents: [doc('docs/a.md', '见 [b](b.md)，也写着 `[x](nowhere.md)`。')],
+    tracked: TRACKED,
+  });
+  assert.deepEqual(mixed.errors, []);
+  assert.equal(mixed.linksChecked, 1, 'only the pointer outside the code span is judged');
+});
+
+test('the code mask keeps line numbers, and a lone backtick is not an opening fence', () => {
+  const text = ['见 [b](b.md)。', '`[x](y.md)`', '```', '[z](w.md)', '```', '`unclosed [q](r.md)'].join('\n');
+  const masked = maskCode(text);
+  assert.equal(masked.split('\n').length, text.split('\n').length, 'masking must not move line numbers');
+  assert.deepEqual(
+    linkTargetsOf(masked).map(entry => `${entry.line}:${entry.url}`),
+    ['1:b.md', '6:r.md'],
+    'the fence hides its body, and an unmatched backtick stays a literal instead of swallowing the rest of the line',
+  );
+  // 闭合围栏 MUST 同字符且不短于开启：`~~~` 开、``` 关，不构成闭合。
+  const tildes = maskCode(['~~~', '[a](a.md)', '```', '[b](b.md)', '~~~'].join('\n'));
+  assert.deepEqual(linkTargetsOf(tildes), [], 'a tilde fence is only closed by a tilde fence');
 });
 
 test('external targets, pure anchors and reference definitions are outside the judged set, by rule', () => {
