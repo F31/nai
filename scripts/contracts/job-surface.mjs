@@ -25,7 +25,15 @@
 ///
 /// 判据分两层，各自有独立的输入域，MUST NOT 合并：
 /// - `jobSurfaceErrors`：**契约侧**（文档对象里的 202 与 schema）；
-/// - `jobSourceErrors`：**仓库侧**（声明指向的 journal/reader/拒绝点是否真的在仓库里）。
+/// - `jobSourceErrors`：**仓库侧**（声明指向的 journal/reader/**writer**/拒绝点/安装器是否真的在仓库里）。
+///
+/// **W146（ADR 0120）补的是「谁写这行」和「谁推进它」**：前一轮把「分类 ⇔ 路由器怎么处理」
+/// 接上了，但那个分类的另一半——`kind: upgrade` 说「这个 id 能被 `/jobs/{id}` 轮询」——
+/// 仍然只有两个锚点作保（表在、有人读）。实测：`upgrade_journal` 的唯一写入点在
+/// `record_upgrade`，而推进事务的两个执行入口**没有任何 tests 目录之外的调用点**，
+/// 唯一的 `UpgradeHost` 实现者是演习替身。两端共同指向同一个缺席。
+/// ⇒ 本轮不实现安装器（那是真值缺口），只把「写入点唯一」「安装器名册封闭」
+/// 「能轮询的作业面 ⇔ 生产安装器」这三件事变成可判的。
 
 import { HTTP_METHODS, OPENAPI_DOCUMENTS } from './openapi-ops.mjs';
 
@@ -77,6 +85,17 @@ export const JOB_BLOCKERS = {
   },
 };
 
+/// **写入侧的扫描域**：状态一行一旦写进去，`/jobs/{id}` 才可能有 200。
+///
+/// 扩展名逐字写死（与 W84 的「扩展名层闭世界」同形）：一个不在表里的扩展名会让
+/// **写入点从扫描域里消失**，而信号是「找不到写入点」——那条错误会把「没扫到」
+/// 说成「不存在」。`.sql` 必须在内：迁移文件里也能写一行。
+export const WRITE_SCAN_EXTENSIONS = ['.rs', '.sql'];
+
+/// `impl UpgradeHost for <Name>` 的逐字形态。取 Rust 语法片段而不是「名字出现过」——
+/// 后者在注释、`use` 与类型参数里都会命中，于是名册与扫描永远对不上，而且看起来像名册错了。
+const HOST_IMPL = /impl\s+UpgradeHost\s+for\s+([A-Za-z_][A-Za-z0-9_]*)/g;
+
 /// **状态来源**（闭集）：`JobView.kind` 的每个取值 MUST 在这里有一份 journal 与一个 reader。
 ///
 /// 两个锚点各管一半，且都不由构造保证：
@@ -86,6 +105,11 @@ export const JOB_BLOCKERS = {
 /// reader 的锚点刻意选 `"kind": "upgrade"` 而不是 `"upgrade"`：同一个文件里
 /// `upgrade_refusal` 的类别名也是 `"upgrade"`，只锚单词的话两条路会被同一处命中，
 /// 于是「reader 不再报告这个 kind」这件事永远不会变红。
+///
+/// **`writer`（W146）补的是第三端**：前两个锚点只说「表在」「有人读」，都没说「谁写」。
+/// 一个只有读者、没有写入者的表，`/jobs/{id}` 的 404 分支可达、200 分支不可达——
+/// 而这正是今天 `upgrade` 的真实形状（见 ADR 0120）。`statement` 是那次写入的**逐字语句**，
+/// 它让「写入点唯一」可以被判（见 `jobSourceErrors`），而不是靠「我知道只有一处」。
 export const JOB_KINDS = {
   upgrade: {
     journal: {
@@ -96,8 +120,37 @@ export const JOB_KINDS = {
       file: 'crates/nai-control-api/src/lib.rs',
       text: '"kind": "upgrade"',
     },
+    writer: {
+      file: 'crates/nai-storage/src/upgrade.rs',
+      // 锚**调用形态**而不是声明前缀：`pub fn record_upgrade` 是前缀形态，改名成
+      // `record_upgrade_v2` 仍然包含它 ⇒ 锚点照旧绿（W146 注入实测：I2 首轮没红）。
+      // 带上前缀 `(` 与 `&mut self` 之后，「换名字」「换接收者」都会让它失去对端。
+      text: 'record_upgrade(&mut self',
+      statement: 'INSERT INTO upgrade_journal',
+    },
   },
 };
+
+/// **生产者名册**（闭集）：`UpgradeHost` 的每个实现者 MUST 在这里有一行，且 MUST 交代
+/// 它是不是**生产**实现。
+///
+/// 为什么需要它：`job id` 的两端挂在同一个 trait 上——`upgrades/execute` 要它才能推进事务，
+/// `upgrade_journal` 的行也只有它能让 `UpgradeTransaction` 写出来。今天唯一的实现者叫
+/// `RehearsalHost`（演习替身），于是「生产上没有安装器」这句话是**真**的，但此前它只是
+/// 一句散文：去掉这个实现者不会有任何判据变红，加一个生产实现者也不会有。
+///
+/// `production` MUST 是布尔，MUST NOT 用「名字里没有 Rehearsal」来推断——那种推断在
+/// 第一个叫 `PlatformHost` 的演习替身出现时就错了，而且错得没有信号。
+export const JOB_HOSTS = {
+  RehearsalHost: {
+    file: 'crates/nai-upgrade-core/src/rehearsal.rs',
+    production: false,
+    why:
+      '演习替身：整份事实由 `demo_facts` 供给、改动物理世界只在内存里记账，' +
+      '不落盘、不换 manifest。它能证明「事务编排对」，不能证明「这台机器真的升级了」。',
+  },
+};
+
 
 /// **登记表的落点**——两侧共读的**单一枢纽**。
 ///
@@ -425,18 +478,24 @@ function anchorErrors(errors, label, anchor, tracked, readSource) {
   }
 }
 
-/// **仓库侧主判据**：每个 `kind` 的 journal 与 reader、每个 `blockedBy` 的锚点，
-/// MUST 都还在仓库里被跟踪着；登记表与它的执行侧消费者 MUST 是**同一份字节**。
+/// **仓库侧主判据**：每个 `kind` 的 journal／reader／writer、每个 `blockedBy` 的锚点、
+/// 每个 `UpgradeHost` 实现者，MUST 都还在仓库里被跟踪着；登记表与它的执行侧消费者
+/// MUST 是**同一份字节**。
 ///
-/// 四个入参都是必需的：
-/// - `kinds` / `blockers` 是待验的声明（默认值在调用方给，MUST NOT 在这里兜默认，
+/// 入参是一个**具名对象**（W146 从位置参数改成对象）：这一轮之后它要同时喂
+/// 「状态来源」「拒绝理由」「安装器名册」与「契约侧登记表」四张表，位置参数会变成
+/// 「第四个是什么来着」——而一条按错位参数判出来的绿，比没有判据更坏。
+/// 六项**都是必需**，缺一项即具名失败：
+/// - `kinds` / `blockers` / `hosts` 是待验的声明（默认值在调用方给，MUST NOT 在这里兜默认，
 ///   否则注入一份空表就变成「没有声明」而不是「声明被清空了」）；
+/// - `surfaces` 是登记表（`tests/job-surface.json` 解析后的对象），用来判「能轮询的作业面 ⇔
+///   生产安装器」这一对；
 /// - `tracked` 是已跟踪路径集（`Set`）；
 /// - `readSource` 是 `(path) => string | null`。
 ///
 /// `readSource` 由调用方注入而不是在本模块里 `readFileSync`：这个模块只判定，
 /// 不做 I/O，判定本身才能被合成输入驱动（真实仓库用例与闭世界各跑一次）。
-export function jobSourceErrors(kinds, blockers, tracked, readSource) {
+export function jobSourceErrors({ kinds, blockers, hosts, surfaces, tracked, readSource } = {}) {
   const errors = [];
 
   if (!tracked || typeof tracked.has !== 'function' || typeof tracked[Symbol.iterator] !== 'function') {
@@ -459,6 +518,18 @@ export function jobSourceErrors(kinds, blockers, tracked, readSource) {
     errors.push('the source closure requires the blockers declaration and it was not provided');
     return errors;
   }
+  if (!hosts || typeof hosts !== 'object' || Array.isArray(hosts)) {
+    errors.push(
+      'the source closure requires the host registry and it was not provided — an absent roster and an empty one are different answers, and folding them would report "no installer was ever declared" as a pass',
+    );
+    return errors;
+  }
+  if (!surfaces || typeof surfaces !== 'object' || Array.isArray(surfaces)) {
+    errors.push(
+      'the source closure requires the job-surface registry and it was not provided — the pair rule (a pollable job needs a production installer) cannot be decided without it',
+    );
+    return errors;
+  }
 
   if (Object.keys(kinds).length === 0) {
     errors.push(
@@ -470,6 +541,34 @@ export function jobSourceErrors(kinds, blockers, tracked, readSource) {
       'JOB_BLOCKERS declares no class — every blockedBy value would be rejected by the surface rules, and the reasons themselves would be unverifiable',
     );
   }
+  if (Object.keys(hosts).length === 0) {
+    errors.push(
+      'JOB_HOSTS declares no host — "there is no production installer" would be an empty roster, which is exactly the silence this round is removing',
+    );
+  }
+
+  // **写入侧的扫描域先读一遍**（W146）。
+  //
+  // 读不出来的文件 MUST 报成「读不出来」，MUST NOT 当成「里面没有写入点」：后者会让
+  // 「扫描域被弄瞎」与「状态无处可写」共用同一条错误——两条相反的事实同一个信号。
+  const writeSources = new Map();
+  for (const path of tracked) {
+    if (typeof path !== 'string') continue;
+    if (!WRITE_SCAN_EXTENSIONS.some(extension => path.endsWith(extension))) continue;
+    const text = readSource(path);
+    if (typeof text !== 'string') {
+      errors.push(
+        `${path} is inside the write-side scan domain but could not be read — "could not be read" and "declares no writer" are different answers`,
+      );
+      continue;
+    }
+    writeSources.set(path, text);
+  }
+  if (writeSources.size === 0) {
+    errors.push(
+      `the write-side scan domain (${WRITE_SCAN_EXTENSIONS.join(', ')}) holds no readable tracked file — scanning nothing and finding no writer are different answers`,
+    );
+  }
 
   for (const [kind, source] of Object.entries(kinds)) {
     if (!source || typeof source !== 'object' || Array.isArray(source)) {
@@ -478,6 +577,124 @@ export function jobSourceErrors(kinds, blockers, tracked, readSource) {
     }
     anchorErrors(errors, `JOB_KINDS[${kind}].journal`, source.journal, tracked, readSource);
     anchorErrors(errors, `JOB_KINDS[${kind}].reader`, source.reader, tracked, readSource);
+
+    // 规则 8：**谁写这行**。锚点证明写入函数还在；`statement` 的计数证明**只有它**能写。
+    const writer = source.writer;
+    anchorErrors(errors, `JOB_KINDS[${kind}].writer`, writer, tracked, readSource);
+    if (!writer || typeof writer !== 'object' || Array.isArray(writer)) {
+      errors.push(`JOB_KINDS[${kind}] has no writer — a state source nobody writes is unreadable in practice`);
+      continue;
+    }
+    if (typeof writer.statement !== 'string' || writer.statement.trim().length === 0) {
+      errors.push(
+        `JOB_KINDS[${kind}].writer has no statement — without the verbatim write it makes, "there is exactly one writer" cannot be judged, only believed`,
+      );
+      continue;
+    }
+    const writers = [];
+    for (const [path, text] of writeSources) {
+      const occurrences = text.split(writer.statement).length - 1;
+      for (let index = 0; index < occurrences; index += 1) writers.push(path);
+    }
+    if (writers.length === 0) {
+      errors.push(
+        `JOB_KINDS[${kind}] names ${JSON.stringify(
+          writer.statement,
+        )} as its write, and that statement appears nowhere in the tracked scan domain — the journal of this kind can never receive a row, so every /jobs/{id} for it is a 404 by construction`,
+      );
+    } else if (writers.length > 1) {
+      errors.push(
+        `JOB_KINDS[${kind}] names ${JSON.stringify(writer.statement)} as its write, and it appears ${
+          writers.length
+        } times (${[...new Set(writers)].join(', ')}) — a second write path bypasses the journal it is supposed to go through, and "who wrote this row" stops having one answer`,
+      );
+    } else if (writers[0] !== writer.file) {
+      errors.push(
+        `JOB_KINDS[${kind}] declares its writer in ${writer.file}, but the only ${JSON.stringify(
+          writer.statement,
+        )} in the tracked tree is in ${writers[0]} — the declaration points at a file that does not write`,
+      );
+    }
+  }
+
+  // 规则 9：**安装器名册**。扫描到的 `impl UpgradeHost for X` MUST 与名册双向相等。
+  //
+  // 单向不够：只判「名册里的都有实现」会漏掉「仓库里多了个实现而名册没写」——
+  // 那正是本轮要防的那件事（生产安装器落地而登记表不动）。
+  const implementedHosts = new Map();
+  for (const [path, text] of writeSources) {
+    if (!path.endsWith('.rs')) continue;
+    for (const match of text.matchAll(HOST_IMPL)) {
+      const name = match[1];
+      if (!implementedHosts.has(name)) implementedHosts.set(name, []);
+      implementedHosts.get(name).push(path);
+    }
+  }
+  const productionHosts = [];
+  for (const [name, entry] of Object.entries(hosts)) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      errors.push(`JOB_HOSTS[${name}] is not an object, so its claim cannot be checked`);
+      continue;
+    }
+    // `production` MUST 是布尔：用「名字里没有 Rehearsal」去推断，会在第一个
+    // 叫 `PlatformHost` 的演习替身出现时错得没有信号。
+    if (typeof entry.production !== 'boolean') {
+      errors.push(
+        `JOB_HOSTS[${name}].production is ${JSON.stringify(
+          entry.production ?? null,
+        )}, expected a boolean — "unknown" and "not production" are different answers, and the pair rule below reads this value`,
+      );
+    } else if (entry.production) {
+      productionHosts.push(name);
+    }
+    if (typeof entry.why !== 'string' || entry.why.trim().length === 0) {
+      errors.push(`JOB_HOSTS[${name}] has no why — a roster entry with no stated role is indistinguishable from an unexamined one`);
+    }
+    if (typeof entry.file !== 'string' || entry.file.length === 0) {
+      errors.push(`JOB_HOSTS[${name}] does not name its file — the roster entry would have nothing to point at`);
+    } else if (!tracked.has(entry.file)) {
+      errors.push(`JOB_HOSTS[${name}] points at ${entry.file}, which the repository does not track`);
+    }
+    if (!implementedHosts.has(name)) {
+      errors.push(
+        `JOB_HOSTS declares ${name}, but no tracked file contains "impl UpgradeHost for ${name}" — a roster entry with no implementation, so the roster would be describing a world that does not exist`,
+      );
+    }
+  }
+  for (const [name, paths] of implementedHosts) {
+    if (!Object.hasOwn(hosts, name)) {
+      errors.push(
+        `${name} implements UpgradeHost in ${[...new Set(paths)].join(', ')}, but JOB_HOSTS does not declare it — an installer nobody registered is an installer whose production status nobody decided`,
+      );
+    }
+  }
+
+  // 规则 10：**成对**——「能被轮询的作业面」⇔「生产安装器」。
+  //
+  // 两条今天都空转（登记表 0 条 `kind`、名册 0 个生产实现），这是**如实**的：
+  // 它们不是给今天看的，是给下一跳的。任何一侧单独动，另一侧没跟上，立刻红：
+  // - 加一条 `kind` 而没有生产安装器 ⇒ 作业永远没有行，`/jobs/{id}` 的 200 是假承诺；
+  // - 加了生产安装器而没有 `kind` ⇒ 能力落地了，契约还说每条作业都被挡着。
+  const kindSurfaces = [];
+  for (const [docPath, registry] of Object.entries(surfaces)) {
+    if (!registry || typeof registry !== 'object' || Array.isArray(registry)) continue;
+    for (const [key, surface] of Object.entries(registry)) {
+      if (surface && typeof surface === 'object' && !Array.isArray(surface) && Object.hasOwn(surface, 'kind')) {
+        kindSurfaces.push(`${docPath}: ${key}`);
+      }
+    }
+  }
+  if (kindSurfaces.length > 0 && productionHosts.length === 0) {
+    errors.push(
+      `${kindSurfaces.length} job surface(s) claim a kind (${kindSurfaces.join(', ')}) but JOB_HOSTS declares no production host — nothing would ever advance those transactions, so their journal rows are never written and "you can poll this job" would be false`,
+    );
+  }
+  if (productionHosts.length > 0 && kindSurfaces.length === 0) {
+    errors.push(
+      `JOB_HOSTS declares production host(s) ${productionHosts.join(
+        ', ',
+      )} but no job surface claims a kind — an installer landed while the registry still says every job is blocked, so either the registry is stale or that host is built and never used`,
+    );
   }
 
   for (const [blocker, entry] of Object.entries(blockers)) {

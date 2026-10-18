@@ -2830,6 +2830,47 @@ ubuntu success / **windows failure**，红在第 10 步，两条 `composition.rs
 本机整文件 14 passed / 1.39s ⇒ 判为宿主瞬态，**未改代码、未放宽判据、未抬常量**；登记提交
 `c1ac7da` 两平台 `success`，同一对用例未复现。细节在报告 §七 末段与 §八 第 5 条。
 
+### W146（2026-10-18）：作业状态的第三端 —— 谁写这行、谁推进它
+
+承接 W145 §八第 1 条。W144／W145 两轮收的都是 **202 那一侧**；`kind: upgrade` 的另一半
+（「这个 id 能被 `GET /jobs/{id}` 轮询」）此前只有两个锚点作保：`UpgradeRecord` 在、
+`"kind": "upgrade"` 在被打印。**没有一个判据问过谁写那一行。**
+
+**勘定（三个数字）**：`INSERT INTO upgrade_journal` 在已跟踪 `.rs`+`.sql` 里**恰 1 处**
+（`upgrade.rs:134`）；`impl UpgradeHost for` **恰 1 处**，是演习替身 `RehearsalHost`；
+`stage_upgrade`／`activate_staged` 的调用点**全部在 `nai-runtime/tests/upgrade.rs`，生产零调用点**。
+读面**是接上的**（`apps/engine/src/lib.rs:338` 真的 `with_jobs`）⇒ `/jobs/{id}` 的 404 可达、
+**200 不可达**。这与「`JobAccepted` 零生产者」不是两处缺口，是**同一个缺席**：平台安装器。
+
+**本轮不实现安装器**（真值缺口不在仓库内），只把三件事变成可判的：
+① `JOB_KINDS[upgrade].writer`（文件 + 锚点 + **逐字写入语句**），语句在跟踪树里 MUST 恰一处且在
+声明的文件里（0 ⇒ 永远收不到行；≥2 ⇒ 有旁路）；② `JOB_HOSTS` 名册与 `impl UpgradeHost for`
+集**双向相等**，`production` MUST 是布尔（MUST NOT 由名字推断）；③ **成对**：声称 `kind` 的作业面
+⇔ 生产安装器，两侧任一单独变动即红——今天两侧都 0，规则的判别力由合成世界的反例证明。
+
+**注入五次全部逐字节还原**：I1 第二处写入点 ⇒ `appears 2 times`；**I2 写入函数改名 ⇒ 首轮
+没红**（`pub fn record_upgrade` 是前缀形态，改名后仍是子串）⇒ 改锚点为 `record_upgrade(&mut self`
+后复测红，并把这次结论用结构断言留在用例里；I3 名册键错位 ⇒ 双向各一条；I4 `production: true`
+⇒ `no job surface claims a kind`；I5 登记表一条改成 `kind` ⇒ `declares no production host`。
+
+**诚实边界**：「执行入口零生产调用点」是**勘定结论不是判据**（源码扫描会被注释/同文件调用搅乱，
+造一条会被自己文本搅乱的判据比不造更糟）；`job_view_json` 的 `kind` 仍是硬编码字面量；成对规则
+今天空转。判据函数入参改**具名对象**（六项全必需）——按错位参数判出来的绿比没有判据更坏。
+
+见 [W146 报告](reports/2026-10-18-w146-job-state-writer.md)、
+`docs/adr/0120-job-state-writer.md`、
+`openspec/changes/archive/2026-10-18-w146-job-state-writer/`。
+
+**门控**：`cargo xtask check --profile full` → GATE_EXIT=0（**第 5 次尝试**）：clippy 无告警；
+Rust **1147 / 0**（102 条 `test result` 行，与 W145 持平）；Node **374 / 0**（15 组，+2）；
+`validate --all --strict` **43 / 0**（归档后）、`--archived` **143 / 0**。前四次全是链接期
+`LNK1104` 且**目标每次不同**（`pipeline-*` → `engine-*` → `nai_engine-*`）；串行预构建虽 `EXIT=0`
+（`LNK1104` 0 次）却在门控内部被作废——门控先跑 clippy，clippy 与 rustc 指纹不同 ⇒ `cargo test`
+重新链接 ⇒ 判为环境瞬态，**未改代码、未放宽判据**（已登记，见报告 §八第 5 条）。
+
+**CI**：_（回填）_
+
+
 
 
 

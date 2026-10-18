@@ -44,6 +44,7 @@ import {
   JOB_ACCEPTED_SCHEMA,
   JOB_KINDS,
   JOB_BLOCKERS,
+  JOB_HOSTS,
   JOB_REGISTRY,
   acceptingOperations,
   jobSurfaceErrors,
@@ -541,6 +542,23 @@ function surfaceRegistry(entries) {
   return { [CONTROL]: entries, [REMOTE]: {} };
 }
 
+/// `jobSourceErrors` 的入参（W146 起是**具名对象**，六项全必需）。
+///
+/// 默认给的是仓库里那几份声明 + 盘上那份登记表；要注入哪一项就覆盖哪一项。
+/// 用具名对象而不是位置参数，是因为这一轮之后它同时喂四张表——按错位参数判出来的绿
+/// 比没有判据更坏，而错位在六个位置参数上是**看得见却容易漏**的。
+function sourceArgs(tracked, readSource, overrides = {}) {
+  return {
+    kinds: JOB_KINDS,
+    blockers: JOB_BLOCKERS,
+    hosts: JOB_HOSTS,
+    surfaces: registeredJobSurface(),
+    tracked,
+    readSource,
+    ...overrides,
+  };
+}
+
 test('every accepting operation is registered and every 202 body is the same JobAccepted', async () => {
   const documents = await parsedDocuments();
   const registry = registeredJobSurface();
@@ -723,9 +741,9 @@ test('every declared state source and every "why not" points at text the reposit
     }
   };
   assert.deepEqual(
-    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, repository.paths, readSource),
+    jobSourceErrors(sourceArgs(repository.paths, readSource)),
     [],
-    'every declared journal, reader and blocker anchor must still be in the tracked tree',
+    'every declared journal, reader, writer and blocker anchor must still be in the tracked tree',
   );
 
   // 反例：**只锚那个 kind 词**是不判别性的——同一个文件里 `upgrade_refusal` 的类别名也是它，
@@ -742,8 +760,8 @@ test('every declared state source and every "why not" points at text the reposit
     'the anchored form must be the single discriminator emission',
   );
 
-  const broken = (kinds, blockers = JOB_BLOCKERS) =>
-    jobSourceErrors(kinds, blockers, repository.paths, readSource);
+  const broken = (kinds, blockers = JOB_BLOCKERS, extra = {}) =>
+    jobSourceErrors(sourceArgs(repository.paths, readSource, { kinds, blockers, ...extra }));
   // 注入一：journal 指向未跟踪文件 ⇒ 锚点在仓库外，判不了任何东西。
   assert.ok(
     broken({ upgrade: { ...JOB_KINDS.upgrade, journal: { file: 'crates/nai-storage/src/gone.rs', text: 'x' } } }).some(
@@ -767,7 +785,7 @@ test('every declared state source and every "why not" points at text the reposit
   );
   // 注入四：文件读不出来 ≠ 文本不在了。
   assert.ok(
-    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, repository.paths, () => null).some(error =>
+    jobSourceErrors(sourceArgs(repository.paths, () => null)).some(error =>
       error.includes('could not be read'),
     ),
     'an unreadable file must be reported separately from an absent anchor',
@@ -797,12 +815,12 @@ test('every declared state source and every "why not" points at text the reposit
   assert.ok(broken(JOB_KINDS, {}).some(error => error.includes('declares no class')));
   // 缺输入 ⇒ 具名失败（「没给」与「空集」是两件事）。
   assert.ok(
-    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, undefined, readSource).some(error =>
+    jobSourceErrors(sourceArgs(undefined, readSource)).some(error =>
       error.includes('requires the tracked-path set'),
     ),
   );
   assert.ok(
-    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, repository.paths, undefined).some(error =>
+    jobSourceErrors(sourceArgs(repository.paths, undefined)).some(error =>
       error.includes('requires a reader'),
     ),
   );
@@ -830,7 +848,7 @@ test('the job-surface registry and its execution-side consumer are the same byte
   assert.ok(repository.paths.has(JOB_REGISTRY.path), `${JOB_REGISTRY.path} must be tracked`);
   assert.ok(repository.paths.has(JOB_REGISTRY.consumer.file), `${JOB_REGISTRY.consumer.file} must be tracked`);
   assert.deepEqual(
-    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, repository.paths, readSource),
+    jobSourceErrors(sourceArgs(repository.paths, readSource)),
     [],
     'the shipped registry and its consumer must already be the same bytes',
   );
@@ -838,7 +856,7 @@ test('the job-surface registry and its execution-side consumer are the same byte
   // 注入一：登记表不在跟踪集里 ⇒ 干净 checkout 上两侧读的是不同的树。
   const withoutRegistry = new Set([...repository.paths].filter(entry => entry !== JOB_REGISTRY.path));
   assert.ok(
-    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, withoutRegistry, readSource).some(
+    jobSourceErrors(sourceArgs(withoutRegistry, readSource)).some(
       error => error.includes('is not tracked') && error.includes(JOB_REGISTRY.path),
     ),
     'an untracked registry must be named — a clean checkout would not have it',
@@ -853,7 +871,7 @@ test('the job-surface registry and its execution-side consumer are the same byte
     'the injection must actually change the embedded path',
   );
   assert.ok(
-    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, repository.paths, otherRegistry).some(
+    jobSourceErrors(sourceArgs(repository.paths, otherRegistry)).some(
       error => error.includes(JOB_REGISTRY.consumer.file) && error.includes('does not embed'),
     ),
     'a consumer pointed at another file must be named — both sides would stay green on different data',
@@ -861,12 +879,239 @@ test('the job-surface registry and its execution-side consumer are the same byte
   // 注入三：执行侧文件未跟踪 ⇒ 登记表在跟踪树里没有读者。
   assert.ok(
     jobSourceErrors(
-      JOB_KINDS,
-      JOB_BLOCKERS,
-      new Set([...repository.paths].filter(entry => entry !== JOB_REGISTRY.consumer.file)),
-      readSource,
+      sourceArgs(
+        new Set([...repository.paths].filter(entry => entry !== JOB_REGISTRY.consumer.file)),
+        readSource,
+      ),
     ).some(error => error.includes('has no reader in the tracked tree')),
     'a registry whose consumer is untracked must be named',
+  );
+});
+
+/// **`kind` 的第三端：谁写这行、谁推进它**（W146 / ADR 0120）。
+///
+/// W144／W145 收的是「202 那一侧」：每条 202 在册、每条在册项的分类由真实路由器作证。
+/// 但 `kind: upgrade` 这个分类的另一半——「这个 id 能被 `/jobs/{id}` 轮询」——此前只有
+/// 两个锚点作保（表在、有人读），**没有一个判据问过谁写**。
+///
+/// 实测（本轮勘定）：`upgrade_journal` 的唯一写入点在 `record_upgrade`；推进事务的两个
+/// 执行入口 `stage_upgrade`／`activate_staged` **没有任何 `tests/` 之外的调用点**；
+/// `impl UpgradeHost for` 全仓恰一处，是演习替身 `RehearsalHost`。
+/// 也就是说：读面接了（`apps/engine` 真的 `with_jobs`），写面没有任何生产入口 ⇒
+/// `/jobs/{id}` 的 404 分支可达、200 分支不可达。**本轮不实现安装器**（真值缺口不在仓库内），
+/// 只把这三件事变成可判的。
+///
+/// 诚实边界：下面「成对规则」在真实仓库里**两侧都空转**（0 条 `kind` 条目、0 个生产安装器），
+/// 它的判别力只能由合成世界证明——本文件里那几条注入就是它的证据，MUST NOT 记作「已由真实
+/// 仓库验证」。
+test('the journal of every kind has one writer and the installer roster is closed', async () => {
+  const repository = await readTrackedPaths();
+  assert.ok(repository.ok, repository.ok ? '' : describeFailure(repository));
+  const readSource = file => {
+    try {
+      return readFileSync(file, 'utf8');
+    } catch {
+      return null;
+    }
+  };
+  assert.deepEqual(
+    jobSourceErrors(sourceArgs(repository.paths, readSource)),
+    [],
+    'the shipped writer anchor, the one write and the installer roster must already be closed',
+  );
+
+  // 非空洞（真实仓库，不用判据的返回值为证）：写入真的恰好一次，且就在声明的那个文件里。
+  const statement = JOB_KINDS.upgrade.writer.statement;
+  const hits = [];
+  let scanned = 0;
+  for (const path of repository.paths) {
+    if (!/\.(rs|sql)$/.test(path)) continue;
+    const text = readSource(path);
+    if (typeof text !== 'string') continue;
+    scanned += 1;
+    const occurrences = text.split(statement).length - 1;
+    for (let index = 0; index < occurrences; index += 1) hits.push(path);
+  }
+  assert.ok(scanned > 100, `the write-side scan domain must be real, saw ${scanned} files`);
+  assert.deepEqual(
+    hits,
+    [JOB_KINDS.upgrade.writer.file],
+    'the upgrade journal must have exactly one write, in the file the declaration names',
+  );
+
+  // 写入锚点 MUST 带**调用形态**（`(`），MUST NOT 只是声明前缀。
+  // 实测（本轮注入 I2）：`pub fn record_upgrade` 这个锚点在函数被改名成
+  // `record_upgrade_v2` 之后**仍然命中**——前缀是子串，判据照旧绿。
+  // 这条断言把那次注入的结论留在仓库里，否则下次有人「简化」回去不会有信号。
+  assert.ok(
+    JOB_KINDS.upgrade.writer.text.includes('('),
+    'the writer anchor must carry the call form, not just the declaration prefix — a prefix stays green through a rename',
+  );
+
+  // 非空洞：今天没有任何**生产**安装器。这 15 条 `blockedBy` 与「202 零生产者」都建立在这上面，
+  // 所以它必须是一个被断言的取值，而不是一句散文。
+  assert.ok(Object.keys(JOB_HOSTS).length > 0, 'the roster must not be empty');
+  assert.deepEqual(
+    Object.entries(JOB_HOSTS)
+      .filter(([, entry]) => entry.production === true)
+      .map(([name]) => name),
+    [],
+    'no production installer exists today — the pair rule below reads this value, so it cannot be left to prose',
+  );
+});
+
+/// 合成闭世界：一份自洽的最小仓库 + 最小声明，**先证明它是绿的**，再逐处破一处、断言
+/// **恰好一条**具名错误。
+///
+/// 为什么不用真实仓库做这些注入：真实仓库里改坏一处常常同时踩到两条规则（例如「名册多一项」
+/// 会同时触发「没有实现」与「成对规则」），于是「错误条数」不再判别。合成世界的每处破口
+/// 只属于一条规则，`deepEqual(errors, [one])` 才真的在判「只有它被看见了」。
+function syntheticJobWorld() {
+  const files = new Map([
+    ['crates/w/store.rs', 'pub struct Row;\npub fn record_row() {\n    "INSERT INTO row;",\n}\n'],
+    ['crates/w/host.rs', 'impl UpgradeHost for FakeHost {}\n'],
+    ['crates/w/api.rs', '"kind": "sample",\n'],
+    [JOB_REGISTRY.path, '{}\n'],
+    [JOB_REGISTRY.consumer.file, `${JOB_REGISTRY.consumer.text}\n`],
+  ]);
+  return {
+    files,
+    kinds: {
+      sample: {
+        journal: { file: 'crates/w/store.rs', text: 'pub struct Row' },
+        reader: { file: 'crates/w/api.rs', text: '"kind": "sample"' },
+        writer: { file: 'crates/w/store.rs', text: 'pub fn record_row', statement: 'INSERT INTO row;' },
+      },
+    },
+    blockers: {
+      no_handler: { why: 'x', anchor: { file: 'crates/w/api.rs', text: '"kind": "sample"' } },
+    },
+    hosts: { FakeHost: { file: 'crates/w/host.rs', production: false, why: 'x' } },
+    surfaces: { [CONTROL]: {}, [REMOTE]: {} },
+  };
+}
+
+test('the writer, the roster and the pair rule each answer exactly one question', () => {
+  const world = syntheticJobWorld();
+  const run = (overrides = {}, extraFiles = {}) => {
+    const files = new Map([...world.files, ...Object.entries(extraFiles)]);
+    return jobSourceErrors({
+      kinds: world.kinds,
+      blockers: world.blockers,
+      hosts: world.hosts,
+      surfaces: world.surfaces,
+      tracked: new Set(files.keys()),
+      readSource: path => files.get(path) ?? null,
+      ...overrides,
+    });
+  };
+
+  // 先证合成世界是绿的：没有这一条，下面每条「恰好一条错误」都可能是在数别的东西。
+  assert.deepEqual(run(), [], 'the synthetic world must start green');
+
+  // ① 写入点出现第二处 ⇒ 有人绕过 journal 直接写，「谁写的」不再只有一个答案。
+  const twice = run({}, { 'crates/w/side.rs': 'INSERT INTO row;\n' });
+  assert.equal(twice.length, 1, `a second write path must be exactly one error, saw ${JSON.stringify(twice)}`);
+  assert.ok(twice[0].includes('appears 2 times'));
+
+  // ② 写入点消失 ⇒ 这个 kind 的 journal 永远收不到行，它的每个 /jobs/{id} 都是 404。
+  const nowhere = run({
+    kinds: {
+      sample: { ...world.kinds.sample, writer: { ...world.kinds.sample.writer, statement: 'INSERT INTO gone;' } },
+    },
+  });
+  assert.equal(nowhere.length, 1, `a vanished write must be exactly one error, saw ${JSON.stringify(nowhere)}`);
+  assert.ok(nowhere[0].includes('appears nowhere'));
+
+  // ③ 声明指向一个不写这个语句的文件 ⇒ 声明与写入点分居两处。
+  //    注入时把锚点文本也搬过去，让**只有**「写入点不在声明的文件里」这一条成立——
+  //    否则同时断掉锚点，错误条数就不再判别（实测：只搬 file 会得 2 条）。
+  const elsewhere = run(
+    {
+      kinds: {
+        sample: { ...world.kinds.sample, writer: { ...world.kinds.sample.writer, file: 'crates/w/host.rs' } },
+      },
+    },
+    { 'crates/w/host.rs': 'pub fn record_row {}\nimpl UpgradeHost for FakeHost {}\n' },
+  );
+  assert.equal(elsewhere.length, 1, `a writer declared in the wrong file must be exactly one error, saw ${JSON.stringify(elsewhere)}`);
+  assert.ok(elsewhere[0].includes('the declaration points at a file that does not write'));
+
+  // ④ 仓库里多了一个实现者而名册没写 ⇒ 「生产安装器落地了而登记表没动」正是本轮要防的事。
+  const unregistered = run({}, { 'crates/w/extra.rs': 'impl UpgradeHost for PhantomHost {}\n' });
+  assert.equal(
+    unregistered.length,
+    1,
+    `an unregistered installer must be exactly one error, saw ${JSON.stringify(unregistered)}`,
+  );
+  assert.ok(unregistered[0].includes('JOB_HOSTS does not declare it'));
+
+  // ⑤ 名册多一项而仓库里没有实现 ⇒ 名册在描述一个不存在的世界。
+  const phantom = run({
+    hosts: { ...world.hosts, GhostHost: { file: 'crates/w/host.rs', production: false, why: 'x' } },
+  });
+  assert.equal(phantom.length, 1, `a roster entry with no implementation must be exactly one error, saw ${JSON.stringify(phantom)}`);
+  assert.ok(phantom[0].includes('no tracked file contains "impl UpgradeHost for GhostHost"'));
+
+  // ⑥ 生产安装器在、而契约里没有任何作业面声称能被轮询 ⇒ 能力落地了、契约还说全被挡着。
+  const hostWithoutKind = run({
+    hosts: { FakeHost: { ...world.hosts.FakeHost, production: true } },
+  });
+  assert.equal(
+    hostWithoutKind.length,
+    1,
+    `a production installer with no pollable surface must be exactly one error, saw ${JSON.stringify(hostWithoutKind)}`,
+  );
+  assert.ok(hostWithoutKind[0].includes('but no job surface claims a kind'));
+
+  // ⑦ 反向：作业面声称 kind，而没有生产安装器 ⇒ 那个 id 永远没有行，「你能轮询它」是假承诺。
+  const kindWithoutHost = run({
+    surfaces: { [CONTROL]: { 'post /probe': { kind: 'sample' } }, [REMOTE]: {} },
+  });
+  assert.equal(
+    kindWithoutHost.length,
+    1,
+    `a pollable surface with no installer must be exactly one error, saw ${JSON.stringify(kindWithoutHost)}`,
+  );
+  assert.ok(kindWithoutHost[0].includes('declares no production host'));
+
+  // ⑧ `production` 不是布尔 ⇒ 「不知道」与「不是生产」是两件事，且成对规则读的就是这个值。
+  const untyped = run({ hosts: { FakeHost: { ...world.hosts.FakeHost, production: 'no' } } });
+  assert.equal(untyped.length, 1, `a non-boolean production flag must be exactly one error, saw ${JSON.stringify(untyped)}`);
+  assert.ok(untyped[0].includes('expected a boolean'));
+
+  // 非空洞：名册被清空 MUST 具名失败，MUST NOT 读成「没有声明」。
+  assert.ok(run({ hosts: {} }).some(error => error.includes('JOB_HOSTS declares no host')));
+  // 缺输入（一张表都没给）⇒ 具名失败，且不进入下面的规则。
+  assert.ok(
+    jobSourceErrors({ tracked: new Set(['a.rs']) }).some(error => error.includes('requires a reader')),
+    'the reader is checked before the tables, and its absence must be named',
+  );
+  // 扫描域里没有一个可读的源文件 ⇒ 「没扫到」与「不存在」必须分开报。
+  const blind = jobSourceErrors({
+    kinds: world.kinds,
+    blockers: world.blockers,
+    hosts: world.hosts,
+    surfaces: world.surfaces,
+    tracked: new Set(['docs/readme.md']),
+    readSource: () => '',
+  });
+  assert.ok(
+    blind.some(error => error.includes('holds no readable tracked file')),
+    'an empty scan domain must be named — otherwise it reads as "this kind has no writer"',
+  );
+  // 文件读不出来 ⇒ 单独一条，MUST NOT 当成「里面没有写入点」。
+  const unreadable = jobSourceErrors({
+    kinds: world.kinds,
+    blockers: world.blockers,
+    hosts: world.hosts,
+    surfaces: world.surfaces,
+    tracked: new Set(world.files.keys()),
+    readSource: () => null,
+  });
+  assert.ok(
+    unreadable.some(error => error.includes('could not be read')),
+    'an unreadable source file must be reported separately from an absent write',
   );
 });
 
