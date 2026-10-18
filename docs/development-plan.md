@@ -2865,8 +2865,12 @@ ubuntu success / **windows failure**，红在第 10 步，两条 `composition.rs
 Rust **1147 / 0**（102 条 `test result` 行，与 W145 持平）；Node **374 / 0**（15 组，+2）；
 `validate --all --strict` **43 / 0**（归档后）、`--archived` **143 / 0**。前四次全是链接期
 `LNK1104` 且**目标每次不同**（`pipeline-*` → `engine-*` → `nai_engine-*`）；串行预构建虽 `EXIT=0`
-（`LNK1104` 0 次）却在门控内部被作废——门控先跑 clippy，clippy 与 rustc 指纹不同 ⇒ `cargo test`
-重新链接 ⇒ 判为环境瞬态，**未改代码、未放宽判据**（已登记，见报告 §八第 5 条）。
+（`LNK1104` 0 次）却在门控内部被作废 ⇒ 判为环境瞬态，**未改代码、未放宽判据**（已登记，见报告 §八第 5 条）。
+**W147 订正**：当时「预构建被 clippy 作废」的归因经三组实测**否证**（clippy 不判脏 rustc 产物）；
+真正原因是 `cargo build --all-targets` 与 `cargo test` 的**单元集不对齐**（`--tests` 只类型检查、
+不产 test harness），所以那一轮等于没有预构建。预构建处方已改为与门控两个测试步同批的两条
+`--no-run` 并写进 [工程指南](engineering.md)，对账判据在 `tests/contracts/gate-coverage.test.mjs`，
+勘误细节见 W146 报告 §九。
 
 **CI**：提交 `ecada66` → run **`39119935777`** `completed / success`，`head_sha` 完整 40 位一致；
 两平台各 20 条步骤记录（编号 `1–16` 后跳 `30–33`），skipped 仅 `11` 与 Linux-only 的 `8`/`14`，
@@ -2875,6 +2879,46 @@ Rust **1147 / 0**（102 条 `test result` 行，与 W145 持平）；Node **374 
 
 
 
+
+### W147（2026-10-18）：预构建处方必须与门控测试步同批单元
+
+承接 W146 §八第 5 条。那条登记说「预构建再跑门控只在不带 clippy 的回路里有效」，成因是
+「clippy 与 rustc 产物指纹不同 ⇒ 预构建在门控内部被作废」。本轮**先实测再动手**，结果否证它。
+
+**三组实测**（`CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=1`，数 `Compiling` 行）：M 组
+`build --all-targets` → `clippy` → `build` = **8 → 0 → 0**；A 组改一个 `.rs` 后
+`build -p nai-xtask --lib` → `clippy` → `build` = **1 → 1 → 0** ⇒ **clippy 不判脏 rustc 产物**。
+B 组 `build --all-targets` → `test --workspace --exclude nai-xtask --no-run` →
+`build --all-targets` = **1 → 7 → 7**（同批 7 个包，不含 xtask，`LNK1104` 0 次）⇒ 真因是
+**单元集不对齐**：`--all-targets` 里的 `--tests` 只类型检查、**不产 test harness**，而
+`cargo test` 要链接测试二进制——W146 那四次 `LNK1104` 的目标正在这一批里。
+
+**处置（不修宿主、不改门控）**：处方改为与门控两个测试步同批的两条 `--no-run`，写进
+[工程指南](engineering.md) 的 `gate-prebuild` 标记块（活文档）；判据 `prebuildRecipeErrors()` 做
+**双向一一对应**（文档每条 == 某条门控测试步 + 恰好一个 `--no-run`，门控每条 MUST 有且只有一条
+对应），旗标按**集合**比、顺序不比，门控自己带 `--no-run` 亦具名失败。为拿到不降维的取值，
+把既有的 `coveragesOf` 拆出 `testCommandsOf` 并**改建在它上面**（同一份解析，不写第二套）。
+
+**用例 24 → 31**；五条文件级注入逐条真跑并逐字节还原（I1 文档漏 `--no-run` ⇒ 25/27/31；
+I2 文档改 `--exclude` 的值 ⇒ 25/31；I3 门控 `--workspace` → `-p` ⇒ 25/28/31 + 既有 1/9/11/15/23；
+I4 删标记块 ⇒ 25/26/27/28/30/31；I5 文档多一条命令 ⇒ 25/27/28/31；I6 门控加 `--no-run` ⇒ 29）。
+**判别性**：I1/I2/I4/I5 在既有 24 条用例上**零信号**——`coverageErrors` 把命令降维成包集合，
+`--no-run`/`--lib` 在那一层根本不存在。
+
+**订正三处错误记载**：W146 报告追加 §九勘误（已发布记录不就地改）；本文件 W146 段就地订正；
+`.workbuddy/memory/2026-10-18.md` 那条「预构建被 clippy 作废」就地订正。ADR 0121 同时**撤回**
+「让 clippy 与 test 共用产物」这个方向：实测表明它修的是不存在的成因，且会撞上 `xtask-commands`
+的逐字凭据与 24 条签名清单。
+
+**诚实边界**：`LNK1104` 的宿主成因**未判**（候选面收窄到「注册杀软里只有 McAfee 在跑」，无因果证据）；
+不拆 `CARGO_TARGET_DIR`（治的是链接时被占用，与本轮问题不同）；不验处方是否真跑过。
+
+见 [W147 报告](reports/2026-10-18-w147-prebuild-recipe.md)、
+[ADR 0121](adr/0121-prebuild-recipe-unit-set.md)、`openspec/changes/w147-prebuild-recipe/`。
+
+**门控**：_（回填）_
+
+**CI**：_（回填）_
 
 ## 任务依赖与状态
 

@@ -201,10 +201,15 @@ export function topLevelItems(inner) {
   });
 }
 
-/// 把一段源码里的每个顶层数组解析成一条 `cargo test` 覆盖（非 `test` 的数组 ⇒ 跳过）。
-/// 返回 `{coverages, unresolvable}`——后者是**点了名**的不可哈希项，绝不静默丢弃。
-export function coveragesOf(text, identifiers) {
-  const coverages = [];
+/// 把一段源码里的每个顶层数组解析成一条 `cargo test` 命令的**逐 token 实参**（非 `test` 的数组
+/// ⇒ 跳过）。返回 `{commands, unresolvable}`——后者是**点了名**的不可哈希项，绝不静默丢弃。
+///
+/// 为什么不直接用 `coveragesOf`：`testCoverage` 把命令**降维**成 `{kind, packages, excludes}`，
+/// `--locked`／`--lib`／`--tests`／`--no-run` 这些**目标类型**旗标被刻意丢弃（对包集合它们确实无关）。
+/// 而「预构建处方是否与门控同批单元」问的正是那些被丢弃的成分 ⇒ 需要一层不降维的取值。
+/// 两层共用同一份解析（W93：同一件事 MUST NOT 两处定义），`coveragesOf` 就建在它上面。
+export function testCommandsOf(text, identifiers) {
+  const commands = [];
   const unresolvable = [];
   for (const inner of bracketBodies(stripRustComments(text))) {
     const items = topLevelItems(inner);
@@ -230,9 +235,16 @@ export function coveragesOf(text, identifiers) {
       unresolvable.push({command: '[test, …]', token: stuck});
       continue;
     }
-    coverages.push(testCoverage(values));
+    commands.push(values);
   }
-  return {coverages, unresolvable};
+  return {commands, unresolvable};
+}
+
+/// 把一段源码里的每个顶层数组解析成一条 `cargo test` 覆盖（非 `test` 的数组 ⇒ 跳过）。
+/// 返回 `{coverages, unresolvable}`——后者是**点了名**的不可哈希项，绝不静默丢弃。
+export function coveragesOf(text, identifiers) {
+  const {commands, unresolvable} = testCommandsOf(text, identifiers);
+  return {coverages: commands.map(testCoverage), unresolvable};
 }
 
 /// 把一条 `["test", …]` 实参数组解析成**覆盖形态**。首项不是 `test` ⇒ 返回 `null`。
@@ -333,6 +345,146 @@ export function ciXtaskCommands(workflowText) {
     out.push(command);
   }
   return out;
+}
+
+/// 文档里预构建处方块的边界标记。**标记本身也是判据的一部分**：定位不到块与块里对不上，
+/// 是两件不同的事，信号 MUST NOT 混成一个（「文档没写处方」不会因为别的判据绿而被发现）。
+export const PREBUILD_BLOCK = {
+  begin: '<!-- gate-prebuild:begin -->',
+  end: '<!-- gate-prebuild:end -->',
+};
+
+/// 从 `docs/engineering.md` 的标记块里取出**命令行**（去掉空行、`#` 注释行与围栏行）。
+/// 为什么要跳过围栏行：块为了可读性被引用成一个 ```` ```bash ```` 围栏，围栏不是命令。
+/// 其余非空行**一律当命令**——块是处方，散文不在这里，所以一行读不成 `cargo …` 就是缺陷，
+/// 而不是「这行不算」。
+export function documentedPrebuildSteps(documentText) {
+  if (typeof documentText !== 'string' || documentText === '') {
+    throw new Error('the engineering document was not provided');
+  }
+  const begin = documentText.indexOf(PREBUILD_BLOCK.begin);
+  if (begin < 0) {
+    throw new Error(`the document carries no \`${PREBUILD_BLOCK.begin}\` marker, so the prebuild recipe cannot be located`);
+  }
+  const end = documentText.indexOf(PREBUILD_BLOCK.end);
+  if (end < 0) {
+    throw new Error(`the document carries no \`${PREBUILD_BLOCK.end}\` marker, so the prebuild recipe is not delimited`);
+  }
+  if (end < begin) {
+    throw new Error(`the prebuild block markers are out of order — \`${PREBUILD_BLOCK.end}\` precedes \`${PREBUILD_BLOCK.begin}\``);
+  }
+  if (documentText.indexOf(PREBUILD_BLOCK.begin, begin + 1) >= 0) {
+    throw new Error('the prebuild block is declared twice — one of them would never be judged');
+  }
+  const block = documentText.slice(begin + PREBUILD_BLOCK.begin.length, end);
+  const lines = [];
+  for (const line of block.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed === '' || trimmed.startsWith('#') || trimmed.startsWith('```')) continue;
+    lines.push(trimmed);
+  }
+  return lines;
+}
+
+/// 一条命令的**规范签名**：逐 token 排序后拼接。
+/// 顺序**不是**判据对象——门控把 `--locked` 写在 `--exclude` 之前，而文档按阅读顺序写在后面更自然，
+/// 两者是同一批单元。排序让「同一组旗标」与「换了一个旗标」可区分，而不是被顺序噪声淹没。
+export function commandSignature(tokens) {
+  return [...tokens].sort().join(' ');
+}
+
+/// **预构建处方 ↔ 门控测试步**的对账。
+///
+/// 要回答的问题：改完代码先手工预构建再跑门控时，预构建编的**是不是门控要跑的那批单元**。
+/// 答错的代价是「预构建绿、门控仍要从头链接」，而它看起来像宿主抖动（W146 曾据此把成因写成
+/// clippy 作废产物，实测否证）。故判据的形状是：文档每条命令 MUST 等于门控某条测试步 **+ 恰好一个
+/// `--no-run`**，且**双向一一对应**——少一条覆盖不到、多一条是漂移出的第二条真源。
+export function prebuildRecipeErrors(inputs) {
+  const errors = [];
+  const {harnessText, documentText, identifiers = new Map()} = inputs ?? {};
+  if (typeof harnessText !== 'string' || harnessText === '') {
+    return ['the harness source was not provided, so no gate test step can be judged'];
+  }
+  let gate = null;
+  try {
+    gate = testCommandsOf(functionBody(harnessText, 'engineering_checks'), identifiers);
+  } catch (error) {
+    return [`the gate closure could not be read, so no prebuild recipe can be judged: ${error.message}`];
+  }
+  for (const stuck of gate.unresolvable) {
+    errors.push(`the gate closure names ${stuck.token}, which cannot be resolved — an unparsed operand must not be treated as an empty set`);
+  }
+  if (gate.commands.length === 0) {
+    return [
+      ...errors,
+      'the gate closure runs no test command — an empty gate set makes every correspondence vacuously true',
+    ];
+  }
+  for (const command of gate.commands) {
+    // 预构建是**手工步骤**。门控自己带 `--no-run` ⇒ 「门控编译了什么」有两处定义，
+    // 而处方存在的意义正是把那个决定留在门控之外。
+    if (command.includes('--no-run')) {
+      errors.push(`the gate runs "cargo ${command.join(' ')}" — a prebuild belongs to the documented recipe, not to the gate; the recipe would then be a copy of a step that no longer links anything`);
+    }
+  }
+  let lines = null;
+  try {
+    lines = documentedPrebuildSteps(documentText);
+  } catch (error) {
+    return [...errors, `the documented prebuild recipe could not be located: ${error.message}`];
+  }
+  if (lines.length === 0) {
+    return [
+      ...errors,
+      'the documented prebuild block carries no command — an empty recipe would match the gate vacuously',
+    ];
+  }
+
+  const documented = [];
+  for (const line of lines) {
+    const withoutPrompt = line.startsWith('$ ') ? line.slice(2) : line;
+    const parts = stripShellSyntax(withoutPrompt).split(' ').filter(Boolean);
+    if (parts[0] !== 'cargo') {
+      errors.push(`the prebuild block carries "${line}", which is not a cargo command — the block is a recipe, and prose inside it is not judged`);
+      continue;
+    }
+    const tokens = parts.slice(1);
+    const noRun = tokens.filter(token => token === '--no-run').length;
+    if (noRun !== 1) {
+      // 0 个 ⇒ 编的是另一套单元（这条命令本身就是门控那一步，不是预构建）；
+      // ≥2 个 ⇒ 重复的旗标说明这一行不是被推导出来的，而是被手写出来的。
+      errors.push(`the prebuild command "${line}" carries \`--no-run\` ${noRun} time(s); it must carry it exactly once, or it builds a different unit set than the gate`);
+      continue;
+    }
+    documented.push({
+      line,
+      signature: commandSignature(tokens.filter(token => token !== '--no-run')),
+    });
+  }
+
+  const gateBySignature = new Map();
+  for (const command of gate.commands) {
+    const signature = commandSignature(command);
+    const entry = gateBySignature.get(signature) ?? {count: 0, raw: command.join(' ')};
+    entry.count += 1;
+    gateBySignature.set(signature, entry);
+  }
+  const documentedCount = new Map();
+  for (const item of documented) {
+    documentedCount.set(item.signature, (documentedCount.get(item.signature) ?? 0) + 1);
+    if (!gateBySignature.has(item.signature)) {
+      errors.push(`the prebuild block documents "${item.line}", which matches no test step of the gate — a recipe that drifted prebuilds a different unit set than the one the gate runs`);
+    }
+  }
+  for (const [signature, entry] of gateBySignature) {
+    const count = documentedCount.get(signature) ?? 0;
+    if (count === 0) {
+      errors.push(`the gate runs "cargo ${entry.raw}", and the documented recipe has no command for it — the missing step is the one that gets compiled twice`);
+    } else if (count > entry.count) {
+      errors.push(`the documented recipe covers "cargo ${entry.raw} --no-run" ${count} times while the gate runs it ${entry.count} time(s) — a duplicated step is not the same step`);
+    }
+  }
+  return errors;
 }
 
 /// 登记表自身的一致性。与 `siteShapeErrors()`／`registryShapeErrors()` 同一条纪律：

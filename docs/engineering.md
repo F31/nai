@@ -30,6 +30,28 @@ Windows 原生环境使用 `cargo xtask check --profile windows-local`。
 `xtask/src/lib.rs`，`main.rs` 只是 CLI 外壳，测试步为 `cargo test --workspace --exclude <包名>`
 加 `cargo test -p <包名> --lib`；包名取自包自身而非字面量，改名不会留下静默的空排除。bin 目标仍被
 clippy `--all-targets` 类型检查，回避的只是链接。
+
+同一段还有一个**反直觉的坑**：手工预构建 MUST 用下面两条 `--no-run`，MUST NOT 用
+`cargo build --workspace --all-targets`。后者展开为 `--lib --bins --tests --benches --examples`，
+其中 `--tests` 只**类型检查**测试源码、**不产 test harness**，而 `cargo test` 恰恰要编译并**链接**
+测试二进制——W146 门控里那几次 `LNK1104` 的目标正是这批 test harness 二进制。本机实测两套单元集**互不包含**：
+`build --all-targets` 之后的 `cargo test --no-run` 仍会编一批包，随后 `build --all-targets` 又把同一批
+判脏 ⇒ 拿它当预构建等于没有预构建。与门控**同一批单元**的预构建是：
+
+<!-- gate-prebuild:begin -->
+```bash
+cargo test --workspace --exclude nai-xtask --locked --no-run
+cargo test --locked --package nai-xtask --lib --no-run
+```
+<!-- gate-prebuild:end -->
+
+`clippy` **不会**作废 rustc 产物（这一点也反直觉，故记录下来）：门控的 `clippy --workspace
+--all-targets` 紧跟在全量 `build` 之后实测零个包重编；改动一个文件后 `build` 1 → `clippy` 1 →
+`build` 0，同样不判脏。上面两个事实合起来才是「预构建为什么会失效」的完整答案，只答 clippy
+那一半会把处置引到错误的落点。两条 `--no-run` 与门控两个测试步的对应关系由
+`tests/contracts/gate-coverage.test.mjs` 对账（文档漏 `--no-run`、改任一旗标、门控侧换覆盖形态都会红），
+实测数字见 [W147 报告](reports/2026-10-18-w147-prebuild-recipe.md)。
+
 内存受限的宿主可用 cargo 原生开关约束并发（如 `CARGO_BUILD_JOBS=2 cargo xtask check --profile portable`）：
 默认并发下全量链接 30 余个带 debuginfo 的测试二进制可能触到系统提交限制（本机实测 `os error 1455`），
 那是宿主资源而非仓库缺陷，故未写进 portable 检查。

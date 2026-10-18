@@ -11,8 +11,14 @@ import {
   testCoverage,
   resolveCoverage,
   coveragesOf,
+  testCommandsOf,
+  functionBody,
   ciXtaskCommands,
   suiteRegistryShapeErrors,
+  prebuildRecipeErrors,
+  documentedPrebuildSteps,
+  commandSignature,
+  PREBUILD_BLOCK,
   coverageErrors,
 } from '../../scripts/contracts/gate-coverage.mjs';
 
@@ -20,6 +26,7 @@ const ROOT_TOML = 'Cargo.toml';
 const HARNESS = 'xtask/src/lib.rs';
 const GATE_SCHEMA = 'xtask/src/schema.rs';
 const WORKFLOW = '.github/workflows/foundation.yml';
+const ENGINEERING_DOC = 'docs/engineering.md';
 
 /// 判据的输入**全部显式注入**：本模块自己不读磁盘（遍历工作区是 W75 的 F2 根因）。
 async function load() {
@@ -39,6 +46,9 @@ async function load() {
       [GATE_SCHEMA, await readFile(GATE_SCHEMA, 'utf8')],
     ]),
     workflowText: await readFile(WORKFLOW, 'utf8'),
+    documentText: await readFile(ENGINEERING_DOC, 'utf8'),
+    // 标识符的值**从包清单派生**，不写死：`HARNESS` 的真源是 `xtask/Cargo.toml` 的 `name`。
+    identifiers: new Map([['HARNESS', packageNames(memberTomls).get('xtask')]]),
   };
 }
 
@@ -459,5 +469,180 @@ test('shapes alone: a normalised CI command must be comparable with the dispatch
   assert.ok(
     commands.some(command => command.startsWith('test --suite ')),
     'the suite commands must be recognised too',
+  );
+});
+
+// ---------- W147：预构建处方 ↔ 门控测试步 ----------
+//
+// 这一层回答的问题与上面所有层都不同：「改完代码先手工预构建，编的是不是门控要跑的那批单元」。
+// W146 把它答成了「clippy 作废产物」，实测否证（clippy 不判脏；作废预构建的是 `--all-targets`
+// 与 `cargo test` 的单元集不同）。判据不重述那个故事，只钉对应关系。
+
+/// 只替换文档里**标记块内部**的命令行，块外的散文一字不动。
+/// （直接在全文上做字符串替换会命中前面的说明文字，那是另一种假阳性。）
+function withRecipe(inputs, mutate) {
+  const text = inputs.documentText;
+  const begin = text.indexOf(PREBUILD_BLOCK.begin) + PREBUILD_BLOCK.begin.length;
+  const end = text.indexOf(PREBUILD_BLOCK.end);
+  const lines = documentedPrebuildSteps(text);
+  const patched = mutate([...lines]);
+  const block = `\n\`\`\`bash\n${patched.join('\n')}\n\`\`\`\n`;
+  return {...inputs, documentText: text.slice(0, begin) + block + text.slice(end)};
+}
+
+function gateStepsOf(harnessText) {
+  // 与判据走同一个解析器：`functionBody` 由被测模块导出，测试不另写一份括号计数。
+  return testCommandsOf(
+    functionBody(harnessText, 'engineering_checks'),
+    new Map([['HARNESS', 'nai-xtask']]),
+  );
+}
+
+test('the shipped prebuild recipe is one-to-one with the gate test steps', async () => {
+  const inputs = await load();
+  assert.deepEqual(prebuildRecipeErrors(inputs), [], 'the shipped recipe must carry no error');
+  // 非空洞：两侧都真的取到了东西，否则「双向一一对应」对空集恒真。
+  const gate = gateStepsOf(inputs.harnessText);
+  const recipe = documentedPrebuildSteps(inputs.documentText);
+  assert.ok(gate.commands.length > 0, 'the gate must run test commands');
+  assert.ok(recipe.length > 0, 'the document must carry a prebuild recipe');
+  assert.equal(
+    recipe.length,
+    gate.commands.length,
+    'a recipe line per gate test step — otherwise one of the two sides is judged vacuously',
+  );
+  for (const line of recipe) {
+    assert.ok(line.includes('--no-run'), `${line} must be a prebuild, not the gate command itself`);
+    assert.ok(!line.startsWith('```'), 'the fenced block must not be read as a command');
+  }
+  // 门控自己 MUST NOT 预构建：`--no-run` 只出现在处方里，出现两次就是两处定义。
+  assert.ok(
+    !inputs.harnessText.includes('"--no-run"'),
+    'the gate must not prebuild — a recipe is a manual step',
+  );
+});
+
+test('a recipe line without --no-run is named', async () => {
+  const inputs = await load();
+  const without = withRecipe(inputs, lines => {
+    lines[0] = lines[0].replace(' --no-run', '');
+    return lines;
+  });
+  assert.ok(
+    prebuildRecipeErrors(without).some(error => error.includes('carries `--no-run` 0 time(s)')),
+    'a prebuild that also runs the tests is not a prebuild',
+  );
+});
+
+test('a recipe line that changes one flag matches no gate step', async () => {
+  const inputs = await load();
+  const drifted = withRecipe(inputs, lines => {
+    lines[0] = lines[0].replace('--exclude', '--skip');
+    return lines;
+  });
+  const errors = prebuildRecipeErrors(drifted);
+  assert.ok(
+    errors.some(error => error.includes('matches no test step of the gate')),
+    `a drifted recipe must be named, saw ${JSON.stringify(errors)}`,
+  );
+  assert.ok(
+    errors.some(error => error.includes('has no command for it')),
+    'the gate step it drifted away from must be named too',
+  );
+});
+
+test('a gate step that changes its coverage shape is named', async () => {
+  const inputs = await load();
+  // 门控侧把 `--workspace` 换成 `-p <一个包>`：包集合守卫（`coverageErrors`）会另有一整层
+  // 报错，但那一层**看不见**「预构建处方已经对不上」——它们管的是不同的问题。
+  const narrowed = inputs.harnessText.replace(
+    WORKSPACE_RUN,
+    '&["test", "-p", "nai-storage", "--locked"],',
+  );
+  assert.notEqual(narrowed, inputs.harnessText, 'the gate step must have been rewritten');
+  const errors = prebuildRecipeErrors({...inputs, harnessText: narrowed});
+  assert.ok(
+    errors.some(error => error.includes('has no command for it')),
+    `the recipe must be reported as stale, saw ${JSON.stringify(errors)}`,
+  );
+});
+
+test('a gate step that prebuilds is named, not silently matched', async () => {
+  const inputs = await load();
+  // 门控自己带 `--no-run` ⇒ 「编译了什么」有两处定义，而处方存在的意义是把那个决定留在门控之外。
+  const prebuilding = inputs.harnessText.replace(
+    '&["test", "--locked", "--package", HARNESS, "--lib"]',
+    '&["test", "--locked", "--package", HARNESS, "--lib", "--no-run"]',
+  );
+  assert.notEqual(prebuilding, inputs.harnessText, 'the gate step must have been rewritten');
+  assert.ok(
+    prebuildRecipeErrors({...inputs, harnessText: prebuilding}).some(error =>
+      error.includes('belongs to the documented recipe, not to the gate'),
+    ),
+    'a prebuilding gate step must be named rather than matched',
+  );
+});
+
+test('a missing marker, a duplicated marker and an empty block are distinguished', async () => {
+  const inputs = await load();
+  const noBegin = inputs.documentText.replace(PREBUILD_BLOCK.begin, '');
+  assert.ok(
+    prebuildRecipeErrors({...inputs, documentText: noBegin}).some(error =>
+      error.includes('carries no'),
+    ),
+    'an unlocatable block must be named rather than read as an empty recipe',
+  );
+  const twice = inputs.documentText.replace(
+    PREBUILD_BLOCK.end,
+    `${PREBUILD_BLOCK.begin}\n${PREBUILD_BLOCK.end}`,
+  );
+  assert.ok(
+    prebuildRecipeErrors({...inputs, documentText: twice}).some(error =>
+      error.includes('declared twice'),
+    ),
+    'two blocks are two sources of truth',
+  );
+  const empty = withRecipe(inputs, () => ['# 暂时没写']);
+  assert.ok(
+    prebuildRecipeErrors(empty).some(error => error.includes('carries no command')),
+    'an empty recipe must not pass by matching nothing',
+  );
+});
+
+test('flag order is not the judged property, but a duplicate line is', async () => {
+  const inputs = await load();
+  // 门控写 `--workspace --locked --exclude`，文档按阅读顺序写 `--workspace --exclude … --locked`：
+  // 这是同一批单元，判据 MUST NOT 因为它红。
+  const reordered = withRecipe(inputs, lines =>
+    lines.map(line => {
+      const parts = line.split(' ');
+      return [parts[0], parts[1], ...parts.slice(2).reverse()].join(' ');
+    }),
+  );
+  assert.notDeepEqual(
+    documentedPrebuildSteps(reordered.documentText),
+    documentedPrebuildSteps(inputs.documentText),
+    'the token order must really have changed',
+  );
+  assert.deepEqual(
+    prebuildRecipeErrors(reordered),
+    [],
+    'the same flag set in another order must still match',
+  );
+  // 反向：多一条同样的命令 ⇒ 它覆盖不了第二条门控步，而门控也只需要它一次。
+  const duplicated = withRecipe(inputs, lines => [lines[0], ...lines]);
+  assert.ok(
+    prebuildRecipeErrors(duplicated).some(error => error.includes('a duplicated step is not the same step')),
+    'a duplicated recipe line must be named',
+  );
+  // 签名本身：排序后拼接，`--no-run` 之外的一切旗标都参与比较。
+  assert.equal(
+    commandSignature(['test', '--lib', '--locked']),
+    commandSignature(['--locked', 'test', '--lib']),
+  );
+  assert.notEqual(
+    commandSignature(['test', '--locked']),
+    commandSignature(['test', '--locked', '--lib']),
+    'a dropped target flag must change the signature',
   );
 });

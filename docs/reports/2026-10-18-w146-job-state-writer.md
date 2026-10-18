@@ -173,3 +173,36 @@ CARGO_BUILD_JOBS=1`，`PROTOC` 指向 3.21.12）。
    0 次，紧随其后的门控仍红在链接。要真正消掉它得让 clippy 与 test 共用同一份产物（例如
    `cargo clippy` 后不重建），或把 `-D warnings` 移到检出的独立步骤——两者都会改门控形状，
    属于下一轮的范围，**本轮只登记**。
+
+## 九、勘误（W147 追加，上文不改）
+
+> 本文件是**已发布记录**（提交 `ecada66`），按纪律不就地改写：下面订正 §六第二段与 §八第 5 条里
+> **一条被实测否证的成因**。结论（「先预构建再跑门控」在本仓库失效）成立，**归因错了**。
+
+原文（§六第二段、§八第 5 条）：门控第一步跑 `clippy`，clippy 与 rustc 的产物指纹不同 ⇒ `cargo test`
+阶段这些目标全部重新链接，预构建的产物在门控内部被作废。
+
+W147 三组实测（本机，`CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=1`，数 `Compiling` 行）：
+
+| 组 | 命令序列 | `Compiling` |
+| --- | --- | --- |
+| M | `build --workspace --all-targets` → `clippy --workspace --all-targets -- -D warnings` → `build --workspace --all-targets` | 8 → **0** → **0** |
+| A | `touch xtask/src/registry.rs` → `build -p nai-xtask --lib` → `clippy -p nai-xtask --lib` → `build -p nai-xtask --lib` | 1 → 1 → **0** |
+| B | `build --workspace --all-targets` → `test --workspace --exclude nai-xtask --locked --no-run` → `build --workspace --all-targets` | 1 → **7**（`LNK1104` 0 次）→ **7**（同一批 7 个包，**不含** xtask） |
+
+⇒ **clippy 不判脏 rustc 产物**。M 组里 clippy 紧跟全量 `build` 之后零重编，A 组里 clippy 动手之后
+`build` 也是 0；判据只需要「实测不失效」这一条，不依赖对 cargo 内部指纹的解释。
+
+真正作废预构建的是 **B 组的单元集不对齐**：`--all-targets` 展开为
+`--lib --bins --tests --benches --examples`，其中 `--tests` **只类型检查测试源码、不产 test harness**，
+而 `cargo test` 要编译并**链接**测试二进制——本文件 §六表里第 3、4 次 `LNK1104` 的目标
+（`pipeline-*`／`engine-*`／`nai_engine-*` 的 bin test）恰在这一批里。两套单元集**双向互不包含**，
+所以「先 `build --all-targets` 再跑门控」等于没有预构建，而不是被 clippy 作废。
+
+处置（W147）：正确的预构建是与门控两个测试步**同一批单元**的两条 `--no-run`
+（`cargo test --workspace --exclude nai-xtask --locked --no-run`、
+`cargo test --locked --package nai-xtask --lib --no-run`），已写进
+[工程指南](../engineering.md)（活文档，就地订正）并由 `tests/contracts/gate-coverage.test.mjs`
+双向对账。§八第 5 条提的「让 clippy 与 test 共用同一份产物」这一方向**撤回**：实测表明不需要，
+而且它会同时撞上 `xtask-commands.mjs` 里 `superseded-by-workspace-run` 的逐字凭据——
+用改动判据形状的方式去修一个不存在的成因，是两处代价换零收益。
