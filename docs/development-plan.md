@@ -2965,9 +2965,14 @@ I4 删标记块 ⇒ 25/26/27/28/30/31；I5 文档多一条命令 ⇒ 25/27/28/31
 替代**）；`openspec/`（637 份 md、围栏内处方实测 0）未纳入；围栏解析不追求 CommonMark 完备。
 W147 §八第 1 条（`LNK1104` 宿主成因）仍未判，需动宿主配置。
 
+**收口**：门控 `full` **第 1 次 `EXIT=0`**（Compiling 0 / LNK1104 0 / Rust 1147-0 / Node 384-0，
+比 W147 的 381 正好 +3）；`validate --all --strict` 44 前 / 43 后、`--archived` **145 / 0**（推送前绿）；
+提交 `1d1af86` → run `39128537142` 两平台 **success**，W147 红过的第 16 步
+（`openspec validate --archived`）这次全绿。W147 的教训在这里被**执行**了一次。
+
 见 [W148 报告](reports/2026-10-18-w148-prebuild-complement.md)、
 [ADR 0122](adr/0122-prebuild-complement-closed-world.md)、
-`openspec/changes/2026-10-18-w148-prebuild-complement/`。
+`openspec/changes/archive/2026-10-18-w148-prebuild-complement/`。
 
 ## 任务依赖与状态
 

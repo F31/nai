@@ -1,7 +1,7 @@
 # W148 报告：预构建处方的补集 —— 块外不得有第二份
 
 立项依据：W147 报告 §八第 2、3 条（本轮**不修**别的，只把这两条补齐）。范围与本轮改动见
-`openspec/changes/2026-10-18-w148-prebuild-complement/`，裁定见
+`openspec/changes/archive/2026-10-18-w148-prebuild-complement/`，裁定见
 [ADR 0122](../adr/0122-prebuild-complement-closed-world.md)。
 
 ## 一、勘定与现测
@@ -166,14 +166,28 @@ ok 34 - …
 
 ## 七、CI 观测
 
-**推送前的状态是「未观测」，不是「已通过」。** 本段在推送后按三件齐（唯一查询参数 `cb=<纳秒>` +
-`Cache-Control: no-cache` + 回读 `head_sha` == 推送 SHA 完整 40 位）回填，观测对象是下面这次提交的
-run，两平台各看**完整步骤序列**（步数不减 `- name:`，见 §八 前车之鉴）。
+提交 **`1d1af86`**（11 文件 / +767 −2）→ run **`39128537142`**（`Engineering foundation`，第 243 次），
+`completed / success`，`head_sha` 完整 40 位一致（`1d1af8627dd4bab3bc52e4bdf8e885f6729499e4`）。
+判结论三件齐（唯一查询参数 `cb=<纳秒>` + `Cache-Control: no-cache` + 回读 `head_sha`）；完成态由
+90–120 s 间隔的有界轮询在第 5 次看到（`created 12:44:17Z` → `updated 12:53:12Z`，约 9 分钟），
+随后又用 `/jobs` 与 `/runs/{id}` 各查一次做确认（**完成态共 3 次查询**，全同）。
 
-推送前可以确证的前提只有一条：**第 16 步 `openspec validate --archived` 的前提已经成立**——
-归档后的 `tasks.md` 五节 **26 条全部 `[x]`**（`grep -c '^- \['` = 26、`^- \[x\]` = 26），
-本机 `--archived` 实测见下表（W147 就是红在这一步）。
+| 平台 | 状态 | 步骤记录数 | 编号 | 被跳过 |
+| --- | --- | --- | --- | --- |
+| `foundation (ubuntu-24.04)` | **success** | 20 | `1–16` 后跳 `30–33` | `11`（仅失败时触发） |
+| `foundation (windows-latest)` | **success** | 20 | `1–16` 后跳 `30–33` | `8` `14`（Linux-only）、`11` |
 
+两平台各 20 条记录、编号 `1–16` 后跳 `30–33`（`if` 未触发的步不生成记录 ⇒ 条数不与 workflow 的
+`- name:` 相减，与 W147 同形）。关键步全部 success：9 生成物无漂移、**10 `check --profile full`**、
+12 凭据扫描、13 schema 与 API 契约、15 `pnpm spec:validate`、**16 `openspec validate --archived`**。
+
+**本轮的重点是第 16 步**：W147 正是红在这里（归档的 `tasks.md` 还差两条）。本轮推送前本机
+`--archived` 已是 **145 / 0**、归档的 26 条任务全 `[x]`，故这一步两平台全绿——W147 那条教训
+（「`--archived` MUST 在**推送前**绿」）这次是被执行了，而不是被解释了。
+
+第 10 步在**干净 checkout** 上全绿，说明本轮判据不依赖任何本机状态：活文档集来自 `.git/index`、
+围栏内容来自仓库内文件本身，没有一条输入取自工作区残留（这正是 W147 判据「非空洞前提 MUST NOT
+用工作区状态当输入」的那条要求在本轮的落点）。
 
 ## 八、具名登记（本轮发现但不做）
 
