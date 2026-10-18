@@ -132,11 +132,57 @@
 
 ## 六、门控
 
-_（回填）_
+`cargo xtask check --profile full` ⇒ **`GATE_EXIT=0`**（4m40s）：
+
+| 项 | 值 |
+|---|---|
+| `test result` 行 | **102**（含 18 个 Doc-tests） |
+| Rust 用例 | **1146 通过 / 0 失败**（W142 是 1145，+1 即本轮新增那条） |
+| Node | **367 通过 / 0 失败** |
+| 前端门控 | 7 步全过（工程基础，非渲染/人工 UI 验收） |
+| 收口行 | `full: engineering foundation checks incl. the frontend gate passed` |
+
+**首跑红，成因是既有的间歇 `LNK1104`**：`cargo test --workspace` 链接
+`target\debug\deps\memory-f8742ad840c77779.exe` 时报 `LNK1104`，而**该文件并不存在**
+（`ls` 只有别的哈希），`tasklist` 也无残留进程 ⇒ 与 W136/W142 同型：失败目标每次不同，
+单目标能过。处置按既定判据：`CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=1 cargo build
+--workspace --all-targets --keep-going` 串行预构建，**7m22s 一次全绿（0 失败）**，随即复跑门控
+⇒ `GATE_EXIT=0`。**未改代码、未放宽任何判据** —— 这是环境适配，不是缺陷修复。
+
+**两条 openspec validate**：
+
+| 命令 | 结果 |
+|---|---|
+| `openspec validate --all --strict --no-interactive` | **43 passed / 0 failed**（43 份主规格） |
+| `openspec validate --all --archived --strict --no-interactive` | **140 passed / 0 failed**（归档后立刻跑） |
+
+`openspec archive` 输出里**没有**出现「Why section should not exceed 1000 characters」——
+本轮变更的 Why 段实测 **638** 字符。这正是 §四裁定里那条「样本」的现场：它证明了遵守得上，
+但它**不是**判据（换一份超长的 proposal，这条命令照样会绿）。
 
 ## 七、CI 观测
 
-_（回填）_
+| 观测项 | 值 |
+|---|---|
+| 推送 SHA（完整 40 位） | `769ee2d90c10d8bec960dd774c5217b4c5a3f055` |
+| run | **`39104837949`**（`Engineering foundation`） |
+| 唯一查询参数 + `Cache-Control: no-cache` | 均带（`cb=<纳秒>`） |
+| 回读 `head_sha` == 推送 SHA | **true** |
+| run 状态 | `completed` / **`success`**，796s（06:39:54Z → 06:53:10Z） |
+| 完成态查询次数 | **2**（触发确认 1 次 + 完成态 1 次；jobs 1 次、rate_limit 1 次） |
+
+逐平台完整步骤序列（`skipped` 单独区分，不与失败混算）：
+
+| 平台 | conclusion | 耗时 | 步数（API 口径） | 非 `success` 且非 `skipped` | `skipped` |
+|---|---|---|---|---|---|
+| `foundation (ubuntu-24.04)` | `success` | 309s | 20 | **0** | 11 |
+| `foundation (windows-latest)` | `success` | 791s | 20 | **0** | 8、11、14 |
+
+`skipped` 的三步与 W130 起的形状**逐条一致**、与本轮无关：第 8 步是 Linux C++ protobuf 运行时
+（仅 ubuntu）、第 11 步是 `if: failure()` 的失败诊断注释（成功时必然跳过）、第 14 步是三语言契约
+套件（仅 ubuntu 有完整工具链）。⇒ 本轮「让本机与 CI 的补集形状一致」这一目标，由 CI 的干净
+checkout **亲自确认**：`pending-registration` 的补集判据在两边都是 0 条，且它没有变成空洞判据
+（合成样本前提仍在）。
 
 ## 八、具名登记（本轮发现但不做）
 
