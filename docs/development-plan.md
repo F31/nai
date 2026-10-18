@@ -3012,6 +3012,8 @@ gate-coverage 34/0、step-config 16/0、step-target 16/0、step-overlap 12/0、w
 第 2 次红在 `LNK1104` 宿主瞬态——两次都不是代码缺陷，处置分别是补登记/`git add` 与单独链接一次）；
 Compiling 0 / LNK1104 0 / Rust 1147-0 / Node **387-0（16 组，+3 用例 +1 组）**；
 `validate --all --strict` 44 前 / **43** 后、`--archived` **146 / 0**（推送前绿）。
+提交 `c838982` → run `39132041750` 两平台 **success**（20 条记录/平台，`1–16` 跳 `30–33`，
+第 10、16 步均 success；完成态 3 次查询同结论，约 12 分 18 秒）。
 
 ## 任务依赖与状态
 
