@@ -2827,8 +2827,8 @@ I2 把 `knowledge/import` 翻成 `refuses_without_installer`（期望 503 得 40
 与 Linux-only 的 `8`/`14` 被跳过，与 W144 逐条相同。回填提交 `2e3d049` → run **`39114817313`**：
 ubuntu success / **windows failure**，红在第 10 步，两条 `composition.rs` 用例同时撞
 `DeadlineExceeded`（`BRINGUP_OPERATION = 30s` 到期）；该提交 Rust 零变更、同码目标提交 windows 绿、
-本机整文件 14 passed / 1.39s ⇒ 判为宿主瞬态，**未改代码、未放宽判据、未抬常量**，登记在报告
-§七 末段与 §八 第 5 条。
+本机整文件 14 passed / 1.39s ⇒ 判为宿主瞬态，**未改代码、未放宽判据、未抬常量**；登记提交
+`c1ac7da` 两平台 `success`，同一对用例未复现。细节在报告 §七 末段与 §八 第 5 条。
 
 
 
