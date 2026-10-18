@@ -1866,6 +1866,7 @@ export interface components {
             state_revision: components["schemas"]["U64"];
             generation_epoch: components["schemas"]["U64"];
         };
+        /** @description A command was taken in, and a job id was minted for it. `status` carries `accepted` and nothing else: it means only that the command was received. Whether the job can be polled depends on whether a journal answers for this id (`JobView.kind`), not on this body. A route that cannot execute refuses with an error instead of answering 202, because an id no journal holds would present "cannot" as "in progress". */
         JobAccepted: {
             job_id: string;
             command_id: string;

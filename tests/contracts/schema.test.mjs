@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir, writeFile, mkdir, rm } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import SwaggerParser from '@apidevtools/swagger-parser';
 import { validators, readJson, validateSemantic, apiDocument, apiDocuments, AJV_SOURCES, TS_GENERATED_SOURCES } from '../../scripts/contracts/validation.mjs';
 import { parseIndex, readTrackedPaths, describeFailure } from '../../scripts/contracts/git-index.mjs';
 import {
@@ -37,6 +39,16 @@ import {
   operationShapeErrors,
   operationErrors,
 } from '../../scripts/contracts/openapi-ops.mjs';
+import {
+  ACCEPTED_STATUS_KEY,
+  JOB_ACCEPTED_SCHEMA,
+  JOB_KINDS,
+  JOB_BLOCKERS,
+  JOB_SURFACES,
+  acceptingOperations,
+  jobSurfaceErrors,
+  jobSourceErrors,
+} from '../../scripts/contracts/job-surface.mjs';
 
 /// 本文件判据用到的两份描述与它们**各自**的已实现声明。W86 起「已实现的是哪些操作」是
 /// **每一份文档各自的属性**（`remote-knowledge.yaml` 自述 `client-only`，它的表为空）——
@@ -461,6 +473,321 @@ test('the generator reuses the operation closure instead of restating it', async
   assert.ok(
     !validation.includes("SwaggerParser.validate('schemas/openapi/control.yaml')"),
     'the judge must not hard-code one document',
+  );
+});
+
+/// ── 作业面闭世界（W144 / ADR 0118）──────────────────────────────────────────────
+///
+/// W138 §30.1 第 4 条留下的问题是「12 条路由铸 `job_id` 而无状态来源」，而它自己记的
+/// `grep -c` 是 15、正文写成 12/14。本轮以**解析口径**定案：`control.yaml` 里
+/// `202 + JobAccepted` 的操作是 **15 条**，`remote-knowledge.yaml` 是 **0 条**。
+///
+/// 收口方式不是实现那 15 套状态机（那是 15 次迁移，且每条的状态形状至今没人设计过），
+/// 而是让「声明了 202 却没有状态来源」**不可能再静默**：每条 MUST 在册，在册项 MUST
+/// 恰有 `kind`（真能被 `/jobs/{id}` 轮询）或具名的 `blockedBy`（今天不铸 id 的理由）。
+///
+/// **口径**：这里 MUST 用 `SwaggerParser.parse`，MUST NOT 复用 `apiDocuments()`——
+/// 后者走 `validate`，会把 `$ref` 内联，于是「202 的响应体是不是同一个 `JobAccepted`」
+/// 在入参里已经不可判定（实测：`validate` 口径量出 `0`，`parse` 口径量出 `15`）。
+async function parsedDocuments() {
+  const out = {};
+  for (const docPath of Object.keys(OPENAPI_DOCUMENTS)) {
+    out[docPath] = await SwaggerParser.parse(docPath);
+  }
+  return out;
+}
+
+/// 合成文档：`paths` 里每条都是「202 + JobAccepted」，`body` 控制 202 的响应体形态。
+///
+/// MUST NOT 从真实文档 `structuredClone` 之后改：`control.yaml` 的 14 条共用
+/// `&jobResponses` 别名，YAML 展开后它们是**同一个对象**，而结构化克隆**保留共享引用**
+/// ——改一处等于改 14 处，注入就不再是「只动一处」，反向用例会为了错误的原因变绿。
+function jobDocument({ paths = ['/probe'], body = 'ref', statusEnum = ['accepted'], kindEnum = ['upgrade'] } = {}) {
+  const schema =
+    body === 'inline' ? { type: 'object', properties: { job_id: { type: 'string' } } } : { $ref: JOB_ACCEPTED_SCHEMA };
+  const accepted =
+    body === 'none'
+      ? { description: 'Job accepted' }
+      : { description: 'Job accepted', content: { 'application/json': { schema } } };
+  return {
+    paths: Object.fromEntries(
+      paths.map(path => [
+        path,
+        { post: { 'x-required-permission': 'knowledge.edit', responses: { [ACCEPTED_STATUS_KEY]: { ...accepted } } } },
+      ]),
+    ),
+    components: {
+      schemas: {
+        JobAccepted: { type: 'object', properties: { status: { type: 'string', enum: statusEnum } } },
+        JobView: { type: 'object', properties: { kind: { type: 'string', enum: kindEnum } } },
+      },
+    },
+  };
+}
+
+/// 合成文档必须配一份合成登记表：判据的文档键集与 `OPENAPI_DOCUMENTS` 双向相等，
+/// 所以第二份文档也要给（空 `paths`，与真实仓库的 `remote-knowledge.yaml` 同形）。
+function surfaceDocuments(controlDocument) {
+  return { [CONTROL]: controlDocument, [REMOTE]: { paths: {} } };
+}
+function surfaceRegistry(entries) {
+  return { [CONTROL]: entries, [REMOTE]: {} };
+}
+
+test('every accepting operation is registered and every 202 body is the same JobAccepted', async () => {
+  const documents = await parsedDocuments();
+  const accepting = acceptingOperations(documents[CONTROL]);
+  // 非空洞：真实文档里真的有一族作业面，否则下面每一条断言都空转。
+  assert.equal(accepting.length, 15, `expected the shipped job surface, saw ${accepting.length}`);
+  // 计数之外还要**清单**：在册键集与实测键集逐个相等（计数相等可以掩盖一次替换）。
+  assert.deepEqual(
+    accepting.map(row => row.key).sort(),
+    Object.keys(JOB_SURFACES[CONTROL]).sort(),
+    'the registered job surface must be exactly the operations that answer 202',
+  );
+  assert.deepEqual(
+    acceptingOperations(documents[REMOTE]),
+    [],
+    'the second description exposes no job surface — if it grows one, it must be declared, not discovered',
+  );
+  for (const row of accepting) {
+    assert.equal(
+      row.accepted.content?.['application/json']?.schema?.$ref,
+      JOB_ACCEPTED_SCHEMA,
+      `${row.key} must answer ${ACCEPTED_STATUS_KEY} with ${JOB_ACCEPTED_SCHEMA}`,
+    );
+  }
+  assert.deepEqual(jobSurfaceErrors(documents), [], 'the shipped job surface must already be closed');
+  // 非空洞：缺入参 ⇒ 具名失败，MUST NOT 被当成「没有文档」。
+  assert.ok(jobSurfaceErrors(undefined).some(error => error.includes('requires the parsed OpenAPI documents')));
+});
+
+test('a job surface entry answers exactly one of "which journal" and "why none"', () => {
+  const baseline = jobSurfaceErrors(
+    surfaceDocuments(jobDocument()),
+    surfaceRegistry({ 'post /probe': { blockedBy: 'no_handler' } }),
+  );
+  // pass=0 / fail=1 是「注入自身坏了」的特征信号：基线 MUST 是干净的。
+  assert.deepEqual(baseline, [], 'the synthetic baseline must be clean');
+
+  // 注入一：新增一条 202 而未登记。
+  assert.ok(
+    jobSurfaceErrors(
+      surfaceDocuments(jobDocument({ paths: ['/probe', '/other'] })),
+      surfaceRegistry({ 'post /probe': { blockedBy: 'no_handler' } }),
+    ).some(error => error.includes('post /other') && error.includes('does not declare it')),
+    'a route that mints a job id without being registered must be named',
+  );
+  // 注入二：在册项不再是 202（声明无孤儿）。
+  assert.ok(
+    jobSurfaceErrors(surfaceDocuments(jobDocument({ paths: [] })), surfaceRegistry({ 'post /probe': { blockedBy: 'no_handler' } })).some(
+      error => error.includes('post /probe') && error.includes('no accepting operation'),
+    ),
+    'a registry entry whose operation stopped accepting must be named',
+  );
+  // 注入三：202 的 body 换成内联对象 ⇒ 各条路由可以各自长成不同的作业形状。
+  assert.ok(
+    jobSurfaceErrors(
+      surfaceDocuments(jobDocument({ body: 'inline' })),
+      surfaceRegistry({ 'post /probe': { blockedBy: 'no_handler' } }),
+    ).some(error => error.includes('an inline schema')),
+    'an inline 202 body must be named',
+  );
+  // 注入四：202 没有 body ⇒ 客户端连 job id 都拿不到。
+  assert.ok(
+    jobSurfaceErrors(
+      surfaceDocuments(jobDocument({ body: 'none' })),
+      surfaceRegistry({ 'post /probe': { blockedBy: 'no_handler' } }),
+    ).some(error => error.includes('no application/json body schema')),
+    'a 202 with no body must be named',
+  );
+  // 注入五：两个都写 ⇒ 读的人不知道信哪一句。
+  assert.ok(
+    jobSurfaceErrors(
+      surfaceDocuments(jobDocument()),
+      surfaceRegistry({ 'post /probe': { kind: 'upgrade', blockedBy: 'no_handler' } }),
+    ).some(error => error.includes('both kind and blockedBy')),
+    'an entry claiming both must be named',
+  );
+  // 注入六：两个都不写 ⇒ 正是本轮要消灭的那种沉默。
+  assert.ok(
+    jobSurfaceErrors(surfaceDocuments(jobDocument()), surfaceRegistry({ 'post /probe': {} })).some(error =>
+      error.includes('neither kind nor blockedBy'),
+    ),
+    'an entry answering neither question must be named',
+  );
+  // 注入七：`blockedBy` 落在闭集外 ⇒ 没名字的理由与没看过的理由不可区分。
+  assert.ok(
+    jobSurfaceErrors(
+      surfaceDocuments(jobDocument()),
+      surfaceRegistry({ 'post /probe': { blockedBy: 'because' } }),
+    ).some(error => error.includes('not one of')),
+    'an unnamed blocker must be named',
+  );
+  // 注入八：`kind` 没有状态来源 ⇒ 轮询那个 id 会到一张没有人登记的表。
+  assert.ok(
+    jobSurfaceErrors(surfaceDocuments(jobDocument()), surfaceRegistry({ 'post /probe': { kind: 'thumbnail' } })).some(
+      error => error.includes('no journal and no reader'),
+    ),
+    'a kind with no state source must be named',
+  );
+  // 注入九：有 `kind` 却未实现 ⇒ 能被轮询但永远起不来的状态源。
+  assert.ok(
+    jobSurfaceErrors(surfaceDocuments(jobDocument()), surfaceRegistry({ 'post /probe': { kind: 'upgrade' } })).some(
+      error => error.includes('not declared implemented'),
+    ),
+    'a kind on an unimplemented route must be named',
+  );
+  // 注入十：已实现却声称不铸 id ⇒ 与自己的声明相矛盾。用一条**真的**在已实现表里的操作。
+  assert.ok(
+    jobSurfaceErrors(
+      surfaceDocuments(jobDocument({ paths: ['/upgrades/plan'] })),
+      surfaceRegistry({ 'post /upgrades/plan': { blockedBy: 'no_handler' } }),
+    ).some(error => error.includes('contradicts its own declaration')),
+    'an implemented route claiming a blocker must be named',
+  );
+});
+
+test('the kind set and JobView.kind are the same set, and accepted is not a progress state', () => {
+  // 双向：契约列了却没有 journal ⇒ 那条分支到不了任何地方。
+  assert.ok(
+    jobSurfaceErrors(
+      surfaceDocuments(jobDocument({ kindEnum: ['upgrade', 'thumbnail'] })),
+      surfaceRegistry({ 'post /probe': { blockedBy: 'no_handler' } }),
+    ).some(error => error.includes('a contract branch that reaches nothing')),
+    'a contract kind with no journal must be named',
+  );
+  // 反向：有 journal 却没有契约分支 ⇒ 一张没有人能报出来的表。
+  assert.ok(
+    jobSurfaceErrors(
+      surfaceDocuments(jobDocument({ kindEnum: [] })),
+      surfaceRegistry({ 'post /probe': { blockedBy: 'no_handler' } }),
+    ).some(error => error.includes('a journal no reader can name')),
+    'a journal the contract cannot name must be named',
+  );
+  // `accepted` 的唯一取值：多一个值就等于让「收到了」自称「进行中」。
+  assert.ok(
+    jobSurfaceErrors(
+      surfaceDocuments(jobDocument({ statusEnum: ['accepted', 'queued'] })),
+      surfaceRegistry({ 'post /probe': { blockedBy: 'no_handler' } }),
+    ).some(error => error.includes('expected exactly')),
+    'a job status vocabulary wider than "accepted" must be named',
+  );
+  // 非空洞：一份文档都没登记作业面 ⇒ 每条规则同时空转。
+  assert.ok(
+    jobSurfaceErrors(surfaceDocuments(jobDocument()), surfaceRegistry({})).some(error =>
+      error.includes('no document declares a job surface'),
+    ),
+    'an empty job surface must not read as "nothing to check"',
+  );
+  // 文档键集与 `OPENAPI_DOCUMENTS` 双向相等：少一份 / 多一份各报一次。
+  assert.ok(jobSurfaceErrors({ [CONTROL]: jobDocument() }).some(error => error.includes(`${REMOTE} is a declared OpenAPI description`)));
+  assert.ok(
+    jobSurfaceErrors(surfaceDocuments(jobDocument()), {
+      ...surfaceRegistry({ 'post /probe': { blockedBy: 'no_handler' } }),
+      'schemas/openapi/gone.yaml': {},
+    }).some(error => error.includes('registry entry with no document')),
+  );
+  assert.ok(
+    jobSurfaceErrors(surfaceDocuments(jobDocument()), { [CONTROL]: { 'post /probe': { blockedBy: 'no_handler' } } }).some(
+      error => error.includes(`JOB_SURFACES does not declare ${REMOTE}`),
+    ),
+  );
+});
+
+test('every declared state source and every "why not" points at text the repository still has', async () => {
+  const repository = await readTrackedPaths();
+  assert.ok(repository.ok, repository.ok ? '' : describeFailure(repository));
+  const readSource = file => {
+    try {
+      return readFileSync(file, 'utf8');
+    } catch {
+      return null;
+    }
+  };
+  assert.deepEqual(
+    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, repository.paths, readSource),
+    [],
+    'every declared journal, reader and blocker anchor must still be in the tracked tree',
+  );
+
+  // 反例：**只锚那个 kind 词**是不判别性的——同一个文件里 `upgrade_refusal` 的类别名也是它，
+  // 于是「reader 不再报这个 kind」永远不会红。这就是 anchor 必须带 `"kind":` 的理由；
+  // 若有人把它简化回去，下面的等号立刻不成立。
+  const readerSource = readSource(JOB_KINDS.upgrade.reader.file);
+  assert.ok(
+    readerSource.split('"upgrade"').length - 1 > 1,
+    'the bare kind word must occur more than once, which is exactly why it cannot be the anchor',
+  );
+  assert.equal(
+    readerSource.split(JOB_KINDS.upgrade.reader.text).length - 1,
+    1,
+    'the anchored form must be the single discriminator emission',
+  );
+
+  const broken = (kinds, blockers = JOB_BLOCKERS) =>
+    jobSourceErrors(kinds, blockers, repository.paths, readSource);
+  // 注入一：journal 指向未跟踪文件 ⇒ 锚点在仓库外，判不了任何东西。
+  assert.ok(
+    broken({ upgrade: { ...JOB_KINDS.upgrade, journal: { file: 'crates/nai-storage/src/gone.rs', text: 'x' } } }).some(
+      error => error.includes('which the repository does not track'),
+    ),
+    'an anchor outside the tracked tree must be named',
+  );
+  // 注入二：锚点文本不在了（改名／搬走）⇒ 声明失去对端。
+  assert.ok(
+    broken({
+      upgrade: { ...JOB_KINDS.upgrade, reader: { ...JOB_KINDS.upgrade.reader, text: '"kind": "thumbnail"' } },
+    }).some(error => error.includes('no longer there')),
+    'an anchor whose text vanished must be named',
+  );
+  // 注入三：锚点为空 ⇒ 声明退化成一个注释。
+  assert.ok(
+    broken({
+      upgrade: { ...JOB_KINDS.upgrade, journal: { file: 'crates/nai-storage/src/upgrade.rs', text: '' } },
+    }).some(error => error.includes('no usable source anchor')),
+    'an empty anchor must be named',
+  );
+  // 注入四：文件读不出来 ≠ 文本不在了。
+  assert.ok(
+    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, repository.paths, () => null).some(error =>
+      error.includes('could not be read'),
+    ),
+    'an unreadable file must be reported separately from an absent anchor',
+  );
+  // 注入五：理由只写在名字里。
+  assert.ok(
+    broken(JOB_KINDS, { ...JOB_BLOCKERS, no_handler: { ...JOB_BLOCKERS.no_handler, why: '  ' } }).some(error =>
+      error.includes('has no why'),
+    ),
+    'a blocker class with no stated reason must be named',
+  );
+  // 注入六：`blockedBy` 的锚点断了 ⇒「今天不铸 id 的理由」失去对端。
+  assert.ok(
+    broken(JOB_KINDS, {
+      ...JOB_BLOCKERS,
+      refuses_without_installer: {
+        ...JOB_BLOCKERS.refuses_without_installer,
+        anchor: { ...JOB_BLOCKERS.refuses_without_installer.anchor, text: 'no job id is minted anywhere' },
+      },
+    }).some(
+      error => error.includes('JOB_BLOCKERS[refuses_without_installer].anchor') && error.includes('no longer there'),
+    ),
+    'a stale blocker anchor must be named',
+  );
+  // 非空洞：声明表被清空 MUST 具名失败，MUST NOT 读成「没有声明」。
+  assert.ok(broken({}).some(error => error.includes('declares no kind')));
+  assert.ok(broken(JOB_KINDS, {}).some(error => error.includes('declares no class')));
+  // 缺输入 ⇒ 具名失败（「没给」与「空集」是两件事）。
+  assert.ok(
+    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, undefined, readSource).some(error =>
+      error.includes('requires the tracked-path set'),
+    ),
+  );
+  assert.ok(
+    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, repository.paths, undefined).some(error =>
+      error.includes('requires a reader'),
+    ),
   );
 });
 

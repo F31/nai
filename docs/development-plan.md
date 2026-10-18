@@ -2718,6 +2718,53 @@ W135 报告追加勘误段；归档的 W135 变更**不改**（冻结快照）�
 两平台均 `completed / success`（各 20 步，API 口径；`skipped` 只有 ubuntu 的第 11 步与 windows 的
 第 8/11/14 步，与 W130 起的形状逐条一致）。
 
+### W144（2026-10-18）：作业面闭世界 —— 15 条「铸了 `job_id` 却没有状态来源」的声明
+
+**起点**是 W138 报告 §五第 1 条，经 W143 §八第 5 条转交。事实形状：`control.yaml` 有 **15** 个操作
+声明 `202 + JobAccepted`，而唯一读作业状态的 `GET /jobs/{id}` 只读 `upgrade_journal` 一张表
+（契约自己写着「only upgrade jobs have a journal today」）⇒ 其余 14 条铸了一个**指不到任何状态**
+的 id。`JobAccepted` 在生产侧**零生产者**，15 条路由在路由表里**零分支**，全部落兜底 404。
+
+**计数订正**：W138 写「12 条」，清单里列 13 个端点（其中 4 种写法在契约里根本不存在），
+而它自己记的 `grep -c` 是 15。本轮用解析器口径定案 **15**（`remote-knowledge.yaml` 为 0）。
+「12」是一次靠记忆汇总的产物，`grep -c` 反过来是对的。W138 报告不就地改（已发布），
+订正落在 W144 报告 §一 与 ADR 0118。
+
+**收口方式不是实现 15 套状态机**（那是 15 次迁移，且每条的状态形状至今没人设计过），
+而是让「声明了 202 却没有状态来源」**不可能再静默**：每条 MUST 在册（`JOB_SURFACES`），
+在册项 MUST **恰有其一** —— `kind`（真能被轮询）或具名的 `blockedBy`（今天不铸 id 的理由）。
+判据形状不是新造的：契约早为共享 id 空间留了 `JobView.kind` 判别键，判据只是让它两个方向都成立。
+
+**两类 `blockedBy` MUST 分开**：13 条 `no_handler`（零分支 ⇒ 兜底 404）与 2 条
+`refuses_without_installer`（有分支 `:628/630` → `upgrade_refusal`，`:1121` 写着
+`no job id is minted`）。混同会让「做不到」与「没有这条」在客户端不可区分（ADR 0113 同一条纪律）。
+每个取值带一个**源码锚点**。`kind` 的锚点取 `"kind": "upgrade"` 而不是裸的 `"upgrade"`——
+同一个文件里 `upgrade_refusal` 的类别名也是它，只锚那个词会让「reader 不再报这个 kind」永远不红；
+用例里有一条断言专门钉住这个选择（裸词 >1 次、带判别键恰好 1 次）。
+
+**判据分两层**：`jobSurfaceErrors`（契约侧，吃解析后的文档对象）与 `jobSourceErrors`
+（仓库侧，吃 `.git/index` 路径集 + 源码文本，`readSource` 由调用方注入、模块不做 I/O）。
+合成样本 MUST NOT 从真实文档克隆：实测 14 条共用 `&jobResponses` 别名 ⇒ YAML 展开后是**同一个对象**，
+而 `structuredClone` **保留共享引用** ⇒ 改一处等于改 14 处。三条变异（删一条登记 / 把
+`upgrades/execute` 标成 `kind` / 清空 `JobView.kind.enum`）各自产生**恰好一条**具名错误。
+
+见 [W144 报告](reports/2026-10-18-w144-job-surface-closed-world.md)、`docs/adr/0118-job-surface-closed-world.md`、
+`openspec/changes/archive/2026-10-18-w144-job-surface-closed-world/`。
+
+**诚实边界**：`blockedBy` 的取值本身仍是声明，锚点只证明「那句源码还在」，不证明「这条路由真的
+没有分支」；`JobAccepted` 仍然零生产者（被**登记**，不是被消除）；今天没有一条在册项带 `kind`，
+所以「`kind` ⇔ 已实现」的**正面路径尚无真实样本**，第一次真正接上作业状态时才会第一次生效；
+`remote-knowledge.yaml` 的作业面显式登记为 `{}`（「看过，没有」与「忘了」是两件事）。
+
+**门控**：`GATE_EXIT=0`，102 条 `test result` / **1146 通过 / 0 失败**（含 18 Doc-tests；本轮未加
+Rust 用例，与 W143 持平），Node **371** 通过（+4），前端 7 步全过。首跑红两次都不是代码缺陷：
+一次是我自己的探针被 `readdir` 扫到又被删掉（TOCTOU，`ENOENT`），一次是既有的间歇 `LNK1104`
+（串行预构建一次全绿后复跑即过）。**未改代码、未放宽判据。**
+`openspec validate --all --strict`：**44/0**（W143 是 43）。
+
+**CI**：_（回填）_
+
+
 
 
 ## 任务依赖与状态
