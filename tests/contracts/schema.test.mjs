@@ -44,7 +44,7 @@ import {
   JOB_ACCEPTED_SCHEMA,
   JOB_KINDS,
   JOB_BLOCKERS,
-  JOB_SURFACES,
+  JOB_REGISTRY,
   acceptingOperations,
   jobSurfaceErrors,
   jobSourceErrors,
@@ -497,6 +497,13 @@ async function parsedDocuments() {
   return out;
 }
 
+/// 登记表**从盘上读**，不抄进这个文件：执行侧（`crates/nai-control-api/src/tests.rs`）
+/// 读的是同一份字节，两侧各写一份就会「双绿而分叉」——那正是 W145 要关掉的缺口。
+/// 每次用到都现读，于是「盘上改了、判据没看见」不可能发生。
+function registeredJobSurface() {
+  return JSON.parse(readFileSync(JOB_REGISTRY.path, 'utf8'));
+}
+
 /// 合成文档：`paths` 里每条都是「202 + JobAccepted」，`body` 控制 202 的响应体形态。
 ///
 /// MUST NOT 从真实文档 `structuredClone` 之后改：`control.yaml` 的 14 条共用
@@ -536,13 +543,14 @@ function surfaceRegistry(entries) {
 
 test('every accepting operation is registered and every 202 body is the same JobAccepted', async () => {
   const documents = await parsedDocuments();
+  const registry = registeredJobSurface();
   const accepting = acceptingOperations(documents[CONTROL]);
   // 非空洞：真实文档里真的有一族作业面，否则下面每一条断言都空转。
   assert.equal(accepting.length, 15, `expected the shipped job surface, saw ${accepting.length}`);
   // 计数之外还要**清单**：在册键集与实测键集逐个相等（计数相等可以掩盖一次替换）。
   assert.deepEqual(
     accepting.map(row => row.key).sort(),
-    Object.keys(JOB_SURFACES[CONTROL]).sort(),
+    Object.keys(registry[CONTROL]).sort(),
     'the registered job surface must be exactly the operations that answer 202',
   );
   assert.deepEqual(
@@ -557,9 +565,13 @@ test('every accepting operation is registered and every 202 body is the same Job
       `${row.key} must answer ${ACCEPTED_STATUS_KEY} with ${JOB_ACCEPTED_SCHEMA}`,
     );
   }
-  assert.deepEqual(jobSurfaceErrors(documents), [], 'the shipped job surface must already be closed');
-  // 非空洞：缺入参 ⇒ 具名失败，MUST NOT 被当成「没有文档」。
-  assert.ok(jobSurfaceErrors(undefined).some(error => error.includes('requires the parsed OpenAPI documents')));
+  assert.deepEqual(jobSurfaceErrors(documents, registry), [], 'the shipped job surface must already be closed');
+  // 非空洞：缺入参 ⇒ 具名失败，MUST NOT 被当成「没有文档」或「登记表是空的」。
+  assert.ok(jobSurfaceErrors(undefined, registry).some(error => error.includes('requires the parsed OpenAPI documents')));
+  assert.ok(
+    jobSurfaceErrors(documents).some(error => error.includes('requires the registry (tests/job-surface.json)')),
+    'an absent registry must be named — folding it into "nothing registered" would accept everything',
+  );
 });
 
 test('a job surface entry answers exactly one of "which journal" and "why none"', () => {
@@ -681,7 +693,12 @@ test('the kind set and JobView.kind are the same set, and accepted is not a prog
     'an empty job surface must not read as "nothing to check"',
   );
   // 文档键集与 `OPENAPI_DOCUMENTS` 双向相等：少一份 / 多一份各报一次。
-  assert.ok(jobSurfaceErrors({ [CONTROL]: jobDocument() }).some(error => error.includes(`${REMOTE} is a declared OpenAPI description`)));
+  assert.ok(
+    jobSurfaceErrors(
+      { [CONTROL]: jobDocument() },
+      surfaceRegistry({ 'post /probe': { blockedBy: 'no_handler' } }),
+    ).some(error => error.includes(`${REMOTE} is a declared OpenAPI description`)),
+  );
   assert.ok(
     jobSurfaceErrors(surfaceDocuments(jobDocument()), {
       ...surfaceRegistry({ 'post /probe': { blockedBy: 'no_handler' } }),
@@ -690,7 +707,7 @@ test('the kind set and JobView.kind are the same set, and accepted is not a prog
   );
   assert.ok(
     jobSurfaceErrors(surfaceDocuments(jobDocument()), { [CONTROL]: { 'post /probe': { blockedBy: 'no_handler' } } }).some(
-      error => error.includes(`JOB_SURFACES does not declare ${REMOTE}`),
+      error => error.includes(`the job-surface registry does not declare ${REMOTE}`),
     ),
   );
 });
@@ -788,6 +805,68 @@ test('every declared state source and every "why not" points at text the reposit
     jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, repository.paths, undefined).some(error =>
       error.includes('requires a reader'),
     ),
+  );
+});
+
+/// **登记表与它的执行侧消费者 MUST 是同一份字节**（W145 / ADR 0119）。
+///
+/// W144 留下的缺口是「`blockedBy` 只被文本锚点证明」：锚点证明那句话还在源码里，
+/// 不证明这条路由真的没有分支。补上那一半（Rust 侧逐条探针）之后立刻多出一个**新的**
+/// 失败模式——两侧各自全绿、判的却是两份数据：契约侧读 `tests/job-surface.json`，
+/// 执行侧 `include_str!` 了别的文件。它比任何一处锚点断裂都安静，因为两边都没有红。
+///
+/// 所以这里钉的不是「有个 `include_str!`」（那只能证明它读了**某个**文件），是**路径逐字相同**。
+test('the job-surface registry and its execution-side consumer are the same bytes', async () => {
+  const repository = await readTrackedPaths();
+  assert.ok(repository.ok, repository.ok ? '' : describeFailure(repository));
+  const readSource = file => {
+    try {
+      return readFileSync(file, 'utf8');
+    } catch {
+      return null;
+    }
+  };
+  // 非空洞：两个对象都真的在跟踪树里。**不用**「判据返回空集」当非空洞——那对空输入恒真。
+  assert.ok(repository.paths.has(JOB_REGISTRY.path), `${JOB_REGISTRY.path} must be tracked`);
+  assert.ok(repository.paths.has(JOB_REGISTRY.consumer.file), `${JOB_REGISTRY.consumer.file} must be tracked`);
+  assert.deepEqual(
+    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, repository.paths, readSource),
+    [],
+    'the shipped registry and its consumer must already be the same bytes',
+  );
+
+  // 注入一：登记表不在跟踪集里 ⇒ 干净 checkout 上两侧读的是不同的树。
+  const withoutRegistry = new Set([...repository.paths].filter(entry => entry !== JOB_REGISTRY.path));
+  assert.ok(
+    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, withoutRegistry, readSource).some(
+      error => error.includes('is not tracked') && error.includes(JOB_REGISTRY.path),
+    ),
+    'an untracked registry must be named — a clean checkout would not have it',
+  );
+  // 注入二：执行侧改指另一份文件 ⇒ 两侧可以各绿各的。改的是**被嵌入的路径**而不是「有没有 include_str!」。
+  const otherRegistry = file =>
+    file === JOB_REGISTRY.consumer.file
+      ? JOB_REGISTRY.consumer.text.replace(JOB_REGISTRY.path, 'tests/other-surface.json')
+      : readSource(file);
+  assert.ok(
+    otherRegistry(JOB_REGISTRY.consumer.file) !== readSource(JOB_REGISTRY.consumer.file),
+    'the injection must actually change the embedded path',
+  );
+  assert.ok(
+    jobSourceErrors(JOB_KINDS, JOB_BLOCKERS, repository.paths, otherRegistry).some(
+      error => error.includes(JOB_REGISTRY.consumer.file) && error.includes('does not embed'),
+    ),
+    'a consumer pointed at another file must be named — both sides would stay green on different data',
+  );
+  // 注入三：执行侧文件未跟踪 ⇒ 登记表在跟踪树里没有读者。
+  assert.ok(
+    jobSourceErrors(
+      JOB_KINDS,
+      JOB_BLOCKERS,
+      new Set([...repository.paths].filter(entry => entry !== JOB_REGISTRY.consumer.file)),
+      readSource,
+    ).some(error => error.includes('has no reader in the tracked tree')),
+    'a registry whose consumer is untracked must be named',
   );
 });
 

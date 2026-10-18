@@ -133,3 +133,14 @@ refuses_without_installer:   // 有专用分支，缺安装器，503 CapabilityN
    凡要判「是不是同一个 schema」，MUST 用 `parse`。
 4. **`remote-knowledge.yaml` 的作业面是空数组。** 本轮显式登记为 `{}` 而不是省略：
    「我们看过，没有」与「我们忘了」是两件事，后者会让「给它加一条 202」变成零信号的编辑。
+
+## 勘误（W145，2026-10-18）
+
+1. **登记表的落点变了。** 本文与 W144 报告里出现的 `JOB_SURFACES` 是**当时**的符号：它是
+   `scripts/contracts/job-surface.mjs` 里的一个字面量。W145 把这 15 条分类挪进了
+   `tests/job-surface.json`，让契约侧判据与执行侧探针读**同一份字节**（ADR 0119 决定 2）。
+   代码里已无 `JOB_SURFACES` 这个符号；本文作为历史记录不就地改。
+2. **上列残余第 1 条已关掉。** 「`blockedBy` 的取值本身仍是声明」这一条在 W145 被补上了一半：
+   `crates/nai-control-api/src/tests.rs` 现在逐条把 15 个 `(method, path)` 打进真实路由器，
+   判「分类 ⇔ 响应」，且对没有行为期望的类别（今天是 `kind`）硬失败。
+   仍未被证的那一半见 ADR 0119 的「具名残余」。

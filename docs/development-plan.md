@@ -2766,6 +2766,64 @@ Rust 用例，与 W143 持平），Node **371** 通过（+4），前端 7 步全
 两平台均 `completed / success`（各 20 步，API 口径；`skipped` 只有 ubuntu 的第 11 步与 windows 的
 第 8/11/14 步，与 W130 起的形状逐条一致）。
 
+### W145（2026-10-18）：`blockedBy` 的取值由路由器自己作证
+
+**起点**是 W144 报告 §五第 1 条（经 §八第 2 条转交）：「`blockedBy` 的取值本身仍是声明。
+锚点只证明『那句源码还在』，不证明『这条路由真的没有分支』。」本轮先把它**量**清楚：
+
+| 事实 | 实测 |
+| --- | --- |
+| 在册项 | 15（13 × `no_handler`、2 × `refuses_without_installer`） |
+| 路径字面量出现在 `crates/nai-control-api/src/tests.rs` 的在册项 | **1**，且那条用例的意图是「拒绝」，不是「分类」 |
+| 路由器权限条件 / 路由形状 | 10 / 13（其中只有 2 条是作业面在册项） |
+
+⇒ **13 条 `no_handler` 从未被任何执行面判据碰过**，而这 13 条恰恰是「这条路由不存在」的全体。
+
+**收口是两件事**：① 15 条分类挪进 `tests/job-surface.json`，契约侧（`JSON.parse`）与执行侧
+（`include_str!` + `serde_json`）读**同一份字节**；② `crates/nai-control-api/src/tests.rs` 新增
+`the_router_treats_every_registered_job_surface_as_declared`，逐条把 `(method, path)` 打进**真实
+路由器**，判「分类 ⇔ 响应」。
+
+**为什么不解析源码**（ADR 0119 决定 1）：`path == "..."` 只是条件文本，它是否被执行正是「有没有
+分支」这个问题本身；链子有权限链与派发链**两处**，靠 `starts_with`/`ends_with` 拼路径（
+`upgrades/{id}/rollback` 没有完整字面量），拼接规则本身是一条没人验证过的判定；而行为探针红时
+直接给出「期望 404 得到 503」和响应体。一条真实请求就是「接线真的发生了」的证据。
+
+**三类形状**：`no_handler` ⇒ 404 `CAPABILITY_ABSENT` 且无 `job_id`；`refuses_without_installer`
+⇒ 503 `CAPABILITY_NOT_READY` + `category=upgrade` 且无 `job_id`；**未定期望的类别 ⇒ 硬失败**
+（今天打在 `kind` 上）。第三条是有意的：`kind` 的正面样本数 = 0，写一条「不得答 404」的宽松期望
+只会是一条永远绿的空期望。配套：`{id}` 之外的路径参数具名失败（否则探针会去打一条客户端永远
+不会发的路径）；权限给足（分类说的是**能力**那一层，MUST NOT 先被 403 挡在门口）。
+
+**单一枢纽需要一条判据**：两侧各读一份数据是本轮新引入的坏法。`JOB_REGISTRY` 因此记下执行侧
+**逐字嵌入的那一句**（`include_str!("../../../tests/job-surface.json")`），`jobSourceErrors` 多三条：
+登记表 MUST 被跟踪、消费者 MUST 被跟踪、消费者 MUST 逐字包含那句锚点。配套：
+`jobSurfaceErrors(documents, surfaces)` 的 `surfaces` **去掉默认值**——有默认值时「没给登记表」会
+静默变成「用仓库里那份」。
+
+**注入六次，全部逐字节还原**：I1 把 `upgrades/execute` 翻成 `no_handler`（期望 404 得 503，红）；
+I2 把 `knowledge/import` 翻成 `refuses_without_installer`（期望 503 得 404，红）；I3 未定期望的类别
+`deferred`（硬失败）；I4 把真有分支的 `/upgrades/plan` 登记成 `no_handler`（期望 404 得 400，
+**证明分支能被看见**）；J1 执行侧改指 `job-surface-alt.json`；J2 登记表路径改指未跟踪文件。
+
+见 [W145 报告](reports/2026-10-18-w145-blockedby-behavioural-proof.md)、
+`docs/adr/0119-blockedby-proved-by-router.md`、
+`openspec/changes/archive/2026-10-18-w145-blockedby-behavioural-proof/`。
+
+**诚实边界**：`kind` 那一半仍无真实样本（探针对它硬失败，不是通过）；探针证明的是「今天的路由器
+这样处理」，将来注入安装器后 `upgrades/execute` 若开始铸 id 会先红（那是设计意图：该条目应改成
+`kind`）；`no_handler` 的兜底**措辞**仍由 JS 侧锚点单独守（执行侧只钉 `CAPABILITY_ABSENT`）；
+`JobAccepted` 仍然零生产者。符号迁移的账：`JOB_SURFACES` 在 W144 的 ADR/报告/归档变更里继续存在
+（历史记录不就地改），活规格两处已 1:1 订正，代码里已无该符号。
+
+**门控**：`cargo xtask check --profile full` → GATE_EXIT=0：clippy 无告警；Rust **1147 passed / 0 failed**
+（102 条 `test result:` 行）；Node **372 passed / 0 failed**（15 组，其中 `schema.test.mjs` 35/35）；
+`validate --all --strict` **43 / 0**（归档后）、`--archived` **142 / 0**。首次 EXIT=1 是链接期
+`LNK1104`，同参数重跑即绿（目标文件当时不存在、无残留进程占用、两轮之间零字节改动）⇒ 判为环境瞬态，
+未改代码。
+
+**CI**：_（回填）_
+
 
 
 

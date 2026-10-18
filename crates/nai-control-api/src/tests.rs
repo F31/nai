@@ -1792,3 +1792,100 @@ async fn a_locked_journal_is_a_conflict_not_a_missing_job() {
     assert_eq!(status, 409, "{body}");
     assert_eq!(body["error"]["code"], "CONFLICT");
 }
+
+// ── 作业面分类由路由器自己作证（W145 / ADR 0119）────────────────────────────────
+
+/// 登记表：与 JS 侧判据**同一份字节**。
+///
+/// `jobSourceErrors` 逐字钉住下面这个 `include_str!` 的路径——指向别的文件就红，
+/// 因为「两侧各自全绿、判的却是两份数据」比任何一处锚点断裂都安静。
+const REGISTERED_JOB_SURFACES: &str = include_str!("../../../tests/job-surface.json");
+
+/// **分类 MUST 由路由器自己作证**（W145）。
+///
+/// 起点是 W144 的诚实边界第 1 条：`JOB_BLOCKERS` 的锚点只证明「那句话还在源码里」，
+/// 不证明「这条路由真的没有分支」。实测那一轮之后，15 条在册项里只有 **1 条**的路径
+/// 出现在本文件里（还不是作为分类证据，是被那条拒绝用例顺手用到）——13 条 `no_handler`
+/// 从来没有被任何执行面判据碰过。
+///
+/// 本用例把登记表逐条打进真实路由器：分类值不再是一段声明，而是**一条可观测的响应**。
+/// - `no_handler` ⇒ 兜底 404 `CAPABILITY_ABSENT`（**有分支就会变红**）；
+/// - `refuses_without_installer` ⇒ 503 `CAPABILITY_NOT_READY` 且不铸 job id（**铸了就会变红**）；
+/// - 登记表里出现本用例没有期望的类别 ⇒ 具名失败（闭世界，MUST NOT 静默跳过）。
+///
+/// 钉的是「这是哪一类拒绝」，**不是文案**：兜底 404 的措辞由 JS 侧锚点管，
+/// 拒绝的措辞由 `execute_and_rollback_refuse_by_name_and_mint_no_job_id` 管
+/// ——同一件事不在第三处定义。
+#[tokio::test]
+async fn the_router_treats_every_registered_job_surface_as_declared() {
+    let registry: Value = serde_json::from_str(REGISTERED_JOB_SURFACES)
+        .expect("tests/job-surface.json must parse — the JS judge reads the same bytes");
+    // 权限给足：分类说的是**能力**这一层，请求 MUST NOT 先被 403 挡在门口。
+    let h = harness(&["runtime.upgrade"], Duration::from_secs(10)).await;
+    let mut probed = 0usize;
+
+    for (document, entries) in registry
+        .as_object()
+        .expect("the registry must be an object")
+    {
+        let entries = entries
+            .as_object()
+            .unwrap_or_else(|| panic!("{document}: the job surface must be an object"));
+        for (key, entry) in entries {
+            let blocked = entry["blockedBy"]
+                .as_str()
+                .unwrap_or_else(|| panic!("{key}: a registered surface must name its blockedBy"));
+            let (method, path) = key
+                .split_once(' ')
+                .unwrap_or_else(|| panic!("{key}: a registry key must be \"<method> <path>\""));
+            // `{id}` 是本探针唯一认识的路径参数；别的参数名就具名失败，
+            // 而不是悄悄打一条客户端永远不会发的路径。
+            let route = format!("/api/v1{}", path.replace("{id}", "probe-id"));
+            assert!(
+                !route.contains('{'),
+                "{key}: this probe only substitutes {{id}}, so {route} would test a path no client ever sends"
+            );
+            let method = reqwest::Method::from_bytes(method.to_ascii_uppercase().as_bytes())
+                .unwrap_or_else(|_| panic!("{key}: {method} is not an HTTP method"));
+            let response = h
+                .client
+                .request(method, format!("{}{route}", h.url))
+                .bearer_auth(TOKEN)
+                .json(&json!({}))
+                .send()
+                .await
+                .unwrap();
+            let status = response.status().as_u16();
+            let body: Value = response.json().await.unwrap();
+
+            match blocked {
+                "no_handler" => {
+                    assert_eq!(status, 404, "{key}: {body}");
+                    // 404 有两种：一种是「所命名的对象不存在」，一种是「这条根本不在」。
+                    // 分类说的是后者；答成前者会让运维去查一个不该存在的对象。
+                    assert_eq!(
+                        body["error"]["code"], "CAPABILITY_ABSENT",
+                        "{key}: the fallback is what makes this class true: {body}"
+                    );
+                    assert!(body.get("job_id").is_none(), "{key}: {body}");
+                }
+                "refuses_without_installer" => {
+                    assert_eq!(status, 503, "{key}: {body}");
+                    assert_eq!(
+                        body["error"]["code"], "CAPABILITY_NOT_READY",
+                        "{key}: {body}"
+                    );
+                    assert_eq!(body["error"]["category"], "upgrade", "{key}: {body}");
+                    assert!(body.get("job_id").is_none(), "{key}: {body}");
+                }
+                other => panic!(
+                    "{key}: JOB_BLOCKERS names {other}, and this probe has no behavioural expectation for it — a new class MUST arrive with the response shape it promises, otherwise the classification is only declared, never judged"
+                ),
+            }
+            probed += 1;
+        }
+    }
+
+    // 非空洞：空登记表会让上面整段一次都不执行，于是「全绿」什么都不说明。
+    assert!(probed > 0, "the registry declared no job surface at all");
+}

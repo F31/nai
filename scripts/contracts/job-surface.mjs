@@ -11,7 +11,7 @@
 /// 一次性实现 15 套状态机——那是 15 次数据库迁移，而且每条路由的状态形状至今没有人设计过。
 /// 本轮收的是**声明面**：
 ///
-/// 1. 每一条 `202 + JobAccepted` MUST 在册（`JOB_SURFACES`），MUST NOT 有一条能悄悄多出来；
+/// 1. 每一条 `202 + JobAccepted` MUST 在册（`tests/job-surface.json`），MUST NOT 有一条能悄悄多出来；
 /// 2. 在册项 MUST 二者**恰有其一**——`kind`（真能被 `/jobs/{id}` 轮询）或具名的
 ///    `blockedBy`（今天不铸 `job_id` 的理由）。
 ///
@@ -99,37 +99,22 @@ export const JOB_KINDS = {
   },
 };
 
-/// **逐文档的作业面登记**（单一来源，逐字写死）。
+/// **登记表的落点**——两侧共读的**单一枢纽**。
 ///
-/// 键 = 仓库相对路径（与 `OPENAPI_DOCUMENTS` 同域），值 = `{"<method> <path>": 条目}`。
-/// 第二份文档显式登记为 `{}`：**「我们看过，没有」与「我们忘了」是两件事**——
-/// 后者会让「给它加一条 202」变成零信号的编辑。
+/// 15 条分类不写在本模块里，而是放在 `tests/job-surface.json`。理由是**两侧必须读同一份字节**：
+/// - 契约侧（本模块 + `schema.test.mjs`）判「登记集 ⇔ 契约的 202 集」；
+/// - 执行侧（`crates/nai-control-api/src/tests.rs`）读同一份文件，把每条 `(method, path)` 打进
+///   真实路由器，判「分类 ⇔ 路由器**怎么处理**它」。
 ///
-/// 今天的形态是 15 条全部 `blockedBy`，没有一条 `kind`：
-/// - 前 13 条是 `no_handler`（路由表里零分支，全部落 404 兜底）；
-/// - `upgrades/execute` 与 `upgrades/{id}/rollback` 是 `refuses_without_installer`
-///   （有分支，缺安装器，明确不铸 id）。
-///
-/// 这三类计数 MUST NOT 写进活文档（W137 的「易漂移的计数不进活文档」）——它们由本表派生。
-export const JOB_SURFACES = {
-  'schemas/openapi/control.yaml': {
-    'post /knowledge/import': { blockedBy: 'no_handler' },
-    'post /knowledge/snapshots/{id}/publish': { blockedBy: 'no_handler' },
-    'post /knowledge/evaluate': { blockedBy: 'no_handler' },
-    'delete /knowledge/documents/{id}': { blockedBy: 'no_handler' },
-    'put /providers/{id}': { blockedBy: 'no_handler' },
-    'post /providers/{id}/test': { blockedBy: 'no_handler' },
-    'post /avatars/{id}/validate': { blockedBy: 'no_handler' },
-    'put /scenes/{id}': { blockedBy: 'no_handler' },
-    'post /scenes/{id}/validate': { blockedBy: 'no_handler' },
-    'post /devices/pair': { blockedBy: 'no_handler' },
-    'post /devices/{id}/revoke': { blockedBy: 'no_handler' },
-    'post /upgrades/execute': { blockedBy: 'refuses_without_installer' },
-    'post /upgrades/{id}/rollback': { blockedBy: 'refuses_without_installer' },
-    'post /backups': { blockedBy: 'no_handler' },
-    'post /restore/preflight': { blockedBy: 'no_handler' },
+/// 缺口原来就在这里：两侧各自全绿而数据分叉，等于「声明被相信、行为没人问」（W145 的起点）。
+/// ⇒ `consumer.text` 逐字钉住执行侧读的是哪一份文件——指向别处就等于两侧在判不同的东西。
+/// 本模块**不读盘**（只判定），由调用方读进来传给它，判定本身才能被合成输入驱动。
+export const JOB_REGISTRY = {
+  path: 'tests/job-surface.json',
+  consumer: {
+    file: 'crates/nai-control-api/src/tests.rs',
+    text: 'include_str!("../../../tests/job-surface.json")',
   },
-  'schemas/openapi/remote-knowledge.yaml': {},
 };
 
 /// 文档里**接受为作业**的操作，`{key, accepted}` 列表。
@@ -172,7 +157,10 @@ function referencedSchema(document, ref) {
 /// 少一份 ⇒ 那份文档的 202 无人看；多一份 ⇒ 一份没被声明的文档在参与判定。
 /// 缺参即具名失败（`null`／非对象），MUST NOT 退化成「没有文档」——
 /// 把「没给输入」当成「输入是空集」会让下面每一条规则同时空转。
-export function jobSurfaceErrors(documents, surfaces = JOB_SURFACES) {
+///
+/// `surfaces` 是登记表（`tests/job-surface.json` 解析后的对象），**没有默认值**：
+/// 兜一个默认值就等于「注入一份空表」也会被判成「登记表被清空」而不是「没给」。
+export function jobSurfaceErrors(documents, surfaces) {
   const errors = [];
 
   if (!documents || typeof documents !== 'object') {
@@ -183,7 +171,7 @@ export function jobSurfaceErrors(documents, surfaces = JOB_SURFACES) {
   }
   if (!surfaces || typeof surfaces !== 'object') {
     errors.push(
-      'the job-surface closure requires the registry (JOB_SURFACES) and it was not provided',
+      'the job-surface closure requires the registry (tests/job-surface.json) and it was not provided — an absent registry and an empty one are different answers',
     );
     return errors;
   }
@@ -207,14 +195,14 @@ export function jobSurfaceErrors(documents, surfaces = JOB_SURFACES) {
   for (const docPath of declaredDocs) {
     if (!Object.hasOwn(surfaces, docPath)) {
       errors.push(
-        `JOB_SURFACES does not declare ${docPath} — an undeclared document starts from an empty surface, and an empty surface accepts nothing, so the closure would read as "nothing to check"`,
+        `the job-surface registry does not declare ${docPath} — an undeclared document starts from an empty surface, and an empty surface accepts nothing, so the closure would read as "nothing to check"`,
       );
     }
   }
   for (const docPath of Object.keys(surfaces)) {
     if (!Object.hasOwn(OPENAPI_DOCUMENTS, docPath)) {
       errors.push(
-        `JOB_SURFACES declares ${docPath}, which OPENAPI_DOCUMENTS does not know — a registry entry with no document`,
+        `the job-surface registry declares ${docPath}, which OPENAPI_DOCUMENTS does not know — a registry entry with no document`,
       );
     }
   }
@@ -242,7 +230,7 @@ export function jobSurfaceErrors(documents, surfaces = JOB_SURFACES) {
 
     const registry = surfaces[docPath];
     if (!registry || typeof registry !== 'object' || Array.isArray(registry)) {
-      errors.push(`${docPath}: JOB_SURFACES entry is not an object, so its surface cannot be read`);
+      errors.push(`${docPath}: the job-surface registry entry is not an object, so its surface cannot be read`);
       continue;
     }
     if (Object.keys(registry).length > 0) anySurface = true;
@@ -269,7 +257,7 @@ export function jobSurfaceErrors(documents, surfaces = JOB_SURFACES) {
       // 规则 1 的一半：每一条 202 MUST 在册。
       if (!Object.hasOwn(registry, row.key)) {
         errors.push(
-          `${docPath}: ${row.key} answers ${ACCEPTED_STATUS_KEY} with a job id, but JOB_SURFACES does not declare it — a route that mints a job id nobody registered is exactly the silence this closure exists to remove`,
+          `${docPath}: ${row.key} answers ${ACCEPTED_STATUS_KEY} with a job id, but the job-surface registry does not declare it — a route that mints a job id nobody registered is exactly the silence this closure exists to remove`,
         );
       }
     }
@@ -278,12 +266,12 @@ export function jobSurfaceErrors(documents, surfaces = JOB_SURFACES) {
       // 规则 1 的另一半：在册项 MUST 真的是一条 202 操作。
       if (!acceptingKeys.has(key)) {
         errors.push(
-          `${docPath}: JOB_SURFACES declares ${key}, but it does not answer ${ACCEPTED_STATUS_KEY} — a registry entry with no accepting operation`,
+          `${docPath}: the job-surface registry declares ${key}, but it does not answer ${ACCEPTED_STATUS_KEY} — a registry entry with no accepting operation`,
         );
         continue;
       }
       if (!surface || typeof surface !== 'object' || Array.isArray(surface)) {
-        errors.push(`${docPath}: JOB_SURFACES entry for ${key} is not an object`);
+        errors.push(`${docPath}: the job-surface registry entry for ${key} is not an object`);
         continue;
       }
 
@@ -438,7 +426,7 @@ function anchorErrors(errors, label, anchor, tracked, readSource) {
 }
 
 /// **仓库侧主判据**：每个 `kind` 的 journal 与 reader、每个 `blockedBy` 的锚点，
-/// MUST 都还在仓库里被跟踪着。
+/// MUST 都还在仓库里被跟踪着；登记表与它的执行侧消费者 MUST 是**同一份字节**。
 ///
 /// 四个入参都是必需的：
 /// - `kinds` / `blockers` 是待验的声明（默认值在调用方给，MUST NOT 在这里兜默认，
@@ -502,6 +490,35 @@ export function jobSourceErrors(kinds, blockers, tracked, readSource) {
       errors.push(`JOB_BLOCKERS[${blocker}] has no why — an unnamed reason is indistinguishable from an unexamined one`);
     }
     anchorErrors(errors, `JOB_BLOCKERS[${blocker}].anchor`, entry.anchor, tracked, readSource);
+  }
+
+  // **单一枢纽**：执行侧 MUST 读到同一份字节（W145）。
+  //
+  // 这一条比任何一处锚点断裂都安静：两侧各自全绿、判的却是两份数据。它也不能靠
+  // 「Rust 里有个 include_str!」来满足——那只能证明它读**某个**文件；路径必须逐字对上。
+  if (!tracked.has(JOB_REGISTRY.path)) {
+    errors.push(
+      `the job-surface registry ${JOB_REGISTRY.path} is not tracked — a clean checkout would not have it, so the execution-side probe and this judge would be reading different trees`,
+    );
+  }
+  const consumer = JOB_REGISTRY.consumer;
+  if (!tracked.has(consumer.file)) {
+    errors.push(
+      `the execution-side consumer ${consumer.file} is not tracked — the registry has no reader in the tracked tree, so nothing proves the classification against the router`,
+    );
+  } else {
+    const consumerSource = readSource(consumer.file);
+    if (typeof consumerSource !== 'string') {
+      errors.push(
+        `${consumer.file} could not be read — "could not read" and "does not embed the registry" are different answers`,
+      );
+    } else if (!consumerSource.includes(consumer.text)) {
+      errors.push(
+        `${consumer.file} does not embed ${JSON.stringify(
+          consumer.text,
+        )} — the execution-side probe is reading some other file, and both sides could stay green while judging different data`,
+      );
+    }
   }
 
   return errors;

@@ -1,0 +1,20 @@
+{
+  "schemas/openapi/control.yaml": {
+    "post /knowledge/import": { "blockedBy": "no_handler" },
+    "post /knowledge/snapshots/{id}/publish": { "blockedBy": "no_handler" },
+    "post /knowledge/evaluate": { "blockedBy": "no_handler" },
+    "delete /knowledge/documents/{id}": { "blockedBy": "no_handler" },
+    "put /providers/{id}": { "blockedBy": "no_handler" },
+    "post /providers/{id}/test": { "blockedBy": "no_handler" },
+    "post /avatars/{id}/validate": { "blockedBy": "no_handler" },
+    "put /scenes/{id}": { "blockedBy": "no_handler" },
+    "post /scenes/{id}/validate": { "blockedBy": "no_handler" },
+    "post /devices/pair": { "blockedBy": "no_handler" },
+    "post /devices/{id}/revoke": { "blockedBy": "no_handler" },
+    "post /upgrades/execute": { "blockedBy": "refuses_without_installer" },
+    "post /upgrades/{id}/rollback": { "blockedBy": "refuses_without_installer" },
+    "post /backups": { "blockedBy": "no_handler" },
+    "post /restore/preflight": { "blockedBy": "no_handler" }
+  },
+  "schemas/openapi/remote-knowledge.yaml": {}
+}
