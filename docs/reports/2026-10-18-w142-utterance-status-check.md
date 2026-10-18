@@ -135,7 +135,24 @@ Node 样本 + 「上一版 MUST 被拒」的数字（`tests/contracts/schema.tes
 
 ## 七、CI 观测
 
-_（回填）_
+推送 **`b3ccab4`**，运行 **`39098953192`**，回读 `head_sha` =
+`b3ccab4795c1b0ae4273a7a679db8cabcd255612` 与推送 SHA **完整 40 位一致**
+（三件齐：`cb=` 纳秒唯一参数 + `Cache-Control: no-cache` + 回读 `head_sha`）。
+
+| 平台 | 结论 | 步数（API 口径） |
+| --- | --- | --- |
+| `foundation (ubuntu-24.04)` | `completed / success` | 20 |
+| `foundation (windows-latest)` | `completed / success` | 20 |
+
+逐平台看完**整条步骤序列**。非 success 项共 4 条（去重后 3 个步名），全部是 `skipped` 且逐条核到
+`if` 条件：
+
+- 步 8「Install Linux C++ protobuf runtime」（`foundation.yml:42` `if: runner.os == 'Linux'`）⇒ 仅 Windows 跳过；
+- 步 14「Full three-language contract suite (Linux C++ toolchain)」（`foundation.yml:109` 同条件）⇒ 仅 Windows 跳过；
+- 步 11「Publish the gate failure summary as annotations」（`foundation.yml:79` `if: failure()`）⇒ 两平台都跳过（门控没失败）。
+
+步号从 16 跳到 30 是 `if` 未触发的步**不生成记录**（既有口径，MUST NOT 拿 `jobs[].steps` 条数与
+workflow 的 `- name:` 步数相减）。
 
 ## 八、具名登记（本轮发现但不做）
 

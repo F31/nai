@@ -2660,6 +2660,18 @@ W141 那句「数据库层面**仍无** CHECK 约束」由本轮解除，ADR 011
 见 [W142 报告](reports/2026-10-18-w142-utterance-status-check.md)、`docs/adr/0116-utterance-status-check.md`、
 `openspec/changes/archive/2026-10-18-w142-utterance-status-check/`。
 
+**门控**：`GATE_EXIT=0`，102 条 `test result` / **1145 通过 / 0 失败**（85 目标 + 18 Doc-tests；
+Node 15 套 367 通过；前端 7 步全过）。中途 `LNK1104` 两次门控 + 五次预热各自折在**不同**目标上
+⇒ 判据取「逐目标能过」（单包 9+9 全过）⇒ 非代码缺陷。**两条新操作事实**：
+`cargo test --keep-going` 不存在（只有 `--no-fail-fast`，那只管跑测试），收敛构建要用
+`cargo build --workspace --tests --keep-going`（一次即绿）；且单包预构建**不能**替代 workspace
+预构建（同一测试目标在不同 feature 合并下哈希不同）。
+
+**CI**：推送 `b3ccab4`，运行 `39098953192`，回读 `head_sha` 与推送 SHA 完整 40 位一致，
+`foundation (ubuntu-24.04)` 与 `foundation (windows-latest)` 两平台均 `completed / success`
+（各 20 步，API 口径）；非 success 项全部是 `skipped`（门控通过时的失败摘要步、Windows 侧两个
+Linux-only 步）。
+
 
 ## 任务依赖与状态
 
