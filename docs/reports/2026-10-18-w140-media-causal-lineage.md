@@ -137,3 +137,9 @@ MUST NOT 拿 `jobs[].steps` 条数与 workflow 的 `- name:` 步数相减）。
 | N4 | `FacetKind::AudioBlock` / `SlotTicket` / `OutputAck` 定义了但无登记者 | 留给对应 facade 有生产装配者时再登记 |
 | N5 | 已取消的节点要等到下一次 `arm` 才被回收（不即时） | 有界（每代 ≤ `capacity` 条 + 每 utterance 一个子节点），不是泄漏 |
 | N6 | `target-check/` 是 10-15 遗留的 scratch 目录（12G 构建缓存 + 前轮门控脚本 `gate-w1xx.sh` / `msvc-env.sh`），未被 `.gitignore` 覆盖且未提交 | **本轮不清理**：删它要连带删掉前轮处理 LNK1104 的门控脚本，代价大于收益。改为用**显式 `git add -- <path>`** 规避「`-A` 把 12G 缓存吸进索引」这个已复现两次的陷阱。是否把它写进 `.gitignore` 留给后续轮次裁定 |
+
+## 勘误（2026-10-18，W150）
+
+「步号从 16 跳到 30 是 `if` 未触发的步**不生成记录**」这句**不成立**：被跳过的步**有**记录，
+`conclusion` 即 `skipped`（`8` 就落在 `1–16` 的正常编号上）。空号 `17–29` 的成因未确立。
+「不能相减」这条结论不变。见 `docs/reports/2026-10-18-w150-spec-merge.md` §七。

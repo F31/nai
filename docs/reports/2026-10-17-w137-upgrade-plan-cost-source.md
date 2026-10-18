@@ -211,3 +211,12 @@ CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=1 cargo xtask check --profile full
 `Check generated contracts without modifying consumers`（契约无漂移）与
 `Run pnpm exec openspec validate --archived --no-interactive`（归档后 tasks 全勾，本机同命令
 `135 passed / 0 failed`）。
+
+## 勘误（2026-10-18，W150）
+
+本节「『20 条 steps』不等于 workflow 的 `- name:` 步数」里，**「编号从 16 直接跳到 30 是 `if` 未触发的
+步骤不生成记录」这句不成立**。W150 实测两次（run `39137459252`、`39132041750`）：被跳过的那几步**有**
+记录，`conclusion` 就是 `skipped`；且 Linux-only 的 `Install Linux C++ protobuf runtime` 就落在 `1–16`
+区间的正常编号 `8` 上。空号 `17–29` 的成因**未确立**，此处不猜。仍成立的只有「`jobs[].steps` 与
+workflow 的 `- name:` 步**不能相减**、不能按数量断言」。见
+`docs/reports/2026-10-18-w150-spec-merge.md` §七。

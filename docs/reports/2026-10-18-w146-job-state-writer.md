@@ -206,3 +206,9 @@ W147 三组实测（本机，`CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=1`，数 `Com
 双向对账。§八第 5 条提的「让 clippy 与 test 共用同一份产物」这一方向**撤回**：实测表明不需要，
 而且它会同时撞上 `xtask-commands.mjs` 里 `superseded-by-workspace-run` 的逐字凭据——
 用改动判据形状的方式去修一个不存在的成因，是两处代价换零收益。
+
+## 勘误（2026-10-18，W150）
+
+「17–29 是 `if` 未触发、不生成记录的步」这句**不成立**：被跳过的步**有**记录，`conclusion` 即
+`skipped`。空号 `17–29` 的成因未确立。「条数不能与 workflow 的 `- name:` 相减」这条结论不变。见
+`docs/reports/2026-10-18-w150-spec-merge.md` §七。

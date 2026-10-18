@@ -170,3 +170,9 @@ W139 给的计数本轮**全部复核吻合**（MUST 现测，MUST NOT 照抄）
 | N4 | `status=6`（已批准）在判据里没有一条字面断言（只有 `12` / `14` 有） | 判别性断言的补缺，属独立一轮 |
 | N5 | `target-check/`（12G，10-15 遗留 scratch）仍未清理，未被 `.gitignore` 覆盖 | 沿用 W140 N6：改用显式 `git add -- <path>` 规避；是否写进 `.gitignore` 留给后续轮次裁定 |
 | N6 | `openspec archive` 提示「Why section should not exceed 1000 characters」（本轮 2171、W140 1953） | **不是本轮引入**：W140 同样超限。它是 archive 的软提示，**不影响**任何 validate（`--all --strict` 43/0、`--archived` 138/0 全过），CI 跑的也是 validate。按「MUST NOT 缩句过线」，把 Why 拆短会丢掉现测依据表；该表在报告 §一已有承载 ⇒ 处置留给后续轮次统一裁定 |
+
+## 勘误（2026-10-18，W150）
+
+「步号从 16 跳到 30 是 `if` 未触发的步**不生成记录**」这句**不成立**：被跳过的步**有**记录，
+`conclusion` 即 `skipped`（`8` 就落在 `1–16` 的正常编号上）。空号 `17–29` 的成因未确立。
+「不能相减」这条结论不变。见 `docs/reports/2026-10-18-w150-spec-merge.md` §七。

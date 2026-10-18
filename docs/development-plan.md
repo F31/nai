@@ -2823,7 +2823,7 @@ I2 把 `knowledge/import` 翻成 `refuses_without_installer`（期望 503 得 40
 未改代码。
 
 **CI**：提交 `b078105` → run **`39114038861`** `completed / success`，`head_sha` 完整 40 位一致；
-两平台各 20 条步骤记录（编号跳 16→30，是 `if` 未触发的步不生成记录），仅 `11`（失败摘要注解）
+两平台各 20 条步骤记录（编号跳 16→30；跳过的步**有**记录，空号成因未确立，见 W150 §七），仅 `11`（失败摘要注解）
 与 Linux-only 的 `8`/`14` 被跳过，与 W144 逐条相同。回填提交 `2e3d049` → run **`39114817313`**：
 ubuntu success / **windows failure**，红在第 10 步，两条 `composition.rs` 用例同时撞
 `DeadlineExceeded`（`BRINGUP_OPERATION = 30s` 到期）；该提交 Rust 零变更、同码目标提交 windows 绿、
@@ -3049,6 +3049,12 @@ W4 放宽段标记闭世界 ⇒ **只红 `#4`**；W5 `REMOVED` 走通用措辞 �
 
 **接线**：`engineering_checks` 多一步（纯静态，不需 protoc）+ `TEST_REGISTRATION_SITES` 增加
 `xtask-spec-merge`（`tier: portable`）+ 逐字清单「十八个」→「十九个」。
+
+**闭环**：本机门控 `EXIT=0`，Rust **1147-0**（102 个测试二进制）、Node **392-0（17 组）**，
+`Compiling` / `LNK1104` / `error[` 均 **0**；归档后 `--all --strict` **43/0**、`--archived` **147/0**。
+提交 `9a831d7` 的 CI run **39137459252** 两平台（`ubuntu-24.04` / `windows-latest`）**success**，
+`--archived` 那一步在两边都绿。一处订正：CI `steps` 里被 `if` 跳过的步**是有记录的**
+（`conclusion: skipped`），旧表述「未触发不生成记录」不成立；「不能按数量断言」这条结论不变。
 
 见 [W150 报告](reports/2026-10-18-w150-spec-merge.md)、
 [ADR 0124](adr/0124-spec-merge-reconciliation.md)、
