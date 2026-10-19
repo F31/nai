@@ -57,5 +57,5 @@
 - [x] ADR 0128（含具名残余：V3.2 清单不全、shortcut 引注在域外、无清单文档里笔误不可辨）
 - [x] 报告 + `development-plan.md` 段
 - [x] 门控 `cargo xtask check --profile full`
-- [ ] 两条 validate + 归档 + 一次 commit + push + CI 观测 + 回填
-- [ ] 删除 `target-check/` 下本轮临时文件
+- [x] 两条 validate + 归档 + 一次 commit + push + CI 观测 + 回填
+- [x] 删除 `target-check/` 下本轮临时文件
