@@ -3169,6 +3169,14 @@ ADR 0125 的残余 1/2 与 ADR 0126 的残余 2/3 是同一句话：「锚点与
 第三条跑完补进预期（成因同一）。**诚实的空白**：定义行与锚点今天仍是 0 条真实样本，这两条规则的
 全部证据是合成样本 + 注入。
 
+**门控**：`EXIT=0`，Rust **1147-0**（**102** 二进制，与上轮逐字同）、Node **408-0（18 组，+5 用例）**、
+`LNK1104` / `error[` **0 / 0**、`Compiling` **7**（上轮 0，成因未确立 ⇒ 只记现象）。归档后
+`--all --strict` **43/0**、`--archived` **150/0**。提交 `af1da15`（11 文件 / `+898 −54`）的 run
+**39183786232** 两平台 `success`（`head_sha` 回读一致；`steps` 各 20、被跳过 1 / 3、
+非 success 且非 skipped **0 / 0**）。
+一处踩坑：**归档有两半**——只 `git add` 新目录，旧目录就成了「索引里有、磁盘上没有」，判据读文件时
+直接 `ENOENT`；处置是再 `git add -A -- openspec/changes`。
+
 见 [W153 报告](reports/2026-10-19-w153-reference-and-fragment.md)、
 [ADR 0127](adr/0127-domains-of-markdown-pointers.md)、
 `openspec/changes/archive/2026-10-19-w153-reference-and-fragment/`。
