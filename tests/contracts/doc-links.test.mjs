@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import YAML from 'yaml';
 import { readTrackedPaths, describeFailure } from '../../scripts/contracts/git-index.mjs';
 import {
+  bibliographyEntriesOf,
   docLinkErrors,
   documentPathsOf,
   isExternalTarget,
@@ -14,29 +16,31 @@ import {
   resolveTargetOf,
 } from '../../scripts/contracts/doc-links.mjs';
 
-/// W151 立项、W152 扩域、W153 补引用式与锚点：**文档内部指针的可达性**
-/// （ADR 0125 / ADR 0126 / ADR 0127）。
+/// W151 立项、W152 扩域、W153 补引用式与锚点、W154 把「未定义引用式使用」改成有人认领的名单：
+/// **文档内部指针的可达性**（ADR 0125 / 0126 / 0127 / 0128）。
 ///
 /// 判据守的是一段**没人看管**的距离：文档之间的相对链接是「记录的记录」——报告指向 ADR、
 /// ADR 指向基线、报告指向归档变更——而**没有任何门控解析 markdown 链接**。W151 实测
 /// `docs/` 的 793 条相对链接里有 36 处走不到；W152 把域扩到全仓（991 份已跟踪 `*.md`、
 /// 963 条链接、925 条相对），又量出 3 处；W153 把引用式定义纳入域、把锚点从「静默跳过」
-/// 改成「拒绝」。
+/// 改成「拒绝」；W154 让每一处未定义的引用式使用都必须被台账具名认领。
 ///
 /// 本文件分三层，**各自有独立输入域**：
-/// 1. 真实语料（域来自 `.git/index`）——只证明「今天为绿」，且域是**全量**而非抽样；
+/// 1. 真实语料（域来自 `.git/index`，台账来自 `tests/undefined-references.yaml`）——只证明
+///    「今天为绿」，且域是**全量**而非抽样；
 /// 2. 合成样本——每条规则各有一个「只有它错时才红」的样本；
 /// 3. 域函数本身（`linkTargetsOf` / `referenceDefinitionsOf` / `referenceUsagesOf` /
-///    `normalizeLabelOf` / `resolveTargetOf` / `isExternalTarget` / `maskCode`）。
+///    `bibliographyEntriesOf` / `normalizeLabelOf` / `resolveTargetOf` / `isExternalTarget` / `maskCode`）。
 
-/// 真实语料：文档集与索引都从 `.git/index` 派生（未跟踪的文件不在域内）。
+/// 真实语料：文档集与索引都从 `.git/index` 派生（未跟踪的文件不在域内），台账从仓库里读。
 async function loadCorpus() {
   const index = await readTrackedPaths('.');
   assert.ok(index.ok, describeFailure(index));
   const paths = documentPathsOf(index.paths);
   const documents = [];
   for (const path of paths) documents.push({ path, text: await readFile(path, 'utf8') });
-  return { index, paths, documents, tracked: [...index.paths] };
+  const ledger = YAML.parse(await readFile('tests/undefined-references.yaml', 'utf8')).entries;
+  return { index, paths, documents, tracked: [...index.paths], ledger };
 }
 
 const errorsOf = (documents, tracked) => docLinkErrors({ documents, tracked }).errors;
@@ -52,9 +56,12 @@ const TRACKED = [
   'openspec/changes/archive/2026-01-01-c/proposal.md',
 ];
 
+/// 台账条目：测试里手写的「认领」。
+const claim = (path, label, count, state = 'citation', extra = {}) => ({ path, label, count, state, ...extra });
+
 test('every relative pointer in this repository resolves to a tracked path', async () => {
-  const { paths, documents, tracked } = await loadCorpus();
-  const result = docLinkErrors({ documents, tracked });
+  const { paths, documents, tracked, ledger } = await loadCorpus();
+  const result = docLinkErrors({ documents, tracked, undefinedReferenceLedger: ledger });
 
   assert.deepEqual(result.errors, [], 'a pointer nobody can follow must be fixed or named, not tolerated');
 
@@ -76,10 +83,24 @@ test('every relative pointer in this repository resolves to a tracked path', asy
     'the domain must include top-level documents such as README.md',
   );
 
-  // 计数与清单必须分开报：把「没定义」的引用式写法计成 0 会让「域边界」在报告里消失
-  // （W153：今天 6 处，全是引注写法，都不是缺陷）。这里**只钉字段存在且是非负整数**，
-  // 不钉具体数字——那个数会随记录增长而漂移，钉它等于给每份新报告留一个必须改的断言。
-  for (const key of ['definitionsChecked', 'referencesChecked', 'undefinedReferences', 'anchorsChecked']) {
+  // 「未定义引用式使用」这一支（W154）：**每一处都必须被认领**，且认领要报到清单上。
+  // 不钉具体数字（记录会增长），钉的是两条性质：这条支路真的走过（否则下面的「全都认领了」
+  // 在空集上成立），且清单里没有一条 `state: null`（有就说明有用法没人认领——那种情况
+  // `errors` 早就非空了，这里是第二道）。
+  assert.equal(Number.isInteger(result.undefinedReferences), true, 'undefinedReferences must be an integer');
+  assert.equal(
+    result.undefinedReferences,
+    result.undefinedReferenceList.length,
+    'the count is derived from the list, not counted a second time',
+  );
+  assert.ok(result.undefinedReferences > 0, 'this branch must actually be exercised by the corpus, or "all claimed" is vacuous');
+  const unclaimed = result.undefinedReferenceList.filter(item => item.state === null);
+  assert.deepEqual(unclaimed, [], 'every undefined reference in the corpus must be claimed in tests/undefined-references.yaml');
+  assert.ok(ledger.length > 0, 'the ledger itself must not be empty — an empty ledger claiming "nothing is undefined" proves nothing');
+
+  // 其余计数只钉「非负整数」：它们的数值随记录增长漂移，钉具体数字等于给每份新报告留一个
+  // 必须改的断言。**计数与清单分开报**这一点由 `undefinedReferenceList` 承担（W154）。
+  for (const key of ['definitionsChecked', 'referencesChecked', 'anchorsChecked']) {
     assert.equal(Number.isInteger(result[key]), true, `${key} must be reported as an integer`);
     assert.ok(result[key] >= 0, `${key} must not be negative`);
   }
@@ -252,28 +273,30 @@ test('a reference definition is judged exactly like an inline link', () => {
 
 test('a reference usage is a pointer only when its label is defined here', () => {
   // 这是 W153 最容易被写错的一格：`[x][y]` 在 y 无定义时**不是链接**，CommonMark 把它降级成
-  // 字面文本，读者看到的就是原文写下的字 ⇒ 没有读者可见的缺陷 ⇒ 判它等于判排版。
-  // 全仓 6 处 `[Sx][Sy]` 全是这一种（标签活在同一份文档的 `- [S3] …` 清单里）。
-  const undefinedUse = docLinkErrors({
-    documents: [doc('docs/a.md', '见 [S2][S3]。')],
-    tracked: TRACKED,
-  });
-  assert.deepEqual(undefinedUse.errors, [], 'an undefined reference degrades to text, it is not a dead pointer');
-  assert.equal(undefinedUse.undefinedReferences, 1, 'but it MUST be counted, or the boundary goes invisible');
-  assert.equal(undefinedUse.referencesChecked, 0);
-
-  // **判别性**：同一个写法，label 一旦有定义就变成指针——计数必须跟着翻面。
+  // 字面文本，读者看到的就是原文写下的字 ⇒ 不判它「指向哪里」，判那个等于判排版。
+  // 但「不是指针」不等于「不需要有人认领」（W154）——没定义又没人认领就是红，见下一条用例。
   const definedUse = docLinkErrors({
     documents: [doc('docs/a.md', '[b]: b.md', '见 [x][b]。')],
     tracked: TRACKED,
   });
+  assert.deepEqual(definedUse.errors, []);
   assert.equal(definedUse.referencesChecked, 1);
   assert.equal(definedUse.undefinedReferences, 0);
+  assert.deepEqual(definedUse.undefinedReferenceList, []);
+
+  // **判别性**：同一个写法，label 一旦没有定义就翻面——计数 1，且它**出现在清单上**（W154：
+  // 只回一个数字等于把「是哪几条」留给读者手工 grep）。`rawLabel` 是原文拼写，不是归一后的键。
+  const undefinedUse = docLinkErrors({ documents: [doc('docs/a.md', '见 [S2][S3]。')], tracked: TRACKED });
+  assert.deepEqual(undefinedUse.undefinedReferenceList, [
+    { path: 'docs/a.md', line: 1, label: 's3', rawLabel: 'S3', state: null },
+  ]);
+  assert.equal(undefinedUse.referencesChecked, 0);
 
   // collapsed `[label][]` 取方括号里的文本当 label，同样分两种情形。
-  assert.deepEqual(errorsOf([doc('docs/a.md', '[b]: b.md', '见 [b][]。')], TRACKED), []);
+  const collapsedDefined = docLinkErrors({ documents: [doc('docs/a.md', '[b]: b.md', '见 [b][]。')], tracked: TRACKED });
+  assert.deepEqual(collapsedDefined.errors, []);
+  assert.equal(collapsedDefined.undefinedReferences, 0);
   const collapsedUndefined = docLinkErrors({ documents: [doc('docs/a.md', '见 [c][]。')], tracked: TRACKED });
-  assert.deepEqual(collapsedUndefined.errors, []);
   assert.equal(collapsedUndefined.undefinedReferences, 1);
 
   // 定义按**文档**生效（CommonMark）：a.md 里的定义不能给 b.md 的用法兜底。
@@ -281,9 +304,9 @@ test('a reference usage is a pointer only when its label is defined here', () =>
     documents: [doc('docs/a.md', '[b]: b.md'), doc('docs/b.md', '见 [x][b]。')],
     tracked: TRACKED,
   });
-  assert.deepEqual(crossFile.errors, []);
   assert.equal(crossFile.referencesChecked, 0, "another document's definition does not count");
   assert.equal(crossFile.undefinedReferences, 1);
+  assert.match(crossFile.errors[0], /^docs\/b\.md:1: /, 'the failure must point at the usage, not at the other document');
 
   // label 的匹配是 case-fold + 空白折叠的：不归一的话 `[x][s 2]` 会被判成「无定义」，
   // 而任何渲染器都会把它化开——判据错怪记录，比漏判更难查（记录方会以为自己写错了）。
@@ -293,6 +316,166 @@ test('a reference usage is a pointer only when its label is defined here', () =>
   });
   assert.equal(folded.referencesChecked, 1, 'labels match case-insensitively with whitespace collapsed');
   assert.equal(folded.undefinedReferences, 0);
+});
+
+test('an undefined reference nobody claims is a failure, and the failure spells the label as written', () => {
+  // 一处笔误（本想写链接、少打一个字符）与一处引注在这里**字形完全一样**，判据 MUST NOT 猜。
+  // 它能做的只有一件事：要求每一处都有人认领（ADR 0128 决策 1）。
+  const undeclared = docLinkErrors({
+    documents: [doc('docs/a.md', '[S2][S3]', '与 [S6][S7]。')],
+    tracked: TRACKED,
+  });
+  assert.equal(undeclared.undefinedReferences, 2);
+  assert.equal(undeclared.errors.length, 2, JSON.stringify(undeclared.errors));
+  assert.match(undeclared.errors[0], /^docs\/a\.md:1: /);
+  assert.match(undeclared.errors[0], /labelled "S3"/, 'the raw spelling must be reported — a folded "s3" sends the reader looking for the wrong text');
+  assert.match(undeclared.errors[0], /nobody claims it/);
+  assert.match(undeclared.errors[0], /tests\/undefined-references\.yaml/, 'the failure must name the place to claim it');
+  assert.match(undeclared.errors[1], /^docs\/a\.md:2: /);
+  assert.match(undeclared.errors[1], /labelled "S7"/);
+
+  // **判别性**：同一条用法一旦被台账认领，就不再是失败——但前提是声称立得住（见下一条）。
+  const claimed = docLinkErrors({
+    documents: [doc('docs/a.md', '- [S3] 标题', '- [S7] 另一个来源', '[S2][S3]', '与 [S6][S7]。')],
+    tracked: TRACKED,
+    undefinedReferenceLedger: [claim('docs/a.md', 'S3', 1), claim('docs/a.md', 'S7', 1)],
+  });
+  assert.deepEqual(claimed.errors, []);
+  assert.deepEqual(
+    claimed.undefinedReferenceList.map(item => item.state),
+    ['citation', 'citation'],
+    'the claim must be reported back on each entry, or the report cannot say who owns it',
+  );
+});
+
+test('a citation claim is checked against the document own bibliography, and every measured shape counts', () => {
+  const ledger = [claim('docs/a.md', 'S3', 1)];
+
+  // 声称是引注，而文档里根本没有那条清单条目 ⇒ 声称倒了。**这是防滥用的一侧**：
+  // 只要「登记一条 citation」就能免责，这张台账就是一张豁免清单。
+  const noEntry = docLinkErrors({
+    documents: [doc('docs/a.md', '见 [S2][S3]。')],
+    tracked: TRACKED,
+    undefinedReferenceLedger: ledger,
+  });
+  assert.equal(noEntry.errors.length, 1, JSON.stringify(noEntry.errors));
+  assert.match(noEntry.errors[0], /claimed to be a citation/);
+  assert.match(noEntry.errors[0], /no "- \[S3\] …" entry/);
+
+  // 三种写法都是条目，全部来自 W154 的实测：V3.2 的 `- [S3] 标题`、V2.3 的 `- **[S14] 标题**`、
+  // V3.5 的 `- [S1 标题](url)`（方括号里是标签 + 标题）。只认其中一种会让第三种被误判成「无出处」。
+  for (const entry of ['- [S3] 标题', '- **[S3] 标题**', '- [S3 标题](https://example.com)']) {
+    const declared = docLinkErrors({
+      documents: [doc('docs/a.md', entry, '见 [S2][S3]。')],
+      tracked: TRACKED,
+      undefinedReferenceLedger: ledger,
+    });
+    assert.deepEqual(declared.errors, [], `this entry shape must count as a source: ${entry}`);
+    assert.equal(declared.undefinedReferenceList[0].state, 'citation');
+  }
+
+  // **判别性**：只差一个字符的标签不构成作证（`S30` 不是 `S3` 的条目）。边界必须落在
+  // 「标签 + 空格」这个位置上，否则 `S3` 会被任何以 `S3` 开头的条目糊弄过去。
+  const neighbour = docLinkErrors({
+    documents: [doc('docs/a.md', '- [S30] 另一个来源', '见 [S2][S3]。')],
+    tracked: TRACKED,
+    undefinedReferenceLedger: ledger,
+  });
+  assert.equal(neighbour.errors.length, 1, JSON.stringify(neighbour.errors));
+  assert.match(neighbour.errors[0], /claimed to be a citation/);
+
+  // 代码段里的清单条目不是条目（规格里要能举「条目长什么样」）。
+  const fenced = docLinkErrors({
+    documents: [doc('docs/a.md', '```md', '- [S3] 标题', '```', '见 [S2][S3]。')],
+    tracked: TRACKED,
+    undefinedReferenceLedger: ledger,
+  });
+  assert.equal(fenced.errors.length, 1, JSON.stringify(fenced.errors));
+  assert.match(fenced.errors[0], /claimed to be a citation/);
+});
+
+test('a "no bibliography" claim expires the moment the document gains one', () => {
+  // `missing_bibliography` 是**另一个方向**的声称：这份文档一条清单都没有，那条引注无出处可核。
+  // 没有这个取值，第一处真正的无出处引注就只有「判红」一条路，而修它需要仓外的真实来源。
+  const ledger = [claim('docs/a.md', 'S3', 1, 'missing_bibliography', { closure: '补出真实来源清单' })];
+
+  const stillEmpty = docLinkErrors({
+    documents: [doc('docs/a.md', '见 [S2][S3]。')],
+    tracked: TRACKED,
+    undefinedReferenceLedger: ledger,
+  });
+  assert.deepEqual(stillEmpty.errors, []);
+  assert.equal(stillEmpty.undefinedReferenceList[0].state, 'missing_bibliography');
+
+  // **判别性**：一旦文档有了清单，这条声称就是假的 ⇒ 红。登记不是永久的免罪符。
+  const closed = docLinkErrors({
+    documents: [doc('docs/a.md', '- [S3] 标题', '见 [S2][S3]。')],
+    tracked: TRACKED,
+    undefinedReferenceLedger: ledger,
+  });
+  assert.equal(closed.errors.length, 1, JSON.stringify(closed.errors));
+  assert.match(closed.errors[0], /no bibliography at all, but it now carries 1 entry/);
+  assert.match(closed.errors[0], /MUST stop saying it is open/);
+
+  // 这种状态必须写「取到什么算闭合」——否则「等外部」可以永远既不算完成也不算失败。
+  // 注意这里是**两条**红：形状一条，加上「这条条目没资格认领 ⇒ 那条用法仍未认领」一条。
+  // 只报形状不报未认领，会让一条 `state: missing_bibliography`（没写 closure）悄悄免责。
+  const noClosure = docLinkErrors({
+    documents: [doc('docs/a.md', '见 [S2][S3]。')],
+    tracked: TRACKED,
+    undefinedReferenceLedger: [claim('docs/a.md', 'S3', 1, 'missing_bibliography')],
+  });
+  assert.equal(noClosure.errors.length, 2, JSON.stringify(noClosure.errors));
+  assert.match(noClosure.errors[0], /without "closure"/);
+  assert.match(noClosure.errors[1], /nobody claims it/);
+});
+
+test('a ledger entry that no longer matches the corpus is a failure, not a note', () => {
+  // 台账是**关于语料的一句声称**，所以过期必须红。只要「登记过就永远不红」，它就从台账
+  // 退化成豁免清单（MEMORY §7）。方向二：台账有、实际没有或条数变了。
+  const ledger = [claim('docs/a.md', 'S3', 2)];
+
+  const shrunk = docLinkErrors({
+    documents: [doc('docs/a.md', '- [S3] 标题', '见 [S2][S3]。')],
+    tracked: TRACKED,
+    undefinedReferenceLedger: ledger,
+  });
+  assert.equal(shrunk.errors.length, 1, JSON.stringify(shrunk.errors));
+  assert.match(shrunk.errors[0], /claimed to carry 2 use\(s\) of "S3", but it now carries 1/);
+
+  const gone = docLinkErrors({
+    documents: [doc('docs/a.md', '见 [b](b.md)。')],
+    tracked: TRACKED,
+    undefinedReferenceLedger: ledger,
+  });
+  assert.equal(gone.errors.length, 1, JSON.stringify(gone.errors));
+  assert.match(gone.errors[0], /but it now carries 0/);
+
+  // 计数是这条声称的**内容**，不是装饰：同一标签出现两次就必须写 2。
+  const exact = docLinkErrors({
+    documents: [doc('docs/a.md', '- [S3] 标题', '[S2][S3]', '[S2][S3]')],
+    tracked: TRACKED,
+    undefinedReferenceLedger: ledger,
+  });
+  assert.deepEqual(exact.errors, []);
+});
+
+test('the ledger own shape is closed — an unknown state, a missing closure and a bad count all fail', () => {
+  const base = [doc('docs/a.md', '- [S3] 标题', '见 [S2][S3]。')];
+  const run = entry => docLinkErrors({ documents: base, tracked: TRACKED, undefinedReferenceLedger: [entry] }).errors;
+
+  assert.match(run({ path: 'docs/a.md', label: 'S3', count: 1, state: 'typo' })[0], /not one of citation \/ missing_bibliography/);
+  assert.match(run({ path: 'docs/a.md', label: 'S3', count: 1, state: 'missing_bibliography' })[0], /without "closure"/);
+  assert.match(run({ path: 'docs/a.md', label: 'S3', count: 0, state: 'citation' })[0], /carries count 0/);
+  assert.match(run({ path: '', label: 'S3', count: 1, state: 'citation' })[0], /names no path/);
+  assert.match(run({ path: 'docs/a.md', label: '', count: 1, state: 'citation' })[0], /names no label/);
+
+  // **判别性**：形状不对的条目**不覆盖**任何用法。先登记再报错会让「随手写一条 state: typo」
+  // 把那条用法从「未认领」里抹掉——两条都红才是对的（形状一条、未认领一条）。
+  const both = run({ path: 'docs/a.md', label: 'S3', count: 1, state: 'typo' });
+  assert.equal(both.length, 2, JSON.stringify(both));
+  assert.match(both[0], /not one of/);
+  assert.match(both[1], /nobody claims it/);
 });
 
 test('a reference definition inside a code span is a quotation too', () => {
@@ -352,6 +535,27 @@ test('the link scanner reports the line that carries each pointer', () => {
   );
 });
 
+test('the bibliography scanner reads the three entry shapes and refuses to see task checkboxes', () => {
+  // 三种写法全部来自实测：V3.2 `- [S3] 标题`、V2.3 `- **[S14] 标题**`、
+  // V3.5 `- [S1 标题](url)`。第四种「任务复选框」不是来源条目——仓库里有 2733 条这种行。
+  const text = [
+    '- [S3] 标题',
+    '- **[S14] 标题**',
+    '- [S1 标题](https://example.com)',
+    '- [x] 已完成的任务',
+    '- [ ] 未完成的任务',
+    '正文里的 [S9] 不是列表项',
+    '```md',
+    '- [S8] 代码段里的条目不算',
+    '```',
+  ].join('\n');
+  assert.deepEqual(
+    bibliographyEntriesOf(maskCode(text)).map(entry => `${entry.line}:${entry.text}`),
+    ['1:s3', '2:s14', '3:s1 标题'],
+    'the scanner extracts; whether a text covers a label is decided separately',
+  );
+});
+
 test('the reference scanners separate a definition from a usage, and keep the original spelling', () => {
   assert.deepEqual(
     referenceDefinitionsOf(['[b]: b.md', '   [c]: <d e.md> "标题"', '- [S3] 不是定义行', '    [i]: i.md'].join('\n')).map(
@@ -369,6 +573,12 @@ test('the reference scanners separate a definition from a usage, and keep the or
     usages.map(entry => `${entry.line}:${entry.label}`),
     ['1:s3', '2:b', '3:e'],
     'collapsed takes the bracket text as its label; a whitespace-only label is not a reference at all',
+  );
+  // `rawLabel` 是**原文拼写**（W154 补）：台账的键与失败话术都要写人看得到的那几个字。
+  assert.deepEqual(
+    usages.map(entry => entry.rawLabel),
+    ['S3', 'b', 'e'],
+    'the raw spelling must survive the fold, or the ledger key and the failure message both point at the wrong text',
   );
 
   // 定义行 MUST 连原文标签一起返回：报错时说 `[s2]` 会让读者按小写去文件里找而找不到，

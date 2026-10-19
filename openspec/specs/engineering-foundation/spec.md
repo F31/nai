@@ -872,10 +872,10 @@ MUST 把指针**降级为纯文本**并在该记录末尾追加具名勘误段�
 **域 = 「markdown 认为是链接的东西」**，MUST NOT 是「看起来像链接的东西」。代码段（行内与围栏）里的
 链接形状不是指针，遮蔽后不参与判定，行号不变。目录算存在；通配（`*`/`?`）MUST 直接失败；外部与
 协议相对在域外；越界或不可解码 MUST 分类失败。**引用式定义行 `[label]: url` 在域内**，URL 走与内联
-链接同一套判定；**引用式使用**的 label 有本文件定义时它是链接（落点由定义判），无定义时 CommonMark
-把它降级成字面文本 ⇒ MUST NOT 视为指针，只数不判；shortcut `[label]` 在域外。**带 `#` 碎片的指针
-MUST 拒绝**：碎片怎么生成由渲染器定，判据无从校准，「跳过」等于把看不了的算进绿里。
-文档集为空、域内指针为 0 时 MUST 失败。
+链接同一套判定；**引用式使用**的 label 有本文件定义时它是链接（落点由定义判），无定义时 MUST NOT
+视为指针（认领要求见 `Every undefined reference usage is claimed by name`）；shortcut `[label]` 在域外。
+**带 `#` 碎片的指针 MUST 拒绝**：碎片怎么生成由渲染器定，判据无从校准，「跳过」等于把看不了的
+算进绿里。文档集为空、域内指针为 0 时 MUST 失败。
 
 #### Scenario: An archived change document points at an ADR with the wrong depth
 
@@ -907,9 +907,9 @@ MUST 拒绝**：碎片怎么生成由渲染器定，判据无从校准，「跳�
 
 - **WHEN** 正文写着 `见 [S2][S3]。`，而本文件里没有 `[S3]: …` 定义行（标签只出现在资料清单的
   `- [S3] …` 里）
-- **THEN** 判据 MUST NOT 判它失败：CommonMark 会把这串括号降级成字面文本，读者看到的正是原文
-  写下的字，**没有读者可见的缺陷**；把它判红就是要求记录改排版。它 MUST 被计进
-  `undefinedReferences`——不判不等于不看，边界要数得出来
+- **THEN** 判据 MUST NOT 判它「指向哪里」：CommonMark 会把这串括号降级成字面文本，读者看到的
+  正是原文写下的字。但它 MUST 出现在 `undefinedReferenceList` 上，且 MUST 被台账认领——
+  「不是指针」不等于「不需要有人认领」
 
 #### Scenario: A pointer into a heading
 
@@ -923,3 +923,44 @@ MUST 拒绝**：碎片怎么生成由渲染器定，判据无从校准，「跳�
 - **WHEN** 文档域的过滤条件从「全部已跟踪 `*.md`」退回 `docs/`
 - **THEN** 真实语料用例 MUST 失败。它断言的不只是「零错误」，还有「域确实越过了 `docs/`」——
   只断言前者时，缩域会让 3 条归档断链重新隐形，而用例照样全绿
+
+### Requirement: Every undefined reference usage is claimed by name
+
+每处**未定义**的引用式使用（`[text][label]`，label 无本文件定义）MUST 在
+`tests/undefined-references.yaml` 里被**具名认领**，否则失败：一处笔误（本想写链接、少打一个字符）
+与一处引注在这里字形相同，判据 MUST NOT 猜。台账键为 `(path, label)` 加出现次数，MUST 双向核对——
+实际有、台账无 MUST 失败；台账有而实际无或条数变 MUST 失败（过期的声称与没写声称同样是缺陷）。
+`state` 为封闭枚举：`citation` MUST 由同文件资料清单条目作证（方括号里只有标签、加粗、标签 + 标题的
+markdown 链接三种写法都算），`missing_bibliography` MUST 在该文件一条清单都没有时成立且必填 `closure`。
+`state` 域外、缺必填、`count` 非正整数的条目 MUST NOT 覆盖任何用法。
+
+#### Scenario: A misspelt link that looks exactly like a citation
+
+- **WHEN** 正文写着 `[安装文档][install]`，而本文件没有 `[install]: …` 定义行，台账里也没有这条
+- **THEN** 判据在该行具名失败，说出**原文拼写**（`install`，不是归一后的键）与台账路径。
+  MUST NOT 因为「它不是指针」就放过：这正是 W153 那条规则留下的洞——一处真正的笔误在那里
+  既不绿也不红
+
+#### Scenario: A citation claim is not an excuse by itself
+
+- **WHEN** 台账把某条用法登记为 `citation`，而该文件没有给这个标签作证的清单条目
+- **THEN** 判据失败并指出来源条目不存在。只认「登记过」就会把台账变成豁免清单；
+  声称 MUST 被否证，MUST NOT 只被记录
+
+#### Scenario: The three measured bibliography shapes all count as a source
+
+- **WHEN** 清单写成 `- [S3] 标题`、`- **[S14] 标题**`、`- [S1 标题](url)` 三种之一
+- **THEN** 三者 MUST 都算作证。W154 量全仓时这三种都真实存在，只认一种会把其余两种误判成
+  「无出处」——判据错怪记录比漏判更难查。作证的边界是「标签 + 空格」，`S30` MUST NOT 给 `S3` 作证
+
+#### Scenario: A ledger entry that stopped matching the corpus
+
+- **WHEN** 台账写着某文件有 3 处 `[S3]`，而文档后来只剩 2 处（或 0 处）
+- **THEN** 判据失败并报出实际条数。台账是**关于语料的一句声称**，过期即是假话；
+  「登记过就永远不红」会让它从台账退化成豁免清单
+
+#### Scenario: An orphan citation in a document with no bibliography
+
+- **WHEN** 台账把某条用法登记为 `missing_bibliography` 并写了 `closure`，而该文件确实一条清单都没有
+- **THEN** 判据 MUST NOT 失败（问题在仓外：关闭它需要真实来源，编不出来），但 MUST 报到清单上并
+  带上认领状态。一旦该文件补出清单，这条登记 MUST 失败——**自行过期**，MUST NOT 留着
