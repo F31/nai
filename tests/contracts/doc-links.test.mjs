@@ -8,22 +8,26 @@ import {
   isExternalTarget,
   linkTargetsOf,
   maskCode,
+  normalizeLabelOf,
+  referenceDefinitionsOf,
+  referenceUsagesOf,
   resolveTargetOf,
 } from '../../scripts/contracts/doc-links.mjs';
 
-/// W151 立项、W152 扩域：**文档内部指针的可达性**（ADR 0125 / ADR 0126）。
+/// W151 立项、W152 扩域、W153 补引用式与锚点：**文档内部指针的可达性**
+/// （ADR 0125 / ADR 0126 / ADR 0127）。
 ///
 /// 判据守的是一段**没人看管**的距离：文档之间的相对链接是「记录的记录」——报告指向 ADR、
 /// ADR 指向基线、报告指向归档变更——而**没有任何门控解析 markdown 链接**。W151 实测
 /// `docs/` 的 793 条相对链接里有 36 处走不到；W152 把域扩到全仓（991 份已跟踪 `*.md`、
-/// 963 条链接、925 条相对），又量出 3 处。扩域同时暴露了一个判据缺陷：**代码段里的链接形状
-/// 不是指针**——`docs/` 恰好零样本，而 `openspec/` 有 4 条（规格里举的坏例子）。
+/// 963 条链接、925 条相对），又量出 3 处；W153 把引用式定义纳入域、把锚点从「静默跳过」
+/// 改成「拒绝」。
 ///
 /// 本文件分三层，**各自有独立输入域**：
 /// 1. 真实语料（域来自 `.git/index`）——只证明「今天为绿」，且域是**全量**而非抽样；
-/// 2. 合成样本——每条规则各有一个「只有它错时才红」的样本（断链 / 目录 / 通配 / 外部 /
-///    纯锚点 / 越界 / 不可解析 / 代码段 / 两个空集）；
-/// 3. 域函数本身（`linkTargetsOf` / `resolveTargetOf` / `isExternalTarget` / `maskCode`）。
+/// 2. 合成样本——每条规则各有一个「只有它错时才红」的样本；
+/// 3. 域函数本身（`linkTargetsOf` / `referenceDefinitionsOf` / `referenceUsagesOf` /
+///    `normalizeLabelOf` / `resolveTargetOf` / `isExternalTarget` / `maskCode`）。
 
 /// 真实语料：文档集与索引都从 `.git/index` 派生（未跟踪的文件不在域内）。
 async function loadCorpus() {
@@ -71,6 +75,14 @@ test('every relative pointer in this repository resolves to a tracked path', asy
     paths.some(path => !path.includes('/')),
     'the domain must include top-level documents such as README.md',
   );
+
+  // 计数与清单必须分开报：把「没定义」的引用式写法计成 0 会让「域边界」在报告里消失
+  // （W153：今天 6 处，全是引注写法，都不是缺陷）。这里**只钉字段存在且是非负整数**，
+  // 不钉具体数字——那个数会随记录增长而漂移，钉它等于给每份新报告留一个必须改的断言。
+  for (const key of ['definitionsChecked', 'referencesChecked', 'undefinedReferences', 'anchorsChecked']) {
+    assert.equal(Number.isInteger(result[key]), true, `${key} must be reported as an integer`);
+    assert.ok(result[key] >= 0, `${key} must not be negative`);
+  }
 });
 
 test('a broken pointer is named with its file and line, and nothing else is', () => {
@@ -159,7 +171,7 @@ test('the code mask keeps line numbers, and a lone backtick is not an opening fe
   assert.deepEqual(linkTargetsOf(tildes), [], 'a tilde fence is only closed by a tilde fence');
 });
 
-test('external targets, pure anchors and reference definitions are outside the judged set, by rule', () => {
+test('external targets are outside the judged set, by rule', () => {
   const outside = errorsOf(
     [
       doc(
@@ -168,7 +180,6 @@ test('external targets, pure anchors and reference definitions are outside the j
         '[外链](https://example.com/x.md)',
         '[邮件](mailto:x@example.com)',
         '[协议相对](//cdn.example.com/x.md)',
-        '[本节](#requirements)',
       ),
     ],
     TRACKED,
@@ -179,12 +190,133 @@ test('external targets, pure anchors and reference definitions are outside the j
   assert.ok(isExternalTarget('//cdn.example.com/x.md'));
   assert.equal(isExternalTarget('adr/0001-x.md'), false);
 
-  // 纯锚点是**在域内但跳过**的：它没有路径可解析，不是「没看」。
-  const result = docLinkErrors({
-    documents: [doc('docs/a.md', '[b](b.md)', '[本节](#requirements)')],
+  // 只有外部链接的文档集：在域内一条都没有 ⇒ 必须报空集，MUST NOT 记作「已检查且无问题」。
+  const noRelative = errorsOf([doc('docs/a.md', '[外链](https://example.com/x)')], TRACKED);
+  assert.equal(noRelative.length, 1, JSON.stringify(noRelative));
+  assert.match(noRelative[0], /carry no relative link at all/);
+});
+
+test('a fragment is refused instead of skipped — the destination cannot be verified', () => {
+  // 为什么是**拒绝**而不是「跳过」：标题怎么变成碎片由渲染器决定（GitHub 的 github-slugger、
+  // GitLab、编辑器预览、静态站生成器各一套规则；中文标题更是各写各的），判据无从校准。
+  // 而「跳过」的意思是「这条我看不了，但我把它算进绿里了」——W151 起的一贯立场是拒绝。
+  const pure = docLinkErrors({ documents: [doc('docs/a.md', '[b](b.md)', '[本节](#requirements)')], tracked: TRACKED });
+  assert.equal(pure.errors.length, 1, JSON.stringify(pure.errors));
+  assert.match(pure.errors[0], /^docs\/a\.md:2: /);
+  assert.match(pure.errors[0], /carries a "#" fragment/);
+  assert.match(pure.errors[0], /depends on the renderer/, 'the failure must say why it cannot be judged');
+  assert.equal(pure.anchorsChecked, 1, 'the refused fragment must be counted, not silently dropped');
+  assert.equal(pure.linksChecked, 2, 'a fragment-bearing link is still a link that was looked at');
+
+  // 带文件名的碎片：文件部分照判，碎片本身单独失败。
+  const withFile = errorsOf([doc('docs/a.md', '见 [b](b.md#安装)。')], TRACKED);
+  assert.equal(withFile.length, 1, JSON.stringify(withFile));
+  assert.match(withFile[0], /carries a "#" fragment/);
+
+  // **判别性**：文件部分本身也不存在时，两件事都要说——碎片不可判，和文件走不到，
+  // 是两个缺陷，合并成一条会让修的人只改一半。
+  const both = errorsOf([doc('docs/a.md', '见 [b](missing.md#安装)。')], TRACKED);
+  assert.equal(both.length, 2, JSON.stringify(both));
+  assert.match(both[0], /carries a "#" fragment/);
+  assert.match(both[1], /nothing at that path is tracked/);
+});
+
+test('a reference definition is judged exactly like an inline link', () => {
+  // 域的形状变了（W153）：定义行的 URL 走**同一套**可达性判定。W153 勘定前全仓定义行 0 条，
+  // 所以这条规则的全部证据只能是合成样本——这不妨碍它是判据，只是说明它今天还没被真实语料检验过。
+  assert.deepEqual(errorsOf([doc('docs/a.md', '[b]: b.md', '见 [x][b]。')], TRACKED), []);
+
+  const broken = errorsOf([doc('docs/a.md', '[b]: missing.md')], TRACKED);
+  assert.equal(broken.length, 1, JSON.stringify(broken));
+  assert.match(broken[0], /^docs\/a\.md:1: /, 'the failure must point at the definition line');
+  assert.match(broken[0], /reference definition "b"/, 'the message must name what kind of pointer it is');
+  assert.match(broken[0], /nothing at that path is tracked/);
+
+  // 通配、越界、不可解析：定义行与内联链接共用同一处判定，所以这三族也必须同时成立
+  // （**同一件事 MUST NOT 两处定义**：如果定义行另写一套，迟早一处松）。
+  assert.match(errorsOf([doc('docs/a.md', '[b]: 00?.md')], TRACKED)[0], /is a glob/);
+  assert.match(errorsOf([doc('docs/a.md', '[b]: ../../../etc/passwd')], TRACKED)[0], /cannot be resolved/);
+  assert.match(errorsOf([doc('docs/a.md', '[b]: bad%zz.md')], TRACKED)[0], /cannot be resolved/);
+
+  // 定义指向站外：URL 不判，但**label 照样算「有定义」**——否则 `[x][b]` 会被当成退化文本，
+  // 而渲染器明明会把它化成一条外链。
+  const external = docLinkErrors({
+    documents: [doc('docs/a.md', '[b]: https://example.com/x', '见 [x][b]。')],
     tracked: TRACKED,
   });
-  assert.equal(result.linksChecked, 1, 'the anchor-only link must not be counted as checked');
+  assert.deepEqual(external.errors, []);
+  assert.equal(external.definitionsChecked, 0, 'an external definition target is not judged');
+  assert.equal(external.referencesChecked, 1, 'but the label still resolves, so the usage is a pointer');
+  assert.equal(external.undefinedReferences, 0);
+});
+
+test('a reference usage is a pointer only when its label is defined here', () => {
+  // 这是 W153 最容易被写错的一格：`[x][y]` 在 y 无定义时**不是链接**，CommonMark 把它降级成
+  // 字面文本，读者看到的就是原文写下的字 ⇒ 没有读者可见的缺陷 ⇒ 判它等于判排版。
+  // 全仓 6 处 `[Sx][Sy]` 全是这一种（标签活在同一份文档的 `- [S3] …` 清单里）。
+  const undefinedUse = docLinkErrors({
+    documents: [doc('docs/a.md', '见 [S2][S3]。')],
+    tracked: TRACKED,
+  });
+  assert.deepEqual(undefinedUse.errors, [], 'an undefined reference degrades to text, it is not a dead pointer');
+  assert.equal(undefinedUse.undefinedReferences, 1, 'but it MUST be counted, or the boundary goes invisible');
+  assert.equal(undefinedUse.referencesChecked, 0);
+
+  // **判别性**：同一个写法，label 一旦有定义就变成指针——计数必须跟着翻面。
+  const definedUse = docLinkErrors({
+    documents: [doc('docs/a.md', '[b]: b.md', '见 [x][b]。')],
+    tracked: TRACKED,
+  });
+  assert.equal(definedUse.referencesChecked, 1);
+  assert.equal(definedUse.undefinedReferences, 0);
+
+  // collapsed `[label][]` 取方括号里的文本当 label，同样分两种情形。
+  assert.deepEqual(errorsOf([doc('docs/a.md', '[b]: b.md', '见 [b][]。')], TRACKED), []);
+  const collapsedUndefined = docLinkErrors({ documents: [doc('docs/a.md', '见 [c][]。')], tracked: TRACKED });
+  assert.deepEqual(collapsedUndefined.errors, []);
+  assert.equal(collapsedUndefined.undefinedReferences, 1);
+
+  // 定义按**文档**生效（CommonMark）：a.md 里的定义不能给 b.md 的用法兜底。
+  const crossFile = docLinkErrors({
+    documents: [doc('docs/a.md', '[b]: b.md'), doc('docs/b.md', '见 [x][b]。')],
+    tracked: TRACKED,
+  });
+  assert.deepEqual(crossFile.errors, []);
+  assert.equal(crossFile.referencesChecked, 0, "another document's definition does not count");
+  assert.equal(crossFile.undefinedReferences, 1);
+
+  // label 的匹配是 case-fold + 空白折叠的：不归一的话 `[x][s 2]` 会被判成「无定义」，
+  // 而任何渲染器都会把它化开——判据错怪记录，比漏判更难查（记录方会以为自己写错了）。
+  const folded = docLinkErrors({
+    documents: [doc('docs/a.md', '[S 2]: b.md', '见 [x][s 2]。')],
+    tracked: TRACKED,
+  });
+  assert.equal(folded.referencesChecked, 1, 'labels match case-insensitively with whitespace collapsed');
+  assert.equal(folded.undefinedReferences, 0);
+});
+
+test('a reference definition inside a code span is a quotation too', () => {
+  // 与内联链接同一条豁免：规格里要能写出「定义行长什么样」。
+  const fenced = docLinkErrors({
+    documents: [doc('docs/a.md', '[b]: b.md', '```md', '[c]: nowhere.md', '```')],
+    tracked: TRACKED,
+  });
+  assert.deepEqual(fenced.errors, []);
+  assert.equal(fenced.definitionsChecked, 1, 'only the definition outside the fence is judged');
+
+  const inline = docLinkErrors({
+    documents: [doc('docs/a.md', '[b]: b.md', '写法是 `[c]: nowhere.md`。')],
+    tracked: TRACKED,
+  });
+  assert.deepEqual(inline.errors, []);
+  assert.equal(inline.definitionsChecked, 1);
+
+  // 用法在代码段里同理：不数、不判。
+  const usedInCode = docLinkErrors({
+    documents: [doc('docs/a.md', '[b]: b.md', '写法是 `[x][c]`。')],
+    tracked: TRACKED,
+  });
+  assert.equal(usedInCode.undefinedReferences, 0, 'a shape inside a code span is not a usage');
 });
 
 test('a pointer that escapes the repository or cannot be decoded fails, and it is classified as such', () => {
@@ -209,10 +341,6 @@ test('a pointer that escapes the repository or cannot be decoded fails, and it i
 test('an empty domain is a failure, not a pass', () => {
   assert.match(errorsOf([], TRACKED)[0], /would hold over an empty set/);
   assert.match(errorsOf([doc('docs/a.md', '[b](b.md)')], [])[0], /index is empty/);
-  // 一份只有外部链接的文档集：在域内的链接是 0 ⇒ 必须报，MUST NOT 记作「已检查且无问题」。
-  const noRelative = errorsOf([doc('docs/a.md', '[外链](https://example.com/x)')], TRACKED);
-  assert.equal(noRelative.length, 1, JSON.stringify(noRelative));
-  assert.match(noRelative[0], /carry no relative link at all/);
 });
 
 test('the link scanner reports the line that carries each pointer', () => {
@@ -224,11 +352,43 @@ test('the link scanner reports the line that carries each pointer', () => {
   );
 });
 
+test('the reference scanners separate a definition from a usage, and keep the original spelling', () => {
+  assert.deepEqual(
+    referenceDefinitionsOf(['[b]: b.md', '   [c]: <d e.md> "标题"', '- [S3] 不是定义行', '    [i]: i.md'].join('\n')).map(
+      entry => `${entry.line}:${entry.label}:${entry.url}`,
+    ),
+    ['1:b:b.md', '2:c:<d e.md>'],
+    'up to three leading spaces; a four-space indent is code, and a list item is not a definition',
+  );
+  // 定义行的 label 也只认到 `]` 为止，且 URL 与 label 必须同一行。
+  assert.deepEqual(referenceDefinitionsOf('[b]:'), []);
+  assert.deepEqual(referenceDefinitionsOf('正文里 [b]: b.md 不算定义行'), []);
+
+  const usages = referenceUsagesOf(['见 [S2][S3]。', '与 [b][]，与 [c][ ]', '与 [d][e]'].join('\n'));
+  assert.deepEqual(
+    usages.map(entry => `${entry.line}:${entry.label}`),
+    ['1:s3', '2:b', '3:e'],
+    'collapsed takes the bracket text as its label; a whitespace-only label is not a reference at all',
+  );
+
+  // 定义行 MUST 连原文标签一起返回：报错时说 `[s2]` 会让读者按小写去文件里找而找不到，
+  // 那是判据自己制造的第二处缺陷。
+  assert.equal(referenceDefinitionsOf('[S 2]: b.md')[0].rawLabel, 'S 2');
+  assert.equal(referenceDefinitionsOf('[S 2]: b.md')[0].label, 's 2');
+
+  assert.equal(normalizeLabelOf('  S  2  '), 's 2');
+  assert.equal(normalizeLabelOf(''), '');
+});
+
 test('the path resolver is the single place that turns a url into a repository path', () => {
   assert.equal(resolveTargetOf('docs/a.md', 'b.md'), 'docs/b.md');
   assert.equal(resolveTargetOf('docs/a.md', '../openspec/x/y.md'), 'openspec/x/y.md');
   assert.equal(resolveTargetOf('docs/reports/r.md', '../../openspec/changes/archive/c/'), 'openspec/changes/archive/c/');
-  assert.equal(resolveTargetOf('docs/a.md', 'b.md#anchor'), 'docs/b.md', 'the anchor is not part of the path');
+  assert.equal(
+    resolveTargetOf('docs/a.md', 'b.md#anchor'),
+    'docs/b.md',
+    'the fragment is not part of the path — the refusal to judge it lives in the criterion, not here',
+  );
   assert.equal(resolveTargetOf('docs/a.md', '直播%20V3.11.md'), 'docs/直播 V3.11.md');
   assert.equal(resolveTargetOf('docs/a.md', '../../../etc/passwd'), null);
   assert.equal(resolveTargetOf('docs/a.md', 'bad%zz.md'), null);
