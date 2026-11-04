@@ -123,7 +123,7 @@ function reverseErrors(sites, surface) {
 /// `full` 的兑付：`packageDirOf(host)` MUST 是驱动表某个 STEP 的 `dir`，
 /// 且**该 STEP 的 `script` 在该包 `scripts` 里的值** MUST 含 marker。
 ///
-/// 「该目录出现过任何 STEP」不算兑付：`apps/desktop` 有 3 个 STEP
+/// 「该目录出现过任何 STEP」不算兑付：`apps/workbench-desktop` 有 3 个 STEP
 /// （`typecheck` / `build` / `test`），只有 `test` 的值含 `tests/*.test.mjs`。
 function fullPayments(sites, driverText, packages) {
   let steps;
@@ -294,3 +294,4 @@ export function tierErrors({
 
   return errors;
 }
+

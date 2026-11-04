@@ -8,10 +8,56 @@
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
 import { MediaState, RequestContext, RevisionRef, SessionMode, StreamEnd } from "../core/base.js";
 import { ContractError } from "../core/error.js";
-import { PerformanceCue } from "./agent.js";
+import { Approval, PerformanceCue } from "./agent.js";
 import { AudioFormat } from "./provider.js";
 
 export const protobufPackage = "nai.v1";
+
+/**
+ * Realtime character metadata only. None of these fields grant output authority;
+ * the trusted composition root must resolve and recheck every identity and lease.
+ */
+export enum CharacterRendererKind {
+  CHARACTER_RENDERER_UNSPECIFIED = 0,
+  CHARACTER_RENDERER_2D = 1,
+  /** CHARACTER_RENDERER_3D - Reserved extension point, not an implemented renderer. */
+  CHARACTER_RENDERER_3D = 2,
+  UNRECOGNIZED = -1,
+}
+
+export enum CharacterLipSyncKind {
+  CHARACTER_LIP_SYNC_UNSPECIFIED = 0,
+  CHARACTER_LIP_SYNC_AMPLITUDE = 1,
+  CHARACTER_LIP_SYNC_PHONEME = 2,
+  CHARACTER_LIP_SYNC_AUDIO_DRIVEN = 3,
+  UNRECOGNIZED = -1,
+}
+
+export enum CharacterActionPhase {
+  CHARACTER_ACTION_PHASE_UNSPECIFIED = 0,
+  CHARACTER_ACTION_PHASE_ACCEPTED = 1,
+  CHARACTER_ACTION_PHASE_EXECUTING = 2,
+  CHARACTER_ACTION_PHASE_COMPLETED = 3,
+  CHARACTER_ACTION_PHASE_CANCELLED = 4,
+  CHARACTER_ACTION_PHASE_FAILED = 5,
+  CHARACTER_ACTION_PHASE_REJECTED = 6,
+  UNRECOGNIZED = -1,
+}
+
+/**
+ * Host observation, never a playback permit. Revoked, lost, or unavailable
+ * MUST NOT be represented as public-active.
+ */
+export enum CharacterRuntimeState {
+  CHARACTER_RUNTIME_STATE_UNSPECIFIED = 0,
+  CHARACTER_RUNTIME_STATE_UNAVAILABLE = 1,
+  CHARACTER_RUNTIME_STATE_PREVIEW = 2,
+  CHARACTER_RUNTIME_STATE_PUBLIC_STANDBY = 3,
+  CHARACTER_RUNTIME_STATE_PUBLIC_ACTIVE = 4,
+  CHARACTER_RUNTIME_STATE_LOST = 5,
+  CHARACTER_RUNTIME_STATE_REVOKED = 6,
+  UNRECOGNIZED = -1,
+}
 
 export interface AudioBlockMetadata {
   sessionId: string;
@@ -84,6 +130,87 @@ export interface AvatarProfile {
   lookaheadSamples: number;
   switchPoints: string[];
   certifiedFallbackRefs: string[];
+}
+
+export interface CharacterIdentity {
+  workspaceId: string;
+  characterId: string;
+  version: string;
+  packageSha256: string;
+  rightsSha256: string;
+}
+
+export interface CharacterCapability {
+  renderer: CharacterRendererKind;
+  lipSync: CharacterLipSyncKind[];
+  /** Only actions available in the admitted package. */
+  supportedActionIds: string[];
+}
+
+export interface CharacterProfile {
+  schemaVersion: number;
+  identity: CharacterIdentity | undefined;
+  capability: CharacterCapability | undefined;
+}
+
+export interface CharacterActionRequest {
+  requestId: string;
+  character: CharacterIdentity | undefined;
+  sessionId: string;
+  generationEpoch: string;
+  outputId: string;
+  approvalRef: string;
+  leaseId: string;
+  actionId: string;
+  priority: number;
+  /** Advisory; receiver uses its own monotonic deadline. */
+  remainingBudgetMs: number;
+  sequence: string;
+}
+
+export interface CharacterActionState {
+  requestId: string;
+  character: CharacterIdentity | undefined;
+  sessionId: string;
+  generationEpoch: string;
+  outputId: string;
+  actionId: string;
+  /** Observed execution, not a media completion ACK. */
+  phase: CharacterActionPhase;
+  reasonCode: string;
+  sequence: string;
+  sourceSamplePosition?: string | undefined;
+  frameSequence?: string | undefined;
+}
+
+/**
+ * Metadata only. PCM and pixels use a separate owned transport.
+ * None of these fields grant output authority.
+ */
+export interface CharacterBoundedMedia {
+  identity: CharacterIdentity | undefined;
+  sessionId: string;
+  epoch: string;
+  actionId: string;
+  width: number;
+  height: number;
+  sampleRate: number;
+  channels: number;
+  maxFrames: string;
+  maxSamples: string;
+  samplesPerFrame: number;
+  pixelFormat: string;
+  pcmFormat: string;
+}
+
+export interface CharacterRuntimeView {
+  identity: CharacterIdentity | undefined;
+  state: CharacterRuntimeState;
+  sessionId: string;
+  epoch: string;
+  actionId: string;
+  media: CharacterBoundedMedia | undefined;
+  reasonCode: string;
 }
 
 export interface AvatarRenderRequest {
@@ -180,6 +307,113 @@ export interface PreviewDescriptor {
 }
 
 /**
+ * Private spawn-inherited local output protocol. Raw media stays in separate
+ * fixed-name files, never in this control channel. No hardware completion ACK.
+ */
+export interface LocalPlaybackMedia {
+  version: number;
+  sessionId: string;
+  generationEpoch: string;
+  candidateHash: string;
+  sampleRate: number;
+  sampleCount: string;
+  width: number;
+  height: number;
+  frameCount: number;
+  fpsNum: number;
+  fpsDen: number;
+  audioSha256: string;
+  framesSha256: string;
+  /** v2: one bound digest per frame; seek/read/recheck. */
+  frameSha256: string[];
+  /** v2: admitted neutral image in standby.rgba, no speech/text. */
+  standbySha256: string;
+}
+
+export interface LocalPlaybackGrant {
+  version: number;
+  seq: string;
+  cue: PerformanceCue | undefined;
+  approval: Approval | undefined;
+  lease:
+    | PlaybackLease
+    | undefined;
+  /** Binds the exact descriptor bytes to the private grant. */
+  mediaSha256: string;
+}
+
+export interface LocalPlaybackStatus {
+  version: number;
+  /** ready/submitted/cancelled/failed, never hardware completed */
+  state: string;
+  /** Missing on failure means unknown, not zero. */
+  copiedSamples?: string | undefined;
+  windowUpdates?: string | undefined;
+  errorCode: string;
+  /** Always false. */
+  actualLocalPlaybackCompleted: boolean;
+  /** Diagnostic; one per resident process. */
+  audioStreamOpenCount: number;
+  /** Empty means no admitted standby image. */
+  standbySha256: string;
+  /** Exact current cue descriptor; absent for neutral-only standby. */
+  mediaSha256: string;
+  /** Frames whose predicted tail was crossed by a later callback. Not hardware ACK. */
+  callbackDrainedSamples?:
+    | string
+    | undefined;
+  /** Full cue observation only; never actual_local_playback_completed. */
+  callbackDrainObserved: boolean;
+  /** Cue frames covered by actual IAudioClock position, not QPC. */
+  devicePlayedSamples?:
+    | string
+    | undefined;
+  /** Full audio cue only; not complete A/V acknowledgement. */
+  devicePositionObserved: boolean;
+  /** Exact known position source, currently wasapi-iaudioclock. */
+  audioBackend: string;
+  /** Zero-based frame successfully submitted to the window. */
+  videoFrameIndex?:
+    | number
+    | undefined;
+  /** Actual cue device position used to select that frame. */
+  videoDeviceSamples?:
+    | string
+    | undefined;
+  /** Final frame submitted at full audio position; not display/OBS completion. */
+  videoTailSubmitted: boolean;
+}
+
+/**
+ * Explicit local native-device smoke only. Callback copies and presentation
+ * calls are diagnostics, never hardware completion or production output grants.
+ */
+export interface NativeDeviceSmokeReport {
+  schemaVersion: number;
+  scope: string;
+  scenario: string;
+  backend: string;
+  audioOpened: boolean;
+  windowOpened: boolean;
+  sampleRate: number;
+  channels: number;
+  callbacks: string;
+  copiedInterleavedSamples: string;
+  silentCallbacksAfterStop: string;
+  nonzeroCallbacksAfterStop: string;
+  windowUpdates: string;
+  maxPredictedLatencyUs: string;
+  lastNonzeroAtUs: string;
+  stopAtUs: string;
+  elapsedMs: string;
+  errorCode: string;
+  success: boolean;
+  /** Always false: no device ACK. */
+  actualLocalPlaybackCompleted: boolean;
+  maxCallbackFrames: string;
+}
+
+/**
  * Provisional engineering drill only (ADR 0016); NOT output.deliver readiness.
  * Private inherited stdio. No PCM/frames and no hardware playback ACK.
  */
@@ -252,6 +486,35 @@ export interface FrameSlotEvent {
     $case: "error";
     error: ContractError;
   } | undefined;
+}
+
+/** Session resident output commands. Media bytes remain outside the control pipe. */
+export interface LocalOutputCommand {
+  command: { $case: "descriptorPath"; descriptorPath: string } | { $case: "grant"; grant: LocalPlaybackGrant } | {
+    $case: "shutdown";
+    shutdown: boolean;
+  } | //
+  /** Revoke current cue and keep a silent standby window. */
+  { $case: "cancelCue"; cancelCue: boolean } | //
+  /** Silent neutral image only; never grants speech. */
+  { $case: "warmup"; warmup: LocalOutputWarmup } | undefined;
+}
+
+export interface LocalStandbyMedia {
+  version: number;
+  sessionId: string;
+  generationEpoch: string;
+  width: number;
+  height: number;
+  standbySha256: string;
+}
+
+export interface LocalOutputWarmup {
+  descriptorPath: string;
+  descriptorSha256: string;
+  sessionId: string;
+  generationEpoch: string;
+  remainingBudgetMs: number;
 }
 
 function createBaseAudioBlockMetadata(): AudioBlockMetadata {
@@ -1252,6 +1515,1007 @@ export const AvatarProfile: MessageFns<AvatarProfile> = {
     message.lookaheadSamples = object.lookaheadSamples ?? 0;
     message.switchPoints = object.switchPoints?.map((e) => e) || [];
     message.certifiedFallbackRefs = object.certifiedFallbackRefs?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseCharacterIdentity(): CharacterIdentity {
+  return { workspaceId: "", characterId: "", version: "", packageSha256: "", rightsSha256: "" };
+}
+
+export const CharacterIdentity: MessageFns<CharacterIdentity> = {
+  encode(message: CharacterIdentity, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.workspaceId !== "") {
+      writer.uint32(10).string(message.workspaceId);
+    }
+    if (message.characterId !== "") {
+      writer.uint32(18).string(message.characterId);
+    }
+    if (message.version !== "") {
+      writer.uint32(26).string(message.version);
+    }
+    if (message.packageSha256 !== "") {
+      writer.uint32(34).string(message.packageSha256);
+    }
+    if (message.rightsSha256 !== "") {
+      writer.uint32(42).string(message.rightsSha256);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CharacterIdentity {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCharacterIdentity();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.workspaceId = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.characterId = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.version = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.packageSha256 = reader.string();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.rightsSha256 = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<CharacterIdentity>): CharacterIdentity {
+    return CharacterIdentity.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CharacterIdentity>): CharacterIdentity {
+    const message = createBaseCharacterIdentity();
+    message.workspaceId = object.workspaceId ?? "";
+    message.characterId = object.characterId ?? "";
+    message.version = object.version ?? "";
+    message.packageSha256 = object.packageSha256 ?? "";
+    message.rightsSha256 = object.rightsSha256 ?? "";
+    return message;
+  },
+};
+
+function createBaseCharacterCapability(): CharacterCapability {
+  return { renderer: 0, lipSync: [], supportedActionIds: [] };
+}
+
+export const CharacterCapability: MessageFns<CharacterCapability> = {
+  encode(message: CharacterCapability, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.renderer !== 0) {
+      writer.uint32(8).int32(message.renderer);
+    }
+    writer.uint32(18).fork();
+    for (const v of message.lipSync) {
+      writer.int32(v);
+    }
+    writer.join();
+    for (const v of message.supportedActionIds) {
+      writer.uint32(26).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CharacterCapability {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCharacterCapability();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.renderer = reader.int32() as any;
+            continue;
+          }
+          case 2: {
+            if (tag === 16) {
+              message.lipSync.push(reader.int32() as any);
+
+              continue;
+            }
+
+            if (tag === 18) {
+              const end2 = reader.uint32() + reader.pos;
+              while (reader.pos < end2) {
+                message.lipSync.push(reader.int32() as any);
+              }
+
+              continue;
+            }
+
+            break;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.supportedActionIds.push(reader.string());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<CharacterCapability>): CharacterCapability {
+    return CharacterCapability.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CharacterCapability>): CharacterCapability {
+    const message = createBaseCharacterCapability();
+    message.renderer = object.renderer ?? 0;
+    message.lipSync = object.lipSync?.map((e) => e) || [];
+    message.supportedActionIds = object.supportedActionIds?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseCharacterProfile(): CharacterProfile {
+  return { schemaVersion: 0, identity: undefined, capability: undefined };
+}
+
+export const CharacterProfile: MessageFns<CharacterProfile> = {
+  encode(message: CharacterProfile, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.schemaVersion !== 0) {
+      writer.uint32(8).uint32(message.schemaVersion);
+    }
+    if (message.identity !== undefined) {
+      CharacterIdentity.encode(message.identity, writer.uint32(18).fork()).join();
+    }
+    if (message.capability !== undefined) {
+      CharacterCapability.encode(message.capability, writer.uint32(26).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CharacterProfile {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCharacterProfile();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.schemaVersion = reader.uint32();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.identity = CharacterIdentity.decode(reader, reader.uint32());
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.capability = CharacterCapability.decode(reader, reader.uint32());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<CharacterProfile>): CharacterProfile {
+    return CharacterProfile.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CharacterProfile>): CharacterProfile {
+    const message = createBaseCharacterProfile();
+    message.schemaVersion = object.schemaVersion ?? 0;
+    message.identity = (object.identity !== undefined && object.identity !== null)
+      ? CharacterIdentity.fromPartial(object.identity)
+      : undefined;
+    message.capability = (object.capability !== undefined && object.capability !== null)
+      ? CharacterCapability.fromPartial(object.capability)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseCharacterActionRequest(): CharacterActionRequest {
+  return {
+    requestId: "",
+    character: undefined,
+    sessionId: "",
+    generationEpoch: "0",
+    outputId: "",
+    approvalRef: "",
+    leaseId: "",
+    actionId: "",
+    priority: 0,
+    remainingBudgetMs: 0,
+    sequence: "0",
+  };
+}
+
+export const CharacterActionRequest: MessageFns<CharacterActionRequest> = {
+  encode(message: CharacterActionRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.requestId !== "") {
+      writer.uint32(10).string(message.requestId);
+    }
+    if (message.character !== undefined) {
+      CharacterIdentity.encode(message.character, writer.uint32(18).fork()).join();
+    }
+    if (message.sessionId !== "") {
+      writer.uint32(26).string(message.sessionId);
+    }
+    if (message.generationEpoch !== "0") {
+      writer.uint32(32).uint64(message.generationEpoch);
+    }
+    if (message.outputId !== "") {
+      writer.uint32(42).string(message.outputId);
+    }
+    if (message.approvalRef !== "") {
+      writer.uint32(50).string(message.approvalRef);
+    }
+    if (message.leaseId !== "") {
+      writer.uint32(58).string(message.leaseId);
+    }
+    if (message.actionId !== "") {
+      writer.uint32(66).string(message.actionId);
+    }
+    if (message.priority !== 0) {
+      writer.uint32(72).uint32(message.priority);
+    }
+    if (message.remainingBudgetMs !== 0) {
+      writer.uint32(80).uint32(message.remainingBudgetMs);
+    }
+    if (message.sequence !== "0") {
+      writer.uint32(88).uint64(message.sequence);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CharacterActionRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCharacterActionRequest();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.requestId = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.character = CharacterIdentity.decode(reader, reader.uint32());
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.sessionId = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.generationEpoch = reader.uint64().toString();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.outputId = reader.string();
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.approvalRef = reader.string();
+            continue;
+          }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.leaseId = reader.string();
+            continue;
+          }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.actionId = reader.string();
+            continue;
+          }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.priority = reader.uint32();
+            continue;
+          }
+          case 10: {
+            if (tag !== 80) {
+              break;
+            }
+
+            message.remainingBudgetMs = reader.uint32();
+            continue;
+          }
+          case 11: {
+            if (tag !== 88) {
+              break;
+            }
+
+            message.sequence = reader.uint64().toString();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<CharacterActionRequest>): CharacterActionRequest {
+    return CharacterActionRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CharacterActionRequest>): CharacterActionRequest {
+    const message = createBaseCharacterActionRequest();
+    message.requestId = object.requestId ?? "";
+    message.character = (object.character !== undefined && object.character !== null)
+      ? CharacterIdentity.fromPartial(object.character)
+      : undefined;
+    message.sessionId = object.sessionId ?? "";
+    message.generationEpoch = object.generationEpoch ?? "0";
+    message.outputId = object.outputId ?? "";
+    message.approvalRef = object.approvalRef ?? "";
+    message.leaseId = object.leaseId ?? "";
+    message.actionId = object.actionId ?? "";
+    message.priority = object.priority ?? 0;
+    message.remainingBudgetMs = object.remainingBudgetMs ?? 0;
+    message.sequence = object.sequence ?? "0";
+    return message;
+  },
+};
+
+function createBaseCharacterActionState(): CharacterActionState {
+  return {
+    requestId: "",
+    character: undefined,
+    sessionId: "",
+    generationEpoch: "0",
+    outputId: "",
+    actionId: "",
+    phase: 0,
+    reasonCode: "",
+    sequence: "0",
+    sourceSamplePosition: undefined,
+    frameSequence: undefined,
+  };
+}
+
+export const CharacterActionState: MessageFns<CharacterActionState> = {
+  encode(message: CharacterActionState, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.requestId !== "") {
+      writer.uint32(10).string(message.requestId);
+    }
+    if (message.character !== undefined) {
+      CharacterIdentity.encode(message.character, writer.uint32(18).fork()).join();
+    }
+    if (message.sessionId !== "") {
+      writer.uint32(26).string(message.sessionId);
+    }
+    if (message.generationEpoch !== "0") {
+      writer.uint32(32).uint64(message.generationEpoch);
+    }
+    if (message.outputId !== "") {
+      writer.uint32(42).string(message.outputId);
+    }
+    if (message.actionId !== "") {
+      writer.uint32(50).string(message.actionId);
+    }
+    if (message.phase !== 0) {
+      writer.uint32(56).int32(message.phase);
+    }
+    if (message.reasonCode !== "") {
+      writer.uint32(66).string(message.reasonCode);
+    }
+    if (message.sequence !== "0") {
+      writer.uint32(72).uint64(message.sequence);
+    }
+    if (message.sourceSamplePosition !== undefined) {
+      writer.uint32(80).uint64(message.sourceSamplePosition);
+    }
+    if (message.frameSequence !== undefined) {
+      writer.uint32(88).uint64(message.frameSequence);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CharacterActionState {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCharacterActionState();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.requestId = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.character = CharacterIdentity.decode(reader, reader.uint32());
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.sessionId = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.generationEpoch = reader.uint64().toString();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.outputId = reader.string();
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.actionId = reader.string();
+            continue;
+          }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.phase = reader.int32() as any;
+            continue;
+          }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.reasonCode = reader.string();
+            continue;
+          }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.sequence = reader.uint64().toString();
+            continue;
+          }
+          case 10: {
+            if (tag !== 80) {
+              break;
+            }
+
+            message.sourceSamplePosition = reader.uint64().toString();
+            continue;
+          }
+          case 11: {
+            if (tag !== 88) {
+              break;
+            }
+
+            message.frameSequence = reader.uint64().toString();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<CharacterActionState>): CharacterActionState {
+    return CharacterActionState.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CharacterActionState>): CharacterActionState {
+    const message = createBaseCharacterActionState();
+    message.requestId = object.requestId ?? "";
+    message.character = (object.character !== undefined && object.character !== null)
+      ? CharacterIdentity.fromPartial(object.character)
+      : undefined;
+    message.sessionId = object.sessionId ?? "";
+    message.generationEpoch = object.generationEpoch ?? "0";
+    message.outputId = object.outputId ?? "";
+    message.actionId = object.actionId ?? "";
+    message.phase = object.phase ?? 0;
+    message.reasonCode = object.reasonCode ?? "";
+    message.sequence = object.sequence ?? "0";
+    message.sourceSamplePosition = object.sourceSamplePosition ?? undefined;
+    message.frameSequence = object.frameSequence ?? undefined;
+    return message;
+  },
+};
+
+function createBaseCharacterBoundedMedia(): CharacterBoundedMedia {
+  return {
+    identity: undefined,
+    sessionId: "",
+    epoch: "0",
+    actionId: "",
+    width: 0,
+    height: 0,
+    sampleRate: 0,
+    channels: 0,
+    maxFrames: "0",
+    maxSamples: "0",
+    samplesPerFrame: 0,
+    pixelFormat: "",
+    pcmFormat: "",
+  };
+}
+
+export const CharacterBoundedMedia: MessageFns<CharacterBoundedMedia> = {
+  encode(message: CharacterBoundedMedia, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.identity !== undefined) {
+      CharacterIdentity.encode(message.identity, writer.uint32(10).fork()).join();
+    }
+    if (message.sessionId !== "") {
+      writer.uint32(18).string(message.sessionId);
+    }
+    if (message.epoch !== "0") {
+      writer.uint32(24).uint64(message.epoch);
+    }
+    if (message.actionId !== "") {
+      writer.uint32(34).string(message.actionId);
+    }
+    if (message.width !== 0) {
+      writer.uint32(40).uint32(message.width);
+    }
+    if (message.height !== 0) {
+      writer.uint32(48).uint32(message.height);
+    }
+    if (message.sampleRate !== 0) {
+      writer.uint32(56).uint32(message.sampleRate);
+    }
+    if (message.channels !== 0) {
+      writer.uint32(64).uint32(message.channels);
+    }
+    if (message.maxFrames !== "0") {
+      writer.uint32(72).uint64(message.maxFrames);
+    }
+    if (message.maxSamples !== "0") {
+      writer.uint32(80).uint64(message.maxSamples);
+    }
+    if (message.samplesPerFrame !== 0) {
+      writer.uint32(88).uint32(message.samplesPerFrame);
+    }
+    if (message.pixelFormat !== "") {
+      writer.uint32(98).string(message.pixelFormat);
+    }
+    if (message.pcmFormat !== "") {
+      writer.uint32(106).string(message.pcmFormat);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CharacterBoundedMedia {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCharacterBoundedMedia();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.identity = CharacterIdentity.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.sessionId = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.epoch = reader.uint64().toString();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.actionId = reader.string();
+            continue;
+          }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.width = reader.uint32();
+            continue;
+          }
+          case 6: {
+            if (tag !== 48) {
+              break;
+            }
+
+            message.height = reader.uint32();
+            continue;
+          }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.sampleRate = reader.uint32();
+            continue;
+          }
+          case 8: {
+            if (tag !== 64) {
+              break;
+            }
+
+            message.channels = reader.uint32();
+            continue;
+          }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.maxFrames = reader.uint64().toString();
+            continue;
+          }
+          case 10: {
+            if (tag !== 80) {
+              break;
+            }
+
+            message.maxSamples = reader.uint64().toString();
+            continue;
+          }
+          case 11: {
+            if (tag !== 88) {
+              break;
+            }
+
+            message.samplesPerFrame = reader.uint32();
+            continue;
+          }
+          case 12: {
+            if (tag !== 98) {
+              break;
+            }
+
+            message.pixelFormat = reader.string();
+            continue;
+          }
+          case 13: {
+            if (tag !== 106) {
+              break;
+            }
+
+            message.pcmFormat = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<CharacterBoundedMedia>): CharacterBoundedMedia {
+    return CharacterBoundedMedia.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CharacterBoundedMedia>): CharacterBoundedMedia {
+    const message = createBaseCharacterBoundedMedia();
+    message.identity = (object.identity !== undefined && object.identity !== null)
+      ? CharacterIdentity.fromPartial(object.identity)
+      : undefined;
+    message.sessionId = object.sessionId ?? "";
+    message.epoch = object.epoch ?? "0";
+    message.actionId = object.actionId ?? "";
+    message.width = object.width ?? 0;
+    message.height = object.height ?? 0;
+    message.sampleRate = object.sampleRate ?? 0;
+    message.channels = object.channels ?? 0;
+    message.maxFrames = object.maxFrames ?? "0";
+    message.maxSamples = object.maxSamples ?? "0";
+    message.samplesPerFrame = object.samplesPerFrame ?? 0;
+    message.pixelFormat = object.pixelFormat ?? "";
+    message.pcmFormat = object.pcmFormat ?? "";
+    return message;
+  },
+};
+
+function createBaseCharacterRuntimeView(): CharacterRuntimeView {
+  return { identity: undefined, state: 0, sessionId: "", epoch: "0", actionId: "", media: undefined, reasonCode: "" };
+}
+
+export const CharacterRuntimeView: MessageFns<CharacterRuntimeView> = {
+  encode(message: CharacterRuntimeView, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.identity !== undefined) {
+      CharacterIdentity.encode(message.identity, writer.uint32(10).fork()).join();
+    }
+    if (message.state !== 0) {
+      writer.uint32(16).int32(message.state);
+    }
+    if (message.sessionId !== "") {
+      writer.uint32(26).string(message.sessionId);
+    }
+    if (message.epoch !== "0") {
+      writer.uint32(32).uint64(message.epoch);
+    }
+    if (message.actionId !== "") {
+      writer.uint32(42).string(message.actionId);
+    }
+    if (message.media !== undefined) {
+      CharacterBoundedMedia.encode(message.media, writer.uint32(50).fork()).join();
+    }
+    if (message.reasonCode !== "") {
+      writer.uint32(58).string(message.reasonCode);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CharacterRuntimeView {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseCharacterRuntimeView();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.identity = CharacterIdentity.decode(reader, reader.uint32());
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.state = reader.int32() as any;
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.sessionId = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.epoch = reader.uint64().toString();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.actionId = reader.string();
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.media = CharacterBoundedMedia.decode(reader, reader.uint32());
+            continue;
+          }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.reasonCode = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<CharacterRuntimeView>): CharacterRuntimeView {
+    return CharacterRuntimeView.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CharacterRuntimeView>): CharacterRuntimeView {
+    const message = createBaseCharacterRuntimeView();
+    message.identity = (object.identity !== undefined && object.identity !== null)
+      ? CharacterIdentity.fromPartial(object.identity)
+      : undefined;
+    message.state = object.state ?? 0;
+    message.sessionId = object.sessionId ?? "";
+    message.epoch = object.epoch ?? "0";
+    message.actionId = object.actionId ?? "";
+    message.media = (object.media !== undefined && object.media !== null)
+      ? CharacterBoundedMedia.fromPartial(object.media)
+      : undefined;
+    message.reasonCode = object.reasonCode ?? "";
     return message;
   },
 };
@@ -2503,6 +3767,948 @@ export const PreviewDescriptor: MessageFns<PreviewDescriptor> = {
   },
 };
 
+function createBaseLocalPlaybackMedia(): LocalPlaybackMedia {
+  return {
+    version: 0,
+    sessionId: "",
+    generationEpoch: "0",
+    candidateHash: "",
+    sampleRate: 0,
+    sampleCount: "0",
+    width: 0,
+    height: 0,
+    frameCount: 0,
+    fpsNum: 0,
+    fpsDen: 0,
+    audioSha256: "",
+    framesSha256: "",
+    frameSha256: [],
+    standbySha256: "",
+  };
+}
+
+export const LocalPlaybackMedia: MessageFns<LocalPlaybackMedia> = {
+  encode(message: LocalPlaybackMedia, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.version !== 0) {
+      writer.uint32(8).uint32(message.version);
+    }
+    if (message.sessionId !== "") {
+      writer.uint32(18).string(message.sessionId);
+    }
+    if (message.generationEpoch !== "0") {
+      writer.uint32(24).uint64(message.generationEpoch);
+    }
+    if (message.candidateHash !== "") {
+      writer.uint32(34).string(message.candidateHash);
+    }
+    if (message.sampleRate !== 0) {
+      writer.uint32(40).uint32(message.sampleRate);
+    }
+    if (message.sampleCount !== "0") {
+      writer.uint32(48).uint64(message.sampleCount);
+    }
+    if (message.width !== 0) {
+      writer.uint32(56).uint32(message.width);
+    }
+    if (message.height !== 0) {
+      writer.uint32(64).uint32(message.height);
+    }
+    if (message.frameCount !== 0) {
+      writer.uint32(72).uint32(message.frameCount);
+    }
+    if (message.fpsNum !== 0) {
+      writer.uint32(80).uint32(message.fpsNum);
+    }
+    if (message.fpsDen !== 0) {
+      writer.uint32(88).uint32(message.fpsDen);
+    }
+    if (message.audioSha256 !== "") {
+      writer.uint32(98).string(message.audioSha256);
+    }
+    if (message.framesSha256 !== "") {
+      writer.uint32(106).string(message.framesSha256);
+    }
+    for (const v of message.frameSha256) {
+      writer.uint32(114).string(v!);
+    }
+    if (message.standbySha256 !== "") {
+      writer.uint32(122).string(message.standbySha256);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): LocalPlaybackMedia {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseLocalPlaybackMedia();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.version = reader.uint32();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.sessionId = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.generationEpoch = reader.uint64().toString();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.candidateHash = reader.string();
+            continue;
+          }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.sampleRate = reader.uint32();
+            continue;
+          }
+          case 6: {
+            if (tag !== 48) {
+              break;
+            }
+
+            message.sampleCount = reader.uint64().toString();
+            continue;
+          }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.width = reader.uint32();
+            continue;
+          }
+          case 8: {
+            if (tag !== 64) {
+              break;
+            }
+
+            message.height = reader.uint32();
+            continue;
+          }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.frameCount = reader.uint32();
+            continue;
+          }
+          case 10: {
+            if (tag !== 80) {
+              break;
+            }
+
+            message.fpsNum = reader.uint32();
+            continue;
+          }
+          case 11: {
+            if (tag !== 88) {
+              break;
+            }
+
+            message.fpsDen = reader.uint32();
+            continue;
+          }
+          case 12: {
+            if (tag !== 98) {
+              break;
+            }
+
+            message.audioSha256 = reader.string();
+            continue;
+          }
+          case 13: {
+            if (tag !== 106) {
+              break;
+            }
+
+            message.framesSha256 = reader.string();
+            continue;
+          }
+          case 14: {
+            if (tag !== 114) {
+              break;
+            }
+
+            message.frameSha256.push(reader.string());
+            continue;
+          }
+          case 15: {
+            if (tag !== 122) {
+              break;
+            }
+
+            message.standbySha256 = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<LocalPlaybackMedia>): LocalPlaybackMedia {
+    return LocalPlaybackMedia.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<LocalPlaybackMedia>): LocalPlaybackMedia {
+    const message = createBaseLocalPlaybackMedia();
+    message.version = object.version ?? 0;
+    message.sessionId = object.sessionId ?? "";
+    message.generationEpoch = object.generationEpoch ?? "0";
+    message.candidateHash = object.candidateHash ?? "";
+    message.sampleRate = object.sampleRate ?? 0;
+    message.sampleCount = object.sampleCount ?? "0";
+    message.width = object.width ?? 0;
+    message.height = object.height ?? 0;
+    message.frameCount = object.frameCount ?? 0;
+    message.fpsNum = object.fpsNum ?? 0;
+    message.fpsDen = object.fpsDen ?? 0;
+    message.audioSha256 = object.audioSha256 ?? "";
+    message.framesSha256 = object.framesSha256 ?? "";
+    message.frameSha256 = object.frameSha256?.map((e) => e) || [];
+    message.standbySha256 = object.standbySha256 ?? "";
+    return message;
+  },
+};
+
+function createBaseLocalPlaybackGrant(): LocalPlaybackGrant {
+  return { version: 0, seq: "0", cue: undefined, approval: undefined, lease: undefined, mediaSha256: "" };
+}
+
+export const LocalPlaybackGrant: MessageFns<LocalPlaybackGrant> = {
+  encode(message: LocalPlaybackGrant, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.version !== 0) {
+      writer.uint32(8).uint32(message.version);
+    }
+    if (message.seq !== "0") {
+      writer.uint32(16).uint64(message.seq);
+    }
+    if (message.cue !== undefined) {
+      PerformanceCue.encode(message.cue, writer.uint32(26).fork()).join();
+    }
+    if (message.approval !== undefined) {
+      Approval.encode(message.approval, writer.uint32(34).fork()).join();
+    }
+    if (message.lease !== undefined) {
+      PlaybackLease.encode(message.lease, writer.uint32(42).fork()).join();
+    }
+    if (message.mediaSha256 !== "") {
+      writer.uint32(50).string(message.mediaSha256);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): LocalPlaybackGrant {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseLocalPlaybackGrant();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.version = reader.uint32();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.seq = reader.uint64().toString();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.cue = PerformanceCue.decode(reader, reader.uint32());
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.approval = Approval.decode(reader, reader.uint32());
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.lease = PlaybackLease.decode(reader, reader.uint32());
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.mediaSha256 = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<LocalPlaybackGrant>): LocalPlaybackGrant {
+    return LocalPlaybackGrant.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<LocalPlaybackGrant>): LocalPlaybackGrant {
+    const message = createBaseLocalPlaybackGrant();
+    message.version = object.version ?? 0;
+    message.seq = object.seq ?? "0";
+    message.cue = (object.cue !== undefined && object.cue !== null)
+      ? PerformanceCue.fromPartial(object.cue)
+      : undefined;
+    message.approval = (object.approval !== undefined && object.approval !== null)
+      ? Approval.fromPartial(object.approval)
+      : undefined;
+    message.lease = (object.lease !== undefined && object.lease !== null)
+      ? PlaybackLease.fromPartial(object.lease)
+      : undefined;
+    message.mediaSha256 = object.mediaSha256 ?? "";
+    return message;
+  },
+};
+
+function createBaseLocalPlaybackStatus(): LocalPlaybackStatus {
+  return {
+    version: 0,
+    state: "",
+    copiedSamples: undefined,
+    windowUpdates: undefined,
+    errorCode: "",
+    actualLocalPlaybackCompleted: false,
+    audioStreamOpenCount: 0,
+    standbySha256: "",
+    mediaSha256: "",
+    callbackDrainedSamples: undefined,
+    callbackDrainObserved: false,
+    devicePlayedSamples: undefined,
+    devicePositionObserved: false,
+    audioBackend: "",
+    videoFrameIndex: undefined,
+    videoDeviceSamples: undefined,
+    videoTailSubmitted: false,
+  };
+}
+
+export const LocalPlaybackStatus: MessageFns<LocalPlaybackStatus> = {
+  encode(message: LocalPlaybackStatus, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.version !== 0) {
+      writer.uint32(8).uint32(message.version);
+    }
+    if (message.state !== "") {
+      writer.uint32(18).string(message.state);
+    }
+    if (message.copiedSamples !== undefined) {
+      writer.uint32(24).uint64(message.copiedSamples);
+    }
+    if (message.windowUpdates !== undefined) {
+      writer.uint32(32).uint64(message.windowUpdates);
+    }
+    if (message.errorCode !== "") {
+      writer.uint32(42).string(message.errorCode);
+    }
+    if (message.actualLocalPlaybackCompleted !== false) {
+      writer.uint32(48).bool(message.actualLocalPlaybackCompleted);
+    }
+    if (message.audioStreamOpenCount !== 0) {
+      writer.uint32(56).uint32(message.audioStreamOpenCount);
+    }
+    if (message.standbySha256 !== "") {
+      writer.uint32(66).string(message.standbySha256);
+    }
+    if (message.mediaSha256 !== "") {
+      writer.uint32(74).string(message.mediaSha256);
+    }
+    if (message.callbackDrainedSamples !== undefined) {
+      writer.uint32(80).uint64(message.callbackDrainedSamples);
+    }
+    if (message.callbackDrainObserved !== false) {
+      writer.uint32(88).bool(message.callbackDrainObserved);
+    }
+    if (message.devicePlayedSamples !== undefined) {
+      writer.uint32(96).uint64(message.devicePlayedSamples);
+    }
+    if (message.devicePositionObserved !== false) {
+      writer.uint32(104).bool(message.devicePositionObserved);
+    }
+    if (message.audioBackend !== "") {
+      writer.uint32(114).string(message.audioBackend);
+    }
+    if (message.videoFrameIndex !== undefined) {
+      writer.uint32(120).uint32(message.videoFrameIndex);
+    }
+    if (message.videoDeviceSamples !== undefined) {
+      writer.uint32(128).uint64(message.videoDeviceSamples);
+    }
+    if (message.videoTailSubmitted !== false) {
+      writer.uint32(136).bool(message.videoTailSubmitted);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): LocalPlaybackStatus {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseLocalPlaybackStatus();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.version = reader.uint32();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.state = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.copiedSamples = reader.uint64().toString();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.windowUpdates = reader.uint64().toString();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.errorCode = reader.string();
+            continue;
+          }
+          case 6: {
+            if (tag !== 48) {
+              break;
+            }
+
+            message.actualLocalPlaybackCompleted = reader.bool();
+            continue;
+          }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.audioStreamOpenCount = reader.uint32();
+            continue;
+          }
+          case 8: {
+            if (tag !== 66) {
+              break;
+            }
+
+            message.standbySha256 = reader.string();
+            continue;
+          }
+          case 9: {
+            if (tag !== 74) {
+              break;
+            }
+
+            message.mediaSha256 = reader.string();
+            continue;
+          }
+          case 10: {
+            if (tag !== 80) {
+              break;
+            }
+
+            message.callbackDrainedSamples = reader.uint64().toString();
+            continue;
+          }
+          case 11: {
+            if (tag !== 88) {
+              break;
+            }
+
+            message.callbackDrainObserved = reader.bool();
+            continue;
+          }
+          case 12: {
+            if (tag !== 96) {
+              break;
+            }
+
+            message.devicePlayedSamples = reader.uint64().toString();
+            continue;
+          }
+          case 13: {
+            if (tag !== 104) {
+              break;
+            }
+
+            message.devicePositionObserved = reader.bool();
+            continue;
+          }
+          case 14: {
+            if (tag !== 114) {
+              break;
+            }
+
+            message.audioBackend = reader.string();
+            continue;
+          }
+          case 15: {
+            if (tag !== 120) {
+              break;
+            }
+
+            message.videoFrameIndex = reader.uint32();
+            continue;
+          }
+          case 16: {
+            if (tag !== 128) {
+              break;
+            }
+
+            message.videoDeviceSamples = reader.uint64().toString();
+            continue;
+          }
+          case 17: {
+            if (tag !== 136) {
+              break;
+            }
+
+            message.videoTailSubmitted = reader.bool();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<LocalPlaybackStatus>): LocalPlaybackStatus {
+    return LocalPlaybackStatus.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<LocalPlaybackStatus>): LocalPlaybackStatus {
+    const message = createBaseLocalPlaybackStatus();
+    message.version = object.version ?? 0;
+    message.state = object.state ?? "";
+    message.copiedSamples = object.copiedSamples ?? undefined;
+    message.windowUpdates = object.windowUpdates ?? undefined;
+    message.errorCode = object.errorCode ?? "";
+    message.actualLocalPlaybackCompleted = object.actualLocalPlaybackCompleted ?? false;
+    message.audioStreamOpenCount = object.audioStreamOpenCount ?? 0;
+    message.standbySha256 = object.standbySha256 ?? "";
+    message.mediaSha256 = object.mediaSha256 ?? "";
+    message.callbackDrainedSamples = object.callbackDrainedSamples ?? undefined;
+    message.callbackDrainObserved = object.callbackDrainObserved ?? false;
+    message.devicePlayedSamples = object.devicePlayedSamples ?? undefined;
+    message.devicePositionObserved = object.devicePositionObserved ?? false;
+    message.audioBackend = object.audioBackend ?? "";
+    message.videoFrameIndex = object.videoFrameIndex ?? undefined;
+    message.videoDeviceSamples = object.videoDeviceSamples ?? undefined;
+    message.videoTailSubmitted = object.videoTailSubmitted ?? false;
+    return message;
+  },
+};
+
+function createBaseNativeDeviceSmokeReport(): NativeDeviceSmokeReport {
+  return {
+    schemaVersion: 0,
+    scope: "",
+    scenario: "",
+    backend: "",
+    audioOpened: false,
+    windowOpened: false,
+    sampleRate: 0,
+    channels: 0,
+    callbacks: "0",
+    copiedInterleavedSamples: "0",
+    silentCallbacksAfterStop: "0",
+    nonzeroCallbacksAfterStop: "0",
+    windowUpdates: "0",
+    maxPredictedLatencyUs: "0",
+    lastNonzeroAtUs: "0",
+    stopAtUs: "0",
+    elapsedMs: "0",
+    errorCode: "",
+    success: false,
+    actualLocalPlaybackCompleted: false,
+    maxCallbackFrames: "0",
+  };
+}
+
+export const NativeDeviceSmokeReport: MessageFns<NativeDeviceSmokeReport> = {
+  encode(message: NativeDeviceSmokeReport, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.schemaVersion !== 0) {
+      writer.uint32(8).uint32(message.schemaVersion);
+    }
+    if (message.scope !== "") {
+      writer.uint32(18).string(message.scope);
+    }
+    if (message.scenario !== "") {
+      writer.uint32(26).string(message.scenario);
+    }
+    if (message.backend !== "") {
+      writer.uint32(34).string(message.backend);
+    }
+    if (message.audioOpened !== false) {
+      writer.uint32(40).bool(message.audioOpened);
+    }
+    if (message.windowOpened !== false) {
+      writer.uint32(48).bool(message.windowOpened);
+    }
+    if (message.sampleRate !== 0) {
+      writer.uint32(56).uint32(message.sampleRate);
+    }
+    if (message.channels !== 0) {
+      writer.uint32(64).uint32(message.channels);
+    }
+    if (message.callbacks !== "0") {
+      writer.uint32(72).uint64(message.callbacks);
+    }
+    if (message.copiedInterleavedSamples !== "0") {
+      writer.uint32(80).uint64(message.copiedInterleavedSamples);
+    }
+    if (message.silentCallbacksAfterStop !== "0") {
+      writer.uint32(88).uint64(message.silentCallbacksAfterStop);
+    }
+    if (message.nonzeroCallbacksAfterStop !== "0") {
+      writer.uint32(96).uint64(message.nonzeroCallbacksAfterStop);
+    }
+    if (message.windowUpdates !== "0") {
+      writer.uint32(104).uint64(message.windowUpdates);
+    }
+    if (message.maxPredictedLatencyUs !== "0") {
+      writer.uint32(112).uint64(message.maxPredictedLatencyUs);
+    }
+    if (message.lastNonzeroAtUs !== "0") {
+      writer.uint32(120).uint64(message.lastNonzeroAtUs);
+    }
+    if (message.stopAtUs !== "0") {
+      writer.uint32(128).uint64(message.stopAtUs);
+    }
+    if (message.elapsedMs !== "0") {
+      writer.uint32(136).uint64(message.elapsedMs);
+    }
+    if (message.errorCode !== "") {
+      writer.uint32(146).string(message.errorCode);
+    }
+    if (message.success !== false) {
+      writer.uint32(152).bool(message.success);
+    }
+    if (message.actualLocalPlaybackCompleted !== false) {
+      writer.uint32(160).bool(message.actualLocalPlaybackCompleted);
+    }
+    if (message.maxCallbackFrames !== "0") {
+      writer.uint32(168).uint64(message.maxCallbackFrames);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): NativeDeviceSmokeReport {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseNativeDeviceSmokeReport();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.schemaVersion = reader.uint32();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.scope = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.scenario = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.backend = reader.string();
+            continue;
+          }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.audioOpened = reader.bool();
+            continue;
+          }
+          case 6: {
+            if (tag !== 48) {
+              break;
+            }
+
+            message.windowOpened = reader.bool();
+            continue;
+          }
+          case 7: {
+            if (tag !== 56) {
+              break;
+            }
+
+            message.sampleRate = reader.uint32();
+            continue;
+          }
+          case 8: {
+            if (tag !== 64) {
+              break;
+            }
+
+            message.channels = reader.uint32();
+            continue;
+          }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.callbacks = reader.uint64().toString();
+            continue;
+          }
+          case 10: {
+            if (tag !== 80) {
+              break;
+            }
+
+            message.copiedInterleavedSamples = reader.uint64().toString();
+            continue;
+          }
+          case 11: {
+            if (tag !== 88) {
+              break;
+            }
+
+            message.silentCallbacksAfterStop = reader.uint64().toString();
+            continue;
+          }
+          case 12: {
+            if (tag !== 96) {
+              break;
+            }
+
+            message.nonzeroCallbacksAfterStop = reader.uint64().toString();
+            continue;
+          }
+          case 13: {
+            if (tag !== 104) {
+              break;
+            }
+
+            message.windowUpdates = reader.uint64().toString();
+            continue;
+          }
+          case 14: {
+            if (tag !== 112) {
+              break;
+            }
+
+            message.maxPredictedLatencyUs = reader.uint64().toString();
+            continue;
+          }
+          case 15: {
+            if (tag !== 120) {
+              break;
+            }
+
+            message.lastNonzeroAtUs = reader.uint64().toString();
+            continue;
+          }
+          case 16: {
+            if (tag !== 128) {
+              break;
+            }
+
+            message.stopAtUs = reader.uint64().toString();
+            continue;
+          }
+          case 17: {
+            if (tag !== 136) {
+              break;
+            }
+
+            message.elapsedMs = reader.uint64().toString();
+            continue;
+          }
+          case 18: {
+            if (tag !== 146) {
+              break;
+            }
+
+            message.errorCode = reader.string();
+            continue;
+          }
+          case 19: {
+            if (tag !== 152) {
+              break;
+            }
+
+            message.success = reader.bool();
+            continue;
+          }
+          case 20: {
+            if (tag !== 160) {
+              break;
+            }
+
+            message.actualLocalPlaybackCompleted = reader.bool();
+            continue;
+          }
+          case 21: {
+            if (tag !== 168) {
+              break;
+            }
+
+            message.maxCallbackFrames = reader.uint64().toString();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<NativeDeviceSmokeReport>): NativeDeviceSmokeReport {
+    return NativeDeviceSmokeReport.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<NativeDeviceSmokeReport>): NativeDeviceSmokeReport {
+    const message = createBaseNativeDeviceSmokeReport();
+    message.schemaVersion = object.schemaVersion ?? 0;
+    message.scope = object.scope ?? "";
+    message.scenario = object.scenario ?? "";
+    message.backend = object.backend ?? "";
+    message.audioOpened = object.audioOpened ?? false;
+    message.windowOpened = object.windowOpened ?? false;
+    message.sampleRate = object.sampleRate ?? 0;
+    message.channels = object.channels ?? 0;
+    message.callbacks = object.callbacks ?? "0";
+    message.copiedInterleavedSamples = object.copiedInterleavedSamples ?? "0";
+    message.silentCallbacksAfterStop = object.silentCallbacksAfterStop ?? "0";
+    message.nonzeroCallbacksAfterStop = object.nonzeroCallbacksAfterStop ?? "0";
+    message.windowUpdates = object.windowUpdates ?? "0";
+    message.maxPredictedLatencyUs = object.maxPredictedLatencyUs ?? "0";
+    message.lastNonzeroAtUs = object.lastNonzeroAtUs ?? "0";
+    message.stopAtUs = object.stopAtUs ?? "0";
+    message.elapsedMs = object.elapsedMs ?? "0";
+    message.errorCode = object.errorCode ?? "";
+    message.success = object.success ?? false;
+    message.actualLocalPlaybackCompleted = object.actualLocalPlaybackCompleted ?? false;
+    message.maxCallbackFrames = object.maxCallbackFrames ?? "0";
+    return message;
+  },
+};
+
 function createBaseOutputWatchdogCommand(): OutputWatchdogCommand {
   return { schemaVersion: 0, sessionId: "", seq: "0", remainingBudgetMs: 0, action: undefined };
 }
@@ -3286,6 +5492,356 @@ export const FrameSlotEvent: MessageFns<FrameSlotEvent> = {
         break;
       }
     }
+    return message;
+  },
+};
+
+function createBaseLocalOutputCommand(): LocalOutputCommand {
+  return { command: undefined };
+}
+
+export const LocalOutputCommand: MessageFns<LocalOutputCommand> = {
+  encode(message: LocalOutputCommand, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    switch (message.command?.$case) {
+      case "descriptorPath":
+        writer.uint32(10).string(message.command.descriptorPath);
+        break;
+      case "grant":
+        LocalPlaybackGrant.encode(message.command.grant, writer.uint32(18).fork()).join();
+        break;
+      case "shutdown":
+        writer.uint32(24).bool(message.command.shutdown);
+        break;
+      case "cancelCue":
+        writer.uint32(32).bool(message.command.cancelCue);
+        break;
+      case "warmup":
+        LocalOutputWarmup.encode(message.command.warmup, writer.uint32(42).fork()).join();
+        break;
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): LocalOutputCommand {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseLocalOutputCommand();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.command = { $case: "descriptorPath", descriptorPath: reader.string() };
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.command = { $case: "grant", grant: LocalPlaybackGrant.decode(reader, reader.uint32()) };
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.command = { $case: "shutdown", shutdown: reader.bool() };
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.command = { $case: "cancelCue", cancelCue: reader.bool() };
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.command = { $case: "warmup", warmup: LocalOutputWarmup.decode(reader, reader.uint32()) };
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<LocalOutputCommand>): LocalOutputCommand {
+    return LocalOutputCommand.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<LocalOutputCommand>): LocalOutputCommand {
+    const message = createBaseLocalOutputCommand();
+    switch (object.command?.$case) {
+      case "descriptorPath": {
+        if (object.command?.descriptorPath !== undefined && object.command?.descriptorPath !== null) {
+          message.command = { $case: "descriptorPath", descriptorPath: object.command.descriptorPath };
+        }
+        break;
+      }
+      case "grant": {
+        if (object.command?.grant !== undefined && object.command?.grant !== null) {
+          message.command = { $case: "grant", grant: LocalPlaybackGrant.fromPartial(object.command.grant) };
+        }
+        break;
+      }
+      case "shutdown": {
+        if (object.command?.shutdown !== undefined && object.command?.shutdown !== null) {
+          message.command = { $case: "shutdown", shutdown: object.command.shutdown };
+        }
+        break;
+      }
+      case "cancelCue": {
+        if (object.command?.cancelCue !== undefined && object.command?.cancelCue !== null) {
+          message.command = { $case: "cancelCue", cancelCue: object.command.cancelCue };
+        }
+        break;
+      }
+      case "warmup": {
+        if (object.command?.warmup !== undefined && object.command?.warmup !== null) {
+          message.command = { $case: "warmup", warmup: LocalOutputWarmup.fromPartial(object.command.warmup) };
+        }
+        break;
+      }
+    }
+    return message;
+  },
+};
+
+function createBaseLocalStandbyMedia(): LocalStandbyMedia {
+  return { version: 0, sessionId: "", generationEpoch: "0", width: 0, height: 0, standbySha256: "" };
+}
+
+export const LocalStandbyMedia: MessageFns<LocalStandbyMedia> = {
+  encode(message: LocalStandbyMedia, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.version !== 0) {
+      writer.uint32(8).uint32(message.version);
+    }
+    if (message.sessionId !== "") {
+      writer.uint32(18).string(message.sessionId);
+    }
+    if (message.generationEpoch !== "0") {
+      writer.uint32(24).uint64(message.generationEpoch);
+    }
+    if (message.width !== 0) {
+      writer.uint32(32).uint32(message.width);
+    }
+    if (message.height !== 0) {
+      writer.uint32(40).uint32(message.height);
+    }
+    if (message.standbySha256 !== "") {
+      writer.uint32(50).string(message.standbySha256);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): LocalStandbyMedia {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseLocalStandbyMedia();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.version = reader.uint32();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.sessionId = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.generationEpoch = reader.uint64().toString();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.width = reader.uint32();
+            continue;
+          }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.height = reader.uint32();
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.standbySha256 = reader.string();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<LocalStandbyMedia>): LocalStandbyMedia {
+    return LocalStandbyMedia.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<LocalStandbyMedia>): LocalStandbyMedia {
+    const message = createBaseLocalStandbyMedia();
+    message.version = object.version ?? 0;
+    message.sessionId = object.sessionId ?? "";
+    message.generationEpoch = object.generationEpoch ?? "0";
+    message.width = object.width ?? 0;
+    message.height = object.height ?? 0;
+    message.standbySha256 = object.standbySha256 ?? "";
+    return message;
+  },
+};
+
+function createBaseLocalOutputWarmup(): LocalOutputWarmup {
+  return { descriptorPath: "", descriptorSha256: "", sessionId: "", generationEpoch: "0", remainingBudgetMs: 0 };
+}
+
+export const LocalOutputWarmup: MessageFns<LocalOutputWarmup> = {
+  encode(message: LocalOutputWarmup, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.descriptorPath !== "") {
+      writer.uint32(10).string(message.descriptorPath);
+    }
+    if (message.descriptorSha256 !== "") {
+      writer.uint32(18).string(message.descriptorSha256);
+    }
+    if (message.sessionId !== "") {
+      writer.uint32(26).string(message.sessionId);
+    }
+    if (message.generationEpoch !== "0") {
+      writer.uint32(32).uint64(message.generationEpoch);
+    }
+    if (message.remainingBudgetMs !== 0) {
+      writer.uint32(40).uint32(message.remainingBudgetMs);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): LocalOutputWarmup {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseLocalOutputWarmup();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 10) {
+              break;
+            }
+
+            message.descriptorPath = reader.string();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.descriptorSha256 = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.sessionId = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 32) {
+              break;
+            }
+
+            message.generationEpoch = reader.uint64().toString();
+            continue;
+          }
+          case 5: {
+            if (tag !== 40) {
+              break;
+            }
+
+            message.remainingBudgetMs = reader.uint32();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<LocalOutputWarmup>): LocalOutputWarmup {
+    return LocalOutputWarmup.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<LocalOutputWarmup>): LocalOutputWarmup {
+    const message = createBaseLocalOutputWarmup();
+    message.descriptorPath = object.descriptorPath ?? "";
+    message.descriptorSha256 = object.descriptorSha256 ?? "";
+    message.sessionId = object.sessionId ?? "";
+    message.generationEpoch = object.generationEpoch ?? "0";
+    message.remainingBudgetMs = object.remainingBudgetMs ?? 0;
     return message;
   },
 };

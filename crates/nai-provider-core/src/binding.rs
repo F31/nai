@@ -32,6 +32,8 @@ pub enum Protocol {
     AnthropicMessages,
     /// ElevenLabs speech on `/v1/text-to-speech/{voice}`, `xi-api-key`.
     ElevenLabs,
+    /// SiliconFlow speech with an explicit sample_rate body field.
+    SiliconFlow,
 }
 
 /// What a protocol can be asked to do.
@@ -49,6 +51,7 @@ impl Protocol {
             "openai" | "openai-compatible" => Ok(Self::OpenAiCompatible),
             "anthropic" | "anthropic-messages" => Ok(Self::AnthropicMessages),
             "elevenlabs" => Ok(Self::ElevenLabs),
+            "siliconflow" => Ok(Self::SiliconFlow),
             _ => Err(ProviderError::invalid_argument("unknown provider protocol")),
         }
     }
@@ -59,6 +62,7 @@ impl Protocol {
             Self::OpenAiCompatible => "openai",
             Self::AnthropicMessages => "anthropic",
             Self::ElevenLabs => "elevenlabs",
+            Self::SiliconFlow => "siliconflow",
         }
     }
 
@@ -66,7 +70,7 @@ impl Protocol {
         match self {
             Self::OpenAiCompatible => Capability::Llm,
             Self::AnthropicMessages => Capability::Llm,
-            Self::ElevenLabs => Capability::Speech,
+            Self::ElevenLabs | Self::SiliconFlow => Capability::Speech,
         }
     }
 
@@ -76,7 +80,10 @@ impl Protocol {
         match capability {
             Capability::Llm => matches!(self, Self::OpenAiCompatible | Self::AnthropicMessages),
             Capability::Speech => {
-                matches!(self, Self::OpenAiCompatible | Self::ElevenLabs)
+                matches!(
+                    self,
+                    Self::OpenAiCompatible | Self::ElevenLabs | Self::SiliconFlow
+                )
             }
         }
     }
@@ -84,7 +91,7 @@ impl Protocol {
     /// How the protocol expects its credential. Derived, never configured.
     fn auth(self) -> AuthScheme {
         match self {
-            Self::OpenAiCompatible => AuthScheme::Bearer,
+            Self::OpenAiCompatible | Self::SiliconFlow => AuthScheme::Bearer,
             Self::AnthropicMessages => AuthScheme::Header {
                 name: "x-api-key".into(),
             },
@@ -153,7 +160,9 @@ impl ProviderProfile {
         Ok(match self.protocol {
             Protocol::OpenAiCompatible => LlmClient::OpenAi(OpenAiAdapter::new(client)),
             Protocol::AnthropicMessages => LlmClient::Anthropic(AnthropicAdapter::new(client)),
-            Protocol::ElevenLabs => unreachable!("capability is checked above"),
+            Protocol::ElevenLabs | Protocol::SiliconFlow => {
+                unreachable!("capability is checked above")
+            }
         })
     }
 
@@ -167,6 +176,7 @@ impl ProviderProfile {
         Ok(match self.protocol {
             Protocol::OpenAiCompatible => SpeechClient::OpenAi(OpenAiAdapter::new(client)),
             Protocol::ElevenLabs => SpeechClient::ElevenLabs(ElevenLabsAdapter::new(client)),
+            Protocol::SiliconFlow => SpeechClient::SiliconFlow(OpenAiAdapter::siliconflow(client)),
             Protocol::AnthropicMessages => unreachable!("capability is checked above"),
         })
     }
@@ -218,6 +228,7 @@ impl LlmClient<'_> {
 pub enum SpeechClient<'a> {
     OpenAi(OpenAiAdapter<'a>),
     ElevenLabs(ElevenLabsAdapter<'a>),
+    SiliconFlow(OpenAiAdapter<'a>),
 }
 
 impl SpeechClient<'_> {
@@ -230,10 +241,29 @@ impl SpeechClient<'_> {
         sink: &mut dyn FnMut(TtsChunk),
     ) -> Result<u64, ProviderError> {
         match self {
-            Self::OpenAi(adapter) => adapter.tts_stream(op, request, gateway, entry, sink).await,
+            Self::OpenAi(adapter) | Self::SiliconFlow(adapter) => {
+                adapter.tts_stream(op, request, gateway, entry, sink).await
+            }
             Self::ElevenLabs(adapter) => {
                 adapter.tts_stream(op, request, gateway, entry, sink).await
             }
+        }
+    }
+
+    /// The raw synthesized audio body under the same reserve/dispatch/finish
+    /// contract. Callers decode against the returned format, never a guess.
+    pub async fn tts_pcm(
+        &self,
+        op: &Operation,
+        request: &TtsRequest,
+        gateway: &mut dyn UsageGateway,
+        entry: UsageLedgerEntry,
+    ) -> Result<(Vec<u8>, nai_contracts::v1::AudioFormat), ProviderError> {
+        match self {
+            Self::OpenAi(adapter) | Self::SiliconFlow(adapter) => {
+                adapter.tts_pcm(op, request, gateway, entry).await
+            }
+            Self::ElevenLabs(adapter) => adapter.tts_pcm(op, request, gateway, entry).await,
         }
     }
 }

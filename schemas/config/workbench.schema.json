@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nai.dev/schemas/workbench/config",
+  "title": "WorkbenchConfiguration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "edition",
+    "deployment",
+    "presentation",
+    "behavior",
+    "delivery_scope",
+    "queue_limit",
+    "task_deadline_ms",
+    "shadow"
+  ],
+  "properties": {
+    "edition": {
+      "type": "string",
+      "enum": [
+        "Lite",
+        "Standard",
+        "Pro"
+      ]
+    },
+    "deployment": {
+      "type": "string",
+      "enum": [
+        "Local",
+        "Hybrid",
+        "Distributed"
+      ]
+    },
+    "presentation": {
+      "type": "string",
+      "enum": [
+        "ContentOnly",
+        "Voice",
+        "Avatar",
+        "HumanAssist"
+      ]
+    },
+    "behavior": {
+      "type": "string",
+      "enum": [
+        "Rehearsal",
+        "Assisted",
+        "AutoSupervised"
+      ]
+    },
+    "delivery_scope": {
+      "type": "string",
+      "enum": [
+        "Private",
+        "Public"
+      ]
+    },
+    "queue_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16
+    },
+    "task_deadline_ms": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 30000
+    },
+    "shadow": {
+      "type": "boolean"
+    }
+  },
+  "allOf": [
+    {
+      "not": {
+        "properties": {
+          "shadow": {
+            "const": true
+          },
+          "delivery_scope": {
+            "const": "Public"
+          }
+        },
+        "required": [
+          "shadow",
+          "delivery_scope"
+        ]
+      }
+    }
+  ]
+}

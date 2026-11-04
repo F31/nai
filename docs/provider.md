@@ -189,6 +189,8 @@ media layer 禁止依赖 provider（deps.rs 已校验）。新增 Provider = 一
 
 ## 真实集成状态
 
+2026-10-20 当前：用户指定Agnes的agnes-2.5-flash已取得非空正文；SiliconFlow CosyVoice2-0.5B的alex音色已返回真实24kHz PCM。仅是单项生成证据，不等于全链或设备认证，报告见 [本轮实测](reports/2026-10-20-r1-provider-probe.md)。以下余额不足是早期OpenAI账户的历史记录，不代表这两个账户当前不可用。
+
 真实冒烟对 api.openai.com 发起最小 TTS + Embedding（已授权少量额度）；实测账户无余额：
 embeddings 429「You have no credits remaining」、TTS 403。传输/TLS/鉴权/重试/429/403 错误映射与
 错误提取均对真实端点验证通过，但付费生成未完成，**不标记 Passed**。LLM 真实流冒烟留待账户具备
@@ -198,3 +200,17 @@ embeddings 429「You have no credits remaining」、TTS 403。传输/TLS/鉴权/
 由配置选择，同一调用函数在两家的行为一致而线上差异被实测到。但替换测试证明的是**架构判据**，
 **不是**外部认证——真实付费账号（无余额，`Blocked` 不变）、真实 TTS 设备、engine 的真实 provider
 接线均未接入。价格表/账单导入与真实音轨解码仍属后续任务。
+
+## 独立LLM/TTS主备配置（2026-10-20）
+
+原生桌面新增独立能力配置、一主最多四备及主优先/实测延迟路由，密钥分开且仅本次会话使用；运行中先停止再修改，保存后重启生效。
+模型、音色、预算身份按本次实际选择固定；已派发失败不会自动跨供应商重发，下一新请求按熔断健康状态选备。
+操作和限制见 [provider-routing.md](provider-routing.md)，真实付费认证仍未完成。
+
+## SiliconFlow与单项探针
+
+新增siliconflow语音协议，显式发送PCM采样率，不按OpenAI固定24k猜测。UI参数预设不含密钥，逐条测试不重路由、不播放；独立provider-probe.pb记录实际usage状态且账单未知。操作见 [provider-routing.md](provider-routing.md)。
+
+## 本机Provider配置数据库（2026-10-20）
+
+桌面LLM/TTS主备参数与API Key密文存入独立provider-settings.sqlite3，AES-256-GCM主密钥由Windows NativeVault保护。界面可读取/修改、更换/删除Key，启动与探针仅在宿主内解密；原场景JSON是无密钥兼容导出。详见[操作指南](provider-routing.md)和[报告](reports/2026-10-20-r1-provider-database.md)。

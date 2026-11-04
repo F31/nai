@@ -110,3 +110,58 @@ MUST 绑定事实引用，且引用的修订 MUST 是**当前有效版本**。�
 
 - **WHEN** 五个面里只有素材过期
 - **THEN** 具名拒绝并**只**点名素材，其余四面 MUST NOT 出现在拒绝名单里
+
+### Requirement: Engine owns one finite assisted program per epoch
+The engine SHALL bind one four-segment assisted program to the current knowledge snapshot and epoch. Start SHALL perform no Provider calls. Explicit next SHALL generate each segment at most once, in selling/spec/scenario/after_sales order, using existing guards, approval and durable budgets. A failure SHALL terminate the program without automatic retry. The program SHALL expire within fifteen minutes. A second start in the same epoch SHALL be refused.
+
+#### Scenario: Duplicate or premature next
+- **WHEN** generation is in flight or the current segment has not been confirmed
+- **THEN** another next is refused without another Provider dispatch; replay of the identical command returns its original ACK.
+
+#### Scenario: Missing timed evidence
+- **WHEN** a program segment retrieves evidence without declared active validity
+- **THEN** generation fails before Provider dispatch and no automatic retry occurs.
+
+### Requirement: Assisted confirmation cannot become hardware completion
+The engine SHALL accept operator confirmation only for the current request's exact candidate hash after its local device submission. Preview rendering alone SHALL NOT qualify. Confirmation SHALL NOT produce PlaybackAck or completed-sentence evidence. Epoch, snapshot and program deadline SHALL be rechecked on every mutation; stale programs SHALL NOT resume automatically.
+
+#### Scenario: Wrong candidate or preview only
+- **WHEN** confirmation references another candidate or only an offline preview exists
+- **THEN** confirmation is refused and the program does not advance.
+
+#### Scenario: Takeover before next
+- **WHEN** takeover changes the epoch
+- **THEN** old program commands are refused and cannot dispatch another generation; no five-face Fresh result is fabricated.
+
+### Requirement: Desktop consumes authoritative finite program progress
+The desktop SHALL start and advance the engine program explicitly, using the published four-part outline and current session identity. Progress SHALL come from engine reads, never local increments. Generation SHALL be submitted once and polled within a bounded deadline; timeout SHALL offer read-only refresh without automatic retry. Reconnect SHALL read progress without starting, generating or replaying.
+#### Scenario: An ambiguous command result
+- **WHEN** a start, next or confirm response is lost
+- **THEN** the desktop disables repeat mutation until a successful state refresh and offers a read-only refresh action.
+#### Scenario: Candidate association
+- **WHEN** another candidate is approved or played, or an offline preview is rendered
+- **THEN** the current program candidate is not replaced and its confirm action cannot advance locally.
+
+### Requirement: Four-part editing preserves explicit migration and revocation boundaries
+The desktop SHALL offer fixed selling/spec/scenario/after_sales outline fields with the engine's text limits. Legacy outlines SHALL require explicit conversion and publication before program start. Pause/end SHALL request mute, and an unconfirmed mute SHALL not be presented as success. Stale or failed programs SHALL not offer checkbox-based resume or automatic regeneration.
+#### Scenario: Existing legacy outline
+- **WHEN** the saved outline is not four parts
+- **THEN** the desktop explains the conversion and does not silently truncate or change published content.
+#### Scenario: Pause during generation
+- **WHEN** the operator pauses while a task is pending
+- **THEN** mute remains available and late task callbacks cannot update or advance the program display.
+
+### Requirement: Human segment confirmation is durable and bound to playback evidence
+人工确认 SHALL 复核本轮精确候选的原生播放报告摘要、独立预期设备帧数、已观测设备尾部、有效审批/事实与当前epoch快照。确认 SHALL 先critical持久保存具名人工复核记录再推进，失败不前进、不重试。该记录 MUST NOT 产生PlaybackAck、机器已完成句、场次记忆或恢复授权。
+#### Scenario: Report replacement or storage failure
+- **WHEN** 报告缺失/被替换/缺进度，或critical写入失败
+- **THEN** 拒绝确认，原段落不前进且不调用Provider。
+#### Scenario: Revocation during confirmation
+- **WHEN** 持久提交后epoch或权限改变
+- **THEN** 保留审计记录但暂停节目，不发下一段，不恢复旧授权。
+
+### Requirement: Recent confirmations survive restart as read-only history
+节目响应 SHALL 可展示当前工作区最近256条审计内最新人工复核记录及哈希链引用；重启 SHALL 默认无活跃节目，历史不重建runner/审批/候选或消费生成预算。
+#### Scenario: Restart with a saved confirmation
+- **WHEN** 同工作区重启引擎并读取节目
+- **THEN** 活跃节目为absent，近期人工记录可见，读取不生成语音或自动前进。

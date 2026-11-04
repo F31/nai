@@ -154,6 +154,32 @@ pub(crate) fn approval_entry(
 }
 
 impl Store {
+    /// Read-only recent program attestation, never a recovery authorization.
+    /// Scan at most 256 rows, even when no confirmation is in the window.
+    pub fn recent_program_confirmation(
+        &self,
+        op: &Operation,
+        workspace: &str,
+    ) -> Result<Option<(String, serde_json::Value)>> {
+        self.start(op)?;
+        id(workspace)?;
+        let mut statement = self.conn.prepare(
+            "SELECT kind,criticality,entry_hash,payload_json FROM decision_log WHERE workspace_id=?1 ORDER BY seq DESC LIMIT 256",
+        )?;
+        let mut rows = statement.query([workspace])?;
+        while let Some(row) = rows.next()? {
+            op.check()?;
+            if row.get::<_, String>(0)? != "cue" || row.get::<_, String>(1)? != "critical" {
+                continue;
+            }
+            let payload: serde_json::Value = serde_json::from_str(&row.get::<_, String>(3)?)
+                .map_err(|_| error(ErrorCode::Internal, "invalid decision JSON"))?;
+            if payload["event"] == "program_human_confirmation" {
+                return Ok(Some((row.get(2)?, payload)));
+            }
+        }
+        Ok(None)
+    }
     /// Append one decision-log entry. Critical kinds either persist or return
     /// the storage error unchanged; telemetry kinds are buffered by the same
     /// single-writer owner when the database write fails.

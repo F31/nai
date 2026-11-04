@@ -1,0 +1,34 @@
+{
+  "registry.yaml": {
+    "source": "tests/registry.yaml",
+    "sha256": "0fed664ac8f4983b7c2b078e389bb54d98468e846b63ec8265c9c66e2896daca"
+  },
+  "registry.schema.json": {
+    "source": "schemas/tests/registry.schema.json",
+    "sha256": "5a66e9df357cfd8f76de2ad74041dfa5f92ff2421efa1ccdc415bacdc26702da"
+  },
+  "capabilities.json": {
+    "source": "schemas/catalog/capabilities.json",
+    "sha256": "1504171e24f0c6bbe8f8482b8a991a5dc68d1db65643eef0351895cf6737d118"
+  },
+  "registry.test.mjs": {
+    "source": "tests/registry.test.mjs",
+    "sha256": "4a7b5c8011a488a81a7da30af6277fe5be5a35c2ada42066bd9f6f0f58ef23e8"
+  },
+  "registry-checker.mjs": {
+    "source": "scripts/contracts/registry.mjs",
+    "sha256": "0ee047b18c181ce7f24db05c474996e542fa7bfb21ca10f6ba651c0a2e7d67ce"
+  },
+  "foundation.yml": {
+    "source": ".github/workflows/foundation.yml",
+    "sha256": "15be4e4c00020b825283b1eaf97f7b75a869f6b0d458a49dc702f514fd9d39a6"
+  },
+  "contract-orchestrator.rs.txt": {
+    "source": "xtask/src/schema.rs::contracts",
+    "sha256": "bb48c22678cd9c10539f6657e435439427b506300ac00c7c9ed4821eb8f4b3ba"
+  },
+  "engineering-profile.rs.txt": {
+    "source": "xtask/src/lib.rs::engineering_checks+legacy_profile_dispatch",
+    "sha256": "2f9a8496274de0944f28487a106dd22b82dbde3599104949308ba4760f9a1d22"
+  }
+}

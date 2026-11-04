@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workbench-human-resume"
+description = "Enables the workbench_human_resume command without any pre-configured scope."
+commands.allow = ["workbench_human_resume"]
+
+[[permission]]
+identifier = "deny-workbench-human-resume"
+description = "Denies the workbench_human_resume command without any pre-configured scope."
+commands.deny = ["workbench_human_resume"]

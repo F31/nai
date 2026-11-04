@@ -1,0 +1,16 @@
+import {useEffect,useRef,useState} from 'react';
+import type {Workbench} from './workbench';
+import type {Resource} from './api';
+import {WorkspacePurgeReview,type PurgeState} from './workspace-purge-review';
+const labels:Record<string,string>={objects:'业务对象',object_versions:'历史版本',sessions:'会话',deliveries:'交付记录',approvals:'审批',private_cards:'私有卡片',outbox:'任务派发记录',roles:'工作区权限',budget_reservations:'费用记录（转入保留账本）'};
+const blockers:Record<string,string>={PHOTO_CLEANUP_UNAVAILABLE:'工作区包含照片素材，跨工作区素材清理尚未完成，暂不能彻底删除',VIDEO_CLEANUP_UNAVAILABLE:'工作区包含视频素材，跨工作区素材清理尚未完成，暂不能彻底删除',NOT_RECYCLED:'仅回收站中的工作区可以彻底删除',WORKSPACE_IN_USE:'工作区正在使用，请先切换至其他工作区',MODEL_MIGRATION_PENDING:'模型迁移尚未完成，请先完成或放弃迁移',TASKS_NOT_DRAINED:'仍有活动任务或未完成的费用预留，请先停止任务',UNSHARED_MODELS:'此工作区仍有独立模型配置，请先打开模型设置完成配置加载后重试，避免丢失配置',AVATAR_CLEANUP_UNAVAILABLE:'工作区包含形象权利记录，形象素材清理尚未完成，暂不能彻底删除'};
+export function WorkspacePurgeDialog({v,target,onClose}:{v:Workbench;target:Resource;onClose:()=>void}){
+ const dialog=useRef<HTMLDialogElement>(null),[ack,setAck]=useState(false),[state,setState]=useState<PurgeState>({phase:'checking',plan:null,status:null,error:''}),[flow]=useState(()=>new WorkspacePurgeReview(setState));
+ const submitting=state.phase==='submitting',done=state.phase==='complete';
+ function close(){if(flow.cancel())onClose();}
+ useEffect(()=>{const previous=document.activeElement as HTMLElement|null;dialog.current?.showModal();void v.run(()=>flow.open(target,v.ws,()=>v.inspectPurge(target)));return()=>{flow.cancel();dialog.current?.close();previous?.focus();};},[]);
+ return <dialog ref={dialog} className="workspace-removal-dialog" aria-labelledby="workspace-purge-title" onCancel={e=>{e.preventDefault();close();}}><h2 id="workspace-purge-title">彻底删除“{target.name}”</h2>{state.phase==='checking'&&<p role="status">正在核对清理范围…</p>}{state.plan&&<><p>{target.kind==='workspace_cleanup'?'业务数据已永久删除；本次仅继续清理无其他引用的内容文件。以下是已确认的原清理范围：':'以下业务数据将永久删除，工作区无法再从回收站恢复：'}</p><ul>{state.plan.counts.filter(x=>x.count!=='0').map(x=><li key={x.kind}>{labels[x.kind]??x.kind}：{x.count}</li>)}<li>内容文件：{state.plan.fileCount} 个候选；其他工作区仍引用的文件会保留</li></ul><p className="hint">审计、费用账本、历史操作回执、共享模型、系统密钥和已有备份会保留。本操作不是磁盘安全擦除。</p>{state.plan.blockers.map(b=><p className="banner error" role="alert" key={b}>{blockers[b]??'条件不满足，请保留现场核对。'}</p>)}</>}{state.error&&<p className="banner error" role="alert">{state.error}</p>}{state.status?.deleted&&<p role="status">业务数据已永久删除。{state.status.pendingFiles?`待清理文件：${state.status.pendingFiles}${state.status.cleanupBlocked?'；文件校验或访问未通过，请保留现场。':''}`:'无引用文件清理已完成。'}</p>}{state.plan&&!done&&!state.plan.blockers.length&&<label><input type="checkbox" checked={ack} disabled={submitting} onChange={e=>setAck(e.target.checked)}/>我确认上述删除范围及保留项，永久删除此工作区</label>}<div className="row-actions"><button type="button" autoFocus disabled={submitting} onClick={close}>{done?'完成':'取消'}</button>{!done&&<button type="button" className="danger" disabled={v.busy||!ack||!['ready','pending'].includes(state.phase)||!!state.plan?.blockers.length||target.id===v.ws} onClick={()=>void v.run(()=>flow.confirm(v.ws,ack,v.purgeWorkspace).then(()=>{}))}>{submitting?'正在清理…':state.phase==='pending'?'继续文件清理':'确认彻底删除'}</button>}</div></dialog>;
+}
+
+
+

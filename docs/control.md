@@ -1,6 +1,10 @@
 # 本机控制面（D14 / W09）
 
-提供显式 loopback 工程控制服务 `nai-control-api` 和桌面客户端，消费真实 Session 状态，接入独立 EmergencyHandle。W09 增加可注入真实存储 owner 的审批 API。**W54 起桌面壳的形态与边界已裁决**（[ADR 0046](adr/0046-desktop-shell-form-and-tauri-boundary.md)：Tauri 2、壳只做四件事、最小权限面、**受保护 IPC 为生产路径而 loopback HTTP 为测试适配**）；但**壳体的构建、打包与签名尚未实现**——「形态与边界已定」与「壳已做出来」是两件事。媒体设备、完整开播预检与审批 GUI 同样尚未实现。
+提供显式 loopback 工程控制服务 `nai-control-api` 和桌面客户端，消费真实 Session 状态，接入独立 EmergencyHandle。W09 增加真实存储 owner 的审批 API，R1 接线轮次补齐候选生成、审批工作台与演示包预检。桌面壳边界见 [ADR 0046](adr/0046-desktop-shell-form-and-tauri-boundary.md)；[ADR 0129](adr/0129-native-shell-build-isolation.md) 交付独立 Tauri 2 构建；[ADR 0130](adr/0130-native-control-inherited-pipe.md) 把原生控制接到**同一个** `ControlApi`：壳派生 engine（`--control-stdio`）、私有继承管道承载有界 Protobuf、引导凭据只走管道内侧，窗口与引擎生命周期分离（关窗隐藏、托盘退出）。loopback HTTP 保留为浏览器测试适配。首次设置已接通（[ADR 0131](adr/0131-first-run-setup-boundary.md)）：`host_defaults`/`host_setup`/`apply_host_setup`
+三条宿主命令保存非机密 `host.json`（0600）、运行 provision、启动 engine；另有
+`run_host_preflight` 在界面内产生预检报告（结果取引擎报告，不重判、不阻塞连接）。API 密钥只在本次会话内
+由界面输入，写入 engine 子进程环境，不落盘。**仍未完成**：命名管道 ACL/对端身份认证、数据根迁移、Windows 安装/托盘/签名验收；
+媒体设备与硬件 ACK 未接线。
 
 ## 实际支持
 
@@ -10,6 +14,7 @@
 | GET /sessions/{id} | session.read | 同一作用域的真实快照 |
 | POST /sessions/{id}/mute | media.mute | 先撤销媒体信号，再执行 Session 控制状态 |
 | POST /sessions/{id}/takeover | session.takeover | 同上，不恢复自动模式 |
+| POST /sessions/{id}/output-prewarm | media.prepare | 独立静默中性画面与设备准备；ACK仅接收，events以output_preparing/output_ready/failed确认；不调用LLM/TTS，不授予语音或平台Ready |
 | GET /approvals | approval.read | 当前会话/epoch 的待审批元信息，最多 200 条 |
 | POST /approvals/{candidate_hash}/approve | approval.write | 哈希/作用域/CAS/期限复检后，原子提交审批、Approved 状态、审计与决策日志 |
 | POST /approvals/{candidate_hash}/reject | approval.write | 原子提交 Blocked 状态、审计与 critical cancellation 日志 |
@@ -142,6 +147,44 @@ pnpm test:engine-smoke
 `test:engine-smoke` 用真实 `nai-engine` 进程 + 桌面 `ControlClient` 验证 401/status/mute/takeover 与
 优雅停机；不产生硬件 ACK，也不代表 protected IPC 或远程认证。
 
+## 手工生成事件（operator 模式）
+
+`apps/engine --operator-config <manual-session.json>` 时控制面接线两条既有路由：
+
+- `POST /sessions/{id}/manual-events`（`event.manual.write`）：只接受已鉴权、scope/epoch/revision/seq/TTL
+  合法的手工问题；ACK 表示**任务准入**，不是生成、批准或播放。同一 `command_id` 重试返回原 ACK，
+  不重复调用 Provider；容量 1，超限具名拒绝。
+- `GET /sessions/{id}/events`（`session.read`）：列出最近 100 条任务状态（`generating` /
+  `awaiting_approval` / `failed`）与失败码；`awaiting_approval` 携带候选哈希，候选本身仍从
+  `GET /approvals` 读取。
+
+桌面在工作台输入问题后轮询事件，只有候选确实出现在审批列表且会话未换代时才显示为可审批；
+失败、超时、断连或静音后的迟到响应不会恢复旧结果，也不自动重发。批准/拒绝继续使用既有
+`ApprovalCommand`，身份是候选哈希。详见 [引擎指南](engine.md) 与
+[报告](reports/2026-10-19-r1-manual-candidate-flow.md)。
+
+批准后的本机预览使用两条独立路由：
+
+- `POST /sessions/{id}/previews`（`approval.write`）：只接受已批准且仍有效候选的哈希；
+  ACK 表示任务准入，不是合成完成或播放。同一命令重试返回原 ACK，不重复调用 TTS。
+- `GET /sessions/{id}/previews`（`session.read`）：列出最近 100 条预览状态、真实样本数/帧数、
+  音频 SHA-256 与本机产物引用。`rendered` 仍明确 `playback_ack=false`。
+
+预览失败/取消/过期/换代不会写产物；未批准、旧行无 `cue_blob` 或无 `render` 配置时具名拒绝。
+详见 [报告](reports/2026-10-19-r1-approved-tts-render.md)。
+
+一键预检报告读取使用一条只读路由：
+
+- `GET /sessions/{id}/preflight`（`session.read`）：返回最近一次 `nai-engine --preflight` 写出的
+  逐轴报告（`passed`/`failed`/`not_ready` 各带原因）、`all_passed` 与 `playback_ack=false`。
+  尚未预检或读取不到报告 ⇒ **`CAPABILITY_NOT_READY`（503）**，MUST NOT 伪造空报告冒充已检查。
+  桌面「预检」面板原样呈现每一轴，并标注未播放、未接设备。详见
+  [报告](reports/2026-10-19-r1-demo-preflight.md)。
+
+窗口预检每次先使旧 `preflight.json` 失效，超时、进程失败或新报告无效时清理残留；同一宿主的重叠请求
+返回 `HOST_PREFLIGHT_BUSY`。新报告按 256KiB 上限与必要字段读取，正常的 `not_ready` 仍是 engine 的拒绝结论，
+不会被当作进程故障。错误不回显子进程原始输出。该互斥只覆盖本宿主，不协调另一个 CLI 写入同一数据根。
+
 ## 桌面壳宿主边界（W54）
 
 设计 §1248 规定技术栈为 Tauri 2，§1151 / §1259 / §900 / §1101 规定了壳的四组边界。W54 把这些落成**可判定的声明**：
@@ -159,8 +202,13 @@ V3.9 §56-C8 订正此处原写的固定篇数——该计数随 ADR 增补即�
 | 后台生命周期 | 不随界面关闭而终止（supervisor 或托盘），不依赖 WebView 保活 |
 | 三形态 | 桌面／macOS／移动端路线 B **共用同一套边界**，差异只允许落在目标与分发上 |
 
-**这些文件当前不被任何构建消费**：不引入 `tauri` crate、不建 Rust 壳主体（理由见 ADR 0046 D3——把 WebView2
-与网络拉进构建链，会让门控结论取决于**主机事实**，这是 [ADR 0041](adr/0041-engineering-profile-frontend-boundary.md)
-已裁过的禁忌）。因此 `tests/registry.yaml` 的 **A12 保持 `pending`**，缺失前置是真实依赖、可运行壳体与打包/签名链。
-校验读的是配置的**形状**，**不能**证明它被某个 Tauri 版本接受（ADR 0046 R1/R3）。
+**现已由独立 Tauri 2 构建消费**：[ADR 0129](adr/0129-native-shell-build-isolation.md) 将原生壳隔离为独立
+workspace，保留便携门控不依赖原生工具链的边界。[ADR 0130](adr/0130-native-control-inherited-pipe.md) 交付了
+私有继承控制通道：壳从固定候选路径派生 engine，`control_exchange` 只接受有界生成帧；WebView 不接触地址、
+令牌或进程句柄。Linux 上已实测真实 engine 的状态读取与端到端链路，导航冒烟在 Xvfb 下通过。
+**A12 保持 `pending`**：命名管道 ACL/对端认证、安装后配置向导、Windows 托盘/安装/签名与设备验收未完成。
+Node 形状校验不能替代独立原生构建，导航与导航内 IPC 也不能替代人工交互、Windows 与硬件验收。
 
+## 商品知识热发布
+
+`POST /sessions/{id}/knowledge` 接收生成的KnowledgePublishCommand，需要knowledge.publish权限及当前session/epoch/版本/seq。prepare/activate均为有界异步作业，ACK只代表接收，终态由events查询。prepare先P0静音、持久化撤权，再发布受控暂存引用中的知识；activate仅在已导出配置的knowledge完整匹配prepared内容且代次未变时切换绑定。运行中保存草稿不改变活动知识。失败不自动恢复旧审批或播报；宿主对未确认激活保守停止引擎。详见[商品工作台](product-workbench.md)。

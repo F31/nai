@@ -1,0 +1,119 @@
+pub fn contracts(root: &Path) -> Result<(), String> {
+    generate(root, true)?;
+    super::run(root, &["test", "--package", "nai-contracts", "--locked"])?;
+    node(
+        root,
+        &[
+            "packages/contracts-ts/node_modules/typescript/bin/tsc",
+            "-p",
+            "packages/contracts-ts/tsconfig.json",
+        ],
+    )?;
+    node(
+        root,
+        &[
+            "--test",
+            "tests/contracts/schema.test.mjs",
+            "tests/contracts/descriptor.test.mjs",
+        ],
+    )?;
+    program(
+        root,
+        "cmake",
+        &["-S", "tests/contracts/cpp", "-B", "target/contracts/cpp"],
+    )?;
+    program(
+        root,
+        "cmake",
+        &[
+            "--build",
+            "target/contracts/cpp",
+            "--config",
+            "Release",
+            "--parallel",
+            "2",
+        ],
+    )?;
+    let executable = if cfg!(target_os = "windows") {
+        "target/contracts/cpp/Release/contract-roundtrip.exe"
+    } else {
+        "target/contracts/cpp/contract-roundtrip"
+    };
+    for directory in ["rust", "ts", "cpp-output", "cpp-future", "ts-future"] {
+        fs::create_dir_all(root.join("target/contracts").join(directory))
+            .map_err(|e| e.to_string())?;
+    }
+    super::run(
+        root,
+        &[
+            "run",
+            "--locked",
+            "--package",
+            "nai-contracts",
+            "--example",
+            "contract_fixture",
+            "--",
+            "write",
+            "target/contracts/rust",
+        ],
+    )?;
+    node(
+        root,
+        &[
+            "tests/contracts/interop.mjs",
+            "target/contracts/rust",
+            "target/contracts/ts",
+        ],
+    )?;
+    program(
+        root,
+        executable,
+        &["target/contracts/ts", "target/contracts/cpp-output"],
+    )?;
+    super::run(
+        root,
+        &[
+            "run",
+            "--locked",
+            "--package",
+            "nai-contracts",
+            "--example",
+            "contract_fixture",
+            "--",
+            "verify",
+            "target/contracts/cpp-output",
+        ],
+    )?;
+    program(
+        root,
+        executable,
+        &["target/contracts/rust", "target/contracts/cpp-future"],
+    )?;
+    node(
+        root,
+        &[
+            "tests/contracts/interop.mjs",
+            "target/contracts/cpp-future",
+            "target/contracts/ts-future",
+        ],
+    )?;
+    super::run(
+        root,
+        &[
+            "run",
+            "--locked",
+            "--package",
+            "nai-contracts",
+            "--example",
+            "contract_fixture",
+            "--",
+            "verify",
+            "target/contracts/ts-future",
+        ],
+    )?;
+    println!(
+        "contracts suite passed: Rust/TS/C++ compilation, schema/API validation and both cross-language paths"
+    );
+    Ok(())
+}
+

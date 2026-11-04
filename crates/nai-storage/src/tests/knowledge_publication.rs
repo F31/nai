@@ -1,4 +1,100 @@
 use super::*;
+
+#[test]
+fn product_switch_requires_new_epoch_and_keeps_ordinary_binding_frozen() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut storage = store(dir.path());
+    setup(&mut storage);
+    storage
+        .import_document(&op(), "operator", &knowledge_doc("保修一年"))
+        .unwrap();
+    let first = build(&mut storage, "first", None);
+    storage.publish_snapshot(&op(), "operator", &first).unwrap();
+    storage
+        .create_session(&op(), "test-workspace", "operator", "knowledge-session")
+        .unwrap();
+    storage
+        .bind_session_knowledge(
+            &op(),
+            "test-workspace",
+            "operator",
+            "knowledge-session",
+            "test-workspace",
+            "first",
+        )
+        .unwrap();
+    let second = build(&mut storage, "second", None);
+    storage
+        .publish_snapshot(&op(), "operator", &second)
+        .unwrap();
+    assert!(
+        storage
+            .bind_session_knowledge(
+                &op(),
+                "test-workspace",
+                "operator",
+                "knowledge-session",
+                "test-workspace",
+                "second"
+            )
+            .is_err()
+    );
+    assert!(
+        storage
+            .rebind_revoked_session_knowledge(
+                &op(),
+                "test-workspace",
+                "operator",
+                "knowledge-session",
+                0,
+                ("test-workspace", "second")
+            )
+            .is_err()
+    );
+    storage
+        .conn
+        .execute(
+            "UPDATE sessions SET generation_epoch=1 WHERE session_id='knowledge-session'",
+            [],
+        )
+        .unwrap();
+    assert!(
+        storage
+            .rebind_revoked_session_knowledge(
+                &op(),
+                "test-workspace",
+                "operator",
+                "knowledge-session",
+                2,
+                ("test-workspace", "second")
+            )
+            .is_err()
+    );
+    assert_eq!(
+        storage
+            .session(&op(), "test-workspace", "operator", "knowledge-session")
+            .unwrap()
+            .knowledge_snapshot_ref,
+        "first"
+    );
+    storage
+        .rebind_revoked_session_knowledge(
+            &op(),
+            "test-workspace",
+            "operator",
+            "knowledge-session",
+            1,
+            ("test-workspace", "second"),
+        )
+        .unwrap();
+    assert_eq!(
+        storage
+            .session(&op(), "test-workspace", "operator", "knowledge-session")
+            .unwrap()
+            .knowledge_snapshot_ref,
+        "second"
+    );
+}
 use nai_contracts::v1::RetrievalStatus;
 
 fn active(storage: &Store, kb: &str) -> Option<String> {
@@ -727,7 +823,7 @@ fn consistent_backup_restores_published_knowledge_but_not_output_authority() {
     let backup = storage.backup(&op()).unwrap();
     let manifest: serde_json::Value =
         serde_json::from_slice(&fs::read(backup.join("manifest.json")).unwrap()).unwrap();
-    assert_eq!(manifest["db_schema_version"], 12);
+    assert_eq!(manifest["db_schema_version"], 13);
     let mut restored = Store::restore(
         &backup,
         DataPaths::at(parent.path().join("restored")).unwrap(),

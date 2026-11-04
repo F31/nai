@@ -147,6 +147,145 @@ struct AvatarProfileDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 AvatarProfileDefaultTypeInternal _AvatarProfile_default_instance_;
+PROTOBUF_CONSTEXPR CharacterIdentity::CharacterIdentity(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.workspace_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.character_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.version_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.package_sha256_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.rights_sha256_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct CharacterIdentityDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR CharacterIdentityDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~CharacterIdentityDefaultTypeInternal() {}
+  union {
+    CharacterIdentity _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 CharacterIdentityDefaultTypeInternal _CharacterIdentity_default_instance_;
+PROTOBUF_CONSTEXPR CharacterCapability::CharacterCapability(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.lip_sync_)*/{}
+  , /*decltype(_impl_._lip_sync_cached_byte_size_)*/{0}
+  , /*decltype(_impl_.supported_action_ids_)*/{}
+  , /*decltype(_impl_.renderer_)*/0
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct CharacterCapabilityDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR CharacterCapabilityDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~CharacterCapabilityDefaultTypeInternal() {}
+  union {
+    CharacterCapability _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 CharacterCapabilityDefaultTypeInternal _CharacterCapability_default_instance_;
+PROTOBUF_CONSTEXPR CharacterProfile::CharacterProfile(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.identity_)*/nullptr
+  , /*decltype(_impl_.capability_)*/nullptr
+  , /*decltype(_impl_.schema_version_)*/0u
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct CharacterProfileDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR CharacterProfileDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~CharacterProfileDefaultTypeInternal() {}
+  union {
+    CharacterProfile _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 CharacterProfileDefaultTypeInternal _CharacterProfile_default_instance_;
+PROTOBUF_CONSTEXPR CharacterActionRequest::CharacterActionRequest(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.request_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.session_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.output_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.approval_ref_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.lease_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.action_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.character_)*/nullptr
+  , /*decltype(_impl_.generation_epoch_)*/uint64_t{0u}
+  , /*decltype(_impl_.priority_)*/0u
+  , /*decltype(_impl_.remaining_budget_ms_)*/0u
+  , /*decltype(_impl_.sequence_)*/uint64_t{0u}
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct CharacterActionRequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR CharacterActionRequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~CharacterActionRequestDefaultTypeInternal() {}
+  union {
+    CharacterActionRequest _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 CharacterActionRequestDefaultTypeInternal _CharacterActionRequest_default_instance_;
+PROTOBUF_CONSTEXPR CharacterActionState::CharacterActionState(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.request_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.session_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.output_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.action_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.reason_code_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.character_)*/nullptr
+  , /*decltype(_impl_.generation_epoch_)*/uint64_t{0u}
+  , /*decltype(_impl_.sequence_)*/uint64_t{0u}
+  , /*decltype(_impl_.source_sample_position_)*/uint64_t{0u}
+  , /*decltype(_impl_.frame_sequence_)*/uint64_t{0u}
+  , /*decltype(_impl_.phase_)*/0} {}
+struct CharacterActionStateDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR CharacterActionStateDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~CharacterActionStateDefaultTypeInternal() {}
+  union {
+    CharacterActionState _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 CharacterActionStateDefaultTypeInternal _CharacterActionState_default_instance_;
+PROTOBUF_CONSTEXPR CharacterBoundedMedia::CharacterBoundedMedia(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.session_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.action_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.pixel_format_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.pcm_format_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.identity_)*/nullptr
+  , /*decltype(_impl_.epoch_)*/uint64_t{0u}
+  , /*decltype(_impl_.width_)*/0u
+  , /*decltype(_impl_.height_)*/0u
+  , /*decltype(_impl_.sample_rate_)*/0u
+  , /*decltype(_impl_.channels_)*/0u
+  , /*decltype(_impl_.max_frames_)*/uint64_t{0u}
+  , /*decltype(_impl_.max_samples_)*/uint64_t{0u}
+  , /*decltype(_impl_.samples_per_frame_)*/0u
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct CharacterBoundedMediaDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR CharacterBoundedMediaDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~CharacterBoundedMediaDefaultTypeInternal() {}
+  union {
+    CharacterBoundedMedia _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 CharacterBoundedMediaDefaultTypeInternal _CharacterBoundedMedia_default_instance_;
+PROTOBUF_CONSTEXPR CharacterRuntimeView::CharacterRuntimeView(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.session_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.action_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.reason_code_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.identity_)*/nullptr
+  , /*decltype(_impl_.media_)*/nullptr
+  , /*decltype(_impl_.epoch_)*/uint64_t{0u}
+  , /*decltype(_impl_.state_)*/0
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct CharacterRuntimeViewDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR CharacterRuntimeViewDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~CharacterRuntimeViewDefaultTypeInternal() {}
+  union {
+    CharacterRuntimeView _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 CharacterRuntimeViewDefaultTypeInternal _CharacterRuntimeView_default_instance_;
 PROTOBUF_CONSTEXPR AvatarRenderRequest::AvatarRenderRequest(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.avatar_profile_revision_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
@@ -348,6 +487,114 @@ struct PreviewDescriptorDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 PreviewDescriptorDefaultTypeInternal _PreviewDescriptor_default_instance_;
+PROTOBUF_CONSTEXPR LocalPlaybackMedia::LocalPlaybackMedia(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.frame_sha256_)*/{}
+  , /*decltype(_impl_.session_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.candidate_hash_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.audio_sha256_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.frames_sha256_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.standby_sha256_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.generation_epoch_)*/uint64_t{0u}
+  , /*decltype(_impl_.version_)*/0u
+  , /*decltype(_impl_.sample_rate_)*/0u
+  , /*decltype(_impl_.sample_count_)*/uint64_t{0u}
+  , /*decltype(_impl_.width_)*/0u
+  , /*decltype(_impl_.height_)*/0u
+  , /*decltype(_impl_.frame_count_)*/0u
+  , /*decltype(_impl_.fps_num_)*/0u
+  , /*decltype(_impl_.fps_den_)*/0u
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct LocalPlaybackMediaDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR LocalPlaybackMediaDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~LocalPlaybackMediaDefaultTypeInternal() {}
+  union {
+    LocalPlaybackMedia _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 LocalPlaybackMediaDefaultTypeInternal _LocalPlaybackMedia_default_instance_;
+PROTOBUF_CONSTEXPR LocalPlaybackGrant::LocalPlaybackGrant(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.media_sha256_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.cue_)*/nullptr
+  , /*decltype(_impl_.approval_)*/nullptr
+  , /*decltype(_impl_.lease_)*/nullptr
+  , /*decltype(_impl_.seq_)*/uint64_t{0u}
+  , /*decltype(_impl_.version_)*/0u
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct LocalPlaybackGrantDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR LocalPlaybackGrantDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~LocalPlaybackGrantDefaultTypeInternal() {}
+  union {
+    LocalPlaybackGrant _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 LocalPlaybackGrantDefaultTypeInternal _LocalPlaybackGrant_default_instance_;
+PROTOBUF_CONSTEXPR LocalPlaybackStatus::LocalPlaybackStatus(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.state_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.error_code_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.standby_sha256_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.media_sha256_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.audio_backend_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.copied_samples_)*/uint64_t{0u}
+  , /*decltype(_impl_.window_updates_)*/uint64_t{0u}
+  , /*decltype(_impl_.version_)*/0u
+  , /*decltype(_impl_.audio_stream_open_count_)*/0u
+  , /*decltype(_impl_.callback_drained_samples_)*/uint64_t{0u}
+  , /*decltype(_impl_.device_played_samples_)*/uint64_t{0u}
+  , /*decltype(_impl_.actual_local_playback_completed_)*/false
+  , /*decltype(_impl_.callback_drain_observed_)*/false
+  , /*decltype(_impl_.device_position_observed_)*/false
+  , /*decltype(_impl_.video_tail_submitted_)*/false
+  , /*decltype(_impl_.video_frame_index_)*/0u
+  , /*decltype(_impl_.video_device_samples_)*/uint64_t{0u}} {}
+struct LocalPlaybackStatusDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR LocalPlaybackStatusDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~LocalPlaybackStatusDefaultTypeInternal() {}
+  union {
+    LocalPlaybackStatus _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 LocalPlaybackStatusDefaultTypeInternal _LocalPlaybackStatus_default_instance_;
+PROTOBUF_CONSTEXPR NativeDeviceSmokeReport::NativeDeviceSmokeReport(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.scope_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.scenario_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.backend_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.error_code_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.schema_version_)*/0u
+  , /*decltype(_impl_.sample_rate_)*/0u
+  , /*decltype(_impl_.callbacks_)*/uint64_t{0u}
+  , /*decltype(_impl_.copied_interleaved_samples_)*/uint64_t{0u}
+  , /*decltype(_impl_.silent_callbacks_after_stop_)*/uint64_t{0u}
+  , /*decltype(_impl_.channels_)*/0u
+  , /*decltype(_impl_.audio_opened_)*/false
+  , /*decltype(_impl_.window_opened_)*/false
+  , /*decltype(_impl_.success_)*/false
+  , /*decltype(_impl_.actual_local_playback_completed_)*/false
+  , /*decltype(_impl_.nonzero_callbacks_after_stop_)*/uint64_t{0u}
+  , /*decltype(_impl_.window_updates_)*/uint64_t{0u}
+  , /*decltype(_impl_.max_predicted_latency_us_)*/uint64_t{0u}
+  , /*decltype(_impl_.last_nonzero_at_us_)*/uint64_t{0u}
+  , /*decltype(_impl_.stop_at_us_)*/uint64_t{0u}
+  , /*decltype(_impl_.elapsed_ms_)*/uint64_t{0u}
+  , /*decltype(_impl_.max_callback_frames_)*/uint64_t{0u}
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct NativeDeviceSmokeReportDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR NativeDeviceSmokeReportDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~NativeDeviceSmokeReportDefaultTypeInternal() {}
+  union {
+    NativeDeviceSmokeReport _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 NativeDeviceSmokeReportDefaultTypeInternal _NativeDeviceSmokeReport_default_instance_;
 PROTOBUF_CONSTEXPR OutputWatchdogCommand::OutputWatchdogCommand(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_.session_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
@@ -446,10 +693,59 @@ struct FrameSlotEventDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 FrameSlotEventDefaultTypeInternal _FrameSlotEvent_default_instance_;
+PROTOBUF_CONSTEXPR LocalOutputCommand::LocalOutputCommand(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.command_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_._oneof_case_)*/{}} {}
+struct LocalOutputCommandDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR LocalOutputCommandDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~LocalOutputCommandDefaultTypeInternal() {}
+  union {
+    LocalOutputCommand _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 LocalOutputCommandDefaultTypeInternal _LocalOutputCommand_default_instance_;
+PROTOBUF_CONSTEXPR LocalStandbyMedia::LocalStandbyMedia(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.session_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.standby_sha256_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.version_)*/0u
+  , /*decltype(_impl_.width_)*/0u
+  , /*decltype(_impl_.generation_epoch_)*/uint64_t{0u}
+  , /*decltype(_impl_.height_)*/0u
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct LocalStandbyMediaDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR LocalStandbyMediaDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~LocalStandbyMediaDefaultTypeInternal() {}
+  union {
+    LocalStandbyMedia _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 LocalStandbyMediaDefaultTypeInternal _LocalStandbyMedia_default_instance_;
+PROTOBUF_CONSTEXPR LocalOutputWarmup::LocalOutputWarmup(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.descriptor_path_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.descriptor_sha256_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.session_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.generation_epoch_)*/uint64_t{0u}
+  , /*decltype(_impl_.remaining_budget_ms_)*/0u
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct LocalOutputWarmupDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR LocalOutputWarmupDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~LocalOutputWarmupDefaultTypeInternal() {}
+  union {
+    LocalOutputWarmup _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 LocalOutputWarmupDefaultTypeInternal _LocalOutputWarmup_default_instance_;
 }  // namespace v1
 }  // namespace nai
-static ::_pb::Metadata file_level_metadata_domain_2fmedia_2eproto[23];
-static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_domain_2fmedia_2eproto = nullptr;
+static ::_pb::Metadata file_level_metadata_domain_2fmedia_2eproto[37];
+static const ::_pb::EnumDescriptor* file_level_enum_descriptors_domain_2fmedia_2eproto[4];
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_domain_2fmedia_2eproto = nullptr;
 
 const uint32_t TableStruct_domain_2fmedia_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
@@ -546,6 +842,112 @@ const uint32_t TableStruct_domain_2fmedia_2eproto::offsets[] PROTOBUF_SECTION_VA
   PROTOBUF_FIELD_OFFSET(::nai::v1::AvatarProfile, _impl_.lookahead_samples_),
   PROTOBUF_FIELD_OFFSET(::nai::v1::AvatarProfile, _impl_.switch_points_),
   PROTOBUF_FIELD_OFFSET(::nai::v1::AvatarProfile, _impl_.certified_fallback_refs_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterIdentity, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterIdentity, _impl_.workspace_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterIdentity, _impl_.character_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterIdentity, _impl_.version_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterIdentity, _impl_.package_sha256_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterIdentity, _impl_.rights_sha256_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterCapability, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterCapability, _impl_.renderer_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterCapability, _impl_.lip_sync_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterCapability, _impl_.supported_action_ids_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterProfile, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterProfile, _impl_.schema_version_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterProfile, _impl_.identity_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterProfile, _impl_.capability_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionRequest, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionRequest, _impl_.request_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionRequest, _impl_.character_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionRequest, _impl_.session_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionRequest, _impl_.generation_epoch_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionRequest, _impl_.output_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionRequest, _impl_.approval_ref_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionRequest, _impl_.lease_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionRequest, _impl_.action_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionRequest, _impl_.priority_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionRequest, _impl_.remaining_budget_ms_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionRequest, _impl_.sequence_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _impl_.request_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _impl_.character_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _impl_.session_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _impl_.generation_epoch_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _impl_.output_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _impl_.action_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _impl_.phase_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _impl_.reason_code_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _impl_.sequence_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _impl_.source_sample_position_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterActionState, _impl_.frame_sequence_),
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  0,
+  1,
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.identity_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.session_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.epoch_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.action_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.width_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.height_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.sample_rate_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.channels_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.max_frames_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.max_samples_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.samples_per_frame_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.pixel_format_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterBoundedMedia, _impl_.pcm_format_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterRuntimeView, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterRuntimeView, _impl_.identity_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterRuntimeView, _impl_.state_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterRuntimeView, _impl_.session_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterRuntimeView, _impl_.epoch_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterRuntimeView, _impl_.action_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterRuntimeView, _impl_.media_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::CharacterRuntimeView, _impl_.reason_code_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::nai::v1::AvatarRenderRequest, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -676,6 +1078,106 @@ const uint32_t TableStruct_domain_2fmedia_2eproto::offsets[] PROTOBUF_SECTION_VA
   PROTOBUF_FIELD_OFFSET(::nai::v1::PreviewDescriptor, _impl_.codec_),
   PROTOBUF_FIELD_OFFSET(::nai::v1::PreviewDescriptor, _impl_.active_),
   ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.version_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.session_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.generation_epoch_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.candidate_hash_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.sample_rate_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.sample_count_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.width_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.height_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.frame_count_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.fps_num_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.fps_den_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.audio_sha256_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.frames_sha256_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.frame_sha256_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackMedia, _impl_.standby_sha256_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackGrant, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackGrant, _impl_.version_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackGrant, _impl_.seq_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackGrant, _impl_.cue_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackGrant, _impl_.approval_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackGrant, _impl_.lease_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackGrant, _impl_.media_sha256_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.version_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.state_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.copied_samples_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.window_updates_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.error_code_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.actual_local_playback_completed_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.audio_stream_open_count_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.standby_sha256_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.media_sha256_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.callback_drained_samples_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.callback_drain_observed_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.device_played_samples_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.device_position_observed_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.audio_backend_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.video_frame_index_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.video_device_samples_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalPlaybackStatus, _impl_.video_tail_submitted_),
+  ~0u,
+  ~0u,
+  0,
+  1,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  2,
+  ~0u,
+  3,
+  ~0u,
+  ~0u,
+  4,
+  5,
+  ~0u,
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.schema_version_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.scope_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.scenario_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.backend_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.audio_opened_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.window_opened_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.sample_rate_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.channels_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.callbacks_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.copied_interleaved_samples_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.silent_callbacks_after_stop_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.nonzero_callbacks_after_stop_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.window_updates_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.max_predicted_latency_us_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.last_nonzero_at_us_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.stop_at_us_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.elapsed_ms_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.error_code_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.success_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.actual_local_playback_completed_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::NativeDeviceSmokeReport, _impl_.max_callback_frames_),
+  ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::nai::v1::OutputWatchdogCommand, _internal_metadata_),
   ~0u,  // no _extensions_
   PROTOBUF_FIELD_OFFSET(::nai::v1::OutputWatchdogCommand, _impl_._oneof_case_[0]),
@@ -748,6 +1250,41 @@ const uint32_t TableStruct_domain_2fmedia_2eproto::offsets[] PROTOBUF_SECTION_VA
   ::_pbi::kInvalidFieldOffsetTag,
   ::_pbi::kInvalidFieldOffsetTag,
   PROTOBUF_FIELD_OFFSET(::nai::v1::FrameSlotEvent, _impl_.event_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalOutputCommand, _internal_metadata_),
+  ~0u,  // no _extensions_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalOutputCommand, _impl_._oneof_case_[0]),
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  ::_pbi::kInvalidFieldOffsetTag,
+  ::_pbi::kInvalidFieldOffsetTag,
+  ::_pbi::kInvalidFieldOffsetTag,
+  ::_pbi::kInvalidFieldOffsetTag,
+  ::_pbi::kInvalidFieldOffsetTag,
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalOutputCommand, _impl_.command_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalStandbyMedia, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalStandbyMedia, _impl_.version_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalStandbyMedia, _impl_.session_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalStandbyMedia, _impl_.generation_epoch_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalStandbyMedia, _impl_.width_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalStandbyMedia, _impl_.height_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalStandbyMedia, _impl_.standby_sha256_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalOutputWarmup, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalOutputWarmup, _impl_.descriptor_path_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalOutputWarmup, _impl_.descriptor_sha256_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalOutputWarmup, _impl_.session_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalOutputWarmup, _impl_.generation_epoch_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalOutputWarmup, _impl_.remaining_budget_ms_),
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::nai::v1::AudioBlockMetadata)},
@@ -756,23 +1293,37 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 44, -1, -1, sizeof(::nai::v1::PlaybackLease)},
   { 60, -1, -1, sizeof(::nai::v1::AvatarProfileRequest)},
   { 68, -1, -1, sizeof(::nai::v1::AvatarProfile)},
-  { 93, -1, -1, sizeof(::nai::v1::AvatarRenderRequest)},
-  { 103, -1, -1, sizeof(::nai::v1::AvatarRenderResult)},
-  { 111, -1, -1, sizeof(::nai::v1::OutputRequest)},
-  { 123, -1, -1, sizeof(::nai::v1::OutputAck)},
-  { 136, -1, -1, sizeof(::nai::v1::ChannelRequest)},
-  { 147, -1, -1, sizeof(::nai::v1::ChannelDescriptor)},
-  { 160, -1, -1, sizeof(::nai::v1::ClockRequest)},
-  { 168, -1, -1, sizeof(::nai::v1::MediaClock)},
-  { 180, -1, -1, sizeof(::nai::v1::TimelineRequest)},
-  { 188, -1, -1, sizeof(::nai::v1::AudioTimeline)},
-  { 202, -1, -1, sizeof(::nai::v1::PreviewRequest)},
-  { 212, -1, -1, sizeof(::nai::v1::PreviewDescriptor)},
-  { 222, -1, -1, sizeof(::nai::v1::OutputWatchdogCommand)},
-  { 237, -1, -1, sizeof(::nai::v1::OutputWatchdogStatus)},
-  { 259, -1, -1, sizeof(::nai::v1::FrameSlotTicket)},
-  { 276, -1, -1, sizeof(::nai::v1::FrameSlotCommit)},
-  { 285, -1, -1, sizeof(::nai::v1::FrameSlotEvent)},
+  { 93, -1, -1, sizeof(::nai::v1::CharacterIdentity)},
+  { 104, -1, -1, sizeof(::nai::v1::CharacterCapability)},
+  { 113, -1, -1, sizeof(::nai::v1::CharacterProfile)},
+  { 122, -1, -1, sizeof(::nai::v1::CharacterActionRequest)},
+  { 139, 156, -1, sizeof(::nai::v1::CharacterActionState)},
+  { 167, -1, -1, sizeof(::nai::v1::CharacterBoundedMedia)},
+  { 186, -1, -1, sizeof(::nai::v1::CharacterRuntimeView)},
+  { 199, -1, -1, sizeof(::nai::v1::AvatarRenderRequest)},
+  { 209, -1, -1, sizeof(::nai::v1::AvatarRenderResult)},
+  { 217, -1, -1, sizeof(::nai::v1::OutputRequest)},
+  { 229, -1, -1, sizeof(::nai::v1::OutputAck)},
+  { 242, -1, -1, sizeof(::nai::v1::ChannelRequest)},
+  { 253, -1, -1, sizeof(::nai::v1::ChannelDescriptor)},
+  { 266, -1, -1, sizeof(::nai::v1::ClockRequest)},
+  { 274, -1, -1, sizeof(::nai::v1::MediaClock)},
+  { 286, -1, -1, sizeof(::nai::v1::TimelineRequest)},
+  { 294, -1, -1, sizeof(::nai::v1::AudioTimeline)},
+  { 308, -1, -1, sizeof(::nai::v1::PreviewRequest)},
+  { 318, -1, -1, sizeof(::nai::v1::PreviewDescriptor)},
+  { 328, -1, -1, sizeof(::nai::v1::LocalPlaybackMedia)},
+  { 349, -1, -1, sizeof(::nai::v1::LocalPlaybackGrant)},
+  { 361, 384, -1, sizeof(::nai::v1::LocalPlaybackStatus)},
+  { 401, -1, -1, sizeof(::nai::v1::NativeDeviceSmokeReport)},
+  { 428, -1, -1, sizeof(::nai::v1::OutputWatchdogCommand)},
+  { 443, -1, -1, sizeof(::nai::v1::OutputWatchdogStatus)},
+  { 465, -1, -1, sizeof(::nai::v1::FrameSlotTicket)},
+  { 482, -1, -1, sizeof(::nai::v1::FrameSlotCommit)},
+  { 491, -1, -1, sizeof(::nai::v1::FrameSlotEvent)},
+  { 501, -1, -1, sizeof(::nai::v1::LocalOutputCommand)},
+  { 513, -1, -1, sizeof(::nai::v1::LocalStandbyMedia)},
+  { 525, -1, -1, sizeof(::nai::v1::LocalOutputWarmup)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -782,6 +1333,13 @@ static const ::_pb::Message* const file_default_instances[] = {
   &::nai::v1::_PlaybackLease_default_instance_._instance,
   &::nai::v1::_AvatarProfileRequest_default_instance_._instance,
   &::nai::v1::_AvatarProfile_default_instance_._instance,
+  &::nai::v1::_CharacterIdentity_default_instance_._instance,
+  &::nai::v1::_CharacterCapability_default_instance_._instance,
+  &::nai::v1::_CharacterProfile_default_instance_._instance,
+  &::nai::v1::_CharacterActionRequest_default_instance_._instance,
+  &::nai::v1::_CharacterActionState_default_instance_._instance,
+  &::nai::v1::_CharacterBoundedMedia_default_instance_._instance,
+  &::nai::v1::_CharacterRuntimeView_default_instance_._instance,
   &::nai::v1::_AvatarRenderRequest_default_instance_._instance,
   &::nai::v1::_AvatarRenderResult_default_instance_._instance,
   &::nai::v1::_OutputRequest_default_instance_._instance,
@@ -794,11 +1352,18 @@ static const ::_pb::Message* const file_default_instances[] = {
   &::nai::v1::_AudioTimeline_default_instance_._instance,
   &::nai::v1::_PreviewRequest_default_instance_._instance,
   &::nai::v1::_PreviewDescriptor_default_instance_._instance,
+  &::nai::v1::_LocalPlaybackMedia_default_instance_._instance,
+  &::nai::v1::_LocalPlaybackGrant_default_instance_._instance,
+  &::nai::v1::_LocalPlaybackStatus_default_instance_._instance,
+  &::nai::v1::_NativeDeviceSmokeReport_default_instance_._instance,
   &::nai::v1::_OutputWatchdogCommand_default_instance_._instance,
   &::nai::v1::_OutputWatchdogStatus_default_instance_._instance,
   &::nai::v1::_FrameSlotTicket_default_instance_._instance,
   &::nai::v1::_FrameSlotCommit_default_instance_._instance,
   &::nai::v1::_FrameSlotEvent_default_instance_._instance,
+  &::nai::v1::_LocalOutputCommand_default_instance_._instance,
+  &::nai::v1::_LocalStandbyMedia_default_instance_._instance,
+  &::nai::v1::_LocalOutputWarmup_default_instance_._instance,
 };
 
 const char descriptor_table_protodef_domain_2fmedia_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -841,82 +1406,199 @@ const char descriptor_table_protodef_domain_2fmedia_2eproto[] PROTOBUF_SECTION_V
   "eight\030\016 \001(\r\022\017\n\007fps_num\030\017 \001(\r\022\017\n\007fps_den\030"
   "\020 \001(\r\022\031\n\021lookahead_samples\030\021 \001(\r\022\025\n\rswit"
   "ch_points\030\022 \003(\004\022\037\n\027certified_fallback_re"
-  "fs\030\023 \003(\t\"\257\001\n\023AvatarRenderRequest\022\'\n\007cont"
-  "ext\030\001 \001(\0132\026.nai.v1.RequestContext\022#\n\003cue"
-  "\030\002 \001(\0132\026.nai.v1.PerformanceCue\022)\n\005audio\030"
-  "\003 \001(\0132\032.nai.v1.AudioBlockMetadata\022\037\n\027ava"
-  "tar_profile_revision\030\004 \001(\t\"[\n\022AvatarRend"
-  "erResult\022%\n\006frames\030\001 \003(\0132\025.nai.v1.FrameM"
-  "etadata\022\036\n\003end\030\002 \001(\0162\021.nai.v1.StreamEnd\""
-  "\330\001\n\rOutputRequest\022\'\n\007context\030\001 \001(\0132\026.nai"
-  ".v1.RequestContext\022\021\n\toutput_id\030\002 \001(\t\022\024\n"
-  "\014utterance_id\030\003 \001(\t\022$\n\005lease\030\004 \001(\0132\025.nai"
-  ".v1.PlaybackLease\022)\n\005audio\030\005 \001(\0132\032.nai.v"
-  "1.AudioBlockMetadata\022$\n\005frame\030\006 \001(\0132\025.na"
-  "i.v1.FrameMetadata\"\327\001\n\tOutputAck\022\021\n\toutp"
-  "ut_id\030\001 \001(\t\022\024\n\014utterance_id\030\002 \001(\t\022\021\n\tcom"
-  "mitted\030\003 \001(\010\022\'\n\037actual_local_playback_co"
-  "mpleted\030\004 \001(\010\022\033\n\023played_sample_count\030\005 \001"
-  "(\004\022\'\n\013media_state\030\006 \001(\0162\022.nai.v1.MediaSt"
-  "ate\022\037\n\027platform_delivery_state\030\007 \001(\t\"\212\001\n"
-  "\016ChannelRequest\022\'\n\007context\030\001 \001(\0132\026.nai.v"
-  "1.RequestContext\022\021\n\tdirection\030\002 \001(\t\022\021\n\tt"
-  "ransport\030\003 \001(\t\022\021\n\tmax_slots\030\004 \001(\r\022\026\n\016max"
-  "_slot_bytes\030\005 \001(\r\"\257\001\n\021ChannelDescriptor\022"
-  "\022\n\nchannel_id\030\001 \001(\t\022\021\n\ttransport\030\002 \001(\t\022\034"
-  "\n\024protected_handle_ref\030\003 \001(\t\022\021\n\tmax_slot"
-  "s\030\004 \001(\r\022\026\n\016max_slot_bytes\030\005 \001(\r\022\024\n\014produ"
-  "cer_ref\030\006 \001(\t\022\024\n\014consumer_ref\030\007 \001(\t\"J\n\014C"
-  "lockRequest\022\'\n\007context\030\001 \001(\0132\026.nai.v1.Re"
-  "questContext\022\021\n\toutput_id\030\002 \001(\t\"\207\001\n\nMedi"
-  "aClock\022\020\n\010clock_id\030\001 \001(\t\022\027\n\017sample_posit"
-  "ion\030\002 \001(\004\022\023\n\013sample_rate\030\003 \001(\r\022\013\n\003pts\030\004 "
-  "\001(\003\022\025\n\rtime_base_num\030\005 \001(\r\022\025\n\rtime_base_"
-  "den\030\006 \001(\r\"P\n\017TimelineRequest\022\'\n\007context\030"
-  "\001 \001(\0132\026.nai.v1.RequestContext\022\024\n\014utteran"
-  "ce_id\030\002 \001(\t\"\332\001\n\rAudioTimeline\022\024\n\014utteran"
-  "ce_id\030\001 \001(\t\022\020\n\010clock_id\030\002 \001(\t\022\033\n\023output_"
-  "sample_start\030\003 \001(\004\022\032\n\022output_sample_rate"
-  "\030\004 \001(\r\022\032\n\022model_sample_start\030\005 \001(\004\022\031\n\021mo"
-  "del_sample_rate\030\006 \001(\r\022\026\n\016speech_samples\030"
-  "\007 \001(\004\022\031\n\021lookahead_samples\030\010 \001(\r\"r\n\016Prev"
-  "iewRequest\022\'\n\007context\030\001 \001(\0132\026.nai.v1.Req"
-  "uestContext\022\021\n\toutput_id\030\002 \001(\t\022\017\n\007enable"
-  "d\030\003 \001(\010\022\023\n\013max_bitrate\030\004 \001(\r\"b\n\021PreviewD"
-  "escriptor\022\022\n\npreview_id\030\001 \001(\t\022\032\n\022encoded"
-  "_stream_ref\030\002 \001(\t\022\r\n\005codec\030\003 \001(\t\022\016\n\006acti"
-  "ve\030\004 \001(\010\"\210\002\n\025OutputWatchdogCommand\022\026\n\016sc"
-  "hema_version\030\001 \001(\r\022\022\n\nsession_id\030\002 \001(\t\022\013"
-  "\n\003seq\030\003 \001(\004\022\033\n\023remaining_budget_ms\030\004 \001(\r"
-  "\022$\n\003arm\030\005 \001(\0132\025.nai.v1.PlaybackLeaseH\000\022&"
-  "\n\005renew\030\006 \001(\0132\025.nai.v1.PlaybackLeaseH\000\022\021"
-  "\n\007inspect\030\007 \001(\010H\000\022.\n\014submit_frame\030\010 \001(\0132"
-  "\026.nai.v1.FrameSlotEventH\000B\010\n\006action\"\311\003\n\024"
-  "OutputWatchdogStatus\022\026\n\016schema_version\030\001"
-  " \001(\r\022\022\n\nsession_id\030\002 \001(\t\022\030\n\020last_command"
-  "_seq\030\003 \001(\004\022\032\n\022observed_at_utc_ms\030\004 \001(\004\022\023"
-  "\n\013epoch_floor\030\005 \001(\004\022\023\n\013lease_valid\030\006 \001(\010"
-  "\022\024\n\014input_closed\030\007 \001(\010\022\030\n\020output_availab"
-  "le\030\010 \001(\010\022,\n\rbackend_error\030\t \001(\0132\025.nai.v1"
-  ".ContractError\0221\n\022last_control_error\030\n \001"
-  "(\0132\025.nai.v1.ContractError\022\030\n\020dropped_com"
-  "mands\030\013 \001(\004\022\030\n\020skipped_statuses\030\014 \001(\004\022\022\n"
-  "\npresenting\030\r \001(\010\022\026\n\016standby_reason\030\016 \001("
-  "\t\022\033\n\023consumed_buffer_ref\030\017 \001(\t\022\027\n\017consum"
-  "ed_sha256\030\020 \001(\t\"\234\002\n\017FrameSlotTicket\022\026\n\016s"
-  "chema_version\030\001 \001(\r\022\017\n\007pool_id\030\002 \001(\t\022\022\n\n"
-  "session_id\030\003 \001(\t\022\030\n\020generation_epoch\030\004 \001"
-  "(\004\022\022\n\nslot_index\030\005 \001(\r\022\027\n\017slot_generatio"
-  "n\030\006 \001(\004\022\024\n\014producer_ref\030\007 \001(\t\022\024\n\014consume"
-  "r_ref\030\010 \001(\t\022$\n\005frame\030\t \001(\0132\025.nai.v1.Fram"
-  "eMetadata\022\026\n\016max_slot_bytes\030\n \001(\r\022\033\n\023rem"
-  "aining_budget_ms\030\013 \001(\r\"_\n\017FrameSlotCommi"
-  "t\022\'\n\006ticket\030\001 \001(\0132\027.nai.v1.FrameSlotTick"
-  "et\022\023\n\013byte_length\030\002 \001(\r\022\016\n\006sha256\030\003 \001(\t\""
-  "\210\001\n\016FrameSlotEvent\022\027\n\rwrite_started\030\001 \001("
-  "\010H\000\022,\n\tcommitted\030\002 \001(\0132\027.nai.v1.FrameSlo"
-  "tCommitH\000\022&\n\005error\030\003 \001(\0132\025.nai.v1.Contra"
-  "ctErrorH\000B\007\n\005eventb\006proto3"
+  "fs\030\023 \003(\t\"\177\n\021CharacterIdentity\022\024\n\014workspa"
+  "ce_id\030\001 \001(\t\022\024\n\014character_id\030\002 \001(\t\022\017\n\007ver"
+  "sion\030\003 \001(\t\022\026\n\016package_sha256\030\004 \001(\t\022\025\n\rri"
+  "ghts_sha256\030\005 \001(\t\"\224\001\n\023CharacterCapabilit"
+  "y\022/\n\010renderer\030\001 \001(\0162\035.nai.v1.CharacterRe"
+  "ndererKind\022.\n\010lip_sync\030\002 \003(\0162\034.nai.v1.Ch"
+  "aracterLipSyncKind\022\034\n\024supported_action_i"
+  "ds\030\003 \003(\t\"\210\001\n\020CharacterProfile\022\026\n\016schema_"
+  "version\030\001 \001(\r\022+\n\010identity\030\002 \001(\0132\031.nai.v1"
+  ".CharacterIdentity\022/\n\ncapability\030\003 \001(\0132\033"
+  ".nai.v1.CharacterCapability\"\227\002\n\026Characte"
+  "rActionRequest\022\022\n\nrequest_id\030\001 \001(\t\022,\n\tch"
+  "aracter\030\002 \001(\0132\031.nai.v1.CharacterIdentity"
+  "\022\022\n\nsession_id\030\003 \001(\t\022\030\n\020generation_epoch"
+  "\030\004 \001(\004\022\021\n\toutput_id\030\005 \001(\t\022\024\n\014approval_re"
+  "f\030\006 \001(\t\022\020\n\010lease_id\030\007 \001(\t\022\021\n\taction_id\030\010"
+  " \001(\t\022\020\n\010priority\030\t \001(\r\022\033\n\023remaining_budg"
+  "et_ms\030\n \001(\r\022\020\n\010sequence\030\013 \001(\004\"\360\002\n\024Charac"
+  "terActionState\022\022\n\nrequest_id\030\001 \001(\t\022,\n\tch"
+  "aracter\030\002 \001(\0132\031.nai.v1.CharacterIdentity"
+  "\022\022\n\nsession_id\030\003 \001(\t\022\030\n\020generation_epoch"
+  "\030\004 \001(\004\022\021\n\toutput_id\030\005 \001(\t\022\021\n\taction_id\030\006"
+  " \001(\t\022+\n\005phase\030\007 \001(\0162\034.nai.v1.CharacterAc"
+  "tionPhase\022\023\n\013reason_code\030\010 \001(\t\022\020\n\010sequen"
+  "ce\030\t \001(\004\022#\n\026source_sample_position\030\n \001(\004"
+  "H\000\210\001\001\022\033\n\016frame_sequence\030\013 \001(\004H\001\210\001\001B\031\n\027_s"
+  "ource_sample_positionB\021\n\017_frame_sequence"
+  "\"\256\002\n\025CharacterBoundedMedia\022+\n\010identity\030\001"
+  " \001(\0132\031.nai.v1.CharacterIdentity\022\022\n\nsessi"
+  "on_id\030\002 \001(\t\022\r\n\005epoch\030\003 \001(\004\022\021\n\taction_id\030"
+  "\004 \001(\t\022\r\n\005width\030\005 \001(\r\022\016\n\006height\030\006 \001(\r\022\023\n\013"
+  "sample_rate\030\007 \001(\r\022\020\n\010channels\030\010 \001(\r\022\022\n\nm"
+  "ax_frames\030\t \001(\004\022\023\n\013max_samples\030\n \001(\004\022\031\n\021"
+  "samples_per_frame\030\013 \001(\r\022\024\n\014pixel_format\030"
+  "\014 \001(\t\022\022\n\npcm_format\030\r \001(\t\"\352\001\n\024CharacterR"
+  "untimeView\022+\n\010identity\030\001 \001(\0132\031.nai.v1.Ch"
+  "aracterIdentity\022,\n\005state\030\002 \001(\0162\035.nai.v1."
+  "CharacterRuntimeState\022\022\n\nsession_id\030\003 \001("
+  "\t\022\r\n\005epoch\030\004 \001(\004\022\021\n\taction_id\030\005 \001(\t\022,\n\005m"
+  "edia\030\006 \001(\0132\035.nai.v1.CharacterBoundedMedi"
+  "a\022\023\n\013reason_code\030\007 \001(\t\"\257\001\n\023AvatarRenderR"
+  "equest\022\'\n\007context\030\001 \001(\0132\026.nai.v1.Request"
+  "Context\022#\n\003cue\030\002 \001(\0132\026.nai.v1.Performanc"
+  "eCue\022)\n\005audio\030\003 \001(\0132\032.nai.v1.AudioBlockM"
+  "etadata\022\037\n\027avatar_profile_revision\030\004 \001(\t"
+  "\"[\n\022AvatarRenderResult\022%\n\006frames\030\001 \003(\0132\025"
+  ".nai.v1.FrameMetadata\022\036\n\003end\030\002 \001(\0162\021.nai"
+  ".v1.StreamEnd\"\330\001\n\rOutputRequest\022\'\n\007conte"
+  "xt\030\001 \001(\0132\026.nai.v1.RequestContext\022\021\n\toutp"
+  "ut_id\030\002 \001(\t\022\024\n\014utterance_id\030\003 \001(\t\022$\n\005lea"
+  "se\030\004 \001(\0132\025.nai.v1.PlaybackLease\022)\n\005audio"
+  "\030\005 \001(\0132\032.nai.v1.AudioBlockMetadata\022$\n\005fr"
+  "ame\030\006 \001(\0132\025.nai.v1.FrameMetadata\"\327\001\n\tOut"
+  "putAck\022\021\n\toutput_id\030\001 \001(\t\022\024\n\014utterance_i"
+  "d\030\002 \001(\t\022\021\n\tcommitted\030\003 \001(\010\022\'\n\037actual_loc"
+  "al_playback_completed\030\004 \001(\010\022\033\n\023played_sa"
+  "mple_count\030\005 \001(\004\022\'\n\013media_state\030\006 \001(\0162\022."
+  "nai.v1.MediaState\022\037\n\027platform_delivery_s"
+  "tate\030\007 \001(\t\"\212\001\n\016ChannelRequest\022\'\n\007context"
+  "\030\001 \001(\0132\026.nai.v1.RequestContext\022\021\n\tdirect"
+  "ion\030\002 \001(\t\022\021\n\ttransport\030\003 \001(\t\022\021\n\tmax_slot"
+  "s\030\004 \001(\r\022\026\n\016max_slot_bytes\030\005 \001(\r\"\257\001\n\021Chan"
+  "nelDescriptor\022\022\n\nchannel_id\030\001 \001(\t\022\021\n\ttra"
+  "nsport\030\002 \001(\t\022\034\n\024protected_handle_ref\030\003 \001"
+  "(\t\022\021\n\tmax_slots\030\004 \001(\r\022\026\n\016max_slot_bytes\030"
+  "\005 \001(\r\022\024\n\014producer_ref\030\006 \001(\t\022\024\n\014consumer_"
+  "ref\030\007 \001(\t\"J\n\014ClockRequest\022\'\n\007context\030\001 \001"
+  "(\0132\026.nai.v1.RequestContext\022\021\n\toutput_id\030"
+  "\002 \001(\t\"\207\001\n\nMediaClock\022\020\n\010clock_id\030\001 \001(\t\022\027"
+  "\n\017sample_position\030\002 \001(\004\022\023\n\013sample_rate\030\003"
+  " \001(\r\022\013\n\003pts\030\004 \001(\003\022\025\n\rtime_base_num\030\005 \001(\r"
+  "\022\025\n\rtime_base_den\030\006 \001(\r\"P\n\017TimelineReque"
+  "st\022\'\n\007context\030\001 \001(\0132\026.nai.v1.RequestCont"
+  "ext\022\024\n\014utterance_id\030\002 \001(\t\"\332\001\n\rAudioTimel"
+  "ine\022\024\n\014utterance_id\030\001 \001(\t\022\020\n\010clock_id\030\002 "
+  "\001(\t\022\033\n\023output_sample_start\030\003 \001(\004\022\032\n\022outp"
+  "ut_sample_rate\030\004 \001(\r\022\032\n\022model_sample_sta"
+  "rt\030\005 \001(\004\022\031\n\021model_sample_rate\030\006 \001(\r\022\026\n\016s"
+  "peech_samples\030\007 \001(\004\022\031\n\021lookahead_samples"
+  "\030\010 \001(\r\"r\n\016PreviewRequest\022\'\n\007context\030\001 \001("
+  "\0132\026.nai.v1.RequestContext\022\021\n\toutput_id\030\002"
+  " \001(\t\022\017\n\007enabled\030\003 \001(\010\022\023\n\013max_bitrate\030\004 \001"
+  "(\r\"b\n\021PreviewDescriptor\022\022\n\npreview_id\030\001 "
+  "\001(\t\022\032\n\022encoded_stream_ref\030\002 \001(\t\022\r\n\005codec"
+  "\030\003 \001(\t\022\016\n\006active\030\004 \001(\010\"\307\002\n\022LocalPlayback"
+  "Media\022\017\n\007version\030\001 \001(\r\022\022\n\nsession_id\030\002 \001"
+  "(\t\022\030\n\020generation_epoch\030\003 \001(\004\022\026\n\016candidat"
+  "e_hash\030\004 \001(\t\022\023\n\013sample_rate\030\005 \001(\r\022\024\n\014sam"
+  "ple_count\030\006 \001(\004\022\r\n\005width\030\007 \001(\r\022\016\n\006height"
+  "\030\010 \001(\r\022\023\n\013frame_count\030\t \001(\r\022\017\n\007fps_num\030\n"
+  " \001(\r\022\017\n\007fps_den\030\013 \001(\r\022\024\n\014audio_sha256\030\014 "
+  "\001(\t\022\025\n\rframes_sha256\030\r \001(\t\022\024\n\014frame_sha2"
+  "56\030\016 \003(\t\022\026\n\016standby_sha256\030\017 \001(\t\"\267\001\n\022Loc"
+  "alPlaybackGrant\022\017\n\007version\030\001 \001(\r\022\013\n\003seq\030"
+  "\002 \001(\004\022#\n\003cue\030\003 \001(\0132\026.nai.v1.PerformanceC"
+  "ue\022\"\n\010approval\030\004 \001(\0132\020.nai.v1.Approval\022$"
+  "\n\005lease\030\005 \001(\0132\025.nai.v1.PlaybackLease\022\024\n\014"
+  "media_sha256\030\006 \001(\t\"\215\005\n\023LocalPlaybackStat"
+  "us\022\017\n\007version\030\001 \001(\r\022\r\n\005state\030\002 \001(\t\022\033\n\016co"
+  "pied_samples\030\003 \001(\004H\000\210\001\001\022\033\n\016window_update"
+  "s\030\004 \001(\004H\001\210\001\001\022\022\n\nerror_code\030\005 \001(\t\022\'\n\037actu"
+  "al_local_playback_completed\030\006 \001(\010\022\037\n\027aud"
+  "io_stream_open_count\030\007 \001(\r\022\026\n\016standby_sh"
+  "a256\030\010 \001(\t\022\024\n\014media_sha256\030\t \001(\t\022%\n\030call"
+  "back_drained_samples\030\n \001(\004H\002\210\001\001\022\037\n\027callb"
+  "ack_drain_observed\030\013 \001(\010\022\"\n\025device_playe"
+  "d_samples\030\014 \001(\004H\003\210\001\001\022 \n\030device_position_"
+  "observed\030\r \001(\010\022\025\n\raudio_backend\030\016 \001(\t\022\036\n"
+  "\021video_frame_index\030\017 \001(\rH\004\210\001\001\022!\n\024video_d"
+  "evice_samples\030\020 \001(\004H\005\210\001\001\022\034\n\024video_tail_s"
+  "ubmitted\030\021 \001(\010B\021\n\017_copied_samplesB\021\n\017_wi"
+  "ndow_updatesB\033\n\031_callback_drained_sample"
+  "sB\030\n\026_device_played_samplesB\024\n\022_video_fr"
+  "ame_indexB\027\n\025_video_device_samples\"\242\004\n\027N"
+  "ativeDeviceSmokeReport\022\026\n\016schema_version"
+  "\030\001 \001(\r\022\r\n\005scope\030\002 \001(\t\022\020\n\010scenario\030\003 \001(\t\022"
+  "\017\n\007backend\030\004 \001(\t\022\024\n\014audio_opened\030\005 \001(\010\022\025"
+  "\n\rwindow_opened\030\006 \001(\010\022\023\n\013sample_rate\030\007 \001"
+  "(\r\022\020\n\010channels\030\010 \001(\r\022\021\n\tcallbacks\030\t \001(\004\022"
+  "\"\n\032copied_interleaved_samples\030\n \001(\004\022#\n\033s"
+  "ilent_callbacks_after_stop\030\013 \001(\004\022$\n\034nonz"
+  "ero_callbacks_after_stop\030\014 \001(\004\022\026\n\016window"
+  "_updates\030\r \001(\004\022 \n\030max_predicted_latency_"
+  "us\030\016 \001(\004\022\032\n\022last_nonzero_at_us\030\017 \001(\004\022\022\n\n"
+  "stop_at_us\030\020 \001(\004\022\022\n\nelapsed_ms\030\021 \001(\004\022\022\n\n"
+  "error_code\030\022 \001(\t\022\017\n\007success\030\023 \001(\010\022\'\n\037act"
+  "ual_local_playback_completed\030\024 \001(\010\022\033\n\023ma"
+  "x_callback_frames\030\025 \001(\004\"\210\002\n\025OutputWatchd"
+  "ogCommand\022\026\n\016schema_version\030\001 \001(\r\022\022\n\nses"
+  "sion_id\030\002 \001(\t\022\013\n\003seq\030\003 \001(\004\022\033\n\023remaining_"
+  "budget_ms\030\004 \001(\r\022$\n\003arm\030\005 \001(\0132\025.nai.v1.Pl"
+  "aybackLeaseH\000\022&\n\005renew\030\006 \001(\0132\025.nai.v1.Pl"
+  "aybackLeaseH\000\022\021\n\007inspect\030\007 \001(\010H\000\022.\n\014subm"
+  "it_frame\030\010 \001(\0132\026.nai.v1.FrameSlotEventH\000"
+  "B\010\n\006action\"\311\003\n\024OutputWatchdogStatus\022\026\n\016s"
+  "chema_version\030\001 \001(\r\022\022\n\nsession_id\030\002 \001(\t\022"
+  "\030\n\020last_command_seq\030\003 \001(\004\022\032\n\022observed_at"
+  "_utc_ms\030\004 \001(\004\022\023\n\013epoch_floor\030\005 \001(\004\022\023\n\013le"
+  "ase_valid\030\006 \001(\010\022\024\n\014input_closed\030\007 \001(\010\022\030\n"
+  "\020output_available\030\010 \001(\010\022,\n\rbackend_error"
+  "\030\t \001(\0132\025.nai.v1.ContractError\0221\n\022last_co"
+  "ntrol_error\030\n \001(\0132\025.nai.v1.ContractError"
+  "\022\030\n\020dropped_commands\030\013 \001(\004\022\030\n\020skipped_st"
+  "atuses\030\014 \001(\004\022\022\n\npresenting\030\r \001(\010\022\026\n\016stan"
+  "dby_reason\030\016 \001(\t\022\033\n\023consumed_buffer_ref\030"
+  "\017 \001(\t\022\027\n\017consumed_sha256\030\020 \001(\t\"\234\002\n\017Frame"
+  "SlotTicket\022\026\n\016schema_version\030\001 \001(\r\022\017\n\007po"
+  "ol_id\030\002 \001(\t\022\022\n\nsession_id\030\003 \001(\t\022\030\n\020gener"
+  "ation_epoch\030\004 \001(\004\022\022\n\nslot_index\030\005 \001(\r\022\027\n"
+  "\017slot_generation\030\006 \001(\004\022\024\n\014producer_ref\030\007"
+  " \001(\t\022\024\n\014consumer_ref\030\010 \001(\t\022$\n\005frame\030\t \001("
+  "\0132\025.nai.v1.FrameMetadata\022\026\n\016max_slot_byt"
+  "es\030\n \001(\r\022\033\n\023remaining_budget_ms\030\013 \001(\r\"_\n"
+  "\017FrameSlotCommit\022\'\n\006ticket\030\001 \001(\0132\027.nai.v"
+  "1.FrameSlotTicket\022\023\n\013byte_length\030\002 \001(\r\022\016"
+  "\n\006sha256\030\003 \001(\t\"\210\001\n\016FrameSlotEvent\022\027\n\rwri"
+  "te_started\030\001 \001(\010H\000\022,\n\tcommitted\030\002 \001(\0132\027."
+  "nai.v1.FrameSlotCommitH\000\022&\n\005error\030\003 \001(\0132"
+  "\025.nai.v1.ContractErrorH\000B\007\n\005event\"\276\001\n\022Lo"
+  "calOutputCommand\022\031\n\017descriptor_path\030\001 \001("
+  "\tH\000\022+\n\005grant\030\002 \001(\0132\032.nai.v1.LocalPlaybac"
+  "kGrantH\000\022\022\n\010shutdown\030\003 \001(\010H\000\022\024\n\ncancel_c"
+  "ue\030\004 \001(\010H\000\022+\n\006warmup\030\005 \001(\0132\031.nai.v1.Loca"
+  "lOutputWarmupH\000B\t\n\007command\"\211\001\n\021LocalStan"
+  "dbyMedia\022\017\n\007version\030\001 \001(\r\022\022\n\nsession_id\030"
+  "\002 \001(\t\022\030\n\020generation_epoch\030\003 \001(\004\022\r\n\005width"
+  "\030\004 \001(\r\022\016\n\006height\030\005 \001(\r\022\026\n\016standby_sha256"
+  "\030\006 \001(\t\"\222\001\n\021LocalOutputWarmup\022\027\n\017descript"
+  "or_path\030\001 \001(\t\022\031\n\021descriptor_sha256\030\002 \001(\t"
+  "\022\022\n\nsession_id\030\003 \001(\t\022\030\n\020generation_epoch"
+  "\030\004 \001(\004\022\033\n\023remaining_budget_ms\030\005 \001(\r*q\n\025C"
+  "haracterRendererKind\022\"\n\036CHARACTER_RENDER"
+  "ER_UNSPECIFIED\020\000\022\031\n\025CHARACTER_RENDERER_2"
+  "D\020\001\022\031\n\025CHARACTER_RENDERER_3D\020\002*\241\001\n\024Chara"
+  "cterLipSyncKind\022\"\n\036CHARACTER_LIP_SYNC_UN"
+  "SPECIFIED\020\000\022 \n\034CHARACTER_LIP_SYNC_AMPLIT"
+  "UDE\020\001\022\036\n\032CHARACTER_LIP_SYNC_PHONEME\020\002\022#\n"
+  "\037CHARACTER_LIP_SYNC_AUDIO_DRIVEN\020\003*\235\002\n\024C"
+  "haracterActionPhase\022&\n\"CHARACTER_ACTION_"
+  "PHASE_UNSPECIFIED\020\000\022#\n\037CHARACTER_ACTION_"
+  "PHASE_ACCEPTED\020\001\022$\n CHARACTER_ACTION_PHA"
+  "SE_EXECUTING\020\002\022$\n CHARACTER_ACTION_PHASE"
+  "_COMPLETED\020\003\022$\n CHARACTER_ACTION_PHASE_C"
+  "ANCELLED\020\004\022!\n\035CHARACTER_ACTION_PHASE_FAI"
+  "LED\020\005\022#\n\037CHARACTER_ACTION_PHASE_REJECTED"
+  "\020\006*\254\002\n\025CharacterRuntimeState\022\'\n#CHARACTE"
+  "R_RUNTIME_STATE_UNSPECIFIED\020\000\022\'\n#CHARACT"
+  "ER_RUNTIME_STATE_UNAVAILABLE\020\001\022#\n\037CHARAC"
+  "TER_RUNTIME_STATE_PREVIEW\020\002\022*\n&CHARACTER"
+  "_RUNTIME_STATE_PUBLIC_STANDBY\020\003\022)\n%CHARA"
+  "CTER_RUNTIME_STATE_PUBLIC_ACTIVE\020\004\022 \n\034CH"
+  "ARACTER_RUNTIME_STATE_LOST\020\005\022#\n\037CHARACTE"
+  "R_RUNTIME_STATE_REVOKED\020\006b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_domain_2fmedia_2eproto_deps[4] = {
   &::descriptor_table_core_2fbase_2eproto,
@@ -926,9 +1608,9 @@ static const ::_pbi::DescriptorTable* const descriptor_table_domain_2fmedia_2epr
 };
 static ::_pbi::once_flag descriptor_table_domain_2fmedia_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_domain_2fmedia_2eproto = {
-    false, false, 4586, descriptor_table_protodef_domain_2fmedia_2eproto,
+    false, false, 9273, descriptor_table_protodef_domain_2fmedia_2eproto,
     "domain/media.proto",
-    &descriptor_table_domain_2fmedia_2eproto_once, descriptor_table_domain_2fmedia_2eproto_deps, 4, 23,
+    &descriptor_table_domain_2fmedia_2eproto_once, descriptor_table_domain_2fmedia_2eproto_deps, 4, 37,
     schemas, file_default_instances, TableStruct_domain_2fmedia_2eproto::offsets,
     file_level_metadata_domain_2fmedia_2eproto, file_level_enum_descriptors_domain_2fmedia_2eproto,
     file_level_service_descriptors_domain_2fmedia_2eproto,
@@ -941,6 +1623,75 @@ PROTOBUF_ATTRIBUTE_WEAK const ::_pbi::DescriptorTable* descriptor_table_domain_2
 PROTOBUF_ATTRIBUTE_INIT_PRIORITY2 static ::_pbi::AddDescriptorsRunner dynamic_init_dummy_domain_2fmedia_2eproto(&descriptor_table_domain_2fmedia_2eproto);
 namespace nai {
 namespace v1 {
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* CharacterRendererKind_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_domain_2fmedia_2eproto);
+  return file_level_enum_descriptors_domain_2fmedia_2eproto[0];
+}
+bool CharacterRendererKind_IsValid(int value) {
+  switch (value) {
+    case 0:
+    case 1:
+    case 2:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* CharacterLipSyncKind_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_domain_2fmedia_2eproto);
+  return file_level_enum_descriptors_domain_2fmedia_2eproto[1];
+}
+bool CharacterLipSyncKind_IsValid(int value) {
+  switch (value) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* CharacterActionPhase_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_domain_2fmedia_2eproto);
+  return file_level_enum_descriptors_domain_2fmedia_2eproto[2];
+}
+bool CharacterActionPhase_IsValid(int value) {
+  switch (value) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* CharacterRuntimeState_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_domain_2fmedia_2eproto);
+  return file_level_enum_descriptors_domain_2fmedia_2eproto[3];
+}
+bool CharacterRuntimeState_IsValid(int value) {
+  switch (value) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+      return true;
+    default:
+      return false;
+  }
+}
+
 
 // ===================================================================
 
@@ -3687,6 +4438,3196 @@ void AvatarProfile::InternalSwap(AvatarProfile* other) {
 
 // ===================================================================
 
+class CharacterIdentity::_Internal {
+ public:
+};
+
+CharacterIdentity::CharacterIdentity(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.CharacterIdentity)
+}
+CharacterIdentity::CharacterIdentity(const CharacterIdentity& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  CharacterIdentity* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.workspace_id_){}
+    , decltype(_impl_.character_id_){}
+    , decltype(_impl_.version_){}
+    , decltype(_impl_.package_sha256_){}
+    , decltype(_impl_.rights_sha256_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.workspace_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.workspace_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_workspace_id().empty()) {
+    _this->_impl_.workspace_id_.Set(from._internal_workspace_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.character_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.character_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_character_id().empty()) {
+    _this->_impl_.character_id_.Set(from._internal_character_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.version_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.version_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_version().empty()) {
+    _this->_impl_.version_.Set(from._internal_version(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.package_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.package_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_package_sha256().empty()) {
+    _this->_impl_.package_sha256_.Set(from._internal_package_sha256(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.rights_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.rights_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_rights_sha256().empty()) {
+    _this->_impl_.rights_sha256_.Set(from._internal_rights_sha256(), 
+      _this->GetArenaForAllocation());
+  }
+  // @@protoc_insertion_point(copy_constructor:nai.v1.CharacterIdentity)
+}
+
+inline void CharacterIdentity::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.workspace_id_){}
+    , decltype(_impl_.character_id_){}
+    , decltype(_impl_.version_){}
+    , decltype(_impl_.package_sha256_){}
+    , decltype(_impl_.rights_sha256_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.workspace_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.workspace_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.character_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.character_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.version_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.version_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.package_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.package_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.rights_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.rights_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+CharacterIdentity::~CharacterIdentity() {
+  // @@protoc_insertion_point(destructor:nai.v1.CharacterIdentity)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void CharacterIdentity::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.workspace_id_.Destroy();
+  _impl_.character_id_.Destroy();
+  _impl_.version_.Destroy();
+  _impl_.package_sha256_.Destroy();
+  _impl_.rights_sha256_.Destroy();
+}
+
+void CharacterIdentity::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void CharacterIdentity::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.CharacterIdentity)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.workspace_id_.ClearToEmpty();
+  _impl_.character_id_.ClearToEmpty();
+  _impl_.version_.ClearToEmpty();
+  _impl_.package_sha256_.ClearToEmpty();
+  _impl_.rights_sha256_.ClearToEmpty();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* CharacterIdentity::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // string workspace_id = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_workspace_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterIdentity.workspace_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string character_id = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_character_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterIdentity.character_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string version = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_version();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterIdentity.version"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string package_sha256 = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_package_sha256();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterIdentity.package_sha256"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string rights_sha256 = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+          auto str = _internal_mutable_rights_sha256();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterIdentity.rights_sha256"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* CharacterIdentity::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.CharacterIdentity)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string workspace_id = 1;
+  if (!this->_internal_workspace_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_workspace_id().data(), static_cast<int>(this->_internal_workspace_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterIdentity.workspace_id");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_workspace_id(), target);
+  }
+
+  // string character_id = 2;
+  if (!this->_internal_character_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_character_id().data(), static_cast<int>(this->_internal_character_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterIdentity.character_id");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_character_id(), target);
+  }
+
+  // string version = 3;
+  if (!this->_internal_version().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_version().data(), static_cast<int>(this->_internal_version().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterIdentity.version");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_version(), target);
+  }
+
+  // string package_sha256 = 4;
+  if (!this->_internal_package_sha256().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_package_sha256().data(), static_cast<int>(this->_internal_package_sha256().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterIdentity.package_sha256");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_package_sha256(), target);
+  }
+
+  // string rights_sha256 = 5;
+  if (!this->_internal_rights_sha256().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_rights_sha256().data(), static_cast<int>(this->_internal_rights_sha256().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterIdentity.rights_sha256");
+    target = stream->WriteStringMaybeAliased(
+        5, this->_internal_rights_sha256(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.CharacterIdentity)
+  return target;
+}
+
+size_t CharacterIdentity::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.CharacterIdentity)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string workspace_id = 1;
+  if (!this->_internal_workspace_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_workspace_id());
+  }
+
+  // string character_id = 2;
+  if (!this->_internal_character_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_character_id());
+  }
+
+  // string version = 3;
+  if (!this->_internal_version().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_version());
+  }
+
+  // string package_sha256 = 4;
+  if (!this->_internal_package_sha256().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_package_sha256());
+  }
+
+  // string rights_sha256 = 5;
+  if (!this->_internal_rights_sha256().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_rights_sha256());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData CharacterIdentity::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    CharacterIdentity::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*CharacterIdentity::GetClassData() const { return &_class_data_; }
+
+
+void CharacterIdentity::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<CharacterIdentity*>(&to_msg);
+  auto& from = static_cast<const CharacterIdentity&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.CharacterIdentity)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_workspace_id().empty()) {
+    _this->_internal_set_workspace_id(from._internal_workspace_id());
+  }
+  if (!from._internal_character_id().empty()) {
+    _this->_internal_set_character_id(from._internal_character_id());
+  }
+  if (!from._internal_version().empty()) {
+    _this->_internal_set_version(from._internal_version());
+  }
+  if (!from._internal_package_sha256().empty()) {
+    _this->_internal_set_package_sha256(from._internal_package_sha256());
+  }
+  if (!from._internal_rights_sha256().empty()) {
+    _this->_internal_set_rights_sha256(from._internal_rights_sha256());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void CharacterIdentity::CopyFrom(const CharacterIdentity& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.CharacterIdentity)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool CharacterIdentity::IsInitialized() const {
+  return true;
+}
+
+void CharacterIdentity::InternalSwap(CharacterIdentity* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.workspace_id_, lhs_arena,
+      &other->_impl_.workspace_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.character_id_, lhs_arena,
+      &other->_impl_.character_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.version_, lhs_arena,
+      &other->_impl_.version_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.package_sha256_, lhs_arena,
+      &other->_impl_.package_sha256_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.rights_sha256_, lhs_arena,
+      &other->_impl_.rights_sha256_, rhs_arena
+  );
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata CharacterIdentity::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[6]);
+}
+
+// ===================================================================
+
+class CharacterCapability::_Internal {
+ public:
+};
+
+CharacterCapability::CharacterCapability(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.CharacterCapability)
+}
+CharacterCapability::CharacterCapability(const CharacterCapability& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  CharacterCapability* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.lip_sync_){from._impl_.lip_sync_}
+    , /*decltype(_impl_._lip_sync_cached_byte_size_)*/{0}
+    , decltype(_impl_.supported_action_ids_){from._impl_.supported_action_ids_}
+    , decltype(_impl_.renderer_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _this->_impl_.renderer_ = from._impl_.renderer_;
+  // @@protoc_insertion_point(copy_constructor:nai.v1.CharacterCapability)
+}
+
+inline void CharacterCapability::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.lip_sync_){arena}
+    , /*decltype(_impl_._lip_sync_cached_byte_size_)*/{0}
+    , decltype(_impl_.supported_action_ids_){arena}
+    , decltype(_impl_.renderer_){0}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+}
+
+CharacterCapability::~CharacterCapability() {
+  // @@protoc_insertion_point(destructor:nai.v1.CharacterCapability)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void CharacterCapability::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.lip_sync_.~RepeatedField();
+  _impl_.supported_action_ids_.~RepeatedPtrField();
+}
+
+void CharacterCapability::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void CharacterCapability::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.CharacterCapability)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.lip_sync_.Clear();
+  _impl_.supported_action_ids_.Clear();
+  _impl_.renderer_ = 0;
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* CharacterCapability::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .nai.v1.CharacterRendererKind renderer = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_renderer(static_cast<::nai::v1::CharacterRendererKind>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // repeated .nai.v1.CharacterLipSyncKind lip_sync = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::PackedEnumParser(_internal_mutable_lip_sync(), ptr, ctx);
+          CHK_(ptr);
+        } else if (static_cast<uint8_t>(tag) == 16) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_add_lip_sync(static_cast<::nai::v1::CharacterLipSyncKind>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // repeated string supported_action_ids = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            auto str = _internal_add_supported_action_ids();
+            ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+            CHK_(ptr);
+            CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterCapability.supported_action_ids"));
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<26>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* CharacterCapability::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.CharacterCapability)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .nai.v1.CharacterRendererKind renderer = 1;
+  if (this->_internal_renderer() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      1, this->_internal_renderer(), target);
+  }
+
+  // repeated .nai.v1.CharacterLipSyncKind lip_sync = 2;
+  {
+    int byte_size = _impl_._lip_sync_cached_byte_size_.load(std::memory_order_relaxed);
+    if (byte_size > 0) {
+      target = stream->WriteEnumPacked(
+          2, _impl_.lip_sync_, byte_size, target);
+    }
+  }
+
+  // repeated string supported_action_ids = 3;
+  for (int i = 0, n = this->_internal_supported_action_ids_size(); i < n; i++) {
+    const auto& s = this->_internal_supported_action_ids(i);
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      s.data(), static_cast<int>(s.length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterCapability.supported_action_ids");
+    target = stream->WriteString(3, s, target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.CharacterCapability)
+  return target;
+}
+
+size_t CharacterCapability::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.CharacterCapability)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // repeated .nai.v1.CharacterLipSyncKind lip_sync = 2;
+  {
+    size_t data_size = 0;
+    unsigned int count = static_cast<unsigned int>(this->_internal_lip_sync_size());for (unsigned int i = 0; i < count; i++) {
+      data_size += ::_pbi::WireFormatLite::EnumSize(
+        this->_internal_lip_sync(static_cast<int>(i)));
+    }
+    if (data_size > 0) {
+      total_size += 1 +
+        ::_pbi::WireFormatLite::Int32Size(static_cast<int32_t>(data_size));
+    }
+    int cached_size = ::_pbi::ToCachedSize(data_size);
+    _impl_._lip_sync_cached_byte_size_.store(cached_size,
+                                    std::memory_order_relaxed);
+    total_size += data_size;
+  }
+
+  // repeated string supported_action_ids = 3;
+  total_size += 1 *
+      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(_impl_.supported_action_ids_.size());
+  for (int i = 0, n = _impl_.supported_action_ids_.size(); i < n; i++) {
+    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+      _impl_.supported_action_ids_.Get(i));
+  }
+
+  // .nai.v1.CharacterRendererKind renderer = 1;
+  if (this->_internal_renderer() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_renderer());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData CharacterCapability::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    CharacterCapability::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*CharacterCapability::GetClassData() const { return &_class_data_; }
+
+
+void CharacterCapability::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<CharacterCapability*>(&to_msg);
+  auto& from = static_cast<const CharacterCapability&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.CharacterCapability)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  _this->_impl_.lip_sync_.MergeFrom(from._impl_.lip_sync_);
+  _this->_impl_.supported_action_ids_.MergeFrom(from._impl_.supported_action_ids_);
+  if (from._internal_renderer() != 0) {
+    _this->_internal_set_renderer(from._internal_renderer());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void CharacterCapability::CopyFrom(const CharacterCapability& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.CharacterCapability)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool CharacterCapability::IsInitialized() const {
+  return true;
+}
+
+void CharacterCapability::InternalSwap(CharacterCapability* other) {
+  using std::swap;
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  _impl_.lip_sync_.InternalSwap(&other->_impl_.lip_sync_);
+  _impl_.supported_action_ids_.InternalSwap(&other->_impl_.supported_action_ids_);
+  swap(_impl_.renderer_, other->_impl_.renderer_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata CharacterCapability::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[7]);
+}
+
+// ===================================================================
+
+class CharacterProfile::_Internal {
+ public:
+  static const ::nai::v1::CharacterIdentity& identity(const CharacterProfile* msg);
+  static const ::nai::v1::CharacterCapability& capability(const CharacterProfile* msg);
+};
+
+const ::nai::v1::CharacterIdentity&
+CharacterProfile::_Internal::identity(const CharacterProfile* msg) {
+  return *msg->_impl_.identity_;
+}
+const ::nai::v1::CharacterCapability&
+CharacterProfile::_Internal::capability(const CharacterProfile* msg) {
+  return *msg->_impl_.capability_;
+}
+CharacterProfile::CharacterProfile(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.CharacterProfile)
+}
+CharacterProfile::CharacterProfile(const CharacterProfile& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  CharacterProfile* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.identity_){nullptr}
+    , decltype(_impl_.capability_){nullptr}
+    , decltype(_impl_.schema_version_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  if (from._internal_has_identity()) {
+    _this->_impl_.identity_ = new ::nai::v1::CharacterIdentity(*from._impl_.identity_);
+  }
+  if (from._internal_has_capability()) {
+    _this->_impl_.capability_ = new ::nai::v1::CharacterCapability(*from._impl_.capability_);
+  }
+  _this->_impl_.schema_version_ = from._impl_.schema_version_;
+  // @@protoc_insertion_point(copy_constructor:nai.v1.CharacterProfile)
+}
+
+inline void CharacterProfile::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.identity_){nullptr}
+    , decltype(_impl_.capability_){nullptr}
+    , decltype(_impl_.schema_version_){0u}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+}
+
+CharacterProfile::~CharacterProfile() {
+  // @@protoc_insertion_point(destructor:nai.v1.CharacterProfile)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void CharacterProfile::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  if (this != internal_default_instance()) delete _impl_.identity_;
+  if (this != internal_default_instance()) delete _impl_.capability_;
+}
+
+void CharacterProfile::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void CharacterProfile::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.CharacterProfile)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  if (GetArenaForAllocation() == nullptr && _impl_.identity_ != nullptr) {
+    delete _impl_.identity_;
+  }
+  _impl_.identity_ = nullptr;
+  if (GetArenaForAllocation() == nullptr && _impl_.capability_ != nullptr) {
+    delete _impl_.capability_;
+  }
+  _impl_.capability_ = nullptr;
+  _impl_.schema_version_ = 0u;
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* CharacterProfile::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // uint32 schema_version = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.schema_version_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.CharacterIdentity identity = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          ptr = ctx->ParseMessage(_internal_mutable_identity(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.CharacterCapability capability = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          ptr = ctx->ParseMessage(_internal_mutable_capability(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* CharacterProfile::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.CharacterProfile)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // uint32 schema_version = 1;
+  if (this->_internal_schema_version() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_schema_version(), target);
+  }
+
+  // .nai.v1.CharacterIdentity identity = 2;
+  if (this->_internal_has_identity()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(2, _Internal::identity(this),
+        _Internal::identity(this).GetCachedSize(), target, stream);
+  }
+
+  // .nai.v1.CharacterCapability capability = 3;
+  if (this->_internal_has_capability()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(3, _Internal::capability(this),
+        _Internal::capability(this).GetCachedSize(), target, stream);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.CharacterProfile)
+  return target;
+}
+
+size_t CharacterProfile::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.CharacterProfile)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // .nai.v1.CharacterIdentity identity = 2;
+  if (this->_internal_has_identity()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.identity_);
+  }
+
+  // .nai.v1.CharacterCapability capability = 3;
+  if (this->_internal_has_capability()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.capability_);
+  }
+
+  // uint32 schema_version = 1;
+  if (this->_internal_schema_version() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_schema_version());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData CharacterProfile::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    CharacterProfile::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*CharacterProfile::GetClassData() const { return &_class_data_; }
+
+
+void CharacterProfile::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<CharacterProfile*>(&to_msg);
+  auto& from = static_cast<const CharacterProfile&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.CharacterProfile)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (from._internal_has_identity()) {
+    _this->_internal_mutable_identity()->::nai::v1::CharacterIdentity::MergeFrom(
+        from._internal_identity());
+  }
+  if (from._internal_has_capability()) {
+    _this->_internal_mutable_capability()->::nai::v1::CharacterCapability::MergeFrom(
+        from._internal_capability());
+  }
+  if (from._internal_schema_version() != 0) {
+    _this->_internal_set_schema_version(from._internal_schema_version());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void CharacterProfile::CopyFrom(const CharacterProfile& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.CharacterProfile)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool CharacterProfile::IsInitialized() const {
+  return true;
+}
+
+void CharacterProfile::InternalSwap(CharacterProfile* other) {
+  using std::swap;
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(CharacterProfile, _impl_.schema_version_)
+      + sizeof(CharacterProfile::_impl_.schema_version_)
+      - PROTOBUF_FIELD_OFFSET(CharacterProfile, _impl_.identity_)>(
+          reinterpret_cast<char*>(&_impl_.identity_),
+          reinterpret_cast<char*>(&other->_impl_.identity_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata CharacterProfile::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[8]);
+}
+
+// ===================================================================
+
+class CharacterActionRequest::_Internal {
+ public:
+  static const ::nai::v1::CharacterIdentity& character(const CharacterActionRequest* msg);
+};
+
+const ::nai::v1::CharacterIdentity&
+CharacterActionRequest::_Internal::character(const CharacterActionRequest* msg) {
+  return *msg->_impl_.character_;
+}
+CharacterActionRequest::CharacterActionRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.CharacterActionRequest)
+}
+CharacterActionRequest::CharacterActionRequest(const CharacterActionRequest& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  CharacterActionRequest* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.request_id_){}
+    , decltype(_impl_.session_id_){}
+    , decltype(_impl_.output_id_){}
+    , decltype(_impl_.approval_ref_){}
+    , decltype(_impl_.lease_id_){}
+    , decltype(_impl_.action_id_){}
+    , decltype(_impl_.character_){nullptr}
+    , decltype(_impl_.generation_epoch_){}
+    , decltype(_impl_.priority_){}
+    , decltype(_impl_.remaining_budget_ms_){}
+    , decltype(_impl_.sequence_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.request_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.request_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_request_id().empty()) {
+    _this->_impl_.request_id_.Set(from._internal_request_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_session_id().empty()) {
+    _this->_impl_.session_id_.Set(from._internal_session_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.output_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.output_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_output_id().empty()) {
+    _this->_impl_.output_id_.Set(from._internal_output_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.approval_ref_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.approval_ref_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_approval_ref().empty()) {
+    _this->_impl_.approval_ref_.Set(from._internal_approval_ref(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.lease_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.lease_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_lease_id().empty()) {
+    _this->_impl_.lease_id_.Set(from._internal_lease_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.action_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.action_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_action_id().empty()) {
+    _this->_impl_.action_id_.Set(from._internal_action_id(), 
+      _this->GetArenaForAllocation());
+  }
+  if (from._internal_has_character()) {
+    _this->_impl_.character_ = new ::nai::v1::CharacterIdentity(*from._impl_.character_);
+  }
+  ::memcpy(&_impl_.generation_epoch_, &from._impl_.generation_epoch_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.sequence_) -
+    reinterpret_cast<char*>(&_impl_.generation_epoch_)) + sizeof(_impl_.sequence_));
+  // @@protoc_insertion_point(copy_constructor:nai.v1.CharacterActionRequest)
+}
+
+inline void CharacterActionRequest::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.request_id_){}
+    , decltype(_impl_.session_id_){}
+    , decltype(_impl_.output_id_){}
+    , decltype(_impl_.approval_ref_){}
+    , decltype(_impl_.lease_id_){}
+    , decltype(_impl_.action_id_){}
+    , decltype(_impl_.character_){nullptr}
+    , decltype(_impl_.generation_epoch_){uint64_t{0u}}
+    , decltype(_impl_.priority_){0u}
+    , decltype(_impl_.remaining_budget_ms_){0u}
+    , decltype(_impl_.sequence_){uint64_t{0u}}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.request_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.request_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.output_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.output_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.approval_ref_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.approval_ref_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.lease_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.lease_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.action_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.action_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+CharacterActionRequest::~CharacterActionRequest() {
+  // @@protoc_insertion_point(destructor:nai.v1.CharacterActionRequest)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void CharacterActionRequest::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.request_id_.Destroy();
+  _impl_.session_id_.Destroy();
+  _impl_.output_id_.Destroy();
+  _impl_.approval_ref_.Destroy();
+  _impl_.lease_id_.Destroy();
+  _impl_.action_id_.Destroy();
+  if (this != internal_default_instance()) delete _impl_.character_;
+}
+
+void CharacterActionRequest::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void CharacterActionRequest::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.CharacterActionRequest)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.request_id_.ClearToEmpty();
+  _impl_.session_id_.ClearToEmpty();
+  _impl_.output_id_.ClearToEmpty();
+  _impl_.approval_ref_.ClearToEmpty();
+  _impl_.lease_id_.ClearToEmpty();
+  _impl_.action_id_.ClearToEmpty();
+  if (GetArenaForAllocation() == nullptr && _impl_.character_ != nullptr) {
+    delete _impl_.character_;
+  }
+  _impl_.character_ = nullptr;
+  ::memset(&_impl_.generation_epoch_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.sequence_) -
+      reinterpret_cast<char*>(&_impl_.generation_epoch_)) + sizeof(_impl_.sequence_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* CharacterActionRequest::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // string request_id = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_request_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterActionRequest.request_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.CharacterIdentity character = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          ptr = ctx->ParseMessage(_internal_mutable_character(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string session_id = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_session_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterActionRequest.session_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 generation_epoch = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _impl_.generation_epoch_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string output_id = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+          auto str = _internal_mutable_output_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterActionRequest.output_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string approval_ref = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
+          auto str = _internal_mutable_approval_ref();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterActionRequest.approval_ref"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string lease_id = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 58)) {
+          auto str = _internal_mutable_lease_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterActionRequest.lease_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string action_id = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 66)) {
+          auto str = _internal_mutable_action_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterActionRequest.action_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 priority = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 72)) {
+          _impl_.priority_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 remaining_budget_ms = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 80)) {
+          _impl_.remaining_budget_ms_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 sequence = 11;
+      case 11:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 88)) {
+          _impl_.sequence_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* CharacterActionRequest::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.CharacterActionRequest)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string request_id = 1;
+  if (!this->_internal_request_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_request_id().data(), static_cast<int>(this->_internal_request_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterActionRequest.request_id");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_request_id(), target);
+  }
+
+  // .nai.v1.CharacterIdentity character = 2;
+  if (this->_internal_has_character()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(2, _Internal::character(this),
+        _Internal::character(this).GetCachedSize(), target, stream);
+  }
+
+  // string session_id = 3;
+  if (!this->_internal_session_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_session_id().data(), static_cast<int>(this->_internal_session_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterActionRequest.session_id");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_session_id(), target);
+  }
+
+  // uint64 generation_epoch = 4;
+  if (this->_internal_generation_epoch() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(4, this->_internal_generation_epoch(), target);
+  }
+
+  // string output_id = 5;
+  if (!this->_internal_output_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_output_id().data(), static_cast<int>(this->_internal_output_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterActionRequest.output_id");
+    target = stream->WriteStringMaybeAliased(
+        5, this->_internal_output_id(), target);
+  }
+
+  // string approval_ref = 6;
+  if (!this->_internal_approval_ref().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_approval_ref().data(), static_cast<int>(this->_internal_approval_ref().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterActionRequest.approval_ref");
+    target = stream->WriteStringMaybeAliased(
+        6, this->_internal_approval_ref(), target);
+  }
+
+  // string lease_id = 7;
+  if (!this->_internal_lease_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_lease_id().data(), static_cast<int>(this->_internal_lease_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterActionRequest.lease_id");
+    target = stream->WriteStringMaybeAliased(
+        7, this->_internal_lease_id(), target);
+  }
+
+  // string action_id = 8;
+  if (!this->_internal_action_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_action_id().data(), static_cast<int>(this->_internal_action_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterActionRequest.action_id");
+    target = stream->WriteStringMaybeAliased(
+        8, this->_internal_action_id(), target);
+  }
+
+  // uint32 priority = 9;
+  if (this->_internal_priority() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(9, this->_internal_priority(), target);
+  }
+
+  // uint32 remaining_budget_ms = 10;
+  if (this->_internal_remaining_budget_ms() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(10, this->_internal_remaining_budget_ms(), target);
+  }
+
+  // uint64 sequence = 11;
+  if (this->_internal_sequence() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(11, this->_internal_sequence(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.CharacterActionRequest)
+  return target;
+}
+
+size_t CharacterActionRequest::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.CharacterActionRequest)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string request_id = 1;
+  if (!this->_internal_request_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_request_id());
+  }
+
+  // string session_id = 3;
+  if (!this->_internal_session_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_session_id());
+  }
+
+  // string output_id = 5;
+  if (!this->_internal_output_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_output_id());
+  }
+
+  // string approval_ref = 6;
+  if (!this->_internal_approval_ref().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_approval_ref());
+  }
+
+  // string lease_id = 7;
+  if (!this->_internal_lease_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_lease_id());
+  }
+
+  // string action_id = 8;
+  if (!this->_internal_action_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_action_id());
+  }
+
+  // .nai.v1.CharacterIdentity character = 2;
+  if (this->_internal_has_character()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.character_);
+  }
+
+  // uint64 generation_epoch = 4;
+  if (this->_internal_generation_epoch() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_generation_epoch());
+  }
+
+  // uint32 priority = 9;
+  if (this->_internal_priority() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_priority());
+  }
+
+  // uint32 remaining_budget_ms = 10;
+  if (this->_internal_remaining_budget_ms() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_remaining_budget_ms());
+  }
+
+  // uint64 sequence = 11;
+  if (this->_internal_sequence() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_sequence());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData CharacterActionRequest::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    CharacterActionRequest::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*CharacterActionRequest::GetClassData() const { return &_class_data_; }
+
+
+void CharacterActionRequest::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<CharacterActionRequest*>(&to_msg);
+  auto& from = static_cast<const CharacterActionRequest&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.CharacterActionRequest)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_request_id().empty()) {
+    _this->_internal_set_request_id(from._internal_request_id());
+  }
+  if (!from._internal_session_id().empty()) {
+    _this->_internal_set_session_id(from._internal_session_id());
+  }
+  if (!from._internal_output_id().empty()) {
+    _this->_internal_set_output_id(from._internal_output_id());
+  }
+  if (!from._internal_approval_ref().empty()) {
+    _this->_internal_set_approval_ref(from._internal_approval_ref());
+  }
+  if (!from._internal_lease_id().empty()) {
+    _this->_internal_set_lease_id(from._internal_lease_id());
+  }
+  if (!from._internal_action_id().empty()) {
+    _this->_internal_set_action_id(from._internal_action_id());
+  }
+  if (from._internal_has_character()) {
+    _this->_internal_mutable_character()->::nai::v1::CharacterIdentity::MergeFrom(
+        from._internal_character());
+  }
+  if (from._internal_generation_epoch() != 0) {
+    _this->_internal_set_generation_epoch(from._internal_generation_epoch());
+  }
+  if (from._internal_priority() != 0) {
+    _this->_internal_set_priority(from._internal_priority());
+  }
+  if (from._internal_remaining_budget_ms() != 0) {
+    _this->_internal_set_remaining_budget_ms(from._internal_remaining_budget_ms());
+  }
+  if (from._internal_sequence() != 0) {
+    _this->_internal_set_sequence(from._internal_sequence());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void CharacterActionRequest::CopyFrom(const CharacterActionRequest& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.CharacterActionRequest)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool CharacterActionRequest::IsInitialized() const {
+  return true;
+}
+
+void CharacterActionRequest::InternalSwap(CharacterActionRequest* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.request_id_, lhs_arena,
+      &other->_impl_.request_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.session_id_, lhs_arena,
+      &other->_impl_.session_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.output_id_, lhs_arena,
+      &other->_impl_.output_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.approval_ref_, lhs_arena,
+      &other->_impl_.approval_ref_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.lease_id_, lhs_arena,
+      &other->_impl_.lease_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.action_id_, lhs_arena,
+      &other->_impl_.action_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(CharacterActionRequest, _impl_.sequence_)
+      + sizeof(CharacterActionRequest::_impl_.sequence_)
+      - PROTOBUF_FIELD_OFFSET(CharacterActionRequest, _impl_.character_)>(
+          reinterpret_cast<char*>(&_impl_.character_),
+          reinterpret_cast<char*>(&other->_impl_.character_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata CharacterActionRequest::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[9]);
+}
+
+// ===================================================================
+
+class CharacterActionState::_Internal {
+ public:
+  using HasBits = decltype(std::declval<CharacterActionState>()._impl_._has_bits_);
+  static const ::nai::v1::CharacterIdentity& character(const CharacterActionState* msg);
+  static void set_has_source_sample_position(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+  static void set_has_frame_sequence(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
+};
+
+const ::nai::v1::CharacterIdentity&
+CharacterActionState::_Internal::character(const CharacterActionState* msg) {
+  return *msg->_impl_.character_;
+}
+CharacterActionState::CharacterActionState(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.CharacterActionState)
+}
+CharacterActionState::CharacterActionState(const CharacterActionState& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  CharacterActionState* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.request_id_){}
+    , decltype(_impl_.session_id_){}
+    , decltype(_impl_.output_id_){}
+    , decltype(_impl_.action_id_){}
+    , decltype(_impl_.reason_code_){}
+    , decltype(_impl_.character_){nullptr}
+    , decltype(_impl_.generation_epoch_){}
+    , decltype(_impl_.sequence_){}
+    , decltype(_impl_.source_sample_position_){}
+    , decltype(_impl_.frame_sequence_){}
+    , decltype(_impl_.phase_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.request_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.request_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_request_id().empty()) {
+    _this->_impl_.request_id_.Set(from._internal_request_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_session_id().empty()) {
+    _this->_impl_.session_id_.Set(from._internal_session_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.output_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.output_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_output_id().empty()) {
+    _this->_impl_.output_id_.Set(from._internal_output_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.action_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.action_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_action_id().empty()) {
+    _this->_impl_.action_id_.Set(from._internal_action_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.reason_code_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.reason_code_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_reason_code().empty()) {
+    _this->_impl_.reason_code_.Set(from._internal_reason_code(), 
+      _this->GetArenaForAllocation());
+  }
+  if (from._internal_has_character()) {
+    _this->_impl_.character_ = new ::nai::v1::CharacterIdentity(*from._impl_.character_);
+  }
+  ::memcpy(&_impl_.generation_epoch_, &from._impl_.generation_epoch_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.phase_) -
+    reinterpret_cast<char*>(&_impl_.generation_epoch_)) + sizeof(_impl_.phase_));
+  // @@protoc_insertion_point(copy_constructor:nai.v1.CharacterActionState)
+}
+
+inline void CharacterActionState::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.request_id_){}
+    , decltype(_impl_.session_id_){}
+    , decltype(_impl_.output_id_){}
+    , decltype(_impl_.action_id_){}
+    , decltype(_impl_.reason_code_){}
+    , decltype(_impl_.character_){nullptr}
+    , decltype(_impl_.generation_epoch_){uint64_t{0u}}
+    , decltype(_impl_.sequence_){uint64_t{0u}}
+    , decltype(_impl_.source_sample_position_){uint64_t{0u}}
+    , decltype(_impl_.frame_sequence_){uint64_t{0u}}
+    , decltype(_impl_.phase_){0}
+  };
+  _impl_.request_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.request_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.output_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.output_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.action_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.action_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.reason_code_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.reason_code_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+CharacterActionState::~CharacterActionState() {
+  // @@protoc_insertion_point(destructor:nai.v1.CharacterActionState)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void CharacterActionState::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.request_id_.Destroy();
+  _impl_.session_id_.Destroy();
+  _impl_.output_id_.Destroy();
+  _impl_.action_id_.Destroy();
+  _impl_.reason_code_.Destroy();
+  if (this != internal_default_instance()) delete _impl_.character_;
+}
+
+void CharacterActionState::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void CharacterActionState::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.CharacterActionState)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.request_id_.ClearToEmpty();
+  _impl_.session_id_.ClearToEmpty();
+  _impl_.output_id_.ClearToEmpty();
+  _impl_.action_id_.ClearToEmpty();
+  _impl_.reason_code_.ClearToEmpty();
+  if (GetArenaForAllocation() == nullptr && _impl_.character_ != nullptr) {
+    delete _impl_.character_;
+  }
+  _impl_.character_ = nullptr;
+  ::memset(&_impl_.generation_epoch_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.sequence_) -
+      reinterpret_cast<char*>(&_impl_.generation_epoch_)) + sizeof(_impl_.sequence_));
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    ::memset(&_impl_.source_sample_position_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&_impl_.frame_sequence_) -
+        reinterpret_cast<char*>(&_impl_.source_sample_position_)) + sizeof(_impl_.frame_sequence_));
+  }
+  _impl_.phase_ = 0;
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* CharacterActionState::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // string request_id = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_request_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterActionState.request_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.CharacterIdentity character = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          ptr = ctx->ParseMessage(_internal_mutable_character(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string session_id = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_session_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterActionState.session_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 generation_epoch = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _impl_.generation_epoch_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string output_id = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+          auto str = _internal_mutable_output_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterActionState.output_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string action_id = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
+          auto str = _internal_mutable_action_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterActionState.action_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.CharacterActionPhase phase = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 56)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_phase(static_cast<::nai::v1::CharacterActionPhase>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // string reason_code = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 66)) {
+          auto str = _internal_mutable_reason_code();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterActionState.reason_code"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 sequence = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 72)) {
+          _impl_.sequence_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint64 source_sample_position = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 80)) {
+          _Internal::set_has_source_sample_position(&has_bits);
+          _impl_.source_sample_position_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint64 frame_sequence = 11;
+      case 11:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 88)) {
+          _Internal::set_has_frame_sequence(&has_bits);
+          _impl_.frame_sequence_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* CharacterActionState::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.CharacterActionState)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string request_id = 1;
+  if (!this->_internal_request_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_request_id().data(), static_cast<int>(this->_internal_request_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterActionState.request_id");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_request_id(), target);
+  }
+
+  // .nai.v1.CharacterIdentity character = 2;
+  if (this->_internal_has_character()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(2, _Internal::character(this),
+        _Internal::character(this).GetCachedSize(), target, stream);
+  }
+
+  // string session_id = 3;
+  if (!this->_internal_session_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_session_id().data(), static_cast<int>(this->_internal_session_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterActionState.session_id");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_session_id(), target);
+  }
+
+  // uint64 generation_epoch = 4;
+  if (this->_internal_generation_epoch() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(4, this->_internal_generation_epoch(), target);
+  }
+
+  // string output_id = 5;
+  if (!this->_internal_output_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_output_id().data(), static_cast<int>(this->_internal_output_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterActionState.output_id");
+    target = stream->WriteStringMaybeAliased(
+        5, this->_internal_output_id(), target);
+  }
+
+  // string action_id = 6;
+  if (!this->_internal_action_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_action_id().data(), static_cast<int>(this->_internal_action_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterActionState.action_id");
+    target = stream->WriteStringMaybeAliased(
+        6, this->_internal_action_id(), target);
+  }
+
+  // .nai.v1.CharacterActionPhase phase = 7;
+  if (this->_internal_phase() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      7, this->_internal_phase(), target);
+  }
+
+  // string reason_code = 8;
+  if (!this->_internal_reason_code().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_reason_code().data(), static_cast<int>(this->_internal_reason_code().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterActionState.reason_code");
+    target = stream->WriteStringMaybeAliased(
+        8, this->_internal_reason_code(), target);
+  }
+
+  // uint64 sequence = 9;
+  if (this->_internal_sequence() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(9, this->_internal_sequence(), target);
+  }
+
+  // optional uint64 source_sample_position = 10;
+  if (_internal_has_source_sample_position()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(10, this->_internal_source_sample_position(), target);
+  }
+
+  // optional uint64 frame_sequence = 11;
+  if (_internal_has_frame_sequence()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(11, this->_internal_frame_sequence(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.CharacterActionState)
+  return target;
+}
+
+size_t CharacterActionState::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.CharacterActionState)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string request_id = 1;
+  if (!this->_internal_request_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_request_id());
+  }
+
+  // string session_id = 3;
+  if (!this->_internal_session_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_session_id());
+  }
+
+  // string output_id = 5;
+  if (!this->_internal_output_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_output_id());
+  }
+
+  // string action_id = 6;
+  if (!this->_internal_action_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_action_id());
+  }
+
+  // string reason_code = 8;
+  if (!this->_internal_reason_code().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_reason_code());
+  }
+
+  // .nai.v1.CharacterIdentity character = 2;
+  if (this->_internal_has_character()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.character_);
+  }
+
+  // uint64 generation_epoch = 4;
+  if (this->_internal_generation_epoch() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_generation_epoch());
+  }
+
+  // uint64 sequence = 9;
+  if (this->_internal_sequence() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_sequence());
+  }
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    // optional uint64 source_sample_position = 10;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_source_sample_position());
+    }
+
+    // optional uint64 frame_sequence = 11;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_frame_sequence());
+    }
+
+  }
+  // .nai.v1.CharacterActionPhase phase = 7;
+  if (this->_internal_phase() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_phase());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData CharacterActionState::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    CharacterActionState::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*CharacterActionState::GetClassData() const { return &_class_data_; }
+
+
+void CharacterActionState::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<CharacterActionState*>(&to_msg);
+  auto& from = static_cast<const CharacterActionState&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.CharacterActionState)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_request_id().empty()) {
+    _this->_internal_set_request_id(from._internal_request_id());
+  }
+  if (!from._internal_session_id().empty()) {
+    _this->_internal_set_session_id(from._internal_session_id());
+  }
+  if (!from._internal_output_id().empty()) {
+    _this->_internal_set_output_id(from._internal_output_id());
+  }
+  if (!from._internal_action_id().empty()) {
+    _this->_internal_set_action_id(from._internal_action_id());
+  }
+  if (!from._internal_reason_code().empty()) {
+    _this->_internal_set_reason_code(from._internal_reason_code());
+  }
+  if (from._internal_has_character()) {
+    _this->_internal_mutable_character()->::nai::v1::CharacterIdentity::MergeFrom(
+        from._internal_character());
+  }
+  if (from._internal_generation_epoch() != 0) {
+    _this->_internal_set_generation_epoch(from._internal_generation_epoch());
+  }
+  if (from._internal_sequence() != 0) {
+    _this->_internal_set_sequence(from._internal_sequence());
+  }
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_impl_.source_sample_position_ = from._impl_.source_sample_position_;
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_impl_.frame_sequence_ = from._impl_.frame_sequence_;
+    }
+    _this->_impl_._has_bits_[0] |= cached_has_bits;
+  }
+  if (from._internal_phase() != 0) {
+    _this->_internal_set_phase(from._internal_phase());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void CharacterActionState::CopyFrom(const CharacterActionState& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.CharacterActionState)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool CharacterActionState::IsInitialized() const {
+  return true;
+}
+
+void CharacterActionState::InternalSwap(CharacterActionState* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.request_id_, lhs_arena,
+      &other->_impl_.request_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.session_id_, lhs_arena,
+      &other->_impl_.session_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.output_id_, lhs_arena,
+      &other->_impl_.output_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.action_id_, lhs_arena,
+      &other->_impl_.action_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.reason_code_, lhs_arena,
+      &other->_impl_.reason_code_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(CharacterActionState, _impl_.phase_)
+      + sizeof(CharacterActionState::_impl_.phase_)
+      - PROTOBUF_FIELD_OFFSET(CharacterActionState, _impl_.character_)>(
+          reinterpret_cast<char*>(&_impl_.character_),
+          reinterpret_cast<char*>(&other->_impl_.character_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata CharacterActionState::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[10]);
+}
+
+// ===================================================================
+
+class CharacterBoundedMedia::_Internal {
+ public:
+  static const ::nai::v1::CharacterIdentity& identity(const CharacterBoundedMedia* msg);
+};
+
+const ::nai::v1::CharacterIdentity&
+CharacterBoundedMedia::_Internal::identity(const CharacterBoundedMedia* msg) {
+  return *msg->_impl_.identity_;
+}
+CharacterBoundedMedia::CharacterBoundedMedia(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.CharacterBoundedMedia)
+}
+CharacterBoundedMedia::CharacterBoundedMedia(const CharacterBoundedMedia& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  CharacterBoundedMedia* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.session_id_){}
+    , decltype(_impl_.action_id_){}
+    , decltype(_impl_.pixel_format_){}
+    , decltype(_impl_.pcm_format_){}
+    , decltype(_impl_.identity_){nullptr}
+    , decltype(_impl_.epoch_){}
+    , decltype(_impl_.width_){}
+    , decltype(_impl_.height_){}
+    , decltype(_impl_.sample_rate_){}
+    , decltype(_impl_.channels_){}
+    , decltype(_impl_.max_frames_){}
+    , decltype(_impl_.max_samples_){}
+    , decltype(_impl_.samples_per_frame_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_session_id().empty()) {
+    _this->_impl_.session_id_.Set(from._internal_session_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.action_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.action_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_action_id().empty()) {
+    _this->_impl_.action_id_.Set(from._internal_action_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.pixel_format_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.pixel_format_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_pixel_format().empty()) {
+    _this->_impl_.pixel_format_.Set(from._internal_pixel_format(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.pcm_format_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.pcm_format_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_pcm_format().empty()) {
+    _this->_impl_.pcm_format_.Set(from._internal_pcm_format(), 
+      _this->GetArenaForAllocation());
+  }
+  if (from._internal_has_identity()) {
+    _this->_impl_.identity_ = new ::nai::v1::CharacterIdentity(*from._impl_.identity_);
+  }
+  ::memcpy(&_impl_.epoch_, &from._impl_.epoch_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.samples_per_frame_) -
+    reinterpret_cast<char*>(&_impl_.epoch_)) + sizeof(_impl_.samples_per_frame_));
+  // @@protoc_insertion_point(copy_constructor:nai.v1.CharacterBoundedMedia)
+}
+
+inline void CharacterBoundedMedia::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.session_id_){}
+    , decltype(_impl_.action_id_){}
+    , decltype(_impl_.pixel_format_){}
+    , decltype(_impl_.pcm_format_){}
+    , decltype(_impl_.identity_){nullptr}
+    , decltype(_impl_.epoch_){uint64_t{0u}}
+    , decltype(_impl_.width_){0u}
+    , decltype(_impl_.height_){0u}
+    , decltype(_impl_.sample_rate_){0u}
+    , decltype(_impl_.channels_){0u}
+    , decltype(_impl_.max_frames_){uint64_t{0u}}
+    , decltype(_impl_.max_samples_){uint64_t{0u}}
+    , decltype(_impl_.samples_per_frame_){0u}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.action_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.action_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.pixel_format_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.pixel_format_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.pcm_format_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.pcm_format_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+CharacterBoundedMedia::~CharacterBoundedMedia() {
+  // @@protoc_insertion_point(destructor:nai.v1.CharacterBoundedMedia)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void CharacterBoundedMedia::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.session_id_.Destroy();
+  _impl_.action_id_.Destroy();
+  _impl_.pixel_format_.Destroy();
+  _impl_.pcm_format_.Destroy();
+  if (this != internal_default_instance()) delete _impl_.identity_;
+}
+
+void CharacterBoundedMedia::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void CharacterBoundedMedia::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.CharacterBoundedMedia)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.session_id_.ClearToEmpty();
+  _impl_.action_id_.ClearToEmpty();
+  _impl_.pixel_format_.ClearToEmpty();
+  _impl_.pcm_format_.ClearToEmpty();
+  if (GetArenaForAllocation() == nullptr && _impl_.identity_ != nullptr) {
+    delete _impl_.identity_;
+  }
+  _impl_.identity_ = nullptr;
+  ::memset(&_impl_.epoch_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.samples_per_frame_) -
+      reinterpret_cast<char*>(&_impl_.epoch_)) + sizeof(_impl_.samples_per_frame_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* CharacterBoundedMedia::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .nai.v1.CharacterIdentity identity = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          ptr = ctx->ParseMessage(_internal_mutable_identity(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string session_id = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_session_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterBoundedMedia.session_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 epoch = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _impl_.epoch_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string action_id = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_action_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterBoundedMedia.action_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 width = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
+          _impl_.width_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 height = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
+          _impl_.height_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 sample_rate = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 56)) {
+          _impl_.sample_rate_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 channels = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
+          _impl_.channels_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 max_frames = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 72)) {
+          _impl_.max_frames_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 max_samples = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 80)) {
+          _impl_.max_samples_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 samples_per_frame = 11;
+      case 11:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 88)) {
+          _impl_.samples_per_frame_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string pixel_format = 12;
+      case 12:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 98)) {
+          auto str = _internal_mutable_pixel_format();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterBoundedMedia.pixel_format"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string pcm_format = 13;
+      case 13:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 106)) {
+          auto str = _internal_mutable_pcm_format();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterBoundedMedia.pcm_format"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* CharacterBoundedMedia::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.CharacterBoundedMedia)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .nai.v1.CharacterIdentity identity = 1;
+  if (this->_internal_has_identity()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(1, _Internal::identity(this),
+        _Internal::identity(this).GetCachedSize(), target, stream);
+  }
+
+  // string session_id = 2;
+  if (!this->_internal_session_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_session_id().data(), static_cast<int>(this->_internal_session_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterBoundedMedia.session_id");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_session_id(), target);
+  }
+
+  // uint64 epoch = 3;
+  if (this->_internal_epoch() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(3, this->_internal_epoch(), target);
+  }
+
+  // string action_id = 4;
+  if (!this->_internal_action_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_action_id().data(), static_cast<int>(this->_internal_action_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterBoundedMedia.action_id");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_action_id(), target);
+  }
+
+  // uint32 width = 5;
+  if (this->_internal_width() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(5, this->_internal_width(), target);
+  }
+
+  // uint32 height = 6;
+  if (this->_internal_height() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(6, this->_internal_height(), target);
+  }
+
+  // uint32 sample_rate = 7;
+  if (this->_internal_sample_rate() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(7, this->_internal_sample_rate(), target);
+  }
+
+  // uint32 channels = 8;
+  if (this->_internal_channels() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(8, this->_internal_channels(), target);
+  }
+
+  // uint64 max_frames = 9;
+  if (this->_internal_max_frames() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(9, this->_internal_max_frames(), target);
+  }
+
+  // uint64 max_samples = 10;
+  if (this->_internal_max_samples() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(10, this->_internal_max_samples(), target);
+  }
+
+  // uint32 samples_per_frame = 11;
+  if (this->_internal_samples_per_frame() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(11, this->_internal_samples_per_frame(), target);
+  }
+
+  // string pixel_format = 12;
+  if (!this->_internal_pixel_format().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_pixel_format().data(), static_cast<int>(this->_internal_pixel_format().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterBoundedMedia.pixel_format");
+    target = stream->WriteStringMaybeAliased(
+        12, this->_internal_pixel_format(), target);
+  }
+
+  // string pcm_format = 13;
+  if (!this->_internal_pcm_format().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_pcm_format().data(), static_cast<int>(this->_internal_pcm_format().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterBoundedMedia.pcm_format");
+    target = stream->WriteStringMaybeAliased(
+        13, this->_internal_pcm_format(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.CharacterBoundedMedia)
+  return target;
+}
+
+size_t CharacterBoundedMedia::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.CharacterBoundedMedia)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string session_id = 2;
+  if (!this->_internal_session_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_session_id());
+  }
+
+  // string action_id = 4;
+  if (!this->_internal_action_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_action_id());
+  }
+
+  // string pixel_format = 12;
+  if (!this->_internal_pixel_format().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_pixel_format());
+  }
+
+  // string pcm_format = 13;
+  if (!this->_internal_pcm_format().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_pcm_format());
+  }
+
+  // .nai.v1.CharacterIdentity identity = 1;
+  if (this->_internal_has_identity()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.identity_);
+  }
+
+  // uint64 epoch = 3;
+  if (this->_internal_epoch() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_epoch());
+  }
+
+  // uint32 width = 5;
+  if (this->_internal_width() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_width());
+  }
+
+  // uint32 height = 6;
+  if (this->_internal_height() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_height());
+  }
+
+  // uint32 sample_rate = 7;
+  if (this->_internal_sample_rate() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_sample_rate());
+  }
+
+  // uint32 channels = 8;
+  if (this->_internal_channels() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_channels());
+  }
+
+  // uint64 max_frames = 9;
+  if (this->_internal_max_frames() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_max_frames());
+  }
+
+  // uint64 max_samples = 10;
+  if (this->_internal_max_samples() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_max_samples());
+  }
+
+  // uint32 samples_per_frame = 11;
+  if (this->_internal_samples_per_frame() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_samples_per_frame());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData CharacterBoundedMedia::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    CharacterBoundedMedia::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*CharacterBoundedMedia::GetClassData() const { return &_class_data_; }
+
+
+void CharacterBoundedMedia::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<CharacterBoundedMedia*>(&to_msg);
+  auto& from = static_cast<const CharacterBoundedMedia&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.CharacterBoundedMedia)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_session_id().empty()) {
+    _this->_internal_set_session_id(from._internal_session_id());
+  }
+  if (!from._internal_action_id().empty()) {
+    _this->_internal_set_action_id(from._internal_action_id());
+  }
+  if (!from._internal_pixel_format().empty()) {
+    _this->_internal_set_pixel_format(from._internal_pixel_format());
+  }
+  if (!from._internal_pcm_format().empty()) {
+    _this->_internal_set_pcm_format(from._internal_pcm_format());
+  }
+  if (from._internal_has_identity()) {
+    _this->_internal_mutable_identity()->::nai::v1::CharacterIdentity::MergeFrom(
+        from._internal_identity());
+  }
+  if (from._internal_epoch() != 0) {
+    _this->_internal_set_epoch(from._internal_epoch());
+  }
+  if (from._internal_width() != 0) {
+    _this->_internal_set_width(from._internal_width());
+  }
+  if (from._internal_height() != 0) {
+    _this->_internal_set_height(from._internal_height());
+  }
+  if (from._internal_sample_rate() != 0) {
+    _this->_internal_set_sample_rate(from._internal_sample_rate());
+  }
+  if (from._internal_channels() != 0) {
+    _this->_internal_set_channels(from._internal_channels());
+  }
+  if (from._internal_max_frames() != 0) {
+    _this->_internal_set_max_frames(from._internal_max_frames());
+  }
+  if (from._internal_max_samples() != 0) {
+    _this->_internal_set_max_samples(from._internal_max_samples());
+  }
+  if (from._internal_samples_per_frame() != 0) {
+    _this->_internal_set_samples_per_frame(from._internal_samples_per_frame());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void CharacterBoundedMedia::CopyFrom(const CharacterBoundedMedia& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.CharacterBoundedMedia)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool CharacterBoundedMedia::IsInitialized() const {
+  return true;
+}
+
+void CharacterBoundedMedia::InternalSwap(CharacterBoundedMedia* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.session_id_, lhs_arena,
+      &other->_impl_.session_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.action_id_, lhs_arena,
+      &other->_impl_.action_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.pixel_format_, lhs_arena,
+      &other->_impl_.pixel_format_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.pcm_format_, lhs_arena,
+      &other->_impl_.pcm_format_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(CharacterBoundedMedia, _impl_.samples_per_frame_)
+      + sizeof(CharacterBoundedMedia::_impl_.samples_per_frame_)
+      - PROTOBUF_FIELD_OFFSET(CharacterBoundedMedia, _impl_.identity_)>(
+          reinterpret_cast<char*>(&_impl_.identity_),
+          reinterpret_cast<char*>(&other->_impl_.identity_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata CharacterBoundedMedia::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[11]);
+}
+
+// ===================================================================
+
+class CharacterRuntimeView::_Internal {
+ public:
+  static const ::nai::v1::CharacterIdentity& identity(const CharacterRuntimeView* msg);
+  static const ::nai::v1::CharacterBoundedMedia& media(const CharacterRuntimeView* msg);
+};
+
+const ::nai::v1::CharacterIdentity&
+CharacterRuntimeView::_Internal::identity(const CharacterRuntimeView* msg) {
+  return *msg->_impl_.identity_;
+}
+const ::nai::v1::CharacterBoundedMedia&
+CharacterRuntimeView::_Internal::media(const CharacterRuntimeView* msg) {
+  return *msg->_impl_.media_;
+}
+CharacterRuntimeView::CharacterRuntimeView(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.CharacterRuntimeView)
+}
+CharacterRuntimeView::CharacterRuntimeView(const CharacterRuntimeView& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  CharacterRuntimeView* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.session_id_){}
+    , decltype(_impl_.action_id_){}
+    , decltype(_impl_.reason_code_){}
+    , decltype(_impl_.identity_){nullptr}
+    , decltype(_impl_.media_){nullptr}
+    , decltype(_impl_.epoch_){}
+    , decltype(_impl_.state_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_session_id().empty()) {
+    _this->_impl_.session_id_.Set(from._internal_session_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.action_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.action_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_action_id().empty()) {
+    _this->_impl_.action_id_.Set(from._internal_action_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.reason_code_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.reason_code_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_reason_code().empty()) {
+    _this->_impl_.reason_code_.Set(from._internal_reason_code(), 
+      _this->GetArenaForAllocation());
+  }
+  if (from._internal_has_identity()) {
+    _this->_impl_.identity_ = new ::nai::v1::CharacterIdentity(*from._impl_.identity_);
+  }
+  if (from._internal_has_media()) {
+    _this->_impl_.media_ = new ::nai::v1::CharacterBoundedMedia(*from._impl_.media_);
+  }
+  ::memcpy(&_impl_.epoch_, &from._impl_.epoch_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.state_) -
+    reinterpret_cast<char*>(&_impl_.epoch_)) + sizeof(_impl_.state_));
+  // @@protoc_insertion_point(copy_constructor:nai.v1.CharacterRuntimeView)
+}
+
+inline void CharacterRuntimeView::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.session_id_){}
+    , decltype(_impl_.action_id_){}
+    , decltype(_impl_.reason_code_){}
+    , decltype(_impl_.identity_){nullptr}
+    , decltype(_impl_.media_){nullptr}
+    , decltype(_impl_.epoch_){uint64_t{0u}}
+    , decltype(_impl_.state_){0}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.action_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.action_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.reason_code_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.reason_code_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+CharacterRuntimeView::~CharacterRuntimeView() {
+  // @@protoc_insertion_point(destructor:nai.v1.CharacterRuntimeView)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void CharacterRuntimeView::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.session_id_.Destroy();
+  _impl_.action_id_.Destroy();
+  _impl_.reason_code_.Destroy();
+  if (this != internal_default_instance()) delete _impl_.identity_;
+  if (this != internal_default_instance()) delete _impl_.media_;
+}
+
+void CharacterRuntimeView::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void CharacterRuntimeView::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.CharacterRuntimeView)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.session_id_.ClearToEmpty();
+  _impl_.action_id_.ClearToEmpty();
+  _impl_.reason_code_.ClearToEmpty();
+  if (GetArenaForAllocation() == nullptr && _impl_.identity_ != nullptr) {
+    delete _impl_.identity_;
+  }
+  _impl_.identity_ = nullptr;
+  if (GetArenaForAllocation() == nullptr && _impl_.media_ != nullptr) {
+    delete _impl_.media_;
+  }
+  _impl_.media_ = nullptr;
+  ::memset(&_impl_.epoch_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.state_) -
+      reinterpret_cast<char*>(&_impl_.epoch_)) + sizeof(_impl_.state_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* CharacterRuntimeView::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .nai.v1.CharacterIdentity identity = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          ptr = ctx->ParseMessage(_internal_mutable_identity(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.CharacterRuntimeState state = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_state(static_cast<::nai::v1::CharacterRuntimeState>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // string session_id = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_session_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterRuntimeView.session_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 epoch = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _impl_.epoch_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string action_id = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+          auto str = _internal_mutable_action_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterRuntimeView.action_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.CharacterBoundedMedia media = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
+          ptr = ctx->ParseMessage(_internal_mutable_media(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string reason_code = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 58)) {
+          auto str = _internal_mutable_reason_code();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.CharacterRuntimeView.reason_code"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* CharacterRuntimeView::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.CharacterRuntimeView)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .nai.v1.CharacterIdentity identity = 1;
+  if (this->_internal_has_identity()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(1, _Internal::identity(this),
+        _Internal::identity(this).GetCachedSize(), target, stream);
+  }
+
+  // .nai.v1.CharacterRuntimeState state = 2;
+  if (this->_internal_state() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      2, this->_internal_state(), target);
+  }
+
+  // string session_id = 3;
+  if (!this->_internal_session_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_session_id().data(), static_cast<int>(this->_internal_session_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterRuntimeView.session_id");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_session_id(), target);
+  }
+
+  // uint64 epoch = 4;
+  if (this->_internal_epoch() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(4, this->_internal_epoch(), target);
+  }
+
+  // string action_id = 5;
+  if (!this->_internal_action_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_action_id().data(), static_cast<int>(this->_internal_action_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterRuntimeView.action_id");
+    target = stream->WriteStringMaybeAliased(
+        5, this->_internal_action_id(), target);
+  }
+
+  // .nai.v1.CharacterBoundedMedia media = 6;
+  if (this->_internal_has_media()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(6, _Internal::media(this),
+        _Internal::media(this).GetCachedSize(), target, stream);
+  }
+
+  // string reason_code = 7;
+  if (!this->_internal_reason_code().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_reason_code().data(), static_cast<int>(this->_internal_reason_code().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.CharacterRuntimeView.reason_code");
+    target = stream->WriteStringMaybeAliased(
+        7, this->_internal_reason_code(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.CharacterRuntimeView)
+  return target;
+}
+
+size_t CharacterRuntimeView::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.CharacterRuntimeView)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string session_id = 3;
+  if (!this->_internal_session_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_session_id());
+  }
+
+  // string action_id = 5;
+  if (!this->_internal_action_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_action_id());
+  }
+
+  // string reason_code = 7;
+  if (!this->_internal_reason_code().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_reason_code());
+  }
+
+  // .nai.v1.CharacterIdentity identity = 1;
+  if (this->_internal_has_identity()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.identity_);
+  }
+
+  // .nai.v1.CharacterBoundedMedia media = 6;
+  if (this->_internal_has_media()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.media_);
+  }
+
+  // uint64 epoch = 4;
+  if (this->_internal_epoch() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_epoch());
+  }
+
+  // .nai.v1.CharacterRuntimeState state = 2;
+  if (this->_internal_state() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_state());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData CharacterRuntimeView::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    CharacterRuntimeView::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*CharacterRuntimeView::GetClassData() const { return &_class_data_; }
+
+
+void CharacterRuntimeView::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<CharacterRuntimeView*>(&to_msg);
+  auto& from = static_cast<const CharacterRuntimeView&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.CharacterRuntimeView)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_session_id().empty()) {
+    _this->_internal_set_session_id(from._internal_session_id());
+  }
+  if (!from._internal_action_id().empty()) {
+    _this->_internal_set_action_id(from._internal_action_id());
+  }
+  if (!from._internal_reason_code().empty()) {
+    _this->_internal_set_reason_code(from._internal_reason_code());
+  }
+  if (from._internal_has_identity()) {
+    _this->_internal_mutable_identity()->::nai::v1::CharacterIdentity::MergeFrom(
+        from._internal_identity());
+  }
+  if (from._internal_has_media()) {
+    _this->_internal_mutable_media()->::nai::v1::CharacterBoundedMedia::MergeFrom(
+        from._internal_media());
+  }
+  if (from._internal_epoch() != 0) {
+    _this->_internal_set_epoch(from._internal_epoch());
+  }
+  if (from._internal_state() != 0) {
+    _this->_internal_set_state(from._internal_state());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void CharacterRuntimeView::CopyFrom(const CharacterRuntimeView& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.CharacterRuntimeView)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool CharacterRuntimeView::IsInitialized() const {
+  return true;
+}
+
+void CharacterRuntimeView::InternalSwap(CharacterRuntimeView* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.session_id_, lhs_arena,
+      &other->_impl_.session_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.action_id_, lhs_arena,
+      &other->_impl_.action_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.reason_code_, lhs_arena,
+      &other->_impl_.reason_code_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(CharacterRuntimeView, _impl_.state_)
+      + sizeof(CharacterRuntimeView::_impl_.state_)
+      - PROTOBUF_FIELD_OFFSET(CharacterRuntimeView, _impl_.identity_)>(
+          reinterpret_cast<char*>(&_impl_.identity_),
+          reinterpret_cast<char*>(&other->_impl_.identity_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata CharacterRuntimeView::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[12]);
+}
+
+// ===================================================================
+
 class AvatarRenderRequest::_Internal {
  public:
   static const ::nai::v1::RequestContext& context(const AvatarRenderRequest* msg);
@@ -4026,7 +7967,7 @@ void AvatarRenderRequest::InternalSwap(AvatarRenderRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AvatarRenderRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[6]);
+      file_level_metadata_domain_2fmedia_2eproto[13]);
 }
 
 // ===================================================================
@@ -4241,7 +8182,7 @@ void AvatarRenderResult::InternalSwap(AvatarRenderResult* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AvatarRenderResult::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[7]);
+      file_level_metadata_domain_2fmedia_2eproto[14]);
 }
 
 // ===================================================================
@@ -4670,7 +8611,7 @@ void OutputRequest::InternalSwap(OutputRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata OutputRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[8]);
+      file_level_metadata_domain_2fmedia_2eproto[15]);
 }
 
 // ===================================================================
@@ -5084,7 +9025,7 @@ void OutputAck::InternalSwap(OutputAck* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata OutputAck::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[9]);
+      file_level_metadata_domain_2fmedia_2eproto[16]);
 }
 
 // ===================================================================
@@ -5444,7 +9385,7 @@ void ChannelRequest::InternalSwap(ChannelRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ChannelRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[10]);
+      file_level_metadata_domain_2fmedia_2eproto[17]);
 }
 
 // ===================================================================
@@ -5907,7 +9848,7 @@ void ChannelDescriptor::InternalSwap(ChannelDescriptor* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ChannelDescriptor::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[11]);
+      file_level_metadata_domain_2fmedia_2eproto[18]);
 }
 
 // ===================================================================
@@ -6158,7 +10099,7 @@ void ClockRequest::InternalSwap(ClockRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata ClockRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[12]);
+      file_level_metadata_domain_2fmedia_2eproto[19]);
 }
 
 // ===================================================================
@@ -6493,7 +10434,7 @@ void MediaClock::InternalSwap(MediaClock* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata MediaClock::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[13]);
+      file_level_metadata_domain_2fmedia_2eproto[20]);
 }
 
 // ===================================================================
@@ -6744,7 +10685,7 @@ void TimelineRequest::InternalSwap(TimelineRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata TimelineRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[14]);
+      file_level_metadata_domain_2fmedia_2eproto[21]);
 }
 
 // ===================================================================
@@ -7153,7 +11094,7 @@ void AudioTimeline::InternalSwap(AudioTimeline* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AudioTimeline::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[15]);
+      file_level_metadata_domain_2fmedia_2eproto[22]);
 }
 
 // ===================================================================
@@ -7463,7 +11404,7 @@ void PreviewRequest::InternalSwap(PreviewRequest* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata PreviewRequest::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[16]);
+      file_level_metadata_domain_2fmedia_2eproto[23]);
 }
 
 // ===================================================================
@@ -7793,7 +11734,2626 @@ void PreviewDescriptor::InternalSwap(PreviewDescriptor* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata PreviewDescriptor::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[17]);
+      file_level_metadata_domain_2fmedia_2eproto[24]);
+}
+
+// ===================================================================
+
+class LocalPlaybackMedia::_Internal {
+ public:
+};
+
+LocalPlaybackMedia::LocalPlaybackMedia(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.LocalPlaybackMedia)
+}
+LocalPlaybackMedia::LocalPlaybackMedia(const LocalPlaybackMedia& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  LocalPlaybackMedia* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.frame_sha256_){from._impl_.frame_sha256_}
+    , decltype(_impl_.session_id_){}
+    , decltype(_impl_.candidate_hash_){}
+    , decltype(_impl_.audio_sha256_){}
+    , decltype(_impl_.frames_sha256_){}
+    , decltype(_impl_.standby_sha256_){}
+    , decltype(_impl_.generation_epoch_){}
+    , decltype(_impl_.version_){}
+    , decltype(_impl_.sample_rate_){}
+    , decltype(_impl_.sample_count_){}
+    , decltype(_impl_.width_){}
+    , decltype(_impl_.height_){}
+    , decltype(_impl_.frame_count_){}
+    , decltype(_impl_.fps_num_){}
+    , decltype(_impl_.fps_den_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_session_id().empty()) {
+    _this->_impl_.session_id_.Set(from._internal_session_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.candidate_hash_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.candidate_hash_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_candidate_hash().empty()) {
+    _this->_impl_.candidate_hash_.Set(from._internal_candidate_hash(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.audio_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.audio_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_audio_sha256().empty()) {
+    _this->_impl_.audio_sha256_.Set(from._internal_audio_sha256(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.frames_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.frames_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_frames_sha256().empty()) {
+    _this->_impl_.frames_sha256_.Set(from._internal_frames_sha256(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.standby_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.standby_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_standby_sha256().empty()) {
+    _this->_impl_.standby_sha256_.Set(from._internal_standby_sha256(), 
+      _this->GetArenaForAllocation());
+  }
+  ::memcpy(&_impl_.generation_epoch_, &from._impl_.generation_epoch_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.fps_den_) -
+    reinterpret_cast<char*>(&_impl_.generation_epoch_)) + sizeof(_impl_.fps_den_));
+  // @@protoc_insertion_point(copy_constructor:nai.v1.LocalPlaybackMedia)
+}
+
+inline void LocalPlaybackMedia::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.frame_sha256_){arena}
+    , decltype(_impl_.session_id_){}
+    , decltype(_impl_.candidate_hash_){}
+    , decltype(_impl_.audio_sha256_){}
+    , decltype(_impl_.frames_sha256_){}
+    , decltype(_impl_.standby_sha256_){}
+    , decltype(_impl_.generation_epoch_){uint64_t{0u}}
+    , decltype(_impl_.version_){0u}
+    , decltype(_impl_.sample_rate_){0u}
+    , decltype(_impl_.sample_count_){uint64_t{0u}}
+    , decltype(_impl_.width_){0u}
+    , decltype(_impl_.height_){0u}
+    , decltype(_impl_.frame_count_){0u}
+    , decltype(_impl_.fps_num_){0u}
+    , decltype(_impl_.fps_den_){0u}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.candidate_hash_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.candidate_hash_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.audio_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.audio_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.frames_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.frames_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.standby_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.standby_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+LocalPlaybackMedia::~LocalPlaybackMedia() {
+  // @@protoc_insertion_point(destructor:nai.v1.LocalPlaybackMedia)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void LocalPlaybackMedia::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.frame_sha256_.~RepeatedPtrField();
+  _impl_.session_id_.Destroy();
+  _impl_.candidate_hash_.Destroy();
+  _impl_.audio_sha256_.Destroy();
+  _impl_.frames_sha256_.Destroy();
+  _impl_.standby_sha256_.Destroy();
+}
+
+void LocalPlaybackMedia::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void LocalPlaybackMedia::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.LocalPlaybackMedia)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.frame_sha256_.Clear();
+  _impl_.session_id_.ClearToEmpty();
+  _impl_.candidate_hash_.ClearToEmpty();
+  _impl_.audio_sha256_.ClearToEmpty();
+  _impl_.frames_sha256_.ClearToEmpty();
+  _impl_.standby_sha256_.ClearToEmpty();
+  ::memset(&_impl_.generation_epoch_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.fps_den_) -
+      reinterpret_cast<char*>(&_impl_.generation_epoch_)) + sizeof(_impl_.fps_den_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* LocalPlaybackMedia::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // uint32 version = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.version_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string session_id = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_session_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalPlaybackMedia.session_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 generation_epoch = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _impl_.generation_epoch_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string candidate_hash = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_candidate_hash();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalPlaybackMedia.candidate_hash"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 sample_rate = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
+          _impl_.sample_rate_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 sample_count = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
+          _impl_.sample_count_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 width = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 56)) {
+          _impl_.width_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 height = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
+          _impl_.height_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 frame_count = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 72)) {
+          _impl_.frame_count_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 fps_num = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 80)) {
+          _impl_.fps_num_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 fps_den = 11;
+      case 11:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 88)) {
+          _impl_.fps_den_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string audio_sha256 = 12;
+      case 12:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 98)) {
+          auto str = _internal_mutable_audio_sha256();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalPlaybackMedia.audio_sha256"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string frames_sha256 = 13;
+      case 13:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 106)) {
+          auto str = _internal_mutable_frames_sha256();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalPlaybackMedia.frames_sha256"));
+        } else
+          goto handle_unusual;
+        continue;
+      // repeated string frame_sha256 = 14;
+      case 14:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 114)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            auto str = _internal_add_frame_sha256();
+            ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+            CHK_(ptr);
+            CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalPlaybackMedia.frame_sha256"));
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<114>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      // string standby_sha256 = 15;
+      case 15:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 122)) {
+          auto str = _internal_mutable_standby_sha256();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalPlaybackMedia.standby_sha256"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* LocalPlaybackMedia::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.LocalPlaybackMedia)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_version(), target);
+  }
+
+  // string session_id = 2;
+  if (!this->_internal_session_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_session_id().data(), static_cast<int>(this->_internal_session_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalPlaybackMedia.session_id");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_session_id(), target);
+  }
+
+  // uint64 generation_epoch = 3;
+  if (this->_internal_generation_epoch() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(3, this->_internal_generation_epoch(), target);
+  }
+
+  // string candidate_hash = 4;
+  if (!this->_internal_candidate_hash().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_candidate_hash().data(), static_cast<int>(this->_internal_candidate_hash().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalPlaybackMedia.candidate_hash");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_candidate_hash(), target);
+  }
+
+  // uint32 sample_rate = 5;
+  if (this->_internal_sample_rate() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(5, this->_internal_sample_rate(), target);
+  }
+
+  // uint64 sample_count = 6;
+  if (this->_internal_sample_count() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(6, this->_internal_sample_count(), target);
+  }
+
+  // uint32 width = 7;
+  if (this->_internal_width() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(7, this->_internal_width(), target);
+  }
+
+  // uint32 height = 8;
+  if (this->_internal_height() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(8, this->_internal_height(), target);
+  }
+
+  // uint32 frame_count = 9;
+  if (this->_internal_frame_count() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(9, this->_internal_frame_count(), target);
+  }
+
+  // uint32 fps_num = 10;
+  if (this->_internal_fps_num() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(10, this->_internal_fps_num(), target);
+  }
+
+  // uint32 fps_den = 11;
+  if (this->_internal_fps_den() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(11, this->_internal_fps_den(), target);
+  }
+
+  // string audio_sha256 = 12;
+  if (!this->_internal_audio_sha256().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_audio_sha256().data(), static_cast<int>(this->_internal_audio_sha256().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalPlaybackMedia.audio_sha256");
+    target = stream->WriteStringMaybeAliased(
+        12, this->_internal_audio_sha256(), target);
+  }
+
+  // string frames_sha256 = 13;
+  if (!this->_internal_frames_sha256().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_frames_sha256().data(), static_cast<int>(this->_internal_frames_sha256().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalPlaybackMedia.frames_sha256");
+    target = stream->WriteStringMaybeAliased(
+        13, this->_internal_frames_sha256(), target);
+  }
+
+  // repeated string frame_sha256 = 14;
+  for (int i = 0, n = this->_internal_frame_sha256_size(); i < n; i++) {
+    const auto& s = this->_internal_frame_sha256(i);
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      s.data(), static_cast<int>(s.length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalPlaybackMedia.frame_sha256");
+    target = stream->WriteString(14, s, target);
+  }
+
+  // string standby_sha256 = 15;
+  if (!this->_internal_standby_sha256().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_standby_sha256().data(), static_cast<int>(this->_internal_standby_sha256().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalPlaybackMedia.standby_sha256");
+    target = stream->WriteStringMaybeAliased(
+        15, this->_internal_standby_sha256(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.LocalPlaybackMedia)
+  return target;
+}
+
+size_t LocalPlaybackMedia::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.LocalPlaybackMedia)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // repeated string frame_sha256 = 14;
+  total_size += 1 *
+      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(_impl_.frame_sha256_.size());
+  for (int i = 0, n = _impl_.frame_sha256_.size(); i < n; i++) {
+    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+      _impl_.frame_sha256_.Get(i));
+  }
+
+  // string session_id = 2;
+  if (!this->_internal_session_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_session_id());
+  }
+
+  // string candidate_hash = 4;
+  if (!this->_internal_candidate_hash().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_candidate_hash());
+  }
+
+  // string audio_sha256 = 12;
+  if (!this->_internal_audio_sha256().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_audio_sha256());
+  }
+
+  // string frames_sha256 = 13;
+  if (!this->_internal_frames_sha256().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_frames_sha256());
+  }
+
+  // string standby_sha256 = 15;
+  if (!this->_internal_standby_sha256().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_standby_sha256());
+  }
+
+  // uint64 generation_epoch = 3;
+  if (this->_internal_generation_epoch() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_generation_epoch());
+  }
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_version());
+  }
+
+  // uint32 sample_rate = 5;
+  if (this->_internal_sample_rate() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_sample_rate());
+  }
+
+  // uint64 sample_count = 6;
+  if (this->_internal_sample_count() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_sample_count());
+  }
+
+  // uint32 width = 7;
+  if (this->_internal_width() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_width());
+  }
+
+  // uint32 height = 8;
+  if (this->_internal_height() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_height());
+  }
+
+  // uint32 frame_count = 9;
+  if (this->_internal_frame_count() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_frame_count());
+  }
+
+  // uint32 fps_num = 10;
+  if (this->_internal_fps_num() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_fps_num());
+  }
+
+  // uint32 fps_den = 11;
+  if (this->_internal_fps_den() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_fps_den());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData LocalPlaybackMedia::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    LocalPlaybackMedia::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*LocalPlaybackMedia::GetClassData() const { return &_class_data_; }
+
+
+void LocalPlaybackMedia::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<LocalPlaybackMedia*>(&to_msg);
+  auto& from = static_cast<const LocalPlaybackMedia&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.LocalPlaybackMedia)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  _this->_impl_.frame_sha256_.MergeFrom(from._impl_.frame_sha256_);
+  if (!from._internal_session_id().empty()) {
+    _this->_internal_set_session_id(from._internal_session_id());
+  }
+  if (!from._internal_candidate_hash().empty()) {
+    _this->_internal_set_candidate_hash(from._internal_candidate_hash());
+  }
+  if (!from._internal_audio_sha256().empty()) {
+    _this->_internal_set_audio_sha256(from._internal_audio_sha256());
+  }
+  if (!from._internal_frames_sha256().empty()) {
+    _this->_internal_set_frames_sha256(from._internal_frames_sha256());
+  }
+  if (!from._internal_standby_sha256().empty()) {
+    _this->_internal_set_standby_sha256(from._internal_standby_sha256());
+  }
+  if (from._internal_generation_epoch() != 0) {
+    _this->_internal_set_generation_epoch(from._internal_generation_epoch());
+  }
+  if (from._internal_version() != 0) {
+    _this->_internal_set_version(from._internal_version());
+  }
+  if (from._internal_sample_rate() != 0) {
+    _this->_internal_set_sample_rate(from._internal_sample_rate());
+  }
+  if (from._internal_sample_count() != 0) {
+    _this->_internal_set_sample_count(from._internal_sample_count());
+  }
+  if (from._internal_width() != 0) {
+    _this->_internal_set_width(from._internal_width());
+  }
+  if (from._internal_height() != 0) {
+    _this->_internal_set_height(from._internal_height());
+  }
+  if (from._internal_frame_count() != 0) {
+    _this->_internal_set_frame_count(from._internal_frame_count());
+  }
+  if (from._internal_fps_num() != 0) {
+    _this->_internal_set_fps_num(from._internal_fps_num());
+  }
+  if (from._internal_fps_den() != 0) {
+    _this->_internal_set_fps_den(from._internal_fps_den());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void LocalPlaybackMedia::CopyFrom(const LocalPlaybackMedia& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.LocalPlaybackMedia)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool LocalPlaybackMedia::IsInitialized() const {
+  return true;
+}
+
+void LocalPlaybackMedia::InternalSwap(LocalPlaybackMedia* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  _impl_.frame_sha256_.InternalSwap(&other->_impl_.frame_sha256_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.session_id_, lhs_arena,
+      &other->_impl_.session_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.candidate_hash_, lhs_arena,
+      &other->_impl_.candidate_hash_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.audio_sha256_, lhs_arena,
+      &other->_impl_.audio_sha256_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.frames_sha256_, lhs_arena,
+      &other->_impl_.frames_sha256_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.standby_sha256_, lhs_arena,
+      &other->_impl_.standby_sha256_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(LocalPlaybackMedia, _impl_.fps_den_)
+      + sizeof(LocalPlaybackMedia::_impl_.fps_den_)
+      - PROTOBUF_FIELD_OFFSET(LocalPlaybackMedia, _impl_.generation_epoch_)>(
+          reinterpret_cast<char*>(&_impl_.generation_epoch_),
+          reinterpret_cast<char*>(&other->_impl_.generation_epoch_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata LocalPlaybackMedia::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[25]);
+}
+
+// ===================================================================
+
+class LocalPlaybackGrant::_Internal {
+ public:
+  static const ::nai::v1::PerformanceCue& cue(const LocalPlaybackGrant* msg);
+  static const ::nai::v1::Approval& approval(const LocalPlaybackGrant* msg);
+  static const ::nai::v1::PlaybackLease& lease(const LocalPlaybackGrant* msg);
+};
+
+const ::nai::v1::PerformanceCue&
+LocalPlaybackGrant::_Internal::cue(const LocalPlaybackGrant* msg) {
+  return *msg->_impl_.cue_;
+}
+const ::nai::v1::Approval&
+LocalPlaybackGrant::_Internal::approval(const LocalPlaybackGrant* msg) {
+  return *msg->_impl_.approval_;
+}
+const ::nai::v1::PlaybackLease&
+LocalPlaybackGrant::_Internal::lease(const LocalPlaybackGrant* msg) {
+  return *msg->_impl_.lease_;
+}
+void LocalPlaybackGrant::clear_cue() {
+  if (GetArenaForAllocation() == nullptr && _impl_.cue_ != nullptr) {
+    delete _impl_.cue_;
+  }
+  _impl_.cue_ = nullptr;
+}
+void LocalPlaybackGrant::clear_approval() {
+  if (GetArenaForAllocation() == nullptr && _impl_.approval_ != nullptr) {
+    delete _impl_.approval_;
+  }
+  _impl_.approval_ = nullptr;
+}
+LocalPlaybackGrant::LocalPlaybackGrant(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.LocalPlaybackGrant)
+}
+LocalPlaybackGrant::LocalPlaybackGrant(const LocalPlaybackGrant& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  LocalPlaybackGrant* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.media_sha256_){}
+    , decltype(_impl_.cue_){nullptr}
+    , decltype(_impl_.approval_){nullptr}
+    , decltype(_impl_.lease_){nullptr}
+    , decltype(_impl_.seq_){}
+    , decltype(_impl_.version_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.media_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.media_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_media_sha256().empty()) {
+    _this->_impl_.media_sha256_.Set(from._internal_media_sha256(), 
+      _this->GetArenaForAllocation());
+  }
+  if (from._internal_has_cue()) {
+    _this->_impl_.cue_ = new ::nai::v1::PerformanceCue(*from._impl_.cue_);
+  }
+  if (from._internal_has_approval()) {
+    _this->_impl_.approval_ = new ::nai::v1::Approval(*from._impl_.approval_);
+  }
+  if (from._internal_has_lease()) {
+    _this->_impl_.lease_ = new ::nai::v1::PlaybackLease(*from._impl_.lease_);
+  }
+  ::memcpy(&_impl_.seq_, &from._impl_.seq_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.version_) -
+    reinterpret_cast<char*>(&_impl_.seq_)) + sizeof(_impl_.version_));
+  // @@protoc_insertion_point(copy_constructor:nai.v1.LocalPlaybackGrant)
+}
+
+inline void LocalPlaybackGrant::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.media_sha256_){}
+    , decltype(_impl_.cue_){nullptr}
+    , decltype(_impl_.approval_){nullptr}
+    , decltype(_impl_.lease_){nullptr}
+    , decltype(_impl_.seq_){uint64_t{0u}}
+    , decltype(_impl_.version_){0u}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.media_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.media_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+LocalPlaybackGrant::~LocalPlaybackGrant() {
+  // @@protoc_insertion_point(destructor:nai.v1.LocalPlaybackGrant)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void LocalPlaybackGrant::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.media_sha256_.Destroy();
+  if (this != internal_default_instance()) delete _impl_.cue_;
+  if (this != internal_default_instance()) delete _impl_.approval_;
+  if (this != internal_default_instance()) delete _impl_.lease_;
+}
+
+void LocalPlaybackGrant::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void LocalPlaybackGrant::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.LocalPlaybackGrant)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.media_sha256_.ClearToEmpty();
+  if (GetArenaForAllocation() == nullptr && _impl_.cue_ != nullptr) {
+    delete _impl_.cue_;
+  }
+  _impl_.cue_ = nullptr;
+  if (GetArenaForAllocation() == nullptr && _impl_.approval_ != nullptr) {
+    delete _impl_.approval_;
+  }
+  _impl_.approval_ = nullptr;
+  if (GetArenaForAllocation() == nullptr && _impl_.lease_ != nullptr) {
+    delete _impl_.lease_;
+  }
+  _impl_.lease_ = nullptr;
+  ::memset(&_impl_.seq_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.version_) -
+      reinterpret_cast<char*>(&_impl_.seq_)) + sizeof(_impl_.version_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* LocalPlaybackGrant::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // uint32 version = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.version_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 seq = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _impl_.seq_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.PerformanceCue cue = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          ptr = ctx->ParseMessage(_internal_mutable_cue(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.Approval approval = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          ptr = ctx->ParseMessage(_internal_mutable_approval(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.PlaybackLease lease = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+          ptr = ctx->ParseMessage(_internal_mutable_lease(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string media_sha256 = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
+          auto str = _internal_mutable_media_sha256();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalPlaybackGrant.media_sha256"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* LocalPlaybackGrant::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.LocalPlaybackGrant)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_version(), target);
+  }
+
+  // uint64 seq = 2;
+  if (this->_internal_seq() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(2, this->_internal_seq(), target);
+  }
+
+  // .nai.v1.PerformanceCue cue = 3;
+  if (this->_internal_has_cue()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(3, _Internal::cue(this),
+        _Internal::cue(this).GetCachedSize(), target, stream);
+  }
+
+  // .nai.v1.Approval approval = 4;
+  if (this->_internal_has_approval()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(4, _Internal::approval(this),
+        _Internal::approval(this).GetCachedSize(), target, stream);
+  }
+
+  // .nai.v1.PlaybackLease lease = 5;
+  if (this->_internal_has_lease()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(5, _Internal::lease(this),
+        _Internal::lease(this).GetCachedSize(), target, stream);
+  }
+
+  // string media_sha256 = 6;
+  if (!this->_internal_media_sha256().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_media_sha256().data(), static_cast<int>(this->_internal_media_sha256().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalPlaybackGrant.media_sha256");
+    target = stream->WriteStringMaybeAliased(
+        6, this->_internal_media_sha256(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.LocalPlaybackGrant)
+  return target;
+}
+
+size_t LocalPlaybackGrant::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.LocalPlaybackGrant)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string media_sha256 = 6;
+  if (!this->_internal_media_sha256().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_media_sha256());
+  }
+
+  // .nai.v1.PerformanceCue cue = 3;
+  if (this->_internal_has_cue()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.cue_);
+  }
+
+  // .nai.v1.Approval approval = 4;
+  if (this->_internal_has_approval()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.approval_);
+  }
+
+  // .nai.v1.PlaybackLease lease = 5;
+  if (this->_internal_has_lease()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.lease_);
+  }
+
+  // uint64 seq = 2;
+  if (this->_internal_seq() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_seq());
+  }
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_version());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData LocalPlaybackGrant::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    LocalPlaybackGrant::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*LocalPlaybackGrant::GetClassData() const { return &_class_data_; }
+
+
+void LocalPlaybackGrant::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<LocalPlaybackGrant*>(&to_msg);
+  auto& from = static_cast<const LocalPlaybackGrant&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.LocalPlaybackGrant)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_media_sha256().empty()) {
+    _this->_internal_set_media_sha256(from._internal_media_sha256());
+  }
+  if (from._internal_has_cue()) {
+    _this->_internal_mutable_cue()->::nai::v1::PerformanceCue::MergeFrom(
+        from._internal_cue());
+  }
+  if (from._internal_has_approval()) {
+    _this->_internal_mutable_approval()->::nai::v1::Approval::MergeFrom(
+        from._internal_approval());
+  }
+  if (from._internal_has_lease()) {
+    _this->_internal_mutable_lease()->::nai::v1::PlaybackLease::MergeFrom(
+        from._internal_lease());
+  }
+  if (from._internal_seq() != 0) {
+    _this->_internal_set_seq(from._internal_seq());
+  }
+  if (from._internal_version() != 0) {
+    _this->_internal_set_version(from._internal_version());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void LocalPlaybackGrant::CopyFrom(const LocalPlaybackGrant& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.LocalPlaybackGrant)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool LocalPlaybackGrant::IsInitialized() const {
+  return true;
+}
+
+void LocalPlaybackGrant::InternalSwap(LocalPlaybackGrant* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.media_sha256_, lhs_arena,
+      &other->_impl_.media_sha256_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(LocalPlaybackGrant, _impl_.version_)
+      + sizeof(LocalPlaybackGrant::_impl_.version_)
+      - PROTOBUF_FIELD_OFFSET(LocalPlaybackGrant, _impl_.cue_)>(
+          reinterpret_cast<char*>(&_impl_.cue_),
+          reinterpret_cast<char*>(&other->_impl_.cue_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata LocalPlaybackGrant::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[26]);
+}
+
+// ===================================================================
+
+class LocalPlaybackStatus::_Internal {
+ public:
+  using HasBits = decltype(std::declval<LocalPlaybackStatus>()._impl_._has_bits_);
+  static void set_has_copied_samples(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+  static void set_has_window_updates(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
+  static void set_has_callback_drained_samples(HasBits* has_bits) {
+    (*has_bits)[0] |= 4u;
+  }
+  static void set_has_device_played_samples(HasBits* has_bits) {
+    (*has_bits)[0] |= 8u;
+  }
+  static void set_has_video_frame_index(HasBits* has_bits) {
+    (*has_bits)[0] |= 16u;
+  }
+  static void set_has_video_device_samples(HasBits* has_bits) {
+    (*has_bits)[0] |= 32u;
+  }
+};
+
+LocalPlaybackStatus::LocalPlaybackStatus(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.LocalPlaybackStatus)
+}
+LocalPlaybackStatus::LocalPlaybackStatus(const LocalPlaybackStatus& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  LocalPlaybackStatus* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.state_){}
+    , decltype(_impl_.error_code_){}
+    , decltype(_impl_.standby_sha256_){}
+    , decltype(_impl_.media_sha256_){}
+    , decltype(_impl_.audio_backend_){}
+    , decltype(_impl_.copied_samples_){}
+    , decltype(_impl_.window_updates_){}
+    , decltype(_impl_.version_){}
+    , decltype(_impl_.audio_stream_open_count_){}
+    , decltype(_impl_.callback_drained_samples_){}
+    , decltype(_impl_.device_played_samples_){}
+    , decltype(_impl_.actual_local_playback_completed_){}
+    , decltype(_impl_.callback_drain_observed_){}
+    , decltype(_impl_.device_position_observed_){}
+    , decltype(_impl_.video_tail_submitted_){}
+    , decltype(_impl_.video_frame_index_){}
+    , decltype(_impl_.video_device_samples_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.state_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.state_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_state().empty()) {
+    _this->_impl_.state_.Set(from._internal_state(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.error_code_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_code_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_error_code().empty()) {
+    _this->_impl_.error_code_.Set(from._internal_error_code(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.standby_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.standby_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_standby_sha256().empty()) {
+    _this->_impl_.standby_sha256_.Set(from._internal_standby_sha256(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.media_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.media_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_media_sha256().empty()) {
+    _this->_impl_.media_sha256_.Set(from._internal_media_sha256(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.audio_backend_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.audio_backend_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_audio_backend().empty()) {
+    _this->_impl_.audio_backend_.Set(from._internal_audio_backend(), 
+      _this->GetArenaForAllocation());
+  }
+  ::memcpy(&_impl_.copied_samples_, &from._impl_.copied_samples_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.video_device_samples_) -
+    reinterpret_cast<char*>(&_impl_.copied_samples_)) + sizeof(_impl_.video_device_samples_));
+  // @@protoc_insertion_point(copy_constructor:nai.v1.LocalPlaybackStatus)
+}
+
+inline void LocalPlaybackStatus::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.state_){}
+    , decltype(_impl_.error_code_){}
+    , decltype(_impl_.standby_sha256_){}
+    , decltype(_impl_.media_sha256_){}
+    , decltype(_impl_.audio_backend_){}
+    , decltype(_impl_.copied_samples_){uint64_t{0u}}
+    , decltype(_impl_.window_updates_){uint64_t{0u}}
+    , decltype(_impl_.version_){0u}
+    , decltype(_impl_.audio_stream_open_count_){0u}
+    , decltype(_impl_.callback_drained_samples_){uint64_t{0u}}
+    , decltype(_impl_.device_played_samples_){uint64_t{0u}}
+    , decltype(_impl_.actual_local_playback_completed_){false}
+    , decltype(_impl_.callback_drain_observed_){false}
+    , decltype(_impl_.device_position_observed_){false}
+    , decltype(_impl_.video_tail_submitted_){false}
+    , decltype(_impl_.video_frame_index_){0u}
+    , decltype(_impl_.video_device_samples_){uint64_t{0u}}
+  };
+  _impl_.state_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.state_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.error_code_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_code_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.standby_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.standby_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.media_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.media_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.audio_backend_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.audio_backend_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+LocalPlaybackStatus::~LocalPlaybackStatus() {
+  // @@protoc_insertion_point(destructor:nai.v1.LocalPlaybackStatus)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void LocalPlaybackStatus::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.state_.Destroy();
+  _impl_.error_code_.Destroy();
+  _impl_.standby_sha256_.Destroy();
+  _impl_.media_sha256_.Destroy();
+  _impl_.audio_backend_.Destroy();
+}
+
+void LocalPlaybackStatus::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void LocalPlaybackStatus::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.LocalPlaybackStatus)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.state_.ClearToEmpty();
+  _impl_.error_code_.ClearToEmpty();
+  _impl_.standby_sha256_.ClearToEmpty();
+  _impl_.media_sha256_.ClearToEmpty();
+  _impl_.audio_backend_.ClearToEmpty();
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    ::memset(&_impl_.copied_samples_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&_impl_.window_updates_) -
+        reinterpret_cast<char*>(&_impl_.copied_samples_)) + sizeof(_impl_.window_updates_));
+  }
+  ::memset(&_impl_.version_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.audio_stream_open_count_) -
+      reinterpret_cast<char*>(&_impl_.version_)) + sizeof(_impl_.audio_stream_open_count_));
+  if (cached_has_bits & 0x0000000cu) {
+    ::memset(&_impl_.callback_drained_samples_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&_impl_.device_played_samples_) -
+        reinterpret_cast<char*>(&_impl_.callback_drained_samples_)) + sizeof(_impl_.device_played_samples_));
+  }
+  ::memset(&_impl_.actual_local_playback_completed_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.video_tail_submitted_) -
+      reinterpret_cast<char*>(&_impl_.actual_local_playback_completed_)) + sizeof(_impl_.video_tail_submitted_));
+  if (cached_has_bits & 0x00000030u) {
+    ::memset(&_impl_.video_frame_index_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&_impl_.video_device_samples_) -
+        reinterpret_cast<char*>(&_impl_.video_frame_index_)) + sizeof(_impl_.video_device_samples_));
+  }
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* LocalPlaybackStatus::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // uint32 version = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.version_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string state = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_state();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalPlaybackStatus.state"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint64 copied_samples = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _Internal::set_has_copied_samples(&has_bits);
+          _impl_.copied_samples_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint64 window_updates = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _Internal::set_has_window_updates(&has_bits);
+          _impl_.window_updates_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string error_code = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+          auto str = _internal_mutable_error_code();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalPlaybackStatus.error_code"));
+        } else
+          goto handle_unusual;
+        continue;
+      // bool actual_local_playback_completed = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
+          _impl_.actual_local_playback_completed_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 audio_stream_open_count = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 56)) {
+          _impl_.audio_stream_open_count_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string standby_sha256 = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 66)) {
+          auto str = _internal_mutable_standby_sha256();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalPlaybackStatus.standby_sha256"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string media_sha256 = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 74)) {
+          auto str = _internal_mutable_media_sha256();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalPlaybackStatus.media_sha256"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint64 callback_drained_samples = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 80)) {
+          _Internal::set_has_callback_drained_samples(&has_bits);
+          _impl_.callback_drained_samples_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // bool callback_drain_observed = 11;
+      case 11:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 88)) {
+          _impl_.callback_drain_observed_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint64 device_played_samples = 12;
+      case 12:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 96)) {
+          _Internal::set_has_device_played_samples(&has_bits);
+          _impl_.device_played_samples_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // bool device_position_observed = 13;
+      case 13:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 104)) {
+          _impl_.device_position_observed_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string audio_backend = 14;
+      case 14:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 114)) {
+          auto str = _internal_mutable_audio_backend();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalPlaybackStatus.audio_backend"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint32 video_frame_index = 15;
+      case 15:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 120)) {
+          _Internal::set_has_video_frame_index(&has_bits);
+          _impl_.video_frame_index_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint64 video_device_samples = 16;
+      case 16:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 128)) {
+          _Internal::set_has_video_device_samples(&has_bits);
+          _impl_.video_device_samples_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // bool video_tail_submitted = 17;
+      case 17:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 136)) {
+          _impl_.video_tail_submitted_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* LocalPlaybackStatus::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.LocalPlaybackStatus)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_version(), target);
+  }
+
+  // string state = 2;
+  if (!this->_internal_state().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_state().data(), static_cast<int>(this->_internal_state().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalPlaybackStatus.state");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_state(), target);
+  }
+
+  // optional uint64 copied_samples = 3;
+  if (_internal_has_copied_samples()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(3, this->_internal_copied_samples(), target);
+  }
+
+  // optional uint64 window_updates = 4;
+  if (_internal_has_window_updates()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(4, this->_internal_window_updates(), target);
+  }
+
+  // string error_code = 5;
+  if (!this->_internal_error_code().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_error_code().data(), static_cast<int>(this->_internal_error_code().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalPlaybackStatus.error_code");
+    target = stream->WriteStringMaybeAliased(
+        5, this->_internal_error_code(), target);
+  }
+
+  // bool actual_local_playback_completed = 6;
+  if (this->_internal_actual_local_playback_completed() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(6, this->_internal_actual_local_playback_completed(), target);
+  }
+
+  // uint32 audio_stream_open_count = 7;
+  if (this->_internal_audio_stream_open_count() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(7, this->_internal_audio_stream_open_count(), target);
+  }
+
+  // string standby_sha256 = 8;
+  if (!this->_internal_standby_sha256().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_standby_sha256().data(), static_cast<int>(this->_internal_standby_sha256().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalPlaybackStatus.standby_sha256");
+    target = stream->WriteStringMaybeAliased(
+        8, this->_internal_standby_sha256(), target);
+  }
+
+  // string media_sha256 = 9;
+  if (!this->_internal_media_sha256().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_media_sha256().data(), static_cast<int>(this->_internal_media_sha256().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalPlaybackStatus.media_sha256");
+    target = stream->WriteStringMaybeAliased(
+        9, this->_internal_media_sha256(), target);
+  }
+
+  // optional uint64 callback_drained_samples = 10;
+  if (_internal_has_callback_drained_samples()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(10, this->_internal_callback_drained_samples(), target);
+  }
+
+  // bool callback_drain_observed = 11;
+  if (this->_internal_callback_drain_observed() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(11, this->_internal_callback_drain_observed(), target);
+  }
+
+  // optional uint64 device_played_samples = 12;
+  if (_internal_has_device_played_samples()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(12, this->_internal_device_played_samples(), target);
+  }
+
+  // bool device_position_observed = 13;
+  if (this->_internal_device_position_observed() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(13, this->_internal_device_position_observed(), target);
+  }
+
+  // string audio_backend = 14;
+  if (!this->_internal_audio_backend().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_audio_backend().data(), static_cast<int>(this->_internal_audio_backend().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalPlaybackStatus.audio_backend");
+    target = stream->WriteStringMaybeAliased(
+        14, this->_internal_audio_backend(), target);
+  }
+
+  // optional uint32 video_frame_index = 15;
+  if (_internal_has_video_frame_index()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(15, this->_internal_video_frame_index(), target);
+  }
+
+  // optional uint64 video_device_samples = 16;
+  if (_internal_has_video_device_samples()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(16, this->_internal_video_device_samples(), target);
+  }
+
+  // bool video_tail_submitted = 17;
+  if (this->_internal_video_tail_submitted() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(17, this->_internal_video_tail_submitted(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.LocalPlaybackStatus)
+  return target;
+}
+
+size_t LocalPlaybackStatus::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.LocalPlaybackStatus)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string state = 2;
+  if (!this->_internal_state().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_state());
+  }
+
+  // string error_code = 5;
+  if (!this->_internal_error_code().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_error_code());
+  }
+
+  // string standby_sha256 = 8;
+  if (!this->_internal_standby_sha256().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_standby_sha256());
+  }
+
+  // string media_sha256 = 9;
+  if (!this->_internal_media_sha256().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_media_sha256());
+  }
+
+  // string audio_backend = 14;
+  if (!this->_internal_audio_backend().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_audio_backend());
+  }
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    // optional uint64 copied_samples = 3;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_copied_samples());
+    }
+
+    // optional uint64 window_updates = 4;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_window_updates());
+    }
+
+  }
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_version());
+  }
+
+  // uint32 audio_stream_open_count = 7;
+  if (this->_internal_audio_stream_open_count() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_audio_stream_open_count());
+  }
+
+  if (cached_has_bits & 0x0000000cu) {
+    // optional uint64 callback_drained_samples = 10;
+    if (cached_has_bits & 0x00000004u) {
+      total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_callback_drained_samples());
+    }
+
+    // optional uint64 device_played_samples = 12;
+    if (cached_has_bits & 0x00000008u) {
+      total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_device_played_samples());
+    }
+
+  }
+  // bool actual_local_playback_completed = 6;
+  if (this->_internal_actual_local_playback_completed() != 0) {
+    total_size += 1 + 1;
+  }
+
+  // bool callback_drain_observed = 11;
+  if (this->_internal_callback_drain_observed() != 0) {
+    total_size += 1 + 1;
+  }
+
+  // bool device_position_observed = 13;
+  if (this->_internal_device_position_observed() != 0) {
+    total_size += 1 + 1;
+  }
+
+  // bool video_tail_submitted = 17;
+  if (this->_internal_video_tail_submitted() != 0) {
+    total_size += 2 + 1;
+  }
+
+  if (cached_has_bits & 0x00000030u) {
+    // optional uint32 video_frame_index = 15;
+    if (cached_has_bits & 0x00000010u) {
+      total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_video_frame_index());
+    }
+
+    // optional uint64 video_device_samples = 16;
+    if (cached_has_bits & 0x00000020u) {
+      total_size += 2 +
+        ::_pbi::WireFormatLite::UInt64Size(
+          this->_internal_video_device_samples());
+    }
+
+  }
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData LocalPlaybackStatus::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    LocalPlaybackStatus::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*LocalPlaybackStatus::GetClassData() const { return &_class_data_; }
+
+
+void LocalPlaybackStatus::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<LocalPlaybackStatus*>(&to_msg);
+  auto& from = static_cast<const LocalPlaybackStatus&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.LocalPlaybackStatus)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_state().empty()) {
+    _this->_internal_set_state(from._internal_state());
+  }
+  if (!from._internal_error_code().empty()) {
+    _this->_internal_set_error_code(from._internal_error_code());
+  }
+  if (!from._internal_standby_sha256().empty()) {
+    _this->_internal_set_standby_sha256(from._internal_standby_sha256());
+  }
+  if (!from._internal_media_sha256().empty()) {
+    _this->_internal_set_media_sha256(from._internal_media_sha256());
+  }
+  if (!from._internal_audio_backend().empty()) {
+    _this->_internal_set_audio_backend(from._internal_audio_backend());
+  }
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_impl_.copied_samples_ = from._impl_.copied_samples_;
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_impl_.window_updates_ = from._impl_.window_updates_;
+    }
+    _this->_impl_._has_bits_[0] |= cached_has_bits;
+  }
+  if (from._internal_version() != 0) {
+    _this->_internal_set_version(from._internal_version());
+  }
+  if (from._internal_audio_stream_open_count() != 0) {
+    _this->_internal_set_audio_stream_open_count(from._internal_audio_stream_open_count());
+  }
+  if (cached_has_bits & 0x0000000cu) {
+    if (cached_has_bits & 0x00000004u) {
+      _this->_impl_.callback_drained_samples_ = from._impl_.callback_drained_samples_;
+    }
+    if (cached_has_bits & 0x00000008u) {
+      _this->_impl_.device_played_samples_ = from._impl_.device_played_samples_;
+    }
+    _this->_impl_._has_bits_[0] |= cached_has_bits;
+  }
+  if (from._internal_actual_local_playback_completed() != 0) {
+    _this->_internal_set_actual_local_playback_completed(from._internal_actual_local_playback_completed());
+  }
+  if (from._internal_callback_drain_observed() != 0) {
+    _this->_internal_set_callback_drain_observed(from._internal_callback_drain_observed());
+  }
+  if (from._internal_device_position_observed() != 0) {
+    _this->_internal_set_device_position_observed(from._internal_device_position_observed());
+  }
+  if (from._internal_video_tail_submitted() != 0) {
+    _this->_internal_set_video_tail_submitted(from._internal_video_tail_submitted());
+  }
+  if (cached_has_bits & 0x00000030u) {
+    if (cached_has_bits & 0x00000010u) {
+      _this->_impl_.video_frame_index_ = from._impl_.video_frame_index_;
+    }
+    if (cached_has_bits & 0x00000020u) {
+      _this->_impl_.video_device_samples_ = from._impl_.video_device_samples_;
+    }
+    _this->_impl_._has_bits_[0] |= cached_has_bits;
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void LocalPlaybackStatus::CopyFrom(const LocalPlaybackStatus& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.LocalPlaybackStatus)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool LocalPlaybackStatus::IsInitialized() const {
+  return true;
+}
+
+void LocalPlaybackStatus::InternalSwap(LocalPlaybackStatus* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.state_, lhs_arena,
+      &other->_impl_.state_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.error_code_, lhs_arena,
+      &other->_impl_.error_code_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.standby_sha256_, lhs_arena,
+      &other->_impl_.standby_sha256_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.media_sha256_, lhs_arena,
+      &other->_impl_.media_sha256_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.audio_backend_, lhs_arena,
+      &other->_impl_.audio_backend_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(LocalPlaybackStatus, _impl_.video_device_samples_)
+      + sizeof(LocalPlaybackStatus::_impl_.video_device_samples_)
+      - PROTOBUF_FIELD_OFFSET(LocalPlaybackStatus, _impl_.copied_samples_)>(
+          reinterpret_cast<char*>(&_impl_.copied_samples_),
+          reinterpret_cast<char*>(&other->_impl_.copied_samples_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata LocalPlaybackStatus::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[27]);
+}
+
+// ===================================================================
+
+class NativeDeviceSmokeReport::_Internal {
+ public:
+};
+
+NativeDeviceSmokeReport::NativeDeviceSmokeReport(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.NativeDeviceSmokeReport)
+}
+NativeDeviceSmokeReport::NativeDeviceSmokeReport(const NativeDeviceSmokeReport& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  NativeDeviceSmokeReport* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.scope_){}
+    , decltype(_impl_.scenario_){}
+    , decltype(_impl_.backend_){}
+    , decltype(_impl_.error_code_){}
+    , decltype(_impl_.schema_version_){}
+    , decltype(_impl_.sample_rate_){}
+    , decltype(_impl_.callbacks_){}
+    , decltype(_impl_.copied_interleaved_samples_){}
+    , decltype(_impl_.silent_callbacks_after_stop_){}
+    , decltype(_impl_.channels_){}
+    , decltype(_impl_.audio_opened_){}
+    , decltype(_impl_.window_opened_){}
+    , decltype(_impl_.success_){}
+    , decltype(_impl_.actual_local_playback_completed_){}
+    , decltype(_impl_.nonzero_callbacks_after_stop_){}
+    , decltype(_impl_.window_updates_){}
+    , decltype(_impl_.max_predicted_latency_us_){}
+    , decltype(_impl_.last_nonzero_at_us_){}
+    , decltype(_impl_.stop_at_us_){}
+    , decltype(_impl_.elapsed_ms_){}
+    , decltype(_impl_.max_callback_frames_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.scope_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.scope_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_scope().empty()) {
+    _this->_impl_.scope_.Set(from._internal_scope(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.scenario_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.scenario_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_scenario().empty()) {
+    _this->_impl_.scenario_.Set(from._internal_scenario(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.backend_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.backend_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_backend().empty()) {
+    _this->_impl_.backend_.Set(from._internal_backend(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.error_code_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_code_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_error_code().empty()) {
+    _this->_impl_.error_code_.Set(from._internal_error_code(), 
+      _this->GetArenaForAllocation());
+  }
+  ::memcpy(&_impl_.schema_version_, &from._impl_.schema_version_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.max_callback_frames_) -
+    reinterpret_cast<char*>(&_impl_.schema_version_)) + sizeof(_impl_.max_callback_frames_));
+  // @@protoc_insertion_point(copy_constructor:nai.v1.NativeDeviceSmokeReport)
+}
+
+inline void NativeDeviceSmokeReport::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.scope_){}
+    , decltype(_impl_.scenario_){}
+    , decltype(_impl_.backend_){}
+    , decltype(_impl_.error_code_){}
+    , decltype(_impl_.schema_version_){0u}
+    , decltype(_impl_.sample_rate_){0u}
+    , decltype(_impl_.callbacks_){uint64_t{0u}}
+    , decltype(_impl_.copied_interleaved_samples_){uint64_t{0u}}
+    , decltype(_impl_.silent_callbacks_after_stop_){uint64_t{0u}}
+    , decltype(_impl_.channels_){0u}
+    , decltype(_impl_.audio_opened_){false}
+    , decltype(_impl_.window_opened_){false}
+    , decltype(_impl_.success_){false}
+    , decltype(_impl_.actual_local_playback_completed_){false}
+    , decltype(_impl_.nonzero_callbacks_after_stop_){uint64_t{0u}}
+    , decltype(_impl_.window_updates_){uint64_t{0u}}
+    , decltype(_impl_.max_predicted_latency_us_){uint64_t{0u}}
+    , decltype(_impl_.last_nonzero_at_us_){uint64_t{0u}}
+    , decltype(_impl_.stop_at_us_){uint64_t{0u}}
+    , decltype(_impl_.elapsed_ms_){uint64_t{0u}}
+    , decltype(_impl_.max_callback_frames_){uint64_t{0u}}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.scope_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.scope_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.scenario_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.scenario_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.backend_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.backend_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.error_code_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_code_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+NativeDeviceSmokeReport::~NativeDeviceSmokeReport() {
+  // @@protoc_insertion_point(destructor:nai.v1.NativeDeviceSmokeReport)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void NativeDeviceSmokeReport::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.scope_.Destroy();
+  _impl_.scenario_.Destroy();
+  _impl_.backend_.Destroy();
+  _impl_.error_code_.Destroy();
+}
+
+void NativeDeviceSmokeReport::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void NativeDeviceSmokeReport::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.NativeDeviceSmokeReport)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.scope_.ClearToEmpty();
+  _impl_.scenario_.ClearToEmpty();
+  _impl_.backend_.ClearToEmpty();
+  _impl_.error_code_.ClearToEmpty();
+  ::memset(&_impl_.schema_version_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.max_callback_frames_) -
+      reinterpret_cast<char*>(&_impl_.schema_version_)) + sizeof(_impl_.max_callback_frames_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* NativeDeviceSmokeReport::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // uint32 schema_version = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.schema_version_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string scope = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_scope();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.NativeDeviceSmokeReport.scope"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string scenario = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_scenario();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.NativeDeviceSmokeReport.scenario"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string backend = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_backend();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.NativeDeviceSmokeReport.backend"));
+        } else
+          goto handle_unusual;
+        continue;
+      // bool audio_opened = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
+          _impl_.audio_opened_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // bool window_opened = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 48)) {
+          _impl_.window_opened_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 sample_rate = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 56)) {
+          _impl_.sample_rate_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 channels = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
+          _impl_.channels_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 callbacks = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 72)) {
+          _impl_.callbacks_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 copied_interleaved_samples = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 80)) {
+          _impl_.copied_interleaved_samples_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 silent_callbacks_after_stop = 11;
+      case 11:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 88)) {
+          _impl_.silent_callbacks_after_stop_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 nonzero_callbacks_after_stop = 12;
+      case 12:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 96)) {
+          _impl_.nonzero_callbacks_after_stop_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 window_updates = 13;
+      case 13:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 104)) {
+          _impl_.window_updates_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 max_predicted_latency_us = 14;
+      case 14:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 112)) {
+          _impl_.max_predicted_latency_us_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 last_nonzero_at_us = 15;
+      case 15:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 120)) {
+          _impl_.last_nonzero_at_us_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 stop_at_us = 16;
+      case 16:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 128)) {
+          _impl_.stop_at_us_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 elapsed_ms = 17;
+      case 17:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 136)) {
+          _impl_.elapsed_ms_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string error_code = 18;
+      case 18:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 146)) {
+          auto str = _internal_mutable_error_code();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.NativeDeviceSmokeReport.error_code"));
+        } else
+          goto handle_unusual;
+        continue;
+      // bool success = 19;
+      case 19:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 152)) {
+          _impl_.success_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // bool actual_local_playback_completed = 20;
+      case 20:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 160)) {
+          _impl_.actual_local_playback_completed_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 max_callback_frames = 21;
+      case 21:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 168)) {
+          _impl_.max_callback_frames_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* NativeDeviceSmokeReport::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.NativeDeviceSmokeReport)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // uint32 schema_version = 1;
+  if (this->_internal_schema_version() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_schema_version(), target);
+  }
+
+  // string scope = 2;
+  if (!this->_internal_scope().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_scope().data(), static_cast<int>(this->_internal_scope().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.NativeDeviceSmokeReport.scope");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_scope(), target);
+  }
+
+  // string scenario = 3;
+  if (!this->_internal_scenario().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_scenario().data(), static_cast<int>(this->_internal_scenario().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.NativeDeviceSmokeReport.scenario");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_scenario(), target);
+  }
+
+  // string backend = 4;
+  if (!this->_internal_backend().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_backend().data(), static_cast<int>(this->_internal_backend().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.NativeDeviceSmokeReport.backend");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_backend(), target);
+  }
+
+  // bool audio_opened = 5;
+  if (this->_internal_audio_opened() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(5, this->_internal_audio_opened(), target);
+  }
+
+  // bool window_opened = 6;
+  if (this->_internal_window_opened() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(6, this->_internal_window_opened(), target);
+  }
+
+  // uint32 sample_rate = 7;
+  if (this->_internal_sample_rate() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(7, this->_internal_sample_rate(), target);
+  }
+
+  // uint32 channels = 8;
+  if (this->_internal_channels() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(8, this->_internal_channels(), target);
+  }
+
+  // uint64 callbacks = 9;
+  if (this->_internal_callbacks() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(9, this->_internal_callbacks(), target);
+  }
+
+  // uint64 copied_interleaved_samples = 10;
+  if (this->_internal_copied_interleaved_samples() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(10, this->_internal_copied_interleaved_samples(), target);
+  }
+
+  // uint64 silent_callbacks_after_stop = 11;
+  if (this->_internal_silent_callbacks_after_stop() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(11, this->_internal_silent_callbacks_after_stop(), target);
+  }
+
+  // uint64 nonzero_callbacks_after_stop = 12;
+  if (this->_internal_nonzero_callbacks_after_stop() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(12, this->_internal_nonzero_callbacks_after_stop(), target);
+  }
+
+  // uint64 window_updates = 13;
+  if (this->_internal_window_updates() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(13, this->_internal_window_updates(), target);
+  }
+
+  // uint64 max_predicted_latency_us = 14;
+  if (this->_internal_max_predicted_latency_us() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(14, this->_internal_max_predicted_latency_us(), target);
+  }
+
+  // uint64 last_nonzero_at_us = 15;
+  if (this->_internal_last_nonzero_at_us() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(15, this->_internal_last_nonzero_at_us(), target);
+  }
+
+  // uint64 stop_at_us = 16;
+  if (this->_internal_stop_at_us() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(16, this->_internal_stop_at_us(), target);
+  }
+
+  // uint64 elapsed_ms = 17;
+  if (this->_internal_elapsed_ms() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(17, this->_internal_elapsed_ms(), target);
+  }
+
+  // string error_code = 18;
+  if (!this->_internal_error_code().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_error_code().data(), static_cast<int>(this->_internal_error_code().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.NativeDeviceSmokeReport.error_code");
+    target = stream->WriteStringMaybeAliased(
+        18, this->_internal_error_code(), target);
+  }
+
+  // bool success = 19;
+  if (this->_internal_success() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(19, this->_internal_success(), target);
+  }
+
+  // bool actual_local_playback_completed = 20;
+  if (this->_internal_actual_local_playback_completed() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(20, this->_internal_actual_local_playback_completed(), target);
+  }
+
+  // uint64 max_callback_frames = 21;
+  if (this->_internal_max_callback_frames() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(21, this->_internal_max_callback_frames(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.NativeDeviceSmokeReport)
+  return target;
+}
+
+size_t NativeDeviceSmokeReport::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.NativeDeviceSmokeReport)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string scope = 2;
+  if (!this->_internal_scope().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_scope());
+  }
+
+  // string scenario = 3;
+  if (!this->_internal_scenario().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_scenario());
+  }
+
+  // string backend = 4;
+  if (!this->_internal_backend().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_backend());
+  }
+
+  // string error_code = 18;
+  if (!this->_internal_error_code().empty()) {
+    total_size += 2 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_error_code());
+  }
+
+  // uint32 schema_version = 1;
+  if (this->_internal_schema_version() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_schema_version());
+  }
+
+  // uint32 sample_rate = 7;
+  if (this->_internal_sample_rate() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_sample_rate());
+  }
+
+  // uint64 callbacks = 9;
+  if (this->_internal_callbacks() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_callbacks());
+  }
+
+  // uint64 copied_interleaved_samples = 10;
+  if (this->_internal_copied_interleaved_samples() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_copied_interleaved_samples());
+  }
+
+  // uint64 silent_callbacks_after_stop = 11;
+  if (this->_internal_silent_callbacks_after_stop() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_silent_callbacks_after_stop());
+  }
+
+  // uint32 channels = 8;
+  if (this->_internal_channels() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_channels());
+  }
+
+  // bool audio_opened = 5;
+  if (this->_internal_audio_opened() != 0) {
+    total_size += 1 + 1;
+  }
+
+  // bool window_opened = 6;
+  if (this->_internal_window_opened() != 0) {
+    total_size += 1 + 1;
+  }
+
+  // bool success = 19;
+  if (this->_internal_success() != 0) {
+    total_size += 2 + 1;
+  }
+
+  // bool actual_local_playback_completed = 20;
+  if (this->_internal_actual_local_playback_completed() != 0) {
+    total_size += 2 + 1;
+  }
+
+  // uint64 nonzero_callbacks_after_stop = 12;
+  if (this->_internal_nonzero_callbacks_after_stop() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_nonzero_callbacks_after_stop());
+  }
+
+  // uint64 window_updates = 13;
+  if (this->_internal_window_updates() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_window_updates());
+  }
+
+  // uint64 max_predicted_latency_us = 14;
+  if (this->_internal_max_predicted_latency_us() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_max_predicted_latency_us());
+  }
+
+  // uint64 last_nonzero_at_us = 15;
+  if (this->_internal_last_nonzero_at_us() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_last_nonzero_at_us());
+  }
+
+  // uint64 stop_at_us = 16;
+  if (this->_internal_stop_at_us() != 0) {
+    total_size += 2 +
+      ::_pbi::WireFormatLite::UInt64Size(
+        this->_internal_stop_at_us());
+  }
+
+  // uint64 elapsed_ms = 17;
+  if (this->_internal_elapsed_ms() != 0) {
+    total_size += 2 +
+      ::_pbi::WireFormatLite::UInt64Size(
+        this->_internal_elapsed_ms());
+  }
+
+  // uint64 max_callback_frames = 21;
+  if (this->_internal_max_callback_frames() != 0) {
+    total_size += 2 +
+      ::_pbi::WireFormatLite::UInt64Size(
+        this->_internal_max_callback_frames());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData NativeDeviceSmokeReport::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    NativeDeviceSmokeReport::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*NativeDeviceSmokeReport::GetClassData() const { return &_class_data_; }
+
+
+void NativeDeviceSmokeReport::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<NativeDeviceSmokeReport*>(&to_msg);
+  auto& from = static_cast<const NativeDeviceSmokeReport&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.NativeDeviceSmokeReport)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_scope().empty()) {
+    _this->_internal_set_scope(from._internal_scope());
+  }
+  if (!from._internal_scenario().empty()) {
+    _this->_internal_set_scenario(from._internal_scenario());
+  }
+  if (!from._internal_backend().empty()) {
+    _this->_internal_set_backend(from._internal_backend());
+  }
+  if (!from._internal_error_code().empty()) {
+    _this->_internal_set_error_code(from._internal_error_code());
+  }
+  if (from._internal_schema_version() != 0) {
+    _this->_internal_set_schema_version(from._internal_schema_version());
+  }
+  if (from._internal_sample_rate() != 0) {
+    _this->_internal_set_sample_rate(from._internal_sample_rate());
+  }
+  if (from._internal_callbacks() != 0) {
+    _this->_internal_set_callbacks(from._internal_callbacks());
+  }
+  if (from._internal_copied_interleaved_samples() != 0) {
+    _this->_internal_set_copied_interleaved_samples(from._internal_copied_interleaved_samples());
+  }
+  if (from._internal_silent_callbacks_after_stop() != 0) {
+    _this->_internal_set_silent_callbacks_after_stop(from._internal_silent_callbacks_after_stop());
+  }
+  if (from._internal_channels() != 0) {
+    _this->_internal_set_channels(from._internal_channels());
+  }
+  if (from._internal_audio_opened() != 0) {
+    _this->_internal_set_audio_opened(from._internal_audio_opened());
+  }
+  if (from._internal_window_opened() != 0) {
+    _this->_internal_set_window_opened(from._internal_window_opened());
+  }
+  if (from._internal_success() != 0) {
+    _this->_internal_set_success(from._internal_success());
+  }
+  if (from._internal_actual_local_playback_completed() != 0) {
+    _this->_internal_set_actual_local_playback_completed(from._internal_actual_local_playback_completed());
+  }
+  if (from._internal_nonzero_callbacks_after_stop() != 0) {
+    _this->_internal_set_nonzero_callbacks_after_stop(from._internal_nonzero_callbacks_after_stop());
+  }
+  if (from._internal_window_updates() != 0) {
+    _this->_internal_set_window_updates(from._internal_window_updates());
+  }
+  if (from._internal_max_predicted_latency_us() != 0) {
+    _this->_internal_set_max_predicted_latency_us(from._internal_max_predicted_latency_us());
+  }
+  if (from._internal_last_nonzero_at_us() != 0) {
+    _this->_internal_set_last_nonzero_at_us(from._internal_last_nonzero_at_us());
+  }
+  if (from._internal_stop_at_us() != 0) {
+    _this->_internal_set_stop_at_us(from._internal_stop_at_us());
+  }
+  if (from._internal_elapsed_ms() != 0) {
+    _this->_internal_set_elapsed_ms(from._internal_elapsed_ms());
+  }
+  if (from._internal_max_callback_frames() != 0) {
+    _this->_internal_set_max_callback_frames(from._internal_max_callback_frames());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void NativeDeviceSmokeReport::CopyFrom(const NativeDeviceSmokeReport& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.NativeDeviceSmokeReport)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool NativeDeviceSmokeReport::IsInitialized() const {
+  return true;
+}
+
+void NativeDeviceSmokeReport::InternalSwap(NativeDeviceSmokeReport* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.scope_, lhs_arena,
+      &other->_impl_.scope_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.scenario_, lhs_arena,
+      &other->_impl_.scenario_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.backend_, lhs_arena,
+      &other->_impl_.backend_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.error_code_, lhs_arena,
+      &other->_impl_.error_code_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(NativeDeviceSmokeReport, _impl_.max_callback_frames_)
+      + sizeof(NativeDeviceSmokeReport::_impl_.max_callback_frames_)
+      - PROTOBUF_FIELD_OFFSET(NativeDeviceSmokeReport, _impl_.schema_version_)>(
+          reinterpret_cast<char*>(&_impl_.schema_version_),
+          reinterpret_cast<char*>(&other->_impl_.schema_version_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata NativeDeviceSmokeReport::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[28]);
 }
 
 // ===================================================================
@@ -8323,7 +14883,7 @@ void OutputWatchdogCommand::InternalSwap(OutputWatchdogCommand* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata OutputWatchdogCommand::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[18]);
+      file_level_metadata_domain_2fmedia_2eproto[29]);
 }
 
 // ===================================================================
@@ -9022,7 +15582,7 @@ void OutputWatchdogStatus::InternalSwap(OutputWatchdogStatus* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata OutputWatchdogStatus::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[19]);
+      file_level_metadata_domain_2fmedia_2eproto[30]);
 }
 
 // ===================================================================
@@ -9572,7 +16132,7 @@ void FrameSlotTicket::InternalSwap(FrameSlotTicket* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata FrameSlotTicket::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[20]);
+      file_level_metadata_domain_2fmedia_2eproto[31]);
 }
 
 // ===================================================================
@@ -9848,7 +16408,7 @@ void FrameSlotCommit::InternalSwap(FrameSlotCommit* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata FrameSlotCommit::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[21]);
+      file_level_metadata_domain_2fmedia_2eproto[32]);
 }
 
 // ===================================================================
@@ -10193,7 +16753,1137 @@ void FrameSlotEvent::InternalSwap(FrameSlotEvent* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata FrameSlotEvent::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
-      file_level_metadata_domain_2fmedia_2eproto[22]);
+      file_level_metadata_domain_2fmedia_2eproto[33]);
+}
+
+// ===================================================================
+
+class LocalOutputCommand::_Internal {
+ public:
+  static const ::nai::v1::LocalPlaybackGrant& grant(const LocalOutputCommand* msg);
+  static const ::nai::v1::LocalOutputWarmup& warmup(const LocalOutputCommand* msg);
+};
+
+const ::nai::v1::LocalPlaybackGrant&
+LocalOutputCommand::_Internal::grant(const LocalOutputCommand* msg) {
+  return *msg->_impl_.command_.grant_;
+}
+const ::nai::v1::LocalOutputWarmup&
+LocalOutputCommand::_Internal::warmup(const LocalOutputCommand* msg) {
+  return *msg->_impl_.command_.warmup_;
+}
+void LocalOutputCommand::set_allocated_grant(::nai::v1::LocalPlaybackGrant* grant) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  clear_command();
+  if (grant) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+      ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(grant);
+    if (message_arena != submessage_arena) {
+      grant = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, grant, submessage_arena);
+    }
+    set_has_grant();
+    _impl_.command_.grant_ = grant;
+  }
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalOutputCommand.grant)
+}
+void LocalOutputCommand::set_allocated_warmup(::nai::v1::LocalOutputWarmup* warmup) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  clear_command();
+  if (warmup) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+      ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(warmup);
+    if (message_arena != submessage_arena) {
+      warmup = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, warmup, submessage_arena);
+    }
+    set_has_warmup();
+    _impl_.command_.warmup_ = warmup;
+  }
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalOutputCommand.warmup)
+}
+LocalOutputCommand::LocalOutputCommand(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.LocalOutputCommand)
+}
+LocalOutputCommand::LocalOutputCommand(const LocalOutputCommand& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  LocalOutputCommand* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.command_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , /*decltype(_impl_._oneof_case_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  clear_has_command();
+  switch (from.command_case()) {
+    case kDescriptorPath: {
+      _this->_internal_set_descriptor_path(from._internal_descriptor_path());
+      break;
+    }
+    case kGrant: {
+      _this->_internal_mutable_grant()->::nai::v1::LocalPlaybackGrant::MergeFrom(
+          from._internal_grant());
+      break;
+    }
+    case kShutdown: {
+      _this->_internal_set_shutdown(from._internal_shutdown());
+      break;
+    }
+    case kCancelCue: {
+      _this->_internal_set_cancel_cue(from._internal_cancel_cue());
+      break;
+    }
+    case kWarmup: {
+      _this->_internal_mutable_warmup()->::nai::v1::LocalOutputWarmup::MergeFrom(
+          from._internal_warmup());
+      break;
+    }
+    case COMMAND_NOT_SET: {
+      break;
+    }
+  }
+  // @@protoc_insertion_point(copy_constructor:nai.v1.LocalOutputCommand)
+}
+
+inline void LocalOutputCommand::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.command_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , /*decltype(_impl_._oneof_case_)*/{}
+  };
+  clear_has_command();
+}
+
+LocalOutputCommand::~LocalOutputCommand() {
+  // @@protoc_insertion_point(destructor:nai.v1.LocalOutputCommand)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void LocalOutputCommand::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  if (has_command()) {
+    clear_command();
+  }
+}
+
+void LocalOutputCommand::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void LocalOutputCommand::clear_command() {
+// @@protoc_insertion_point(one_of_clear_start:nai.v1.LocalOutputCommand)
+  switch (command_case()) {
+    case kDescriptorPath: {
+      _impl_.command_.descriptor_path_.Destroy();
+      break;
+    }
+    case kGrant: {
+      if (GetArenaForAllocation() == nullptr) {
+        delete _impl_.command_.grant_;
+      }
+      break;
+    }
+    case kShutdown: {
+      // No need to clear
+      break;
+    }
+    case kCancelCue: {
+      // No need to clear
+      break;
+    }
+    case kWarmup: {
+      if (GetArenaForAllocation() == nullptr) {
+        delete _impl_.command_.warmup_;
+      }
+      break;
+    }
+    case COMMAND_NOT_SET: {
+      break;
+    }
+  }
+  _impl_._oneof_case_[0] = COMMAND_NOT_SET;
+}
+
+
+void LocalOutputCommand::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.LocalOutputCommand)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  clear_command();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* LocalOutputCommand::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // string descriptor_path = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_descriptor_path();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalOutputCommand.descriptor_path"));
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.LocalPlaybackGrant grant = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          ptr = ctx->ParseMessage(_internal_mutable_grant(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // bool shutdown = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _internal_set_shutdown(::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr));
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // bool cancel_cue = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _internal_set_cancel_cue(::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr));
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.LocalOutputWarmup warmup = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+          ptr = ctx->ParseMessage(_internal_mutable_warmup(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* LocalOutputCommand::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.LocalOutputCommand)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string descriptor_path = 1;
+  if (_internal_has_descriptor_path()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_descriptor_path().data(), static_cast<int>(this->_internal_descriptor_path().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalOutputCommand.descriptor_path");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_descriptor_path(), target);
+  }
+
+  // .nai.v1.LocalPlaybackGrant grant = 2;
+  if (_internal_has_grant()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(2, _Internal::grant(this),
+        _Internal::grant(this).GetCachedSize(), target, stream);
+  }
+
+  // bool shutdown = 3;
+  if (_internal_has_shutdown()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(3, this->_internal_shutdown(), target);
+  }
+
+  // bool cancel_cue = 4;
+  if (_internal_has_cancel_cue()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(4, this->_internal_cancel_cue(), target);
+  }
+
+  // .nai.v1.LocalOutputWarmup warmup = 5;
+  if (_internal_has_warmup()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(5, _Internal::warmup(this),
+        _Internal::warmup(this).GetCachedSize(), target, stream);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.LocalOutputCommand)
+  return target;
+}
+
+size_t LocalOutputCommand::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.LocalOutputCommand)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  switch (command_case()) {
+    // string descriptor_path = 1;
+    case kDescriptorPath: {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_descriptor_path());
+      break;
+    }
+    // .nai.v1.LocalPlaybackGrant grant = 2;
+    case kGrant: {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+          *_impl_.command_.grant_);
+      break;
+    }
+    // bool shutdown = 3;
+    case kShutdown: {
+      total_size += 1 + 1;
+      break;
+    }
+    // bool cancel_cue = 4;
+    case kCancelCue: {
+      total_size += 1 + 1;
+      break;
+    }
+    // .nai.v1.LocalOutputWarmup warmup = 5;
+    case kWarmup: {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+          *_impl_.command_.warmup_);
+      break;
+    }
+    case COMMAND_NOT_SET: {
+      break;
+    }
+  }
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData LocalOutputCommand::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    LocalOutputCommand::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*LocalOutputCommand::GetClassData() const { return &_class_data_; }
+
+
+void LocalOutputCommand::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<LocalOutputCommand*>(&to_msg);
+  auto& from = static_cast<const LocalOutputCommand&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.LocalOutputCommand)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  switch (from.command_case()) {
+    case kDescriptorPath: {
+      _this->_internal_set_descriptor_path(from._internal_descriptor_path());
+      break;
+    }
+    case kGrant: {
+      _this->_internal_mutable_grant()->::nai::v1::LocalPlaybackGrant::MergeFrom(
+          from._internal_grant());
+      break;
+    }
+    case kShutdown: {
+      _this->_internal_set_shutdown(from._internal_shutdown());
+      break;
+    }
+    case kCancelCue: {
+      _this->_internal_set_cancel_cue(from._internal_cancel_cue());
+      break;
+    }
+    case kWarmup: {
+      _this->_internal_mutable_warmup()->::nai::v1::LocalOutputWarmup::MergeFrom(
+          from._internal_warmup());
+      break;
+    }
+    case COMMAND_NOT_SET: {
+      break;
+    }
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void LocalOutputCommand::CopyFrom(const LocalOutputCommand& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.LocalOutputCommand)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool LocalOutputCommand::IsInitialized() const {
+  return true;
+}
+
+void LocalOutputCommand::InternalSwap(LocalOutputCommand* other) {
+  using std::swap;
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_.command_, other->_impl_.command_);
+  swap(_impl_._oneof_case_[0], other->_impl_._oneof_case_[0]);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata LocalOutputCommand::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[34]);
+}
+
+// ===================================================================
+
+class LocalStandbyMedia::_Internal {
+ public:
+};
+
+LocalStandbyMedia::LocalStandbyMedia(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.LocalStandbyMedia)
+}
+LocalStandbyMedia::LocalStandbyMedia(const LocalStandbyMedia& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  LocalStandbyMedia* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.session_id_){}
+    , decltype(_impl_.standby_sha256_){}
+    , decltype(_impl_.version_){}
+    , decltype(_impl_.width_){}
+    , decltype(_impl_.generation_epoch_){}
+    , decltype(_impl_.height_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_session_id().empty()) {
+    _this->_impl_.session_id_.Set(from._internal_session_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.standby_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.standby_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_standby_sha256().empty()) {
+    _this->_impl_.standby_sha256_.Set(from._internal_standby_sha256(), 
+      _this->GetArenaForAllocation());
+  }
+  ::memcpy(&_impl_.version_, &from._impl_.version_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.height_) -
+    reinterpret_cast<char*>(&_impl_.version_)) + sizeof(_impl_.height_));
+  // @@protoc_insertion_point(copy_constructor:nai.v1.LocalStandbyMedia)
+}
+
+inline void LocalStandbyMedia::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.session_id_){}
+    , decltype(_impl_.standby_sha256_){}
+    , decltype(_impl_.version_){0u}
+    , decltype(_impl_.width_){0u}
+    , decltype(_impl_.generation_epoch_){uint64_t{0u}}
+    , decltype(_impl_.height_){0u}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.standby_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.standby_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+LocalStandbyMedia::~LocalStandbyMedia() {
+  // @@protoc_insertion_point(destructor:nai.v1.LocalStandbyMedia)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void LocalStandbyMedia::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.session_id_.Destroy();
+  _impl_.standby_sha256_.Destroy();
+}
+
+void LocalStandbyMedia::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void LocalStandbyMedia::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.LocalStandbyMedia)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.session_id_.ClearToEmpty();
+  _impl_.standby_sha256_.ClearToEmpty();
+  ::memset(&_impl_.version_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.height_) -
+      reinterpret_cast<char*>(&_impl_.version_)) + sizeof(_impl_.height_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* LocalStandbyMedia::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // uint32 version = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.version_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string session_id = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_session_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalStandbyMedia.session_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 generation_epoch = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          _impl_.generation_epoch_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 width = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _impl_.width_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 height = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
+          _impl_.height_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string standby_sha256 = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
+          auto str = _internal_mutable_standby_sha256();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalStandbyMedia.standby_sha256"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* LocalStandbyMedia::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.LocalStandbyMedia)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_version(), target);
+  }
+
+  // string session_id = 2;
+  if (!this->_internal_session_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_session_id().data(), static_cast<int>(this->_internal_session_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalStandbyMedia.session_id");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_session_id(), target);
+  }
+
+  // uint64 generation_epoch = 3;
+  if (this->_internal_generation_epoch() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(3, this->_internal_generation_epoch(), target);
+  }
+
+  // uint32 width = 4;
+  if (this->_internal_width() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(4, this->_internal_width(), target);
+  }
+
+  // uint32 height = 5;
+  if (this->_internal_height() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(5, this->_internal_height(), target);
+  }
+
+  // string standby_sha256 = 6;
+  if (!this->_internal_standby_sha256().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_standby_sha256().data(), static_cast<int>(this->_internal_standby_sha256().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalStandbyMedia.standby_sha256");
+    target = stream->WriteStringMaybeAliased(
+        6, this->_internal_standby_sha256(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.LocalStandbyMedia)
+  return target;
+}
+
+size_t LocalStandbyMedia::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.LocalStandbyMedia)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string session_id = 2;
+  if (!this->_internal_session_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_session_id());
+  }
+
+  // string standby_sha256 = 6;
+  if (!this->_internal_standby_sha256().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_standby_sha256());
+  }
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_version());
+  }
+
+  // uint32 width = 4;
+  if (this->_internal_width() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_width());
+  }
+
+  // uint64 generation_epoch = 3;
+  if (this->_internal_generation_epoch() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_generation_epoch());
+  }
+
+  // uint32 height = 5;
+  if (this->_internal_height() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_height());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData LocalStandbyMedia::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    LocalStandbyMedia::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*LocalStandbyMedia::GetClassData() const { return &_class_data_; }
+
+
+void LocalStandbyMedia::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<LocalStandbyMedia*>(&to_msg);
+  auto& from = static_cast<const LocalStandbyMedia&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.LocalStandbyMedia)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_session_id().empty()) {
+    _this->_internal_set_session_id(from._internal_session_id());
+  }
+  if (!from._internal_standby_sha256().empty()) {
+    _this->_internal_set_standby_sha256(from._internal_standby_sha256());
+  }
+  if (from._internal_version() != 0) {
+    _this->_internal_set_version(from._internal_version());
+  }
+  if (from._internal_width() != 0) {
+    _this->_internal_set_width(from._internal_width());
+  }
+  if (from._internal_generation_epoch() != 0) {
+    _this->_internal_set_generation_epoch(from._internal_generation_epoch());
+  }
+  if (from._internal_height() != 0) {
+    _this->_internal_set_height(from._internal_height());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void LocalStandbyMedia::CopyFrom(const LocalStandbyMedia& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.LocalStandbyMedia)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool LocalStandbyMedia::IsInitialized() const {
+  return true;
+}
+
+void LocalStandbyMedia::InternalSwap(LocalStandbyMedia* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.session_id_, lhs_arena,
+      &other->_impl_.session_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.standby_sha256_, lhs_arena,
+      &other->_impl_.standby_sha256_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(LocalStandbyMedia, _impl_.height_)
+      + sizeof(LocalStandbyMedia::_impl_.height_)
+      - PROTOBUF_FIELD_OFFSET(LocalStandbyMedia, _impl_.version_)>(
+          reinterpret_cast<char*>(&_impl_.version_),
+          reinterpret_cast<char*>(&other->_impl_.version_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata LocalStandbyMedia::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[35]);
+}
+
+// ===================================================================
+
+class LocalOutputWarmup::_Internal {
+ public:
+};
+
+LocalOutputWarmup::LocalOutputWarmup(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.LocalOutputWarmup)
+}
+LocalOutputWarmup::LocalOutputWarmup(const LocalOutputWarmup& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  LocalOutputWarmup* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.descriptor_path_){}
+    , decltype(_impl_.descriptor_sha256_){}
+    , decltype(_impl_.session_id_){}
+    , decltype(_impl_.generation_epoch_){}
+    , decltype(_impl_.remaining_budget_ms_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.descriptor_path_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.descriptor_path_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_descriptor_path().empty()) {
+    _this->_impl_.descriptor_path_.Set(from._internal_descriptor_path(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.descriptor_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.descriptor_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_descriptor_sha256().empty()) {
+    _this->_impl_.descriptor_sha256_.Set(from._internal_descriptor_sha256(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_session_id().empty()) {
+    _this->_impl_.session_id_.Set(from._internal_session_id(), 
+      _this->GetArenaForAllocation());
+  }
+  ::memcpy(&_impl_.generation_epoch_, &from._impl_.generation_epoch_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.remaining_budget_ms_) -
+    reinterpret_cast<char*>(&_impl_.generation_epoch_)) + sizeof(_impl_.remaining_budget_ms_));
+  // @@protoc_insertion_point(copy_constructor:nai.v1.LocalOutputWarmup)
+}
+
+inline void LocalOutputWarmup::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.descriptor_path_){}
+    , decltype(_impl_.descriptor_sha256_){}
+    , decltype(_impl_.session_id_){}
+    , decltype(_impl_.generation_epoch_){uint64_t{0u}}
+    , decltype(_impl_.remaining_budget_ms_){0u}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.descriptor_path_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.descriptor_path_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.descriptor_sha256_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.descriptor_sha256_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.session_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+LocalOutputWarmup::~LocalOutputWarmup() {
+  // @@protoc_insertion_point(destructor:nai.v1.LocalOutputWarmup)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void LocalOutputWarmup::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.descriptor_path_.Destroy();
+  _impl_.descriptor_sha256_.Destroy();
+  _impl_.session_id_.Destroy();
+}
+
+void LocalOutputWarmup::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void LocalOutputWarmup::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.LocalOutputWarmup)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.descriptor_path_.ClearToEmpty();
+  _impl_.descriptor_sha256_.ClearToEmpty();
+  _impl_.session_id_.ClearToEmpty();
+  ::memset(&_impl_.generation_epoch_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.remaining_budget_ms_) -
+      reinterpret_cast<char*>(&_impl_.generation_epoch_)) + sizeof(_impl_.remaining_budget_ms_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* LocalOutputWarmup::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // string descriptor_path = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_descriptor_path();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalOutputWarmup.descriptor_path"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string descriptor_sha256 = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_descriptor_sha256();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalOutputWarmup.descriptor_sha256"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string session_id = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_session_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalOutputWarmup.session_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 generation_epoch = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 32)) {
+          _impl_.generation_epoch_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 remaining_budget_ms = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 40)) {
+          _impl_.remaining_budget_ms_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* LocalOutputWarmup::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.LocalOutputWarmup)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string descriptor_path = 1;
+  if (!this->_internal_descriptor_path().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_descriptor_path().data(), static_cast<int>(this->_internal_descriptor_path().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalOutputWarmup.descriptor_path");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_descriptor_path(), target);
+  }
+
+  // string descriptor_sha256 = 2;
+  if (!this->_internal_descriptor_sha256().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_descriptor_sha256().data(), static_cast<int>(this->_internal_descriptor_sha256().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalOutputWarmup.descriptor_sha256");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_descriptor_sha256(), target);
+  }
+
+  // string session_id = 3;
+  if (!this->_internal_session_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_session_id().data(), static_cast<int>(this->_internal_session_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalOutputWarmup.session_id");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_session_id(), target);
+  }
+
+  // uint64 generation_epoch = 4;
+  if (this->_internal_generation_epoch() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(4, this->_internal_generation_epoch(), target);
+  }
+
+  // uint32 remaining_budget_ms = 5;
+  if (this->_internal_remaining_budget_ms() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(5, this->_internal_remaining_budget_ms(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.LocalOutputWarmup)
+  return target;
+}
+
+size_t LocalOutputWarmup::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.LocalOutputWarmup)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string descriptor_path = 1;
+  if (!this->_internal_descriptor_path().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_descriptor_path());
+  }
+
+  // string descriptor_sha256 = 2;
+  if (!this->_internal_descriptor_sha256().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_descriptor_sha256());
+  }
+
+  // string session_id = 3;
+  if (!this->_internal_session_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_session_id());
+  }
+
+  // uint64 generation_epoch = 4;
+  if (this->_internal_generation_epoch() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_generation_epoch());
+  }
+
+  // uint32 remaining_budget_ms = 5;
+  if (this->_internal_remaining_budget_ms() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_remaining_budget_ms());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData LocalOutputWarmup::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    LocalOutputWarmup::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*LocalOutputWarmup::GetClassData() const { return &_class_data_; }
+
+
+void LocalOutputWarmup::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<LocalOutputWarmup*>(&to_msg);
+  auto& from = static_cast<const LocalOutputWarmup&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.LocalOutputWarmup)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_descriptor_path().empty()) {
+    _this->_internal_set_descriptor_path(from._internal_descriptor_path());
+  }
+  if (!from._internal_descriptor_sha256().empty()) {
+    _this->_internal_set_descriptor_sha256(from._internal_descriptor_sha256());
+  }
+  if (!from._internal_session_id().empty()) {
+    _this->_internal_set_session_id(from._internal_session_id());
+  }
+  if (from._internal_generation_epoch() != 0) {
+    _this->_internal_set_generation_epoch(from._internal_generation_epoch());
+  }
+  if (from._internal_remaining_budget_ms() != 0) {
+    _this->_internal_set_remaining_budget_ms(from._internal_remaining_budget_ms());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void LocalOutputWarmup::CopyFrom(const LocalOutputWarmup& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.LocalOutputWarmup)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool LocalOutputWarmup::IsInitialized() const {
+  return true;
+}
+
+void LocalOutputWarmup::InternalSwap(LocalOutputWarmup* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.descriptor_path_, lhs_arena,
+      &other->_impl_.descriptor_path_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.descriptor_sha256_, lhs_arena,
+      &other->_impl_.descriptor_sha256_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.session_id_, lhs_arena,
+      &other->_impl_.session_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(LocalOutputWarmup, _impl_.remaining_budget_ms_)
+      + sizeof(LocalOutputWarmup::_impl_.remaining_budget_ms_)
+      - PROTOBUF_FIELD_OFFSET(LocalOutputWarmup, _impl_.generation_epoch_)>(
+          reinterpret_cast<char*>(&_impl_.generation_epoch_),
+          reinterpret_cast<char*>(&other->_impl_.generation_epoch_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata LocalOutputWarmup::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fmedia_2eproto_getter, &descriptor_table_domain_2fmedia_2eproto_once,
+      file_level_metadata_domain_2fmedia_2eproto[36]);
 }
 
 // @@protoc_insertion_point(namespace_scope)
@@ -10223,6 +17913,34 @@ Arena::CreateMaybeMessage< ::nai::v1::AvatarProfileRequest >(Arena* arena) {
 template<> PROTOBUF_NOINLINE ::nai::v1::AvatarProfile*
 Arena::CreateMaybeMessage< ::nai::v1::AvatarProfile >(Arena* arena) {
   return Arena::CreateMessageInternal< ::nai::v1::AvatarProfile >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::CharacterIdentity*
+Arena::CreateMaybeMessage< ::nai::v1::CharacterIdentity >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::CharacterIdentity >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::CharacterCapability*
+Arena::CreateMaybeMessage< ::nai::v1::CharacterCapability >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::CharacterCapability >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::CharacterProfile*
+Arena::CreateMaybeMessage< ::nai::v1::CharacterProfile >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::CharacterProfile >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::CharacterActionRequest*
+Arena::CreateMaybeMessage< ::nai::v1::CharacterActionRequest >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::CharacterActionRequest >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::CharacterActionState*
+Arena::CreateMaybeMessage< ::nai::v1::CharacterActionState >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::CharacterActionState >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::CharacterBoundedMedia*
+Arena::CreateMaybeMessage< ::nai::v1::CharacterBoundedMedia >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::CharacterBoundedMedia >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::CharacterRuntimeView*
+Arena::CreateMaybeMessage< ::nai::v1::CharacterRuntimeView >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::CharacterRuntimeView >(arena);
 }
 template<> PROTOBUF_NOINLINE ::nai::v1::AvatarRenderRequest*
 Arena::CreateMaybeMessage< ::nai::v1::AvatarRenderRequest >(Arena* arena) {
@@ -10272,6 +17990,22 @@ template<> PROTOBUF_NOINLINE ::nai::v1::PreviewDescriptor*
 Arena::CreateMaybeMessage< ::nai::v1::PreviewDescriptor >(Arena* arena) {
   return Arena::CreateMessageInternal< ::nai::v1::PreviewDescriptor >(arena);
 }
+template<> PROTOBUF_NOINLINE ::nai::v1::LocalPlaybackMedia*
+Arena::CreateMaybeMessage< ::nai::v1::LocalPlaybackMedia >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::LocalPlaybackMedia >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::LocalPlaybackGrant*
+Arena::CreateMaybeMessage< ::nai::v1::LocalPlaybackGrant >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::LocalPlaybackGrant >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::LocalPlaybackStatus*
+Arena::CreateMaybeMessage< ::nai::v1::LocalPlaybackStatus >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::LocalPlaybackStatus >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::NativeDeviceSmokeReport*
+Arena::CreateMaybeMessage< ::nai::v1::NativeDeviceSmokeReport >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::NativeDeviceSmokeReport >(arena);
+}
 template<> PROTOBUF_NOINLINE ::nai::v1::OutputWatchdogCommand*
 Arena::CreateMaybeMessage< ::nai::v1::OutputWatchdogCommand >(Arena* arena) {
   return Arena::CreateMessageInternal< ::nai::v1::OutputWatchdogCommand >(arena);
@@ -10291,6 +18025,18 @@ Arena::CreateMaybeMessage< ::nai::v1::FrameSlotCommit >(Arena* arena) {
 template<> PROTOBUF_NOINLINE ::nai::v1::FrameSlotEvent*
 Arena::CreateMaybeMessage< ::nai::v1::FrameSlotEvent >(Arena* arena) {
   return Arena::CreateMessageInternal< ::nai::v1::FrameSlotEvent >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::LocalOutputCommand*
+Arena::CreateMaybeMessage< ::nai::v1::LocalOutputCommand >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::LocalOutputCommand >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::LocalStandbyMedia*
+Arena::CreateMaybeMessage< ::nai::v1::LocalStandbyMedia >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::LocalStandbyMedia >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::LocalOutputWarmup*
+Arena::CreateMaybeMessage< ::nai::v1::LocalOutputWarmup >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::LocalOutputWarmup >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 

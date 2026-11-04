@@ -150,7 +150,7 @@ test('workspace globs and the tracked manifests agree in both directions', async
   const inputs = await load();
   const dirs = inputs.trackedPackageJsons.map(packageDirOf).filter(d => d !== ROOT_DIR);
   assert.ok(dirs.length > 0, 'the workspace must contain at least one package directory');
-  assert.ok(dirs.includes('apps/desktop') && dirs.includes('packages/contracts-ts'));
+  assert.ok(dirs.includes('apps/workbench-desktop') && dirs.includes('packages/contracts-ts'));
 });
 
 // ---------------------------------------------------------------------------
@@ -174,10 +174,10 @@ test('a script nobody dispositions is named', async () => {
 test('a disposition whose script no longer exists is named', async () => {
   const inputs = await load();
   const packageFiles = new Map(inputs.packageFiles);
-  packageFiles.set(
-    ROOT_DIR,
-    patchManifest(packageFiles.get(ROOT_DIR), ',\n    "test:engine-smoke": "cargo build -p nai-engine --locked --offline && node --experimental-strip-types scripts/engine-smoke.mjs"', ''),
-  );
+  const manifest = JSON.parse(packageFiles.get(ROOT_DIR));
+  assert.ok(manifest.scripts['test:engine-smoke'], 'the deleted script must exist before injection');
+  delete manifest.scripts['test:engine-smoke'];
+  packageFiles.set(ROOT_DIR, JSON.stringify(manifest));
   const errors = scriptErrors(withInputs(inputs, { packageFiles }));
   assert.ok(
     errors.some(error => error.includes('"test:engine-smoke"') && error.includes('silently disappeared')),
@@ -196,7 +196,7 @@ test('an invocation that only survives in a comment is not a reference', async (
     CI_WORKFLOW,
     inputs.consumerTexts
       .get(CI_WORKFLOW)
-      .replace('- run: pnpm spec:validate', '- run: echo "keeping the CI shape"  # pnpm spec:validate was here'),
+      .replace('run: pnpm spec:validate', 'run: echo "keeping the CI shape"  # pnpm spec:validate was here'),
   );
   const errors = scriptErrors(withInputs(inputs, { consumerTexts }));
   // 真引用被移进注释 ⇒ 剥注释后 marker 也不在了；`pnpm spec:validate` 于是不再有证据。
@@ -274,7 +274,7 @@ test('a filter that resolves to no package is named', async () => {
 test('a driver claim that is not a real step is named', async () => {
   const inputs = await load();
   const registered = dispositionsOf(list => {
-    find(list, 'apps/desktop', 'test').consumer.step = { dir: 'apps/desktop', script: 'tests' };
+    find(list, 'apps/workbench-desktop', 'test').consumer.step = { dir: 'apps/workbench-desktop', script: 'tests' };
   });
   const errors = scriptErrors(withInputs(inputs, { registered }));
   assert.ok(
@@ -286,7 +286,7 @@ test('a driver claim that is not a real step is named', async () => {
 test('a consumer without a pair is named', async () => {
   const inputs = await load();
   const registered = dispositionsOf(list => {
-    find(list, 'apps/desktop', 'test').consumer = { kind: 'driver', step: 'apps/desktop:test' };
+    find(list, 'apps/workbench-desktop', 'test').consumer = { kind: 'driver', step: 'apps/workbench-desktop:test' };
   });
   const errors = scriptErrors(withInputs(inputs, { registered }));
   assert.ok(
@@ -310,7 +310,7 @@ test('a pnpm consumer whose marker is missing is named', async () => {
 test('a consumer kind outside the closed set is named', async () => {
   const inputs = await load();
   const registered = dispositionsOf(list => {
-    find(list, 'apps/desktop', 'test').consumer = { kind: 'magic' };
+    find(list, 'apps/workbench-desktop', 'test').consumer = { kind: 'magic' };
   });
   const errors = scriptErrors(withInputs(inputs, { registered }));
   assert.ok(
@@ -341,7 +341,7 @@ test('a recursive delegation only covers the script of the same name', async () 
     // 把 `typecheck` 的覆盖项改成 `build` 项：递归委托覆盖的是**同名**脚本。
     find(list, ROOT_DIR, 'typecheck').coveredBy = [
       { dir: 'packages/contracts-ts', script: 'build' },
-      { dir: 'apps/desktop', script: 'build' },
+      { dir: 'apps/workbench-desktop', script: 'build' },
     ];
   });
   const errors = scriptErrors(withInputs(inputs, { registered }));
@@ -356,7 +356,7 @@ test('a covering step that is not in the driver is named', async () => {
   const registered = dispositionsOf(list => {
     find(list, ROOT_DIR, 'typecheck').coveredBy = [
       { dir: 'packages/contracts-ts', script: 'typecheck' },
-      { dir: 'apps/desktop', script: 'typecheck' },
+      { dir: 'apps/workbench-desktop', script: 'typecheck' },
       { dir: 'apps/ghost', script: 'typecheck' },
     ];
   });
@@ -423,7 +423,7 @@ test('an alias with no equivalent entry point is named', async () => {
 test('an orphan with no cause at all is named', async () => {
   const inputs = await load();
   const registered = dispositionsOf(list => {
-    delete find(list, 'apps/desktop', 'dev').cause;
+    delete find(list, 'apps/workbench-desktop', 'dev').cause;
   });
   const errors = scriptErrors(withInputs(inputs, { registered }));
   assert.ok(
@@ -438,7 +438,7 @@ test('an orphan with no cause at all is named', async () => {
 
 test('a driver step naming a script the package does not declare is named', async () => {
   const inputs = await load();
-  const driverText = inputs.driverText.replace("['apps/desktop', 'test'],", "['apps/desktop', 'tests'],");
+  const driverText = inputs.driverText.replace("['apps/workbench-desktop', 'test'],", "['apps/workbench-desktop', 'tests'],");
   assert.notEqual(driverText, inputs.driverText, 'the driver injection must really change something');
   const errors = scriptErrors(withInputs(inputs, { driverText }));
   assert.ok(
@@ -451,8 +451,8 @@ test('a driver step whose program the gate cannot resolve is named', async () =>
   const inputs = await load();
   const packageFiles = new Map(inputs.packageFiles);
   packageFiles.set(
-    'apps/desktop',
-    patchManifest(packageFiles.get('apps/desktop'), '"typecheck": "tsc --noEmit"', '"typecheck": "eslint ."'),
+    'apps/workbench-desktop',
+    patchManifest(packageFiles.get('apps/workbench-desktop'), '"typecheck": "tsc --noEmit"', '"typecheck": "eslint ."'),
   );
   const errors = scriptErrors(withInputs(inputs, { packageFiles }));
   assert.ok(
@@ -465,8 +465,8 @@ test('a driver step using shell syntax the gate never implements is named', asyn
   const inputs = await load();
   const packageFiles = new Map(inputs.packageFiles);
   packageFiles.set(
-    'apps/desktop',
-    patchManifest(packageFiles.get('apps/desktop'), '"typecheck": "tsc --noEmit"', '"typecheck": "tsc --noEmit | tee log"'),
+    'apps/workbench-desktop',
+    patchManifest(packageFiles.get('apps/workbench-desktop'), '"typecheck": "tsc --noEmit"', '"typecheck": "tsc --noEmit | tee log"'),
   );
   const errors = scriptErrors(withInputs(inputs, { packageFiles }));
   assert.ok(
@@ -564,7 +564,7 @@ test('a cause table that no disposition exercises is named', async () => {
 
 test('the disposition table rejects a duplicate pair', async () => {
   const inputs = await load();
-  const registered = dispositionsOf(list => list.push({ ...find(list, 'apps/desktop', 'test') }));
+  const registered = dispositionsOf(list => list.push({ ...find(list, 'apps/workbench-desktop', 'test') }));
   const errors = scriptErrors(withInputs(inputs, { registered }));
   assert.ok(
     errors.some(error => error.includes('declared twice')),
@@ -583,12 +583,12 @@ test('the disposition table keys pairs, not bare script names', async () => {
 
   // 删掉其中一条 ⇒ 只点名**那一条**，另外两条不受影响。
   const registered = dispositionsOf(list => {
-    const index = list.findIndex(entry => entry.dir === 'apps/desktop' && entry.script === 'typecheck');
+    const index = list.findIndex(entry => entry.dir === 'apps/workbench-desktop' && entry.script === 'typecheck');
     list.splice(index, 1);
   });
   const errors = scriptErrors(withInputs(inputs, { registered }));
   assert.equal(errors.length, 1, `only one pair must be named, saw ${JSON.stringify(errors)}`);
-  assert.ok(errors[0].includes('apps/desktop') && errors[0].includes('"typecheck"'), errors[0]);
+  assert.ok(errors[0].includes('apps/workbench-desktop') && errors[0].includes('"typecheck"'), errors[0]);
   assert.ok(!errors[0].includes('contracts-ts'), 'the sibling packages must not be implicated');
 });
 
@@ -603,9 +603,10 @@ test('references are attributed to packages, and a recursive one targets every p
   const recursive = refs.filter(ref => ref.raw === 'pnpm --recursive typecheck');
   assert.equal(recursive.length, 1, 'the root delegation must be parsed');
   // 自引用被排除：根包自己**不**在目标里。
-  assert.deepEqual(recursive[0].dirs.slice().sort(), ['apps/desktop', 'packages/contracts-ts']);
+  assert.deepEqual(recursive[0].dirs.slice().sort(), ['apps/workbench-desktop', 'packages/contracts-ts']);
   assert.ok(!recursive[0].dirs.includes(ROOT_DIR), 'a recursive delegation must not consume its own package');
   // 驱动表解析是判定域：`covered-by-driver` 的证据必须真的在里面。
   const steps = driverSteps(inputs.driverText);
-  assert.ok(steps.some(step => step.dir === 'apps/desktop' && step.script === 'build'));
+  assert.ok(steps.some(step => step.dir === 'apps/workbench-desktop' && step.script === 'build'));
 });
+

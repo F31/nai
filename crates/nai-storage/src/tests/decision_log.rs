@@ -1,6 +1,73 @@
 use super::*;
 use nai_contracts::v1::ErrorCode;
 
+#[test]
+fn recent_program_confirmation_is_durable_scoped_critical_and_bounded() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut storage = store(dir.path());
+    storage.create_workspace(&op(), "w", "program").unwrap();
+    storage.create_workspace(&op(), "other", "other").unwrap();
+    let payload = serde_json::json!({"event":"program_human_confirmation","playback_ack":false});
+    let ack = storage
+        .append_decision(&op(), "w", None, DecisionKind::Cue, &payload, "confirm")
+        .unwrap();
+    assert!(ack.persisted);
+    storage
+        .append_decision(
+            &op(),
+            "w",
+            None,
+            DecisionKind::Observation,
+            &payload,
+            "fake-telemetry",
+        )
+        .unwrap();
+    assert_eq!(
+        storage
+            .recent_program_confirmation(&op(), "w")
+            .unwrap()
+            .unwrap()
+            .0,
+        ack.entry_hash.unwrap()
+    );
+    assert!(
+        storage
+            .recent_program_confirmation(&op(), "other")
+            .unwrap()
+            .is_none()
+    );
+    storage.verify_decision_chain(&op(), "w").unwrap();
+    drop(storage);
+    let mut storage = store(dir.path());
+    assert_eq!(
+        storage
+            .recent_program_confirmation(&op(), "w")
+            .unwrap()
+            .unwrap()
+            .1,
+        payload
+    );
+    for n in 0..256 {
+        storage
+            .append_decision(
+                &op(),
+                "w",
+                None,
+                DecisionKind::Event,
+                &serde_json::json!({}),
+                &format!("later-{n}"),
+            )
+            .unwrap();
+    }
+    assert!(
+        storage
+            .recent_program_confirmation(&op(), "w")
+            .unwrap()
+            .is_none()
+    );
+    storage.verify_decision_chain(&op(), "w").unwrap();
+}
+
 fn entries(store: &Store, workspace: &str) -> i64 {
     store
         .conn

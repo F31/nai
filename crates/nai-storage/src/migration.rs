@@ -2,8 +2,8 @@ use crate::{Operation, Result, error, hash, utc_ms};
 use nai_contracts::v1::ErrorCode;
 use rusqlite::{Connection, TransactionBehavior};
 
-pub(crate) const VERSION: i64 = 12;
-const SQL: [&str; 12] = [
+pub(crate) const VERSION: i64 = 13;
+const SQL: [&str; 13] = [
     include_str!("../../../migrations/sqlite/0001-foundation.sql"),
     include_str!("../../../migrations/sqlite/0002-authority.sql"),
     include_str!("../../../migrations/sqlite/0003-knowledge-index.sql"),
@@ -16,6 +16,7 @@ const SQL: [&str; 12] = [
     include_str!("../../../migrations/sqlite/0010-document-local-only.sql"),
     include_str!("../../../migrations/sqlite/0011-decision-log-degradation-kind.sql"),
     include_str!("../../../migrations/sqlite/0012-utterance-status-domain.sql"),
+    include_str!("../../../migrations/sqlite/0013-utterance-cue.sql"),
 ];
 
 pub(crate) fn verify(connection: &Connection) -> Result<i64> {

@@ -1,0 +1,13 @@
+# Nāi manual-demo 素材许可
+
+本目录下的演示素材（`avatar/base.rgba`、`avatar/closed.rgba`、`avatar/open.rgba`
+及与其配套的 manifest/config）由 nai 项目作者在本仓库内**原创**，用于人工辅助演示与演练：
+
+- 许可标识（license_ref）：`nai-demo-license`
+- 授权范围：在 nai 项目（https://github.com/F31/nai）的演练、演示、本地预览与测试中使用；
+  不构成对任何主播形象、品牌或第三方素材的授权，**不得**用于对外发行或仿冒。
+- 素材为极简占位图形（2×1 与 1×1 RGBA），不包含人像、商标或真实品牌内容。
+
+本文件是上述许可引用的**落点**：manifest 与 operator 场景的 `licenses` 都以
+`nai-demo-license` 指向它。切换为真实演示形象时，须以真实授权文件替换本文件并
+更新 license_ref，再重新计算素材 SHA-256。

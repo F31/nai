@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workbench-audition-nonce"
+description = "Enables the workbench_audition_nonce command without any pre-configured scope."
+commands.allow = ["workbench_audition_nonce"]
+
+[[permission]]
+identifier = "deny-workbench-audition-nonce"
+description = "Denies the workbench_audition_nonce command without any pre-configured scope."
+commands.deny = ["workbench_audition_nonce"]

@@ -379,3 +379,144 @@ fn mute_precedes_epoch_cancellation_even_when_command_ledger_is_full() {
     session.revoke(true).unwrap();
     assert!(!task.valid(now));
 }
+
+fn callback_fixture(now: Instant) -> (MediaGate, device_callback::DeviceChunk) {
+    let (lease, cue, approval, facts) = fixture();
+    let mut gate = MediaGate::new("s", 2);
+    gate.arm(lease, 1000, now).unwrap();
+    let p = proof(&cue, &approval, &facts);
+    gate.enqueue(&p, 1000, now).unwrap();
+    let chunk = gate
+        .device_chunk(&p, vec![0.25; 480], 48000, 1, 1000, now)
+        .unwrap();
+    (gate, chunk)
+}
+
+#[test]
+fn callback_copies_bounded_pcm_and_zeroes_tail_without_device_ack() {
+    let now = Instant::now();
+    let (_gate, mut chunk) = callback_fixture(now);
+    let mut output = [9.0; 480];
+    assert_eq!(chunk.fill(&mut output, now), 480);
+    assert!(output.iter().all(|v| *v == 0.25));
+    assert_eq!(chunk.fill(&mut output, now), 0);
+    assert_eq!(output, [0.0; 480]);
+}
+
+#[test]
+fn callback_p0_does_not_need_gate_poll_or_business_lock() {
+    let now = Instant::now();
+    let (gate, mut chunk) = callback_fixture(now);
+    let held = std::sync::Mutex::new(gate);
+    let lock = held.lock().unwrap();
+    let emergency = lock.emergency();
+    std::thread::spawn(move || emergency.mute()).join().unwrap();
+    let mut out = [1.0; 48];
+    assert_eq!(chunk.fill(&mut out, now), 0);
+    assert_eq!(out, [0.0; 48]);
+}
+
+#[test]
+fn callback_owner_drop_and_rearm_invalidate_old_audio() {
+    let now = Instant::now();
+    let (mut gate, mut old) = callback_fixture(now);
+    let (mut lease, _, _, _) = fixture();
+    lease.generation_epoch = 2;
+    gate.arm(lease, 1000, now).unwrap();
+    let mut out = [1.0; 48];
+    assert_eq!(old.fill(&mut out, now), 0);
+    let (gate, mut chunk) = callback_fixture(now);
+    drop(gate);
+    assert_eq!(chunk.fill(&mut out, now), 0);
+    assert_eq!(out, [0.0; 48]);
+}
+
+#[test]
+fn callback_stall_expires_without_poll_and_reserves_buffer_duration() {
+    let now = Instant::now();
+    let (_gate, mut chunk) = callback_fixture(now);
+    let mut out = [1.0; 480];
+    assert_eq!(chunk.fill(&mut out, now + Duration::from_millis(590)), 0);
+    assert_eq!(out, [0.0; 480]);
+    assert_eq!(chunk.fill(&mut out, now), 0); // permanently stopped
+}
+
+#[test]
+fn callback_rechecks_approval_and_rejects_invalid_pcm_without_consuming() {
+    let now = Instant::now();
+    let (lease, cue, mut approval, facts) = fixture();
+    let mut gate = MediaGate::new("s", 2);
+    gate.arm(lease, 1000, now).unwrap();
+    gate.enqueue(&proof(&cue, &approval, &facts), 1000, now)
+        .unwrap();
+    for pcm in [vec![f32::NAN], vec![1.1], vec![0.0; 28801], vec![]] {
+        assert!(
+            gate.device_chunk(&proof(&cue, &approval, &facts), pcm, 48000, 1, 1000, now)
+                .is_err()
+        );
+        assert_eq!(gate.queued(), 1);
+    }
+    approval.revoked_at_utc_ms = Some(1000);
+    assert!(
+        gate.device_chunk(
+            &proof(&cue, &approval, &facts),
+            vec![0.1; 48],
+            48000,
+            1,
+            1000,
+            now
+        )
+        .is_err()
+    );
+    assert_eq!(gate.queued(), 1);
+}
+
+#[test]
+fn callback_approval_expiry_precedes_lease_and_oversize_is_silent() {
+    let now = Instant::now();
+    let (lease, cue, mut approval, facts) = fixture();
+    approval.expires_at_utc_ms = 1010;
+    let mut gate = MediaGate::new("s", 2);
+    gate.arm(lease, 1000, now).unwrap();
+    let p = proof(&cue, &approval, &facts);
+    gate.enqueue(&p, 1000, now).unwrap();
+    let mut chunk = gate
+        .device_chunk(&p, vec![0.25; 480], 48000, 1, 1000, now)
+        .unwrap();
+    assert_eq!(chunk.fill(&mut [1.0; 480], now), 0);
+    let (_gate, mut chunk) = callback_fixture(now);
+    let mut oversized = [1.0; 481];
+    assert_eq!(chunk.fill(&mut oversized, now), 0);
+    assert!(oversized.iter().all(|v| *v == 0.0));
+}
+
+#[test]
+fn callback_lease_renewal_does_not_extend_previously_admitted_chunk() {
+    let now = Instant::now();
+    let (mut gate, mut chunk) = callback_fixture(now);
+    let (mut lease, _, _, _) = fixture();
+    lease.expires_at_utc_ms = 1700;
+    gate.renew(lease, 1100, now + Duration::from_millis(100))
+        .unwrap();
+    let mut out = [1.0; 48];
+    assert_eq!(chunk.fill(&mut out, now + Duration::from_millis(600)), 0);
+    assert_eq!(out, [0.0; 48]);
+}
+
+#[test]
+fn callback_stereo_tail_is_zero_and_foreign_gate_mute_is_isolated() {
+    let now = Instant::now();
+    let (lease, cue, approval, facts) = fixture();
+    let mut gate = MediaGate::new("s", 2);
+    gate.arm(lease, 1000, now).unwrap();
+    let p = proof(&cue, &approval, &facts);
+    gate.enqueue(&p, 1000, now).unwrap();
+    let mut chunk = gate
+        .device_chunk(&p, vec![0.1, -0.1], 48000, 2, 1000, now)
+        .unwrap();
+    let (other, _other_chunk) = callback_fixture(now);
+    other.emergency().mute();
+    let mut out = [1.0; 4];
+    assert_eq!(chunk.fill(&mut out, now), 2);
+    assert_eq!(out, [0.1, -0.1, 0.0, 0.0]);
+}

@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
-import { MediaState, RequestContext, SessionLifecycle, SessionMode, Usage } from "../core/base.js";
+import { MediaState, RequestContext, SessionLifecycle, SessionMode, Usage, UsageLedgerEntry } from "../core/base.js";
 import { BindingSnapshot } from "../core/capability.js";
 import { ContractError } from "../core/error.js";
 import { Approval } from "./agent.js";
@@ -23,6 +23,21 @@ export enum CommandAction {
   CHANGE_MODE = 6,
   APPROVE = 7,
   REJECT = 8,
+  UNRECOGNIZED = -1,
+}
+
+/**
+ * Private spawn-inherited control transport, not a public network protocol.
+ * JSON body bytes use the existing control OpenAPI DTOs; no PCM or video here.
+ */
+export enum LocalControlKind {
+  LOCAL_CONTROL_UNSPECIFIED = 0,
+  LOCAL_CONTROL_BOOTSTRAP = 1,
+  LOCAL_CONTROL_READY = 2,
+  LOCAL_CONTROL_REQUEST = 3,
+  LOCAL_CONTROL_RESPONSE = 4,
+  LOCAL_CONTROL_HEARTBEAT = 5,
+  LOCAL_CONTROL_SHUTDOWN = 6,
   UNRECOGNIZED = -1,
 }
 
@@ -91,6 +106,43 @@ export interface RuntimeObservation {
 export interface RuntimeObservation_BoundedMetricsEntry {
   key: string;
   value: string;
+}
+
+export interface LocalControlFrame {
+  version: number;
+  seq: string;
+  kind: LocalControlKind;
+  requestId: string;
+  method: string;
+  path: string;
+  body: Uint8Array;
+  status: number;
+  bootstrapToken: string;
+  ttlMs: number;
+}
+
+/** Explicit connectivity probe; never carries generated text, PCM or keys. */
+export interface ProviderProbeReport {
+  version: number;
+  providerId: string;
+  capability: string;
+  model: string;
+  voiceRef: string;
+  status: string;
+  errorCode: string;
+  elapsedMs?: string | undefined;
+  sampleRate?: number | undefined;
+  sampleCount?: string | undefined;
+  generatedAtUtcMs: string;
+  usage: UsageLedgerEntry | undefined;
+  invoiceKnown: boolean;
+  playbackAck: boolean;
+}
+
+/** Only presence is visible to the UI. Secret material stays in the native host. */
+export interface ProviderCredentialStatus {
+  version: number;
+  savedProviderIds: string[];
 }
 
 function createBaseControlCommand(): ControlCommand {
@@ -993,6 +1045,475 @@ export const RuntimeObservation_BoundedMetricsEntry: MessageFns<RuntimeObservati
     const message = createBaseRuntimeObservation_BoundedMetricsEntry();
     message.key = object.key ?? "";
     message.value = object.value ?? "";
+    return message;
+  },
+};
+
+function createBaseLocalControlFrame(): LocalControlFrame {
+  return {
+    version: 0,
+    seq: "0",
+    kind: 0,
+    requestId: "",
+    method: "",
+    path: "",
+    body: new Uint8Array(0),
+    status: 0,
+    bootstrapToken: "",
+    ttlMs: 0,
+  };
+}
+
+export const LocalControlFrame: MessageFns<LocalControlFrame> = {
+  encode(message: LocalControlFrame, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.version !== 0) {
+      writer.uint32(8).uint32(message.version);
+    }
+    if (message.seq !== "0") {
+      writer.uint32(16).uint64(message.seq);
+    }
+    if (message.kind !== 0) {
+      writer.uint32(24).int32(message.kind);
+    }
+    if (message.requestId !== "") {
+      writer.uint32(34).string(message.requestId);
+    }
+    if (message.method !== "") {
+      writer.uint32(42).string(message.method);
+    }
+    if (message.path !== "") {
+      writer.uint32(50).string(message.path);
+    }
+    if (message.body.length !== 0) {
+      writer.uint32(58).bytes(message.body);
+    }
+    if (message.status !== 0) {
+      writer.uint32(64).uint32(message.status);
+    }
+    if (message.bootstrapToken !== "") {
+      writer.uint32(74).string(message.bootstrapToken);
+    }
+    if (message.ttlMs !== 0) {
+      writer.uint32(80).uint32(message.ttlMs);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): LocalControlFrame {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseLocalControlFrame();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.version = reader.uint32();
+            continue;
+          }
+          case 2: {
+            if (tag !== 16) {
+              break;
+            }
+
+            message.seq = reader.uint64().toString();
+            continue;
+          }
+          case 3: {
+            if (tag !== 24) {
+              break;
+            }
+
+            message.kind = reader.int32() as any;
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.requestId = reader.string();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.method = reader.string();
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.path = reader.string();
+            continue;
+          }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.body = reader.bytes();
+            continue;
+          }
+          case 8: {
+            if (tag !== 64) {
+              break;
+            }
+
+            message.status = reader.uint32();
+            continue;
+          }
+          case 9: {
+            if (tag !== 74) {
+              break;
+            }
+
+            message.bootstrapToken = reader.string();
+            continue;
+          }
+          case 10: {
+            if (tag !== 80) {
+              break;
+            }
+
+            message.ttlMs = reader.uint32();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<LocalControlFrame>): LocalControlFrame {
+    return LocalControlFrame.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<LocalControlFrame>): LocalControlFrame {
+    const message = createBaseLocalControlFrame();
+    message.version = object.version ?? 0;
+    message.seq = object.seq ?? "0";
+    message.kind = object.kind ?? 0;
+    message.requestId = object.requestId ?? "";
+    message.method = object.method ?? "";
+    message.path = object.path ?? "";
+    message.body = object.body ?? new Uint8Array(0);
+    message.status = object.status ?? 0;
+    message.bootstrapToken = object.bootstrapToken ?? "";
+    message.ttlMs = object.ttlMs ?? 0;
+    return message;
+  },
+};
+
+function createBaseProviderProbeReport(): ProviderProbeReport {
+  return {
+    version: 0,
+    providerId: "",
+    capability: "",
+    model: "",
+    voiceRef: "",
+    status: "",
+    errorCode: "",
+    elapsedMs: undefined,
+    sampleRate: undefined,
+    sampleCount: undefined,
+    generatedAtUtcMs: "0",
+    usage: undefined,
+    invoiceKnown: false,
+    playbackAck: false,
+  };
+}
+
+export const ProviderProbeReport: MessageFns<ProviderProbeReport> = {
+  encode(message: ProviderProbeReport, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.version !== 0) {
+      writer.uint32(8).uint32(message.version);
+    }
+    if (message.providerId !== "") {
+      writer.uint32(18).string(message.providerId);
+    }
+    if (message.capability !== "") {
+      writer.uint32(26).string(message.capability);
+    }
+    if (message.model !== "") {
+      writer.uint32(34).string(message.model);
+    }
+    if (message.voiceRef !== "") {
+      writer.uint32(42).string(message.voiceRef);
+    }
+    if (message.status !== "") {
+      writer.uint32(50).string(message.status);
+    }
+    if (message.errorCode !== "") {
+      writer.uint32(58).string(message.errorCode);
+    }
+    if (message.elapsedMs !== undefined) {
+      writer.uint32(64).uint64(message.elapsedMs);
+    }
+    if (message.sampleRate !== undefined) {
+      writer.uint32(72).uint32(message.sampleRate);
+    }
+    if (message.sampleCount !== undefined) {
+      writer.uint32(80).uint64(message.sampleCount);
+    }
+    if (message.generatedAtUtcMs !== "0") {
+      writer.uint32(88).uint64(message.generatedAtUtcMs);
+    }
+    if (message.usage !== undefined) {
+      UsageLedgerEntry.encode(message.usage, writer.uint32(98).fork()).join();
+    }
+    if (message.invoiceKnown !== false) {
+      writer.uint32(104).bool(message.invoiceKnown);
+    }
+    if (message.playbackAck !== false) {
+      writer.uint32(112).bool(message.playbackAck);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ProviderProbeReport {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseProviderProbeReport();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.version = reader.uint32();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.providerId = reader.string();
+            continue;
+          }
+          case 3: {
+            if (tag !== 26) {
+              break;
+            }
+
+            message.capability = reader.string();
+            continue;
+          }
+          case 4: {
+            if (tag !== 34) {
+              break;
+            }
+
+            message.model = reader.string();
+            continue;
+          }
+          case 5: {
+            if (tag !== 42) {
+              break;
+            }
+
+            message.voiceRef = reader.string();
+            continue;
+          }
+          case 6: {
+            if (tag !== 50) {
+              break;
+            }
+
+            message.status = reader.string();
+            continue;
+          }
+          case 7: {
+            if (tag !== 58) {
+              break;
+            }
+
+            message.errorCode = reader.string();
+            continue;
+          }
+          case 8: {
+            if (tag !== 64) {
+              break;
+            }
+
+            message.elapsedMs = reader.uint64().toString();
+            continue;
+          }
+          case 9: {
+            if (tag !== 72) {
+              break;
+            }
+
+            message.sampleRate = reader.uint32();
+            continue;
+          }
+          case 10: {
+            if (tag !== 80) {
+              break;
+            }
+
+            message.sampleCount = reader.uint64().toString();
+            continue;
+          }
+          case 11: {
+            if (tag !== 88) {
+              break;
+            }
+
+            message.generatedAtUtcMs = reader.uint64().toString();
+            continue;
+          }
+          case 12: {
+            if (tag !== 98) {
+              break;
+            }
+
+            message.usage = UsageLedgerEntry.decode(reader, reader.uint32());
+            continue;
+          }
+          case 13: {
+            if (tag !== 104) {
+              break;
+            }
+
+            message.invoiceKnown = reader.bool();
+            continue;
+          }
+          case 14: {
+            if (tag !== 112) {
+              break;
+            }
+
+            message.playbackAck = reader.bool();
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<ProviderProbeReport>): ProviderProbeReport {
+    return ProviderProbeReport.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ProviderProbeReport>): ProviderProbeReport {
+    const message = createBaseProviderProbeReport();
+    message.version = object.version ?? 0;
+    message.providerId = object.providerId ?? "";
+    message.capability = object.capability ?? "";
+    message.model = object.model ?? "";
+    message.voiceRef = object.voiceRef ?? "";
+    message.status = object.status ?? "";
+    message.errorCode = object.errorCode ?? "";
+    message.elapsedMs = object.elapsedMs ?? undefined;
+    message.sampleRate = object.sampleRate ?? undefined;
+    message.sampleCount = object.sampleCount ?? undefined;
+    message.generatedAtUtcMs = object.generatedAtUtcMs ?? "0";
+    message.usage = (object.usage !== undefined && object.usage !== null)
+      ? UsageLedgerEntry.fromPartial(object.usage)
+      : undefined;
+    message.invoiceKnown = object.invoiceKnown ?? false;
+    message.playbackAck = object.playbackAck ?? false;
+    return message;
+  },
+};
+
+function createBaseProviderCredentialStatus(): ProviderCredentialStatus {
+  return { version: 0, savedProviderIds: [] };
+}
+
+export const ProviderCredentialStatus: MessageFns<ProviderCredentialStatus> = {
+  encode(message: ProviderCredentialStatus, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.version !== 0) {
+      writer.uint32(8).uint32(message.version);
+    }
+    for (const v of message.savedProviderIds) {
+      writer.uint32(18).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ProviderCredentialStatus {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const previousRecursionDepth = (reader as any).__tsProtoDecodeDepth ?? 0;
+    if (previousRecursionDepth >= 100) {
+      throw new globalThis.Error("protobuf decode recursion limit exceeded");
+    }
+    (reader as any).__tsProtoDecodeDepth = previousRecursionDepth + 1;
+    try {
+      const end = length === undefined ? reader.len : reader.pos + length;
+      const message = createBaseProviderCredentialStatus();
+      while (reader.pos < end) {
+        const tag = reader.uint32();
+        switch (tag >>> 3) {
+          case 1: {
+            if (tag !== 8) {
+              break;
+            }
+
+            message.version = reader.uint32();
+            continue;
+          }
+          case 2: {
+            if (tag !== 18) {
+              break;
+            }
+
+            message.savedProviderIds.push(reader.string());
+            continue;
+          }
+        }
+        if ((tag & 7) === 4 || tag === 0) {
+          break;
+        }
+        reader.skip(tag & 7);
+      }
+      return message;
+    } finally {
+      (reader as any).__tsProtoDecodeDepth = previousRecursionDepth;
+    }
+  },
+
+  create(base?: DeepPartial<ProviderCredentialStatus>): ProviderCredentialStatus {
+    return ProviderCredentialStatus.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ProviderCredentialStatus>): ProviderCredentialStatus {
+    const message = createBaseProviderCredentialStatus();
+    message.version = object.version ?? 0;
+    message.savedProviderIds = object.savedProviderIds?.map((e) => e) || [];
     return message;
   },
 };

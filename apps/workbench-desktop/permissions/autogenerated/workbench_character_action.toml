@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workbench-character-action"
+description = "Enables the workbench_character_action command without any pre-configured scope."
+commands.allow = ["workbench_character_action"]
+
+[[permission]]
+identifier = "deny-workbench-character-action"
+description = "Denies the workbench_character_action command without any pre-configured scope."
+commands.deny = ["workbench_character_action"]

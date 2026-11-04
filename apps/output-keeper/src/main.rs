@@ -40,6 +40,37 @@ fn open_frame_reader(session: &str, epoch: u64, fields: &[String]) -> Option<Fra
 
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
+    if args.as_slice() == ["--resident-output"] {
+        let result = nai_output_keeper::local_playback::serve();
+        if let Err(code) = result {
+            eprintln!("resident output: {code}");
+        }
+        process::exit(if result.is_ok() { 0 } else { 2 });
+    }
+    if args.first().map(String::as_str) == Some("--local-playback") {
+        if args.len() != 2 {
+            process::exit(2);
+        }
+        process::exit(
+            if nai_output_keeper::local_playback::run(std::path::Path::new(&args[1])).is_ok() {
+                0
+            } else {
+                2
+            },
+        );
+    }
+    if args.first().map(String::as_str) == Some("--device-smoke") {
+        if args.len() != 3 {
+            eprintln!("Usage: nai-output-keeper --device-smoke <report.pb> <expire|mute|stall>");
+            process::exit(2);
+        }
+        let Some(scenario) = nai_output_keeper::device_smoke::Scenario::parse(&args[2]) else {
+            eprintln!("invalid explicit device smoke scenario");
+            process::exit(2);
+        };
+        let result = nai_output_keeper::device_smoke::run(std::path::Path::new(&args[1]), scenario);
+        process::exit(if matches!(result, Ok(true)) { 0 } else { 2 });
+    }
     let frame_drill = args.get(3).map(String::as_str) == Some("--frame-drill");
     let fail = |message: &str| -> ! {
         if !frame_drill {

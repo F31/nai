@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "bdb1dfad-b6d3-4a73-bfa9-506236c20f02",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "E:\\projects\\nai\\.archify\\architecture-v48-boundaries-20261023-180435\\candidate.json",
+  "output": "E:\\projects\\nai\\docs\\whitepaper\\diagrams\\01-process-boundaries.html",
+  "specification": {
+    "sha256": "170215bf48397f1a7a84d01af95c29b1c5c9b505414c17ee4e9ab6017f3d729c",
+    "bytes": 4552
+  },
+  "artifact": {
+    "sha256": "989408589e4815d72aa47d36b3b6ff83b120794b291b1abc6e5666ac23c85118",
+    "bytes": 829586
+  }
+}

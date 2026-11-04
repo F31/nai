@@ -14,7 +14,7 @@
 use nai_contracts::v1::{FrameMetadata, FrameSlotTicket};
 #[cfg(target_os = "linux")]
 use nai_contracts::v1::{FrameSlotEvent, frame_slot_event::Event};
-use nai_control_api::{Access, ControlApi, JobBackend, serve};
+use nai_control_api::{Access, ControlApi, JobBackend, PreflightSurface, serve};
 #[cfg(target_os = "linux")]
 use nai_media_core::frame_slots::broker::PeerIdentity;
 use nai_media_core::frame_slots::{
@@ -43,16 +43,22 @@ use std::{
 };
 use tokio::{net::TcpListener, sync::watch};
 
+pub mod local_control;
+mod local_playback;
+pub mod operator;
 pub mod pipeline;
+pub mod preflight;
+mod provider_probe;
+mod provider_routes;
 
 pub const USAGE: &str = "Usage: nai-engine --data-root <dir> --workspace <id> --actor <id> --profile <name> \
 --token-file <path> [--control-port <port>] [--halt-file <path>] \
 [--keeper <path> --render-worker <path>] \
-[--provision <runtime-profile.json>] \
+[--provision <runtime-profile.json>] [--preflight <scene.json> [--preflight-connectivity]] [--operator-config <manual-session.json>] \
 [--media-drill --pcm <path> --avatar <manifest> --avatar-config <config> --asset <id=path> --license <id> \
 [--slot-bytes <bytes>] [--time-base-den <n>]] \
 [--event-file <script.json> --rehearsal-provider [--inject <none|knowledge|guard|generate|speech|storage>]]; \
-real devices, production IPC and real provider transport unavailable";
+ real devices unavailable; --control-stdio uses private inherited control instead of HTTP";
 
 /// Control-surface permissions of the local operator credential.
 ///
@@ -67,6 +73,7 @@ const CONTROL_PERMISSIONS: &[&str] = &[
     "session.takeover",
     "approval.read",
     "approval.write",
+    "media.prepare",
     // §42.3/§42.4 记忆面。单独成权是为了可以**只**吊销记忆访问而不连带会话读取。
     "memory.read",
     "memory.forget",
@@ -75,8 +82,34 @@ const CONTROL_PERMISSIONS: &[&str] = &[
     // 「实现了」与「本进程能调到」是两件事，这里补的是后者。
     "runtime.upgrade",
     "job.read",
+    "event.manual.write",
+    "knowledge.publish",
 ];
 const CONTROL_TTL: Duration = Duration::from_secs(3600);
+/// Absolute path of the persisted preflight report under a data root. The
+/// control surface reads exactly this one file; the path is derived here so
+/// the preflight writer (`preflight.rs`) and the control reader cannot drift.
+fn preflight_report_path(data_root: &Path) -> PathBuf {
+    data_root
+        .join("operator-artifacts")
+        .join(preflight::REPORT_NAME)
+}
+
+/// Read-only preflight report reader bound to the engine's data root. Missing
+/// report or unreadable report is `CapabilityNotReady`, never a fabricated
+/// empty pass.
+struct FilePreflight {
+    path: PathBuf,
+}
+impl PreflightSurface for FilePreflight {
+    fn report(&self) -> Result<serde_json::Value, nai_contracts::v1::ErrorCode> {
+        match preflight::read_report(&self.path) {
+            Ok(Some(report)) => Ok(report),
+            Ok(None) => Err(nai_contracts::v1::ErrorCode::CapabilityNotReady),
+            Err(_) => Err(nai_contracts::v1::ErrorCode::CapabilityNotReady),
+        }
+    }
+}
 const PRODUCER: &str = "render-1";
 const CONSUMER: &str = "keeper-1";
 const AVATAR_TIMEOUT: Duration = Duration::from_secs(15);
@@ -104,8 +137,20 @@ pub struct Config {
     /// Trusted-owner provisioning: create the workspace, grant the runtime
     /// permissions, store this runtime profile, then exit. Never a model path.
     pub provision: Option<PathBuf>,
+    pub publish_knowledge: Option<PathBuf>,
+    pub operator_config: Option<PathBuf>,
     pub token_file: PathBuf,
     pub control_port: u16,
+    pub control_stdio: bool,
+    /// One-key local preflight: validate the demo scene and its 2D closure,
+    /// report axes, persist the report, then exit. Never provisions, starts a
+    /// session or a server.
+    pub preflight: Option<PathBuf>,
+    /// Run the bounded, live, credentialed connectivity probe as part of the
+    /// preflight. Off by default; a preflight without credentials still reports
+    /// `not_ready` for connectivity rather than silently skipping it.
+    pub preflight_connectivity: bool,
+    pub preflight_provider: Option<String>,
     /// Explicit graceful-halt request path. `tokio::signal` needs
     /// `signal-hook-registry`, which the offline cache does not carry, and an
     /// `unsafe` handler is forbidden: the trusted owner stops the engine through
@@ -144,8 +189,14 @@ pub fn parse(args: &[String]) -> Result<Config, String> {
         actor: String::new(),
         profile: String::new(),
         provision: None,
+        publish_knowledge: None,
+        operator_config: None,
         token_file: PathBuf::new(),
         control_port: 0,
+        control_stdio: false,
+        preflight: None,
+        preflight_connectivity: false,
+        preflight_provider: None,
         halt_file: None,
         keeper: None,
         render_worker: None,
@@ -172,8 +223,20 @@ pub fn parse(args: &[String]) -> Result<Config, String> {
             "--actor" => config.actor = take("--actor")?,
             "--profile" => config.profile = take("--profile")?,
             "--provision" => config.provision = Some(PathBuf::from(take("--provision")?)),
+            "--publish-knowledge" => {
+                config.publish_knowledge = Some(PathBuf::from(take("--publish-knowledge")?))
+            }
+            "--preflight" => config.preflight = Some(PathBuf::from(take("--preflight")?)),
+            "--preflight-connectivity" => config.preflight_connectivity = true,
+            "--preflight-provider" => {
+                config.preflight_provider = Some(take("--preflight-provider")?)
+            }
+            "--operator-config" => {
+                config.operator_config = Some(PathBuf::from(take("--operator-config")?))
+            }
             "--token-file" => config.token_file = PathBuf::from(take("--token-file")?),
             "--control-port" => port_text = Some(take("--control-port")?),
+            "--control-stdio" => config.control_stdio = true,
             "--halt-file" => config.halt_file = Some(PathBuf::from(take("--halt-file")?)),
             "--keeper" => config.keeper = Some(PathBuf::from(take("--keeper")?)),
             "--render-worker" => {
@@ -212,7 +275,12 @@ pub fn parse(args: &[String]) -> Result<Config, String> {
     {
         return Err("--data-root, --workspace, --actor and --profile are required".into());
     }
-    if config.provision.is_none() && config.token_file.as_os_str().is_empty() {
+    if config.provision.is_none()
+        && config.publish_knowledge.is_none()
+        && config.preflight.is_none()
+        && !config.control_stdio
+        && config.token_file.as_os_str().is_empty()
+    {
         return Err("--token-file is required unless --provision is given".into());
     }
     config.control_port = match port_text {
@@ -221,6 +289,18 @@ pub fn parse(args: &[String]) -> Result<Config, String> {
             .map_err(|_| "--control-port must be a port number".to_string())?,
         None => 0,
     };
+    if config.control_stdio
+        && (!config.token_file.as_os_str().is_empty()
+            || config.control_port != 0
+            || config.provision.is_some()
+            || config.publish_knowledge.is_some()
+            || config.preflight.is_some()
+            || config.event_file.is_some())
+    {
+        return Err(
+            "--control-stdio cannot combine with token/port/provision/preflight/event modes".into(),
+        );
+    }
     if config.keeper.is_some() != config.render_worker.is_some() {
         return Err("--keeper and --render-worker must be given together".into());
     }
@@ -266,6 +346,16 @@ pub fn parse(args: &[String]) -> Result<Config, String> {
     if config.injection != pipeline::Injection::None && config.event_file.is_none() {
         return Err("--inject is only available with --event-file".into());
     }
+    if config.preflight_provider.is_some()
+        && (config.preflight.is_none() || !config.preflight_connectivity)
+    {
+        return Err(
+            "--preflight-provider requires --preflight and --preflight-connectivity".into(),
+        );
+    }
+    if config.preflight_connectivity && config.preflight.is_none() {
+        return Err("--preflight-connectivity requires --preflight".into());
+    }
     Ok(config)
 }
 
@@ -305,6 +395,48 @@ pub fn read_token(path: &Path) -> Result<String, String> {
 /// Assembles the runtime, starts the loopback control surface and supervises the
 /// media children until an explicit halt request.
 pub async fn run(config: Config) -> Result<(), String> {
+    if config.preflight.is_some()
+        && (config.operator_config.is_some()
+            || config.provision.is_some()
+            || config.media_drill.is_some()
+            || config.event_file.is_some())
+    {
+        return Err(
+            "--preflight cannot be combined with --operator-config/--provision/media/event modes"
+                .into(),
+        );
+    }
+    if let Some(path) = config.publish_knowledge.as_deref() {
+        if config.provision.is_some()
+            || config.operator_config.is_some()
+            || config.preflight.is_some()
+            || config.event_file.is_some()
+            || config.media_drill.is_some()
+            || !config.token_file.as_os_str().is_empty()
+        {
+            return Err("knowledge publication cannot combine with runtime modes".into());
+        }
+        let loaded = operator::load(path)?;
+        let operation =
+            nai_storage::Operation::new(BRINGUP_OPERATION).map_err(|e| e.to_string())?;
+        let mut store = nai_storage::Store::open(
+            DataPaths::at(&config.data_root).map_err(|e| e.to_string())?,
+            &operation,
+        )
+        .map_err(|e| e.to_string())?;
+        // Existing owner permissions are checked by every storage operation.
+        operator::publish_knowledge(&mut store, &config.workspace, &config.actor, &loaded.config)?;
+        println!("nai-engine knowledge published");
+        return Ok(());
+    }
+    if let Some(scene) = config.preflight.as_deref() {
+        return run_preflight(&config, scene).await;
+    }
+    if config.operator_config.is_some()
+        && (config.event_file.is_some() || config.media_drill.is_some())
+    {
+        return Err("operator mode cannot be combined with rehearsal/media drills".into());
+    }
     if let Some(profile_file) = config.provision.as_deref() {
         provision(&config, profile_file)?;
         println!(
@@ -314,7 +446,15 @@ pub async fn run(config: Config) -> Result<(), String> {
         io::stdout().flush().map_err(|error| error.to_string())?;
         return Ok(());
     }
-    let token = read_token(&config.token_file)?;
+    let inherited = if config.control_stdio {
+        Some(local_control::InheritedControl::accept().await?)
+    } else {
+        None
+    };
+    let token = match &inherited {
+        Some(control) => control.token.clone(),
+        None => read_token(&config.token_file)?,
+    };
     let access = Arc::new(
         Access::new(&token, "local-operator", CONTROL_PERMISSIONS, CONTROL_TTL)
             .map_err(|error| error.to_string())?,
@@ -334,30 +474,52 @@ pub async fn run(config: Config) -> Result<(), String> {
     // 不是一个复制品——复制品会让「刚写进去的那一步」看不见。
     let jobs = Arc::new(JobBackend::new(composition.store().clone()));
     let shared = Arc::new(Mutex::new(composition));
+    let stop = Arc::new(AtomicBool::new(false));
     // §42.3/§42.4 记忆面接线：控制面拿到的后端就是这个装配根本身。
     // 策略由装配点给定（本轮无配置项，用默认：观众长期记忆**默认关闭**）。
     let memory = Arc::new(MemoryAdapter::with_default_policy(shared.clone()));
-    let api = Arc::new(
-        ControlApi::with_shared_session(
-            shared_session,
-            emergency.clone(),
-            access.clone(),
-            Some(approvals),
-        )
-        .map_err(|error| format!("control surface rejected: {error}"))?
-        .with_jobs(jobs)
-        .with_memory(memory),
-    );
-    let listener = TcpListener::bind(("127.0.0.1", config.control_port))
-        .await
-        .map_err(|error| format!("control listener failed: {error}"))?;
-    let address = listener.local_addr().map_err(|error| error.to_string())?;
-    println!("nai-engine control: http://{address}/api/v1");
-    io::stdout().flush().map_err(|error| error.to_string())?;
+    let mut api = ControlApi::with_shared_session(
+        shared_session,
+        emergency.clone(),
+        access.clone(),
+        Some(approvals),
+    )
+    .map_err(|error| format!("control surface rejected: {error}"))?
+    .with_jobs(jobs)
+    .with_memory(memory);
+    if let Some(path) = &config.operator_config {
+        let lane = Arc::new(operator::OperatorLane::new(
+            shared.clone(),
+            operator::load(path)?,
+            stop.clone(),
+            config.data_root.join("operator-artifacts"),
+        )?);
+        api = api.with_manual_events(lane.clone()).with_previews(lane);
+    }
+    // The control surface reads back the latest one-key preflight report.
+    // Only the engine knows the data root; the surface is a plain function
+    // over the persisted file, never a fabricated empty pass.
+    let preflight = Arc::new(FilePreflight {
+        path: preflight_report_path(&config.data_root),
+    });
+    let api = Arc::new(api.with_preflight(preflight));
 
-    let stop = Arc::new(AtomicBool::new(false));
     let (stop_tx, stop_rx) = watch::channel(false);
-    let server = tokio::spawn(async move { serve(listener, api, stop_rx).await });
+    let mut server = if let Some(inherited) = inherited {
+        tokio::spawn(async move { inherited.serve(api).await })
+    } else {
+        let listener = TcpListener::bind(("127.0.0.1", config.control_port))
+            .await
+            .map_err(|error| format!("control listener failed: {error}"))?;
+        let address = listener.local_addr().map_err(|error| error.to_string())?;
+        println!("nai-engine control: http://{address}/api/v1");
+        io::stdout().flush().map_err(|error| error.to_string())?;
+        tokio::spawn(async move {
+            serve(listener, api, stop_rx)
+                .await
+                .map_err(|error| error.to_string())
+        })
+    };
     let supervision = match (&config.keeper, &config.render_worker) {
         (Some(keeper), Some(render_worker)) => {
             let binaries = Binaries {
@@ -390,7 +552,17 @@ pub async fn run(config: Config) -> Result<(), String> {
         pipeline::run(&shared, &pipeline_config)?;
     }
 
-    wait_for_halt(config.halt_file.as_deref()).await;
+    let server_finished = tokio::select! {
+        result = &mut server => {
+            match result {
+                Ok(Ok(())) => {}
+                Ok(Err(error)) => eprintln!("nai-engine control stopped: {error}"),
+                Err(error) => eprintln!("nai-engine control task failed: {error}"),
+            }
+            true
+        }
+        () = wait_for_halt(config.halt_file.as_deref()) => false,
+    };
     access.revoke();
     // P0 does not wait for composition/storage/logging during shutdown.
     emergency.mute();
@@ -398,9 +570,52 @@ pub async fn run(config: Config) -> Result<(), String> {
     halt(&shared);
     stop.store(true, Ordering::Release);
     let _ = stop_tx.send(true);
-    let _ = server.await;
+    if !server_finished {
+        server.abort();
+        let _ = server.await;
+    }
     if let Some(handle) = supervision {
         let _ = handle.join();
+    }
+    Ok(())
+}
+
+/// One-key local preflight. Read-only validation of the demo scene and its 2D
+/// closure; writes the report atomically, prints a per-axis summary and answers
+/// non-zero when any axis is `not_ready`/`failed` (refuse on uncertainty).
+async fn run_preflight(config: &Config, scene: &Path) -> Result<(), String> {
+    if let Some(id) = &config.preflight_provider {
+        return provider_probe::run(scene, id, &config.data_root).await;
+    }
+    let report = preflight::run_scene(scene, config.preflight_connectivity).await;
+    preflight::write_report(&config.data_root, &report)?;
+    for check in &report.checks {
+        let marker = match check.status.as_str() {
+            "passed" => "PASS ".into(),
+            other => format!("{other:>9}"),
+        };
+        println!("preflight.{:<14} {} {}", check.name, marker, check.reason);
+    }
+    let overall = report.checks.iter().all(|check| check.is_pass());
+    println!(
+        "preflight overall {} (playback_ack=false; 未播放、未接设备)",
+        if overall { "pass" } else { "refused" }
+    );
+    if !overall {
+        let reasons: Vec<&str> = report
+            .checks
+            .iter()
+            .filter(|c| !c.is_pass())
+            .map(|c| c.name.as_str())
+            .collect();
+        return Err(format!(
+            "preflight refused: {}",
+            if reasons.is_empty() {
+                "unknown".into()
+            } else {
+                reasons.join(", ")
+            }
+        ));
     }
     Ok(())
 }
@@ -414,6 +629,11 @@ fn provision(config: &Config, profile_file: &Path) -> Result<(), String> {
         .map_err(|error| format!("runtime profile unreadable: {error}"))?;
     let profile: Value = serde_json::from_str(&raw)
         .map_err(|error| format!("runtime profile is not JSON: {error}"))?;
+    let operator_config = config
+        .operator_config
+        .as_deref()
+        .map(operator::load)
+        .transpose()?;
     // Provisioning opens the store, which runs the whole migration chain on a
     // fresh data root, so it takes the bring-up budget rather than the per-call
     // one. The elapsed time is part of the failure text: a bare deadline tells
@@ -461,6 +681,14 @@ fn provision(config: &Config, profile_file: &Path) -> Result<(), String> {
             0,
         )
         .map_err(|error| format!("runtime profile rejected: {error}"))?;
+    if let Some(operator_config) = operator_config {
+        operator::provision(
+            &mut store,
+            &config.workspace,
+            &config.actor,
+            &operator_config.config,
+        )?;
+    }
     Ok(())
 }
 

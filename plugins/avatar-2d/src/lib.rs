@@ -1,6 +1,7 @@
 //! Bounded software RGBA renderer. This is an embeddable core, not a device or
 //! host capability registration. Root supplies immutable assets and independent
 //! license grants; keeper must still gate frames before any external output.
+pub mod package_builder;
 use nai_contracts::{
     candidate_hash,
     v1::{ContractError, ErrorCode, FrameMetadata, PerformanceCue},
@@ -299,6 +300,33 @@ impl Avatar {
         })
     }
 
+    /// Silent neutral material only: never accepts text or grants a speech cue.
+    pub fn standby(&self, ctx: &PluginContext, grants: &LicenseGrants) -> Result<StandbyFrame> {
+        ctx.check()?;
+        if !self.licenses.is_subset(grants) {
+            return Err(error(ErrorCode::PermissionDenied, "avatar license revoked"));
+        }
+        let mut rgba = copy_bytes(&self.base.pixels)?;
+        let layer = &self.closed.layer;
+        for y in 0..layer.height {
+            ctx.check()?;
+            for x in 0..layer.width {
+                let src = ((y * layer.width + x) * 4) as usize;
+                let dst = (((y + layer.y) * self.width + x + layer.x) * 4) as usize;
+                let pixel = self.closed.pixels[src..src + 4]
+                    .try_into()
+                    .map_err(|_| invalid("standby pixel missing"))?;
+                blend(&mut rgba[dst..dst + 4], pixel);
+            }
+        }
+        ctx.check()?;
+        Ok(StandbyFrame {
+            width: self.width,
+            height: self.height,
+            rgba,
+        })
+    }
+
     pub fn stream(
         self: &Arc<Self>,
         ctx: &PluginContext,
@@ -348,6 +376,13 @@ impl Avatar {
             revoked: false,
         })
     }
+}
+
+/// Owned, licensed closed-mouth pixels; no speech/approval/completion metadata.
+pub struct StandbyFrame {
+    pub width: u32,
+    pub height: u32,
+    pub rgba: Vec<u8>,
 }
 
 pub struct RenderedFrame {

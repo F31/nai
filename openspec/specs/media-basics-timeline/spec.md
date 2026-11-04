@@ -78,3 +78,36 @@
 #### Scenario: Audio only is not committable
 - **WHEN** 音频水位已满足但首批视频帧未达水位
 - **THEN** 不提交，保持等待（或按持续迟到策略取消/降级），不声明播放完成
+
+### Requirement: Revocable bounded callback audio
+系统 SHALL 只从完整 Preplay 复检及有序消费创建有界音频回调对象；回调 SHALL 独立检查 P0、代次与单调期限，不依赖控制线程轮询，且不得生成设备完成 ACK。
+
+#### Scenario: Control thread stalls or owner disappears
+- **WHEN** 控制线程停止续租、门控对象析构、换代或 P0 撤权
+- **THEN** 旧回调输出静音，且不会因重签租约恢复
+
+#### Scenario: Invalid audio or oversized callback
+- **WHEN** PCM 非有限、越界、超预算或目标缓冲超过 10ms
+- **THEN** 拒绝准入或清零输出，不将复制样本记为实际播放完成
+
+### Requirement: Explicit native device smoke
+系统 SHALL 只在显式设备演练入口打开本机音频和窗口，记录实际回调与窗口更新结果；缺设备或格式不支持 SHALL 明确拒绝，不生成设备完成 ACK。
+
+#### Scenario: Native callback survives stalled window thread
+- **WHEN** Windows 演练中主线程暂停超过600ms
+- **THEN** 音频回调独立静音，报告观察到的零输出，不把窗口或回调提交当硬件完成
+
+#### Scenario: Emergency mute or device unavailable
+- **WHEN** P0 静音发生或输出设备不可用
+- **THEN** 回调清零或报告具名不可用，失败不得保留旧成功报告
+
+### Requirement: Isolated approved local media delivery
+系统 SHALL 将有界原始媒体与Protobuf授权分离，输出端复检session/epoch/批准哈希/事实/租约；失联600ms内音频静音，不生成硬件完成ACK。
+
+#### Scenario: Root stops renewing
+- **WHEN** 根进程退出、EOF或停止续租
+- **THEN** keeper独立撤权，不恢复旧音频块，退出或保持静音
+
+#### Scenario: Tampered media or proof
+- **WHEN** 文件长度/哈希、候选或审批绑定不符
+- **THEN** 拒绝播放且报告明确失败

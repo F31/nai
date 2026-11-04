@@ -667,7 +667,7 @@ impl Store {
         // but the operator has to approve what would actually be broadcast.
         tx.execute(
             &format!(
-                "INSERT INTO utterances(utterance_id,workspace_id,session_id,generation_epoch,status,text_hash,expires_at_ms,actual_played,display_text) VALUES(?1,?2,?3,?4,{},?5,?6,0,?7)",
+                "INSERT INTO utterances(utterance_id,workspace_id,session_id,generation_epoch,status,text_hash,expires_at_ms,actual_played,display_text,cue_blob) VALUES(?1,?2,?3,?4,{},?5,?6,0,?7,?8)",
                 STATUS_PENDING
             ),
             params![
@@ -677,7 +677,8 @@ impl Store {
                 epoch,
                 candidate_hash,
                 sql_int(cue.expires_at_utc_ms)?,
-                cue.display_text
+                cue.display_text,
+                cue.encode_to_vec()
             ],
         )?;
         for (index, (product, field, revision)) in dependencies.iter().enumerate() {
@@ -699,6 +700,70 @@ impl Store {
         op.check()?;
         tx.commit()?;
         Ok(candidate_hash)
+    }
+
+    /// The exact validated cue recorded for an approved candidate.
+    ///
+    /// A hash alone is not enough to synthesize or render: the cue also carries
+    /// the evidence references, utterance identity and expiry that the hash
+    /// covers. Recomputing the hash from the stored blob is the only way to
+    /// prove the text about to be spoken is the text that was approved.
+    pub fn read_candidate_cue(
+        &self,
+        op: &Operation,
+        workspace: &str,
+        actor: &str,
+        session: &str,
+        epoch: u64,
+        candidate: &str,
+    ) -> Result<PerformanceCue> {
+        self.start(op)?;
+        id(candidate)?;
+        access(&self.conn, workspace, actor, "approval.read", "*")?;
+        let blob: Option<Vec<u8>> = self
+            .conn
+            .query_row(
+                &format!(
+                    "SELECT u.cue_blob FROM utterances u JOIN sessions s ON s.session_id=u.session_id \
+                     WHERE u.workspace_id=?1 AND u.session_id=?2 AND u.generation_epoch=?3 \
+                       AND s.generation_epoch=u.generation_epoch AND u.text_hash=?4 \
+                       AND u.expires_at_ms>?5 AND u.status IN({})",
+                    usable_guard()
+                ),
+                params![
+                    workspace,
+                    session,
+                    sql_int(epoch)?,
+                    candidate,
+                    utc_ms()?
+                ],
+                |row| row.get(0),
+            )
+            .optional()?
+            .flatten();
+        let Some(blob) = blob else {
+            return Err(error(
+                ErrorCode::CapabilityNotReady,
+                "candidate predates stored cue or is no longer usable",
+            ));
+        };
+        let cue = PerformanceCue::decode(blob.as_slice()).map_err(|_| {
+            error(
+                ErrorCode::InvalidArgument,
+                "stored candidate cue is corrupt",
+            )
+        })?;
+        if cue.session_id != session
+            || cue.generation_epoch != epoch
+            || candidate_hash(&cue) != candidate
+        {
+            return Err(error(
+                ErrorCode::InvalidArgument,
+                "stored candidate cue does not match its hash",
+            ));
+        }
+        op.check()?;
+        Ok(cue)
     }
 
     /// §42.2: persists one **already judged** memory record.
@@ -1007,6 +1072,37 @@ impl Store {
             return Err(error(ErrorCode::Conflict, "candidate already approved"));
         }
         let mut approval = input.clone();
+        // The approved canonical cue includes fact versions. Capture that
+        // exact scope at approval time, rather than inventing it at playback.
+        let cue_blob: Option<Vec<u8>> = self.conn.query_row(
+            "SELECT cue_blob FROM utterances WHERE workspace_id=?1 AND session_id=?2 AND text_hash=?3",
+            params![workspace, input.session_id, input.candidate_hash], |r| r.get(0),
+        )?;
+        if let Some(blob) = cue_blob {
+            let cue = PerformanceCue::decode(blob.as_slice())
+                .map_err(|_| error(ErrorCode::InvalidArgument, "candidate cue corrupt"))?;
+            if candidate_hash(&cue) != input.candidate_hash {
+                return Err(error(
+                    ErrorCode::PermissionDenied,
+                    "approval cue hash mismatch",
+                ));
+            }
+            let facts: Vec<_> = cue
+                .fact_versions
+                .iter()
+                .map(|(object_id, revision)| nai_contracts::v1::RevisionRef {
+                    object_id: object_id.clone(),
+                    revision: revision.clone(),
+                })
+                .collect();
+            if !approval.fact_versions.is_empty() && approval.fact_versions != facts {
+                return Err(error(
+                    ErrorCode::PermissionDenied,
+                    "approval facts mismatch",
+                ));
+            }
+            approval.fact_versions = facts;
+        }
         approval.actor_id = actor.into();
         approval.actor_role = "approver".into();
         approval.revoked_at_utc_ms = None;
@@ -1192,6 +1288,52 @@ impl Store {
         op.check()?;
         Ok(record)
     }
+    /// Read the persisted approval, never reconstruct its actor/fact scope from
+    /// a cue. Current permissions, facts and revocation must still be valid.
+    pub fn read_approval_proof(
+        &self,
+        op: &Operation,
+        workspace: &str,
+        actor: &str,
+        session: &str,
+        epoch: u64,
+        candidate: &str,
+    ) -> Result<Approval> {
+        let row = self.read_approval(op, workspace, actor, session, epoch, candidate)?;
+        let approval_id = row
+            .approval_id
+            .ok_or_else(|| error(ErrorCode::PermissionDenied, "candidate not approved"))?;
+        if !self.approval_valid(op, workspace, session, epoch, candidate)? {
+            return Err(error(
+                ErrorCode::PermissionDenied,
+                "approval no longer valid",
+            ));
+        }
+        let (blob, saved_actor, saved_scope, saved_expiry): (Vec<u8>, String, String, i64) = self.conn.query_row(
+            "SELECT approval_proto,actor_id,action_scope,expires_at_ms FROM approvals WHERE workspace_id=?1 AND approval_id=?2 AND length(approval_proto)<=65536 AND revoked_at_ms IS NULL",
+            params![workspace, approval_id], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?)),
+        )?;
+        let proof = Approval::decode(blob.as_slice())
+            .map_err(|_| error(ErrorCode::InvalidArgument, "approval proof corrupt"))?;
+        if proof.approval_id != approval_id
+            || proof.session_id != session
+            || proof.generation_epoch != epoch
+            || proof.candidate_hash != candidate
+            || proof.actor_id != saved_actor
+            || proof.action_scope != saved_scope
+            || sql_int(proof.expires_at_utc_ms)? != saved_expiry
+            || proof.revoked_at_utc_ms.is_some()
+            || sql_int(proof.expires_at_utc_ms)? <= utc_ms()?
+        {
+            return Err(error(
+                ErrorCode::PermissionDenied,
+                "approval proof mismatch",
+            ));
+        }
+        op.check()?;
+        Ok(proof)
+    }
+
     /// Reject an awaiting candidate: actor needs approval.write; approved
     /// candidates are refused; the candidate is moved to Blocked and auditing
     /// and decision-log evidence are recorded. Returns the Blocked state.

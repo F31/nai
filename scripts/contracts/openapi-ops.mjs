@@ -83,6 +83,7 @@ export const OPENAPI_EXTENSIONS = ['.yaml', '.yml'];
 /// 每份文档的已实现表被 `operationErrors` **反查**——表里的一条改名/删端点会变成一条
 /// **只有声明、没有对象**的契约，且零信号。
 export const OPENAPI_DOCUMENTS = {
+  'schemas/openapi/workbench.yaml':{status:'contract-only',implemented:[]},
   'schemas/openapi/control.yaml': {
     status: 'partial-loopback-engineering',
     implemented: [
@@ -91,6 +92,15 @@ export const OPENAPI_DOCUMENTS = {
       'get /sessions/{id}',
       'post /sessions/{id}/mute',
       'post /sessions/{id}/takeover',
+      'post /sessions/{id}/manual-events',
+      'post /sessions/{id}/knowledge',
+      'get /sessions/{id}/events',
+      'get /sessions/{id}/previews',
+      'post /sessions/{id}/previews',
+      'post /sessions/{id}/output-prewarm',
+      'get /sessions/{id}/program',
+      'post /sessions/{id}/program',
+      'get /sessions/{id}/preflight',
       'get /approvals',
       'post /approvals/{id}/approve',
       'post /approvals/{id}/reject',

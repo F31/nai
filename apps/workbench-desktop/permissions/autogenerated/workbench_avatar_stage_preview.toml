@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workbench-avatar-stage-preview"
+description = "Enables the workbench_avatar_stage_preview command without any pre-configured scope."
+commands.allow = ["workbench_avatar_stage_preview"]
+
+[[permission]]
+identifier = "deny-workbench-avatar-stage-preview"
+description = "Denies the workbench_avatar_stage_preview command without any pre-configured scope."
+commands.deny = ["workbench_avatar_stage_preview"]

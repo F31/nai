@@ -1,0 +1,4 @@
+[[permission]]
+identifier="allow-public-output-standby"
+description="Manage only the fixed public standby child; no page-supplied paths, tokens, text or media. Priority stop is independent of business locks."
+commands.allow=["workbench_public_open","workbench_public_poll","workbench_public_stop","workbench_public_close","workbench_obs_observe"]

@@ -1,0 +1,254 @@
+syntax = "proto3";
+package nai.workbench.v1;
+import "workbench/bootstrap.proto";
+
+enum FoundationRole { FOUNDATION_ROLE_NONE=0; FOUNDATION_ROLE_ADMIN=1; FOUNDATION_ROLE_OPERATOR=2; FOUNDATION_ROLE_VIEWER=3; }
+enum FoundationTarget { FOUNDATION_TARGET_UNSPECIFIED=0; FOUNDATION_TARGET_PRIVATE_CARD=1; }
+// Explicit budget semantics for the shared-catalog/workspace-settings slice.
+// UNSPECIFIED must never grant unlimited spending; legacy zero stays disabled.
+enum WorkspaceBudgetMode { WORKSPACE_BUDGET_MODE_UNSPECIFIED=0; WORKSPACE_BUDGET_MODE_DISABLED=1; WORKSPACE_BUDGET_MODE_LIMITED=2; WORKSPACE_BUDGET_MODE_UNLIMITED=3; }
+message WorkspaceSettingsDraft { string name=1; WorkspaceBudgetMode budget_mode=2; uint64 budget_limit_minor=3; string currency=4; uint64 expected_revision=5; }
+// Trusted migration mapping; never accepts a page-supplied credential scope.
+message WorkspaceSettingsCommand { string workspace_id=1; WorkspaceSettingsDraft settings=2; }
+message SharedModelMigrationEntry { string catalog_model_id=1; string source_workspace_id=2; string source_model_id=3; uint64 source_revision=4; string source_sha256=5; string capability=6; }
+message SharedModelPreviewRow { SharedModelMigrationEntry source=1; string name=2; string workspace_name=3; bool recycled=4; bool credential_saved=5; repeated string issues=6; }
+message SharedModelPreview { repeated SharedModelPreviewRow rows=1; string plan_sha256=2; bool executable=3; }
+message SharedModelMigration { string migration_id=1; string plan_sha256=2; repeated SharedModelMigrationEntry entries=3; }
+message SharedModelMigrationStatus { string migration_id=1; string stage=2; uint32 completed=3; uint32 total=4; string backup_id=5; string backup_manifest_sha256=6; SharedModelMigration request=7; }
+message WorkspacePurgeRead { string workspace_id=1; uint64 expected_revision=2; }
+message WorkspacePurgeCommand { string workspace_id=1; uint64 expected_revision=2; string plan_sha256=3; bool acknowledge=4; }
+message WorkspacePurgeCount { string kind=1; uint64 count=2; }
+message WorkspacePurgePlan { string workspace_id=1; uint64 revision=2; string plan_sha256=3; repeated WorkspacePurgeCount counts=4; repeated string blockers=5; uint64 retained_audit_records=6; uint64 retained_budget_records=7; uint32 file_count=8; string name=9; }
+message WorkspacePurgeStatus { string workspace_id=1; bool deleted=2; uint32 pending_files=3; bool cleanup_blocked=4; }
+message FoundationWorkspace { string workspace_id=1; string name=2; uint64 budget_limit_minor=3; string currency=4; }
+enum WorkspaceAction { WORKSPACE_ACTION_INSPECT=0; WORKSPACE_ACTION_DELETE_EMPTY=1; WORKSPACE_ACTION_RECYCLE=2; WORKSPACE_ACTION_RESTORE=3; }
+message FoundationWorkspaceLifecycle { string workspace_id=1; uint64 expected_revision=2; WorkspaceAction action=3; }
+message FoundationWorkspaceRename { string workspace_id=1; string name=2; uint64 expected_revision=3; }
+message FoundationGrant { string workspace_id=1; string principal_id=2; FoundationRole role=3; uint64 expected_revision=4; }
+// Proposed avatar authority metadata. Not a command, grant, rights proof, or
+// public media permit until trusted owner admission and authorization are wired.
+message AvatarBindingIdentity {
+ string workspace_id=1;
+ string profile_id=2;
+ string package_sha256=3;
+ string rights_sha256=4;
+}
+enum AvatarRightsState {
+ AVATAR_RIGHTS_STATE_UNSPECIFIED=0;
+ AVATAR_RIGHTS_STATE_ACTIVE=1;
+ AVATAR_RIGHTS_STATE_REVOKED=2;
+}
+message AvatarBindingMutation {
+ AvatarBindingIdentity identity=1;
+ uint64 expected_revision=2;
+}
+message AvatarBindingView {
+ AvatarBindingIdentity identity=1;
+ uint64 revision=2;
+ AvatarRightsState rights_state=3;
+ bool selected=4;
+}
+// Metadata for a proposed backup closure. A matching manifest alone does not
+// establish that package files were copied or that rights remain valid.
+message AvatarBackupPackageIdentity {
+ string package_sha256=1;
+ string rights_sha256=2;
+}
+message AvatarBackupInventory {
+ string database_sha256=1;
+ repeated AvatarBackupPackageIdentity packages=2;
+}
+message FoundationObject { string workspace_id=1; string object_id=2; uint64 expected_revision=3; string body=4; }
+message FoundationReadObject { string workspace_id=1; string object_id=2; uint64 revision=3; }
+message FoundationSession { string workspace_id=1; string session_id=2; }
+message FoundationDelivery { string workspace_id=1; string delivery_id=2; string session_id=3; string object_id=4; uint64 object_revision=5; string object_sha256=6; FoundationTarget target=7; DeliveryScope scope=8; uint32 ttl_ms=9; }
+message FoundationApprove { string workspace_id=1; string delivery_id=2; string bundle_sha256=3; }
+message FoundationDispatch { string workspace_id=1; string delivery_id=2; }
+message FoundationRead { string workspace_id=1; string delivery_id=2; }
+message FoundationStop { string workspace_id=1; string session_id=2; }
+message FoundationDelete { string workspace_id=1; string object_id=2; uint64 expected_revision=3; }
+enum PublicationStatus { PUBLICATION_STATUS_UNSPECIFIED=0; PUBLICATION_STATUS_PRIVATE_CONTENT=1; PUBLICATION_STATUS_BLOCKED=2; }
+message FoundationImpact { string workspace_id=1; string report_id=2; string show_id=3; uint64 show_revision=4; string previous_snapshot_id=5; }
+message FoundationPublish { string workspace_id=1; string snapshot_id=2; string report_id=3; string report_sha256=4; bool acknowledge_unknown=5; }
+message FoundationPublicationRead { string workspace_id=1; string snapshot_id=2; }
+message FoundationPublicationRevoke { string workspace_id=1; string revocation_id=2; string snapshot_id=3; string snapshot_sha256=4; string reason=5; }
+message FoundationBrowse { string workspace_id=1; string kind=2; string after_id=3; uint32 limit=4; }
+message FoundationResource { string id=1; string name=2; string kind=3; uint64 revision=4; string sha256=5; uint64 updated_at_ms=6; string parent_id=7; uint64 created_at_ms=8; bool recycled=9; bool has_content=10; }
+message FoundationPreview { string workspace_id=1; string preview_id=2; string snapshot_id=3; string snapshot_sha256=4; string cue_id=5; string session_id=6; uint64 expected_epoch=7; }
+message FoundationPreviewRead { string workspace_id=1; string preview_id=2; }
+message FoundationPreviewPresented { string workspace_id=1; string preview_id=2; string preview_sha256=3; string receipt_id=4; }
+message FoundationPreviewStop { string workspace_id=1; string session_id=2; uint64 expected_epoch=3; }
+
+enum AgentTaskState { AGENT_TASK_STATE_UNSPECIFIED=0; AGENT_TASK_STATE_CREATED=1; AGENT_TASK_STATE_QUEUED=2; AGENT_TASK_STATE_RUNNING=3; AGENT_TASK_STATE_WAITING_HUMAN=4; AGENT_TASK_STATE_COMPLETED=5; AGENT_TASK_STATE_CANCELLED=6; AGENT_TASK_STATE_EXPIRED=7; AGENT_TASK_STATE_FAILED=8; }
+enum SuggestionState { SUGGESTION_STATE_UNSPECIFIED=0; SUGGESTION_STATE_PROPOSED=1; SUGGESTION_STATE_ACCEPTED=2; SUGGESTION_STATE_EDITED=3; SUGGESTION_STATE_REJECTED=4; SUGGESTION_STATE_EXPIRED=5; }
+enum FaqReason { FAQ_REASON_UNSPECIFIED=0; FAQ_REASON_EXACT=1; FAQ_REASON_NO_MATCH=2; FAQ_REASON_AMBIGUOUS=3; FAQ_REASON_STALE_CONTEXT=4; FAQ_REASON_EXPIRED=5; FAQ_REASON_REVOKED=6; FAQ_REASON_CANCELLED=7; FAQ_REASON_RESOLVED=8; FAQ_REASON_RETRIEVED=9; }
+// Shared source context is identity/freshness metadata, never a public media permission.
+message AgentTaskContext { string workspace_id=1; string snapshot_id=2; string snapshot_sha256=3; string facts_sha256=4; string context_sha256=5; }
+enum LiveRunState { LIVE_RUN_STATE_UNSPECIFIED=0; LIVE_RUN_STATE_READY=1; LIVE_RUN_STATE_DISPATCHING=2; LIVE_RUN_STATE_PAUSE_REQUESTED=3; LIVE_RUN_STATE_PAUSED=4; LIVE_RUN_STATE_COMPLETED=5; LIVE_RUN_STATE_INTERRUPTED=6; LIVE_RUN_STATE_ENDED=7; LIVE_RUN_STATE_UNAVAILABLE=8; }
+enum LiveRunAction { LIVE_RUN_ACTION_UNSPECIFIED=0; LIVE_RUN_ACTION_PAUSE=1; LIVE_RUN_ACTION_RESUME=2; LIVE_RUN_ACTION_END=3; LIVE_RUN_ACTION_RECOVER=4; LIVE_RUN_ACTION_SKIP_INTERRUPTED=5; }
+// Private inherited worker pipe. PCM never enters these messages.
+message MicDevice { uint32 device_id=1; string name=2; bool is_default=3; }
+message MicControl { string authorization=1; string instance_id=2; uint64 seq=3; uint64 challenge=4; uint32 action=5; string session_id=6; uint32 input_id=7; uint32 output_id=8; bool acknowledge_route=9; uint32 protocol_major=10; }
+message MicStatus { string instance_id=1; uint64 seq=2; uint64 challenge=3; bool active=4; string reason=5; repeated MicDevice inputs=6; repeated MicDevice outputs=7; uint32 input_id=8; uint32 output_id=9; uint64 captured_frames=10; uint64 submitted_frames=11; uint64 dropped_frames=12; uint64 underrun_frames=13; uint32 peak_q16=14; string session_id=15; uint32 protocol_major=16; }
+message LiveTakeoverControl { LiveRunRead run=1; string takeover_id=2; uint64 expected_epoch=3; bool resume=4; bool acknowledge=5; bool skip_partial_sentence=6; }
+enum ReviewRunKind { REVIEW_RUN_KIND_UNSPECIFIED=0; REVIEW_RUN_KIND_MANUAL=1; REVIEW_RUN_KIND_LIVE=2; }
+message ReviewSource { string workspace_id=1; string run_id=2; ReviewRunKind run_kind=3; }
+message ReviewObjectRef { string object_id=1; uint64 revision=2; string sha256=3; }
+message ReviewFaq { string id=1; string question=2; string text=3; repeated string fact_ids=4; }
+message ReviewFact { string id=1; string label=2; string value=3; }
+message ReviewNoteSave { ReviewSource source=1; string note_id=2; uint64 expected_revision=3; string title=4; ReviewFaq proposal=5; ReviewObjectRef question_source=6; }
+message ReviewNoteView { string note_id=1; uint64 revision=2; string title=3; ReviewFaq proposal=4; uint64 created_at_ms=5; string evidence=6; ReviewObjectRef question_source=7; }
+message ReviewContext { ReviewSource source=1; string run_name=2; uint64 run_revision=3; string snapshot_id=4; string snapshot_sha256=5; ReviewObjectRef product=6; ReviewObjectRef show=7; repeated ReviewFaq published_faq=8; repeated ReviewFaq current_faq=9; repeated ReviewFact facts=10; repeated ReviewNoteView notes=11; bool facts_unchanged=12; string reason=13; repeated ReviewQuestion questions=14; uint32 question_capacity=15; }
+message RunQuestionPoolRead { ReviewSource source=1; QuestionPoolRead scope=2; uint64 expected_epoch=3; }
+message ReviewRunQuestion { ReviewSource source=1; QuestionPoolEnqueue question=2; uint64 expected_epoch=3; }
+message ReviewQuestion { ReviewObjectRef record=1; string question_id=2; string question=3; uint32 occurrences=4; string processing=5; string delivery=6; string candidate_id=7; bool runtime_expired=8; uint64 expires_at_ms=9; uint64 updated_at_ms=10; string candidate_sha256=11; }
+message ReviewDraftPlan { ReviewSource source=1; string note_id=2; uint64 note_revision=3; string job_id=4; string target_product_id=5; string target_show_id=6; uint64 expected_product_revision=7; uint64 expected_show_revision=8; }
+message ReviewDraftRead { string workspace_id=1; string job_id=2; }
+message ReviewDraftApply { string workspace_id=1; string job_id=2; uint64 expected_revision=3; string expected_sha256=4; bool acknowledge=5; }
+message ReviewDraftView { ReviewSource source=1; string job_id=2; uint64 revision=3; string sha256=4; string state=5; string reason=6; string note_id=7; ReviewObjectRef base_product=8; ReviewObjectRef base_show=9; ReviewFaq before=10; ReviewFaq current=11; ReviewFaq proposal=12; string target_product_id=13; string target_show_id=14; ReviewObjectRef saved_product=15; ReviewObjectRef saved_show=16; }
+message LiveQuestionControl { LiveRunRead run=1; string grant_id=2; string interruption_id=3; string faq_task_id=4; string faq_task_sha256=5; uint64 expected_revision=6; uint64 expected_epoch=7; bool acknowledge_answer=8; bool cancel=9; }
+message LiveAutoStart { LiveRunRead run=1; string grant_id=2; uint64 expected_revision=3; uint64 expected_epoch=4; string plan_sha256=5; string model_id=6; uint64 model_revision=7; uint64 max_cost_minor=8; string output_id=9; string visual_sha256=10; string license_sha256=11; string stop_nonce=12; bool acknowledge_rights=13; }
+message LiveAutoPrepare { LiveRunRead run=1; string grant_id=2; uint32 sentence_cursor=3; string preview_id=4; string task_id=5; }
+message LiveAutoStop { LiveRunRead run=1; string grant_id=2; string reason=3; }
+message LiveAutoConfirm { LiveRunRead run=1; string grant_id=2; FoundationPublicCandidate candidate=3; string bundle_sha256=4; }
+message LiveAutoTask { uint32 sentence_cursor=1; string preview_id=2; string preview_sha256=3; string task_id=4; string task_sha256=5; AgentTaskState task_state=6; string model_id=7; uint64 model_revision=8; }
+message LiveAutoView { string run_id=1; string grant_id=2; string state=3; string reason=4; string model_id=5; uint64 model_revision=6; string voice=7; string output_id=8; uint64 max_cost_minor=9; uint64 reserved_minor=10; uint64 expires_at_ms=11; repeated LiveAutoTask tasks=12; uint32 sentence_cursor=13; uint32 sentence_total=14; string interruption_id=15; string interruption_state=16; string question=17; string answer=18; uint32 return_cursor=19; }
+message LiveSentencePreview { LiveRunRead run=1; string preview_id=2; uint32 sentence_cursor=3; }
+message LiveBatchApproval { string approval_id=1; string plan_sha256=2; uint64 expires_at_ms=3; bool approved=4; bool revoked=5; }
+message LiveBatchControl { LiveRunRead run=1; uint64 expected_revision=2; uint64 expected_epoch=3; string approval_id=4; string plan_sha256=5; bool acknowledge_rights=6; bool revoke=7; }
+message LiveSentence { string cue_id=1; uint32 sentence_index=2; string text=3; }
+message LiveSpeechPlan { AgentTaskContext source=1; string run_id=2; uint64 revision=3; uint64 epoch=4; repeated LiveSentence sentences=5; uint32 current_start=6; uint32 prefetch_limit=7; uint32 max_sentence_chars=8; string plan_sha256=9; LiveBatchApproval batch_approval=10; }
+message LiveRunCreate { QuestionPoolRead scope=1; string run_id=2; }
+message LiveRunRead { string workspace_id=1; string run_id=2; }
+message LiveRunControl { string workspace_id=1; string run_id=2; uint64 expected_revision=3; uint64 expected_epoch=4; LiveRunAction action=5; }
+message LiveContext { AgentTaskContext source=1; string run_id=2; uint64 revision=3; string session_id=4; uint64 epoch=5; string controller_id=6; repeated string cue_ids=7; uint32 cursor=8; string current_cue_id=9; string next_cue_id=10; LiveRunState state=11; uint32 submitted_count=12; uint32 skipped_count=13; string reason=14; uint32 sentence_cursor=15; uint32 current_sentence_index=16; uint32 submitted_sentences=17; uint32 skipped_sentences=18; bool sentence_mode=19; uint32 sentence_total=20; bool human_takeover=21; string takeover_id=22; bool partial_sentence=23; }
+message QuestionPoolRead { string workspace_id=1; string snapshot_id=2; string snapshot_sha256=3; }
+message QuestionPoolEnqueue { QuestionPoolRead scope=1; string question_id=2; string question=3; }
+message QuestionPoolRun { string workspace_id=1; string question_id=2; uint64 expected_revision=3; string task_id=4; }
+message QuestionPoolCancel { string workspace_id=1; string question_id=2; uint64 expected_revision=3; }
+message QuestionPoolEntry { string id=1; uint64 revision=2; string question=3; AgentTaskState state=4; SuggestionState suggestion_state=5; uint64 created_at_ms=6; uint64 expires_at_ms=7; uint32 occurrences=8; string task_id=9; string task_sha256=10; string context_sha256=11; string reason=12; }
+message QuestionPoolView { AgentTaskContext context=1; repeated QuestionPoolEntry entries=2; uint32 capacity=3; uint32 ttl_ms=4; }
+enum FaqDecision { FAQ_DECISION_UNSPECIFIED=0; FAQ_DECISION_ACCEPT=1; FAQ_DECISION_EDIT=2; FAQ_DECISION_IGNORE=3; FAQ_DECISION_CANCEL=4; }
+message FoundationFaqRequest { string workspace_id=1; string task_id=2; string snapshot_id=3; string snapshot_sha256=4; string question=5; }
+message FoundationFaqRead { string workspace_id=1; string task_id=2; }
+message FoundationFaqResolve { string workspace_id=1; string task_id=2; string task_sha256=3; FaqDecision decision=4; string edited_text=5; bool acknowledge_edit=6; }
+
+message FoundationLlmModel { string workspace_id=1; string model_id=2; uint64 expected_revision=3; string name=4; string base_url=5; string model=6; uint64 input_minor_per_million=7; uint64 output_minor_per_million=8; bool enabled=9; bytes api_key=10; bool prices_confirmed=11; }
+message FoundationTtsModel { string workspace_id=1; string model_id=2; uint64 expected_revision=3; string name=4; string base_url=5; string model=6; string voice=7; bool enabled=8; bytes api_key=9; bool price_known=10; uint64 character_minor_per_million=11; string protocol=12; string language=13; }
+// Settings-only fixed-content diagnostics: no monetary cap or confirmation fields.
+message FoundationModelTest { string workspace_id=1; string task_id=2; string model_id=3; uint64 model_revision=4; }
+message FoundationTtsTest { string workspace_id=1; string task_id=2; string model_id=3; uint64 model_revision=4; reserved 5; }
+message FoundationTtsAudio { string workspace_id=1; string task_id=2; string task_sha256=3; }
+message TtsAudioAuthorization { string artifact_id=1; uint64 sample_count=2; uint32 sample_rate=3; string pcm_sha256=4; uint64 lease_epoch=5; uint32 ttl_ms=6; }
+enum AuditionState { AUDITION_STATE_UNSPECIFIED=0; AUDITION_STATE_STARTING=1; AUDITION_STATE_READY=2; AUDITION_STATE_PLAYING=3; AUDITION_STATE_SUBMITTED=4; AUDITION_STATE_STOPPED=5; AUDITION_STATE_UNAVAILABLE=6; AUDITION_STATE_CHOOSING=7; }
+message AuditionStopNonce { string nonce=1; }
+message FoundationAuditionStart { FoundationTtsAudio audio=1; string expected_stop_nonce=2; }
+message OutputDeviceView { uint32 device_id=1; string name=2; bool is_default=3; }
+message OutputDeviceSelection { string output_session_id=1; uint32 device_id=2; }
+message FoundationOutputDeviceSelect { string workspace_id=1; string task_id=2; OutputDeviceSelection selection=3; }
+message AuditionView { AuditionState state=1; string reason=2; uint64 submitted_samples=3; string output_session_id=4; repeated OutputDeviceView devices=5; string selected_device_name=6; }
+message AuditionStart { string artifact_id=1; uint64 sample_count=2; uint32 sample_rate=3; string pcm_sha256=4; string stop_nonce=5; string output_session_id=6; }
+message AuditionLease { uint64 challenge=1; uint64 epoch=2; uint32 ttl_ms=3; }
+message AuditionControl { oneof operation { AuditionStart start=1; AuditionLease lease=2; bool stop=3; OutputDeviceSelection select_device=4; } }
+message AuditionStatus { AuditionView view=1; uint64 challenge=2; }
+message TtsModelView { string id=1; uint64 revision=2; string name=3; string base_url=4; string model=5; string voice=6; bool enabled=7; bool credential_saved=8; bool price_known=9; uint64 character_minor_per_million=10; string protocol=11; string language=12; }
+message FoundationLlmRead { string workspace_id=1; }
+message FoundationLlmBudget { string workspace_id=1; uint64 expected_revision=2; uint64 limit_minor=3; }
+message FoundationLlmStart { string workspace_id=1; string task_id=2; string snapshot_id=3; string snapshot_sha256=4; string cue_id=5; string model_id=6; uint64 model_revision=7; uint64 max_cost_minor=8; }
+message FoundationLlmTaskRead { string workspace_id=1; string task_id=2; }
+message FoundationLlmResolve { string workspace_id=1; string task_id=2; string task_sha256=3; FaqDecision decision=4; string edited_text=5; bool acknowledge_edit=6; }
+message LlmModelView { string id=1; uint64 revision=2; string name=3; string base_url=4; string model=5; uint64 input_minor_per_million=6; uint64 output_minor_per_million=7; bool enabled=8; bool credential_saved=9; bool pricing_unknown=10; }
+message LlmBudgetView { uint64 revision=1; uint64 limit_minor=2; uint64 used_minor=3; uint64 unknown_minor=4; uint64 reserved_minor=5; string currency=6; WorkspaceBudgetMode mode=7; }
+message LlmWorkerRequest { string task_id=1; string base_url=2; string model=3; bytes api_key=4; string system=5; string input=6; uint32 max_output_tokens=7; uint32 deadline_ms=8; bool connection_test=9; }
+message LlmWorkerResult { string task_id=1; string text=2; uint64 input_tokens=3; uint64 output_tokens=4; bool usage_known=5; string error=6; bool request_started=7; }
+// Read-only local prerequisites; never a provider certification or execution permit.
+message FoundationLlmPlan { string workspace_id=1; string snapshot_id=2; string snapshot_sha256=3; string cue_id=4; string model_id=5; uint64 model_revision=6; uint64 max_cost_minor=7; }
+enum LlmLocalReason { LLM_LOCAL_REASON_UNSPECIFIED=0; LLM_LOCAL_REASON_READY_LOCAL=1; LLM_LOCAL_REASON_BUDGET_DISABLED=2; LLM_LOCAL_REASON_CALL_LIMIT=3; LLM_LOCAL_REASON_WORKSPACE_LIMIT=4; LLM_LOCAL_REASON_CREDENTIAL_MISSING=5; LLM_LOCAL_REASON_CREDENTIAL_UNAVAILABLE=6; LLM_LOCAL_REASON_MODEL_DISABLED=7; LLM_LOCAL_REASON_CONTEXT_UNAVAILABLE=8; LLM_LOCAL_REASON_STALE_CONTEXT=9; LLM_LOCAL_REASON_INPUT_TOO_LARGE=10; LLM_LOCAL_REASON_BUSY=11; LLM_LOCAL_REASON_STOPPED=12; }
+message LlmLocalCheck { LlmLocalReason reason=1; bool estimate_known=2; uint64 estimated_reserve_minor=3; uint64 available_minor=4; uint32 input_bytes=5; uint32 max_output_tokens=6; uint32 deadline_ms=7; bool credential_checked=8; string currency=9; }
+message FoundationSpeechPlan { string workspace_id=1; string preview_id=2; string preview_sha256=3; string model_id=4; uint64 model_revision=5; uint64 max_cost_minor=6; string task_id=7; }
+message FoundationSpeechStart { FoundationSpeechPlan plan=1; string task_id=2; string approval_sha256=3; }
+message SpeechPlanView { string approval_sha256=1; string text=2; uint64 characters=3; uint64 reserve_minor=4; uint64 expires_at_ms=5; string target=6; string voice=7; bool estimate_known=8; AgentTaskContext agent_context=9; }
+// Observation only: never an approval, media grant or public delivery authorization.
+message FoundationPublicCandidate { string workspace_id=1; string preview_id=2; string preview_sha256=3; string task_id=4; string task_sha256=5; PublicOutputObservation output_observation=6; }
+enum PublicCandidateAxisState { PUBLIC_CANDIDATE_AXIS_STATE_UNSPECIFIED=0; PUBLIC_CANDIDATE_AXIS_STATE_PASSED=1; PUBLIC_CANDIDATE_AXIS_STATE_NOT_READY=2; PUBLIC_CANDIDATE_AXIS_STATE_BLOCKED=3; }
+// Read-only preparation review, never a playback permit or platform authorization.
+enum PublicGuardPolicy { PUBLIC_GUARD_POLICY_UNSPECIFIED=0; PUBLIC_GUARD_POLICY_EXACT_SPECS_AND_SOFTWARE_V5=5; }
+enum PublicGuardReason { PUBLIC_GUARD_REASON_UNSPECIFIED=0; PUBLIC_GUARD_REASON_EXACT_SPEC_PASSED=1; PUBLIC_GUARD_REASON_UNSUPPORTED_SPEECH=2; PUBLIC_GUARD_REASON_RISKY_CONTENT=3; PUBLIC_GUARD_REASON_UNSUPPORTED_RULE=4; PUBLIC_GUARD_REASON_PROHIBITED_PHRASE=5; PUBLIC_GUARD_REASON_MEDIA_NOT_READY=6; PUBLIC_GUARD_REASON_OUTPUT_NOT_BOUND=7; PUBLIC_GUARD_REASON_EXACT_FEATURE_PASSED=8; PUBLIC_GUARD_REASON_PLAYBACK_WINDOW_TOO_SHORT=9; }
+message PublicGuardObject { uint32 protocol_major=1; string policy_id=2; string workspace_id=3; string session_id=4; uint64 epoch=5; string preview_id=6; string preview_sha256=7; string task_id=8; string task_sha256=9; string snapshot_id=10; string snapshot_sha256=11; string facts_sha256=12; string caption_sha256=13; string output_target_id=14; PublicMediaAudio audio=15; PublicMediaVisual visual=16; }
+message PublicGuardReview { PublicGuardObject object=1; string object_sha256=2; bool policy_passed=3; PublicGuardReason reason=4; uint64 checked_at_ms=5; uint64 valid_until_ms=6; }
+message PublicCandidateAxis { string axis=1; PublicCandidateAxisState state=2; string reason=3; }
+message PublicCandidateCheck { string preview_id=1; string preview_sha256=2; string task_id=3; string task_sha256=4; string text=5; string caption_sha256=6; string snapshot_id=7; string snapshot_sha256=8; string facts_sha256=9; string session_id=10; uint64 epoch=11; PublicMediaAudio audio=12; repeated PublicCandidateAxis axes=13; bool approval_available=14; uint64 checked_at_ms=15; PublicMediaVisual visual=16; string visual_name=17; string visual_license=18; PublicGuardReview guard_review=19; PublicOutputStatus output_instance=20; PreparedMediaDescriptor prepared_media=21; PreparedMediaReceipt prepared_media_receipt=22; PublicApprovalDraft approval_draft=23; }
+message FoundationCommand { string idempotency_key=1; oneof operation { FoundationWorkspace create_workspace=10; FoundationGrant grant=11; FoundationObject put_object=12; FoundationReadObject read_object=13; FoundationSession create_session=14; FoundationDelivery prepare_delivery=15; FoundationApprove approve=16; FoundationDispatch dispatch=17; FoundationRead read_delivery=18; FoundationStop stop=19; FoundationDelete delete_object=20; FoundationObject put_preparation=21; FoundationImpact publication_impact=22; FoundationPublish publish=23; FoundationPublicationRead read_publication=24; FoundationPublicationRevoke revoke_publication=25; FoundationBrowse list_workspaces=26; FoundationBrowse list_preparation=27; FoundationPreview preview=28; FoundationPreviewRead read_preview=29; FoundationPreviewPresented preview_presented=30; FoundationPreviewStop stop_preview=31; FoundationFaqRequest ask_faq=32; FoundationFaqRead read_faq=33; FoundationFaqResolve resolve_faq=34; FoundationLlmModel save_llm_model=35; FoundationLlmRead read_llm_settings=36; FoundationLlmBudget set_llm_budget=37; FoundationLlmStart start_llm=38; FoundationLlmTaskRead read_llm_task=39; FoundationLlmTaskRead cancel_llm=40; FoundationLlmResolve resolve_llm=41; FoundationLlmPlan check_llm=42; FoundationModelTest test_llm=43; FoundationDelete delete_llm_model=44; FoundationTtsModel save_tts_model=45; FoundationDelete delete_tts_model=46; FoundationTtsTest test_tts=47; FoundationLlmTaskRead read_tts_task=48; FoundationLlmTaskRead cancel_tts=49; FoundationTtsAudio authorize_tts_audio=50; FoundationTtsAudio revoke_tts_audio=51; FoundationAuditionStart start_tts_audition=52; FoundationLlmTaskRead renew_tts_audition=53; FoundationLlmTaskRead stop_tts_audition=54; FoundationSpeechPlan check_preview_speech=55; FoundationSpeechStart synthesize_preview_speech=56; FoundationOutputDeviceSelect select_output_device=57; FoundationWorkspaceRename rename_workspace=58; FoundationWorkspaceLifecycle workspace_lifecycle=59; WorkspaceSettingsCommand create_workspace_settings=60; WorkspaceSettingsCommand edit_workspace_settings=61; FoundationLlmRead preview_shared_models=62; SharedModelMigration migrate_shared_models=63; FoundationLlmRead read_shared_migration=64; FoundationLlmTaskRead cancel_shared_migration=65; WorkspacePurgeRead preview_workspace_purge=66; WorkspacePurgeCommand purge_workspace=67; WorkspacePurgeRead read_workspace_purge=68; FoundationLlmRead workspace_context=69; FoundationPublicCandidate check_public_candidate=70; bool prepare_public_output_binding=71; FoundationPublicApproval confirm_public_approval=72; PublicApprovalRevoke revoke_public_approval=73; FoundationPublicWindowPrepare prepare_public_window=74; FoundationPublicWindowPrepare start_public_execution=75; FoundationPublicWindowPrepare renew_public_execution=76; PublicApprovalRevoke stop_public_execution=77; QuestionPoolRead read_question_pool=78; QuestionPoolEnqueue enqueue_question=79; QuestionPoolRun run_question=80; QuestionPoolCancel cancel_question=81; LiveRunCreate create_live_run=82; LiveRunRead read_live_run=83; LiveRunControl control_live_run=84; LiveRunRead read_live_speech_plan=85; LiveSentencePreview preview_live_sentence=86; LiveBatchControl control_live_batch=87; LiveAutoStart start_live_auto=88; LiveRunRead read_live_auto=89; LiveAutoPrepare prepare_live_auto=90; LiveAutoStop stop_live_auto=91; LiveAutoConfirm confirm_live_auto=92; LiveQuestionControl control_live_question=93; LiveTakeoverControl control_live_takeover=94; ReviewSource read_review=95; ReviewNoteSave save_review_note=96; ReviewDraftPlan plan_review_draft=97; ReviewDraftRead read_review_draft=98; ReviewDraftApply apply_review_draft=99; ReviewRunQuestion enqueue_run_question=100; RunQuestionPoolRead read_run_question_pool=101; } }
+// Actor is intentionally absent: the authenticated parent binds the principal.
+message FoundationRequest { uint32 protocol_major=1; bytes authorization=2; string request_id=3; uint64 seq=4; uint32 ttl_ms=5; FoundationCommand command=6; }
+message FoundationResult { string resource_id=1; uint64 revision=2; uint64 epoch=3; string sha256=4; DeliveryState state=5; EvidenceKind evidence=6; string body=7; uint32 cancelled_pending=8; uint32 already_submitted=9; uint32 outcome_unknown_count=10; uint32 dispatch_in_flight=11; PublicationStatus publication_status=12; repeated FoundationResource resources=13; string next_cursor=14; AgentTaskState task_state=15; SuggestionState suggestion_state=16; FaqReason faq_reason=17; string adopted_object_id=18; uint64 adopted_revision=19; repeated LlmModelView llm_models=20; LlmBudgetView llm_budget=21; string task_reason=22; string charge_status=23; uint64 reserved_minor=24; uint64 actual_minor=25; LlmLocalCheck llm_check=26; repeated TtsModelView tts_models=27; TtsAudioAuthorization tts_audio=28; AuditionView audition=29; SpeechPlanView speech_plan=30; SharedModelPreview shared_model_preview=31; SharedModelMigrationStatus shared_model_migration=32; bool shared_catalog_enabled=33; WorkspacePurgePlan workspace_purge_plan=34; WorkspacePurgeStatus workspace_purge_status=35; PublicCandidateCheck public_candidate_check=36; PublicOutputBindingChallenge public_output_challenge=37; PublicApprovalView public_approval=38; PublicWindowPreparation private_window_preparation=39; PublicWindowPrepared public_window_prepared=40; PublicExecutionLease private_execution_lease=41; QuestionPoolView question_pool=42; AgentTaskContext agent_context=43; LiveContext live_context=44; LiveSpeechPlan live_speech_plan=45; LiveAutoView live_auto=46; ReviewContext review_context=47; ReviewDraftView review_draft=48; }
+message FoundationResponse { string request_id=1; uint64 seq=2; oneof outcome { FoundationResult result=10; WorkbenchProblem problem=11; } }
+
+
+
+
+
+
+
+// Health-only public standby control. No text, PCM, frame or media grant payload.
+message PublicOutputLease { string authorization=1; uint64 seq=2; uint64 challenge=3; uint32 lease_ms=4; PublicWindowPreparation prepare=5; bool clear_prepared=6; PublicExecutionLease execution=7; bool refresh_execution_challenge=8; }
+enum PublicOutputReason { PUBLIC_OUTPUT_REASON_UNSPECIFIED=0; PUBLIC_OUTPUT_REASON_STANDBY_ONLY=1; PUBLIC_OUTPUT_REASON_LEASE_EXPIRED=2; PUBLIC_OUTPUT_REASON_STOPPED=3; PUBLIC_OUTPUT_REASON_INPUT_CLOSED=4; PUBLIC_OUTPUT_REASON_PROTOCOL_REJECTED=5; PUBLIC_OUTPUT_REASON_MEDIA_ACTIVE=6; }
+message PublicOutputStatus { uint32 protocol_major=1; uint64 seq=2; uint64 challenge=3; bool window_open=4; bool standby=5; bool live_ready=6; bool audio_active=7; uint64 standby_frames=8; PublicOutputReason reason=9; bool terminal=10; PublicMediaVisual visual=11; string visual_name=12; string visual_license=13; string output_id=14; PublicWindowPrepared window_prepared=15; PublicPresentationStatus presentation=16; }
+
+// Public AV metadata only: raw media uses a separate owned transport.
+message PublicMediaAudio { string artifact_id=1; string pcm_sha256=2; uint64 sample_count=3; uint32 sample_rate=4; uint32 channels=5; }
+message PublicMediaVisual { string artifact_id=1; string package_sha256=2; string license_sha256=3; uint32 width=4; uint32 height=5; uint32 fps=6; }
+message PublicMediaBundle { uint32 protocol_major=1; string bundle_id=2; string workspace_id=3; string session_id=4; uint64 epoch=5; string output_id=6; string snapshot_id=7; string snapshot_sha256=8; string facts_sha256=9; string approval_id=10; string approved_sha256=11; string guard_permit_id=12; string caption_sha256=13; PublicMediaAudio audio=14; PublicMediaVisual visual=15; uint32 lease_ms=16; DeliveryScope scope=17; string prepared_media_sha256=18; }
+
+// Native parent-only observation, stripped from ordinary page commands.
+message PublicOutputBindingChallenge { uint64 challenge=1; uint32 ttl_ms=2; }
+message PublicOutputObservation { uint64 challenge=1; PublicOutputStatus status=2; string stop_nonce=3; }
+// Preparation metadata only. No PCM/pixels/path, no approval or device completion claim.
+message PreparedMediaReceipt {
+ uint32 protocol_major = 1;
+ string descriptor_sha256 = 2;
+ string consumer_instance_id = 3;
+ string pcm_sha256 = 4;
+ uint64 sample_count = 5;
+ uint64 expected_frames = 6;
+ string first_frame_sha256 = 7;
+ PublicMediaFrameInfo tail_frame = 8;
+}
+
+message PreparedMediaDescriptor { uint32 protocol_major=1; string workspace_id=2; string task_id=3; string task_sha256=4; PublicMediaAudio audio=5; PublicMediaVisual visual=6; uint64 expected_frames=7; uint32 samples_per_frame=8; string first_frame_sha256=9; string pcm_format=10; string pixel_format=11; string renderer_id=12; }
+message PublicMediaFrameInfo { uint64 frame_index=1; uint64 sample_start=2; uint32 sample_count=3; uint32 sample_rate=4; uint32 width=5; uint32 height=6; string pixels_sha256=7; uint32 openness_q16=8; }
+
+message PublicApprovalDraft { PublicMediaBundle bundle=1; string text=2; uint64 expires_at_ms=3; }
+message FoundationPublicApproval { FoundationPublicCandidate candidate=1; string bundle_sha256=2; bool acknowledge_public_rights=3; }
+message PublicApprovalRevoke { string workspace_id=1; string approval_id=2; }
+message PublicApprovalView { PublicMediaBundle bundle=1; bool approved=2; bool revoked=3; uint64 expires_at_ms=4; bool playback_available=5; }
+
+message FoundationPublicWindowPrepare { FoundationPublicCandidate candidate=1; string bundle_sha256=2; }
+message PublicWindowPreparation { PreparedMediaDescriptor descriptor=1; string data_path=2; string output_id=3; string bundle_sha256=4; PublicMediaBundle bundle=5; string preparation_id=6; string execution_key=7; string caption_text=8; }
+// Device-observed stream position; absence means unavailable, never inferred from submission.
+// Observation is not a playback completion acknowledgement or output authorization.
+message PublicDeviceClockObservation {
+  string output_id = 1;
+  string preparation_id = 2;
+  string session_id = 3;
+  uint64 epoch = 4;
+  uint64 stream_generation = 5;
+  uint64 device_frequency = 6;
+  uint64 device_position = 7;
+  uint32 sample_rate = 8;
+  uint64 played_samples = 9;
+}
+message PublicWindowPrepared { PreparedMediaReceipt receipt=1; bool device_ready=2; string device_name=3; string reason=4; uint64 submitted_samples=5; string preparation_id=6; uint64 execution_challenge=7; uint64 execution_seq=8; bool execution_stopped=9; bool playing=10; bool submission_complete=11; PublicMediaFrameInfo frame=12; bool caption_ready=13; string caption_sha256=14; string caption_font=15; string caption_font_sha256=16; PublicCaptionState caption_state=17; PublicDeviceClockObservation device_clock=18; }
+
+// Independent execution control, not a health heartbeat or preparation capability.
+message PublicExecutionLease { string authorization=1; string output_id=2; string bundle_sha256=3; string prepared_media_sha256=4; string session_id=5; uint64 epoch=6; uint64 challenge=7; uint64 seq=8; uint32 lease_ms=9; string purpose=10; string preparation_id=11; }
+
+// Actual window buffer submission only. Neither hardware playback completion nor OBS acknowledgment.
+message PublicPresentationStatus { string preparation_id=1; uint64 frame_index=2; uint64 sample_start=3; bool caption_visible=4; string caption_sha256=5; string composited_sha256=6; uint64 presentation_count=7; bool submission_clock=8; }
+
+enum PublicCaptionState { PUBLIC_CAPTION_STATE_UNSPECIFIED=0; PUBLIC_CAPTION_STATE_READY=1; PUBLIC_CAPTION_STATE_FONT_UNAVAILABLE=2; PUBLIC_CAPTION_STATE_MISSING_GLYPH=3; PUBLIC_CAPTION_STATE_LAYOUT_OVERFLOW=4; PUBLIC_CAPTION_STATE_TEXT_REJECTED=5; PUBLIC_CAPTION_STATE_INTEGRITY_REJECTED=6; }
+
+
+
+
+

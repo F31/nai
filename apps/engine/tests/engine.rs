@@ -11,6 +11,7 @@
 //! docs/reports/2026-10-10-engineering-loop-platform-truths.md rather than being
 //! asserted through a drill that cannot reach the behaviour it names.
 mod common;
+mod operator_flow;
 
 use common::*;
 use nai_storage::DecisionKind;
@@ -83,6 +84,9 @@ struct Engine {
 
 impl Engine {
     fn start(root: &Path, extra: &[String]) -> Self {
+        Self::start_with_env(root, extra, &[])
+    }
+    fn start_with_env(root: &Path, extra: &[String], env: &[(&str, &str)]) -> Self {
         let token_path = root.join("token");
         write_token(&token_path);
         let halt = root.join("halt");
@@ -105,12 +109,22 @@ impl Engine {
         args.extend(extra.iter().cloned());
         let mut child = Command::new(env!("CARGO_BIN_EXE_nai-engine"))
             .args(&args)
+            .envs(env.iter().copied())
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
             .expect("engine binary spawns");
         let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
+        let log = root.join("engine-stderr.log");
+        thread::spawn(move || {
+            use std::fs::OpenOptions;
+            if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(log) {
+                let mut stderr = stderr;
+                let _ = std::io::copy(&mut stderr, &mut file);
+            }
+        });
         let mut reader = BufReader::new(stdout);
         let deadline = Instant::now() + Duration::from_secs(15);
         let mut port = None;
@@ -127,7 +141,11 @@ impl Engine {
                 break;
             }
         }
-        let port = port.expect("engine printed its control address");
+        let port = port.unwrap_or_else(|| {
+            let error = std::fs::read_to_string(root.join("engine-stderr.log"))
+                .unwrap_or_else(|_| "no stderr log".into());
+            panic!("engine did not print its control address: {error}")
+        });
         // Keep draining stdout so the child never blocks on a full pipe.
         thread::spawn(move || {
             let mut sink = String::new();

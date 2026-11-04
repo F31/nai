@@ -1,8 +1,8 @@
 schema: spec-driven
 context: |
   项目名称 nai，仓库 https://github.com/F31/nai。
-  唯一产品/技术基线 docs/直播数字人 + 智能体系统技术方案 V3.11.md（ADR 0065 升基线；ADR 0049、ADR 0048、ADR 0047、ADR 0042 与 ADR 0015 勘误继续有效；V3.10/V3.9/V3.8/V3.7/V3.6/V3.5 降为历史参考）；遵守 AGENTS.md。
-  验收唯一来源 tests/registry.yaml（V3.11 S/R/A/B/O/P/M/H/X + release_line（新增 capability_pack）；D→新编号映射自建并回填）；按发布线（Slice-0/R1/R2/R3/实验/能力包）实施，每轮完成一个可验证变更。
+  后续重构唯一目标 docs/digital-host-agent-design-V4.8.md（ADR 0151）；旧V3.11等为当前实现历史，不拼接覆盖新目标。重构不保留旧ABI/协议/表单兼容，旧数据/Key/许可不得删除；遵守AGENTS.md。
+  实际验收唯一来源tests/registry.yaml，V48-01已切换V4.8 ACC注册表/Schema/检查器，旧语料归档tests/legacy/v311；164项pending，RF01/RF02及RF03草稿/发布基础不等于业务验收。V4.8 ACC执行清单与INV-01–62映射见docs/v48-development-plan.md；旧状态不授予新目标通过。
   Rust 统一内核，Tauri 2 + React/TypeScript 桌面；Windows 正式运行，portable 逻辑在 Linux 可测。
   Lite/Standard/Pro 是能力预设；Local/Hybrid/Distributed 是部署配置。
   LLM/TTS 使用 API；写实 Rust + ONNX，Python 仅离线导出。
@@ -13,7 +13,7 @@ context: |
   规范与设计说明使用中文；OpenSpec 的 Requirement/Scenario/WHEN/THEN 标记保持标准格式。
 rules:
   proposal:
-    - 标明 Dxx 对应任务、设计章节、影响范围与新增依赖成本。
+    - 标明V48任务、V4.8章节与ACC/INV、影响范围和新增依赖成本。
   specs:
     - 使用 SHALL 或 MUST 编写可验证需求，每条需求包含具体 WHEN/THEN 场景。
     - 区分实现检查与 Windows/SDK/GPU/真实 API 认证。

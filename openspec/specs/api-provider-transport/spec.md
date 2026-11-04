@@ -151,3 +151,21 @@ provider-core SHALL 只依赖 contracts/security/budget/shared，不依赖 kerne
 #### Scenario: No system-only text request is constructed
 - **WHEN** 构造一次文本生成请求
 - **THEN** 请求体的 `messages` 中存在 `role: user` 的消息，且不存在因适配器自拟而产生的额外轮次
+
+### Requirement: Bounded health aware capability routing
+系统 SHALL 分别为LLM/TTS选择健康供应商，主故障达到阈值后熔断、冷却后有界试探，每次请求固定模型/音色/预算身份。
+#### Scenario: Primary fails after dispatch
+- **WHEN** 主供应商调用失败且达到阈值
+- **THEN** 本请求不跨供应商重发，后续显式请求选择健康备用，费用归属实际供应商
+#### Scenario: Recovery and cancellation
+- **WHEN** 主供应商冷却到期或调用因操作者取消结束
+- **THEN** 到期主供应商可单次试探，成功后恢复；取消不增加供应商失败计数
+
+### Requirement: Explicit single endpoint connectivity probe
+系统 SHALL 仅在显式授权时测试指定LLM或TTS配置，固定模型/音色、预算与期限，禁止转备、重试或播放，并报告实际usage与未知金额。
+#### Scenario: Test a backup directly
+- **WHEN** 操作者选择备用配置测试
+- **THEN** 仅该配置最多一次派发，主配置不调用，报告身份匹配
+#### Scenario: Invalid speech or missing key
+- **WHEN** 无凭据或TTS返回空/奇数/非PCM内容
+- **THEN** 显式not_ready或failed，不产生音画或认证成功

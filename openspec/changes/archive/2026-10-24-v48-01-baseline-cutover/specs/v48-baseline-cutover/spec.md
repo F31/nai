@@ -1,0 +1,11 @@
+## ADDED Requirements
+### Requirement: 完整基线切换且不继承通过
+工程 SHALL 同步V4.8来源，保留原90项编号和证据快照，实际注册164项ACC与62条INV，未知或缺失拒绝。
+#### Scenario: 注册表内容漂移
+- **WHEN** 验收、任务、不变量缺失或正文与设计不符
+- **THEN** 检查失败，不能显示完整新版覆盖
+### Requirement: 证据真实且分层
+检查器 SHALL 拒绝仅模拟或前置证据授予真实通过，未选与不适用不得当通过；基线采纳不改变业务数据和权限。
+#### Scenario: 模拟环境声明通过
+- **WHEN** complete且passed记录的环境为模拟
+- **THEN** 不允许tested状态

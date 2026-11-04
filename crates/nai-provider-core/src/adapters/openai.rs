@@ -23,10 +23,38 @@ fn invalid(message: &str) -> ProviderError {
 
 pub struct OpenAiAdapter<'a> {
     client: &'a ProviderClient,
+    siliconflow: bool,
 }
 impl<'a> OpenAiAdapter<'a> {
     pub fn new(client: &'a ProviderClient) -> Self {
-        Self { client }
+        Self {
+            client,
+            siliconflow: false,
+        }
+    }
+    /// SiliconFlow shares the speech envelope but requires an explicit rate.
+    pub(crate) fn siliconflow(client: &'a ProviderClient) -> Self {
+        Self {
+            client,
+            siliconflow: true,
+        }
+    }
+    fn speech_rate(&self, req: &TtsRequest) -> Result<u32, ProviderError> {
+        if !self.siliconflow {
+            return Ok(24000);
+        }
+        let f = req
+            .format
+            .as_ref()
+            .ok_or_else(|| invalid("SiliconFlow PCM format is required"))?;
+        if f.codec != "pcm"
+            || f.channels != 1
+            || f.sample_format != "s16"
+            || ![8000, 16000, 24000, 32000, 44100].contains(&f.sample_rate)
+        {
+            return Err(invalid("SiliconFlow requires supported mono s16 PCM"));
+        }
+        Ok(f.sample_rate)
     }
     fn model(&self) -> &str {
         &self.client.config().model
@@ -197,6 +225,55 @@ impl<'a> OpenAiAdapter<'a> {
         entry: nai_contracts::v1::UsageLedgerEntry,
         sink: &mut dyn FnMut(TtsChunk),
     ) -> Result<u64, ProviderError> {
+        self.tts_core(op, req, gateway, entry, &mut |chunk, _bytes| sink(chunk))
+            .await
+    }
+
+    /// The same metered request, returning the raw audio body instead of only
+    /// counting it. The response format is bounded by the shared transport, and
+    /// the caller must decode it against the declared format rather than guess.
+    pub async fn tts_pcm(
+        &self,
+        op: &Operation,
+        req: &TtsRequest,
+        gateway: &mut dyn UsageGateway,
+        entry: nai_contracts::v1::UsageLedgerEntry,
+    ) -> Result<(Vec<u8>, AudioFormat), ProviderError> {
+        let mut bytes = Vec::new();
+        let total = self
+            .tts_core(op, req, gateway, entry, &mut |_chunk, block| {
+                bytes.extend_from_slice(block);
+            })
+            .await?;
+        if bytes.len() as u64 != total {
+            return Err(invalid("tts byte total disagrees with the body"));
+        }
+        let format = AudioFormat {
+            codec: req
+                .format
+                .as_ref()
+                .map(|format| format.codec.clone())
+                .unwrap_or_else(|| "pcm".into()),
+            // Speech PCM has a fixed wire format; the API has no rate parameter.
+            sample_rate: self.speech_rate(req)?,
+            channels: 1,
+            sample_format: "s16".into(),
+        };
+        Ok((bytes, format))
+    }
+
+    async fn tts_core<E>(
+        &self,
+        op: &Operation,
+        req: &TtsRequest,
+        gateway: &mut dyn UsageGateway,
+        entry: nai_contracts::v1::UsageLedgerEntry,
+        emit: &mut E,
+    ) -> Result<u64, ProviderError>
+    where
+        E: FnMut(TtsChunk, &[u8]),
+    {
+        let sample_rate = self.speech_rate(req)?;
         let budget = CallBudget::start(gateway, entry)?;
         if !budget.dispatched() {
             return Err(ProviderError::new(
@@ -224,13 +301,17 @@ impl<'a> OpenAiAdapter<'a> {
             "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm" => format,
             _ => "pcm".to_string(),
         };
-        let body = json!({
+        let mut body = json!({
             "model": self.model(),
             "input": req.speech_text,
             "voice": req.voice.as_ref().map(|v| v.voice_ref.clone()).unwrap_or_default(),
             "response_format": response_format,
             "speed": req.speed,
         });
+        if self.siliconflow {
+            body["sample_rate"] = sample_rate.into();
+            body["stream"] = false.into();
+        }
         let stream = match self.client.stream(op, "/audio/speech", &body).await {
             Ok(stream) => stream,
             Err(error) => {
@@ -243,8 +324,8 @@ impl<'a> OpenAiAdapter<'a> {
         let mut stream = stream.body.bytes_stream();
         let audio_format = AudioFormat {
             codec: response_format,
-            sample_rate: req.format.as_ref().map(|f| f.sample_rate).unwrap_or(24_000),
-            channels: req.format.as_ref().map(|f| f.channels).unwrap_or(1),
+            sample_rate,
+            channels: 1,
             sample_format: "s16".into(),
         };
         loop {
@@ -257,12 +338,15 @@ impl<'a> OpenAiAdapter<'a> {
                     ProviderError::unavailable(format!("provider audio stream: {error}"))
                 })?,
                 None => {
-                    sink(TtsChunk {
-                        seq,
-                        end: StreamEnd::StreamComplete as i32,
-                        format: Some(audio_format.clone()),
-                        ..Default::default()
-                    });
+                    emit(
+                        TtsChunk {
+                            seq,
+                            end: StreamEnd::StreamComplete as i32,
+                            format: Some(audio_format.clone()),
+                            ..Default::default()
+                        },
+                        &[],
+                    );
                     break;
                 }
             };
@@ -272,15 +356,18 @@ impl<'a> OpenAiAdapter<'a> {
                 return Err(invalid("tts stream exceeds bound"));
             }
             if !block.is_empty() {
-                sink(TtsChunk {
-                    seq,
-                    end: StreamEnd::StreamData as i32,
-                    audio_buffer_ref: format!("provider://audio/{seq}"),
-                    format: Some(audio_format.clone()),
-                    sample_start: 0,
-                    sample_count: 0,
-                    ..Default::default()
-                });
+                emit(
+                    TtsChunk {
+                        seq,
+                        end: StreamEnd::StreamData as i32,
+                        audio_buffer_ref: format!("provider://audio/{seq}"),
+                        format: Some(audio_format.clone()),
+                        sample_start: 0,
+                        sample_count: 0,
+                        ..Default::default()
+                    },
+                    &block,
+                );
                 seq += 1;
             }
         }

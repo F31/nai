@@ -1,6 +1,24 @@
 # nai 工程与 OpenSpec 开发流程
 
-## 环境与入口
+Windows构建与缓存（2026-10-26）：先 dot-source scripts/use-project-build-cache.ps1；本轮 -Target live-auto-build，运行组合在 target-windows/live-auto-runtime，工具缓存与临时文件在 target-windows/tool-cache。其他清理任务不得删除这三个独立目录；不要使用硬编码 CARGO_HOME 到 C 盘的旧诊断脚本。详见[迁移报告](reports/2026-10-26-windows-build-cache-migration.md)。
+
+独立桌面壳的 `TAURI_CONFIG.build.frontendDist` 必须使用相对壳清单目录的路径，例如 `../../target-windows/live-auto-runtime/frontend`。`E:/...` 可被配置解析成 URL，导致 WebView 导航至 file 地址而不是内嵌资源；编译成功不能替代原生启动冒烟。激活前执行 `scripts/test-workbench-desktop.ps1`，同时核验 PE GUI subsystem 与认证就绪握手。
+
+
+当前UI工程入口（2026-10-24）：唯一前端包为apps/workbench-desktop，源码ui/，页面index.html。使用 pnpm --filter @nai/workbench-desktop dev、pnpm check:workbench-frontend、pnpm test:ui；旧apps/desktop、Engineering打包脚本及旧浏览器fixture已退役，下文旧命令仅历史追溯。新UI无旧目录依赖，check:frontend仍按包脚本运行类型/构建/测试。
+
+新备播工作台前端使用 `pnpm check:workbench-frontend`：先编译contracts-ts，再检查新包ui/并按其Vite配置构建index.html到独立壳dist。旧UI包和旧HTML入口已移除。离线React渲染测试须让组件与renderer使用同一React实例，对齐生产dedupe。
+
+
+## V4.3当前检查入口
+
+RF01已切换唯一ACC注册表及活跃CI：`cargo xtask check --profile workbench`运行RF01–04模块/直接消费者，`cargo xtask test --suite contracts`执行新Schema无漂移、wire负例与三语言夹具；Windows另跑新原生宿主和独立桌面构建/冒烟。所有ACC仍pending。旧portable/windows-local/full命令返回LEGACY_PROFILE_RETIRED；下文历史W判据不再是新产品发布组合，不能将其成功当V4.3通过。
+
+先构建契约包再构建新入口：`pnpm check:workbench-frontend`。Windows原生：`cargo build -p nai-workbench-engine --locked`，再`cargo build --manifest-path apps/workbench-desktop/Cargo.toml --locked`；debug用绝对路径环境NAI_WORKBENCH_ENGINE指向新engine，release要求固定同目录新engine，不回退旧程序。新GUI支持手工备播与私有ContentOnly预演，仍不是安装发布包。debug另设置NAI_FOUNDATION_ENGINE指向nai-foundation-engine绝对路径；可信宿主固定使用独立foundation-v2数据根。新冒烟脚本还需-Foundation参数，并使用临时数据根，见[工作台报告](reports/2026-10-22-v43-rf03-preparation-workbench.md)。
+
+RF02实际接口/故障与边界见[基础说明](workbench-foundation.md)。Windows另跑`cargo test -p nai-foundation-sqlite -p nai-runtime-core --lib --locked`及`cargo test -p nai-workbench-engine --test foundation --locked`；不打开旧库或调用付费API。
+
+## 环境与入口（旧线历史）
 
 固定 Rust 1.96.0（含 rustfmt/clippy）、Node 22.23.1、pnpm 8.15.0。
 Rust workspace 使用 `nai-*`，前端使用 `@nai/*`；详见 ADR 0001/0002。
@@ -101,15 +119,15 @@ D14 首轮新增 `nai-control-api` 显式 loopback 控制服务和桌面客户�
 ## 前端工程预览
 
 ```bash
-pnpm --filter @nai/desktop dev
+pnpm --filter @nai/workbench-desktop dev
 ```
 
 仅在本机 127.0.0.1:5173 启动控制工程页，默认显示“运行时未连接”。可通过显式启动的本机控制示例连接真实 Session 并静音/接管（操作步骤见控制指南）；没有 Tauri 原生宿主、实际媒体设备或生产开播入口。
 
 ## OpenSpec SDD
 
-项目上下文位于 `openspec/config.yaml`；每轮按 V3.11 工作项及 registry 验收选一个完整可验证变更，D 编号只供追溯。
-V3.11 是唯一实现基线（ADR 0065；此前 ADR 0049 升 V3.10、ADR 0048 升 V3.9、ADR 0047 升 V3.8、ADR 0042 升 V3.7、ADR 0015 升 V3.6），`openspec/specs/` 是已归档增量规格；有冲突时先澄清并记录 ADR。
+项目上下文位于 `openspec/config.yaml`；后续重构按V4.3与[ADR0147](adr/0147-v43-product-reconstruction-baseline.md)、[V43-RF任务](v43-reconstruction-plan.md)实施，旧D/W编号只供追溯。
+V4.3是后续产品/架构目标，当前安装与注册表仍是旧实现；RF01同卡归档旧registry并切换ACC/Schema/检查器，旧通过状态不自动复制。`openspec/specs/`保留已归档增量的历史，旧产品规格与V4.3冲突时以新目标/ADR为准；实现卡须显式替换相应行为/契约并记录差异，不同时承诺互斥行为。
 
 1. 新建变更：`pnpm exec openspec new change <name> --schema spec-driven`。
 2. 读取当前阶段：`pnpm exec openspec status --change <name> --json`。
@@ -148,3 +166,12 @@ proposal 里有 2 份缺段，`--archived` 对它们都是 ✓（145 / 0）。�
 - Linux/WSL、Windows 编译、设备/媒体、官方平台、真实 API、模型 Gate 分别记录。
 - 尚未实现为“未开始”；外部条件阻止真实测试为 Blocked；未启用能力才可 NotApplicable。
 - 不使用 mock、空成功任务或工程预览页面为真实认证标 Passed。
+
+### 生产前端浏览器集成（显式执行）
+
+旧 `test:frontend-bundle` 和候选fixture浏览器脚本已退役。当前新产物通过独立index.html与资源闭包检查；本轮使用Edge全新测试profile实际验证React挂载，见旧UI退役报告，不据此授予业务Ready或人工UI验收通过。
+
+
+
+
+公共执行开发构建：runtime-core/storage/jsonschema/serde_json与既有media/sha2/fontdue做定向优化，保留debug断言、溢出检查及250ms观察/500ms租约。首次对应特征组合编译可能数分钟；不得通过改长期限代替复核成本治理。来源独占借用与真实实录见ADR0174。

@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "source": "schemas/catalog/capabilities.json",
+  "baseline": "docs/digital-host-agent-design-V4.8.md"
+}

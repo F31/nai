@@ -8,7 +8,7 @@
 /// 实测（W98 三个 Mutation，改真文件 + 真跑现有 6 个 portable 套件 + 备份拷回 + `sha256` 还原）：
 /// - 往根 `package.json` 加一个脚本 `"typecheck:fast": "node scripts/nowhere.mjs"`
 ///   ⇒ **158 passed / 0 failed**——一个新的孤儿，零信号；
-/// - 把 `frontend-gate.mjs` 的 `STEPS` 里 `['apps/desktop', 'test']` 改成不存在的 `'tests'`
+/// - 把 `frontend-gate.mjs` 的 `STEPS` 里 `['apps/workbench-desktop', 'test']` 改成不存在的 `'tests'`
 ///   ⇒ **158 passed / 0 failed**——只有真跑前端门控才会以 `FRONTEND_SCRIPT_UNSUPPORTED` 红；
 /// - 给脚本加自引用 `"test:loop": "pnpm test:loop"` ⇒ **158 passed / 0 failed**。
 ///
@@ -72,6 +72,7 @@ export const CONSUMER_KINDS = ['driver', 'pnpm'];
 /// ⚠️ **`.md` 里的命令是「说明」，不是「调用」**：`docs/control.md` 与 `docs/engine.md` 里那两行
 /// 只作为 `manual` 的证据形态出现，MUST NOT 被读成消费者。
 export const SCRIPT_DISPOSITIONS = [
+  {dir:ROOT_DIR,script:'check:workbench-frontend',disposition:'orphan',cause:'manual-alias',equivalentTo:{file:'xtask/src/lib.rs',marker:'scripts/workbench-frontend.mjs'}},
   // ---------- invoked（7）----------
   {
     dir: ROOT_DIR,
@@ -98,22 +99,22 @@ export const SCRIPT_DISPOSITIONS = [
     consumer: {kind: 'driver', step: {dir: 'packages/contracts-ts', script: 'build'}},
   },
   {
-    dir: 'apps/desktop',
+    dir: 'apps/workbench-desktop',
     script: 'typecheck',
     disposition: 'invoked',
-    consumer: {kind: 'driver', step: {dir: 'apps/desktop', script: 'typecheck'}},
+    consumer: {kind: 'driver', step: {dir: 'apps/workbench-desktop', script: 'typecheck'}},
   },
   {
-    dir: 'apps/desktop',
+    dir: 'apps/workbench-desktop',
     script: 'build',
     disposition: 'invoked',
-    consumer: {kind: 'driver', step: {dir: 'apps/desktop', script: 'build'}},
+    consumer: {kind: 'driver', step: {dir: 'apps/workbench-desktop', script: 'build'}},
   },
   {
-    dir: 'apps/desktop',
+    dir: 'apps/workbench-desktop',
     script: 'test',
     disposition: 'invoked',
-    consumer: {kind: 'driver', step: {dir: 'apps/desktop', script: 'test'}},
+    consumer: {kind: 'driver', step: {dir: 'apps/workbench-desktop', script: 'test'}},
   },
 
   // ---------- orphan（6）----------
@@ -126,7 +127,7 @@ export const SCRIPT_DISPOSITIONS = [
     // 「脚本名一致」不是装饰：若这里写成 `build` 项，判据 MUST 红——不让「委托」变成万能通行证。
     coveredBy: [
       {dir: 'packages/contracts-ts', script: 'typecheck'},
-      {dir: 'apps/desktop', script: 'typecheck'},
+      {dir: 'apps/workbench-desktop', script: 'typecheck'},
     ],
   },
   {
@@ -136,7 +137,7 @@ export const SCRIPT_DISPOSITIONS = [
     cause: 'covered-by-driver',
     coveredBy: [
       {dir: 'packages/contracts-ts', script: 'build'},
-      {dir: 'apps/desktop', script: 'build'},
+      {dir: 'apps/workbench-desktop', script: 'build'},
     ],
   },
   {
@@ -162,11 +163,11 @@ export const SCRIPT_DISPOSITIONS = [
     docEvidence: {file: 'docs/engine.md', marker: 'pnpm test:engine-smoke'},
   },
   {
-    dir: 'apps/desktop',
+    dir: 'apps/workbench-desktop',
     script: 'dev',
     disposition: 'orphan',
     cause: 'manual',
-    docEvidence: {file: 'docs/engineering.md', marker: 'pnpm --filter @nai/desktop dev'},
+    docEvidence: {file: 'docs/engineering.md', marker: 'pnpm --filter @nai/workbench-desktop dev'},
   },
 ];
 
@@ -774,3 +775,5 @@ export function scriptErrors({
 
   return errors;
 }
+
+

@@ -1,0 +1,6 @@
+{
+  "registry.yaml": {
+    "sha256": "8201bb322422bae94a65622c21eea28d57916caa284779b6d4c8d35b832ce114",
+    "baseline": "docs/digital-host-agent-design-V4.3.md"
+  }
+}

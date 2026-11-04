@@ -1,7 +1,7 @@
 /// Node 测试文件的**可达性闭世界**：仓库里每个测试文件 MUST 被某个**登记站点**覆盖。
 ///
 /// 这个模块存在的理由：门控是靠**逐条列举**（`engineering_checks` 里手写 `node --test <path>`）
-/// 加**两个 glob**（`tests/ui/*.test.mjs`、`apps/desktop/tests/*.test.mjs`）把测试接上电的。
+/// 加**两个 glob**（`tests/ui/*.test.mjs`、`apps/workbench-desktop/tests/*.test.mjs`）把测试接上电的。
 /// 「列举」的盲区恰好是**它的补集**：往仓库里放一个 `tests/kernel/foo.test.mjs`，**没有任何地方
 /// 会注意到它**——`cargo xtask check --profile full` 照样 `EXIT=0`、目标数不变、用例数不变。
 ///
@@ -190,9 +190,9 @@ export const TEST_REGISTRATION_SITES = [
   },
   {
     id: 'desktop-test',
-    host: 'apps/desktop/package.json',
+    host: 'apps/workbench-desktop/package.json',
     marker: 'tests/*.test.mjs',
-    base: 'apps/desktop',
+    base: 'apps/workbench-desktop',
     tier: 'full',
   },
 ];
@@ -508,3 +508,4 @@ export function reachabilityErrors(deps = {}) {
 
   return errors;
 }
+

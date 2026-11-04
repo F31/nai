@@ -1,0 +1,27 @@
+# Development graphs are independent; never index another tool's output.
+.codegraph/
+.codegraph-*/
+graphify-out/
+target/
+target-check/
+target-windows/
+**/node_modules/
+**/dist/
+.git/
+.codex/
+.agents/
+.nai-diagnostics/
+.workbuddy/
+apps/desktop/
+apps/workbench-desktop/gen/
+**/src/generated/
+packages/contracts-ts/src/generated/
+native/contracts/generated/
+tests/legacy/
+demos/
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.db
+**/*.sqlite*

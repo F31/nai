@@ -1,0 +1,4 @@
+[[permission]]
+identifier="allow-human-microphone"
+description="Inspect fixed microphone devices; explicitly take over/resume the protected live run and control the isolated native voice route. No PCM, tokens, paths, recording or upload from the page."
+commands.allow=["workbench_all_mute","workbench_mic_stop","workbench_mic_devices","workbench_mic_poll","workbench_human_start","workbench_human_resume"]

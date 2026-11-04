@@ -1,177 +1,37 @@
-import { readFile } from 'node:fs/promises';
+import {readFile,access} from 'node:fs/promises';
 import YAML from 'yaml';
-
-/// 导出给形状层的一致性断言使用：它与 `schemas/tests/registry.schema.json` 里
-/// `acceptance.id.pattern` 及映射段 targets 的 pattern 重叠，三处 MUST 逐字相同（ADR 0051 决策 1）。
-export const ID_RE = /^(S|R|A|B|O|P|M|H|X)[0-9]{2}$/;
-/// 导出给 `baseline.mjs` 使用：基线 §57.3 的发布线正本与注册表的 `release_lines`
-/// 必须是同一组键，否则「对账」本身就是对着两张不同的表。
-export const RELEASE_LINES = ['slice_0', 'r1', 'r2', 'r3', 'experimental', 'capability_pack'];
-/// 导出给形状层的一致性断言使用：状态枚举在 schema 与脚本里各有一处，
-/// 「重叠的每一处 MUST 逐字一致」是 ADR 0051 决策 1 的可判定形式。
-export const STATUSES = ['implemented', 'tested', 'blocked', 'not_applicable', 'pending'];
-
-/// Families whose baseline definition is a *complete* id range, with the count
-/// the baseline fixes. "Defined but absent", and "present with a hole", are the
-/// two failures this table exists for.
-///
-/// The reason it is a hard gate rather than a comment: ADR 0042 decision 4
-/// deliberately left M01-M18 unregistered, and the consequence was recorded as
-/// a defect — "not started" has to read as `pending`, because *registered* and
-/// *measured* are two different statements, and an omitted family silently
-/// drops the whole part from the "the registry is authoritative" view.
-/// ADR 0047 decision 4 applies that lesson instead of repeating it.
-const COMPLETE_FAMILIES = new Map([
-  ['M', {count: 18, baseline: 'V3.11 §37.5、§38.10'}],
-  ['H', {count: 18, baseline: 'V3.11 §40–§47、§48.5'}],
-]);
-
-/// The post-V3.9 scope split: ids that are *capability packs* — designed and
-/// contract-bounded, but deliberately NOT part of the first release's gate.
-///
-/// V3.9 added the `capability_pack` release line because "designed" and
-/// "committed" are two different statements and only the former had a place to
-/// live. INV-33 ("the default composition must not depend on a capability
-/// pack") is only checkable if the split itself is machine-readable, so the
-/// split is asserted here rather than described in prose. Three distinct
-/// failures are caught: a pack id sitting on a first-release line, a pack id
-/// left off the pack line, and a non-pack id parked on the pack line.
-///
-/// This list is a **hand-carried mirror of §51.3's table**, so on its own it can
-/// drift from the baseline it claims to quote — change §51.3 and nothing here
-/// notices. W78 closed that by having `baseline.mjs` parse the table and assert
-/// this constant equals the parsed union; the list is exported for exactly that
-/// check (ADR 0056).
-export const CAPABILITY_PACK_IDS = [
-  ...Array.from({length: 18}, (_, index) => `M${String(index + 1).padStart(2, '0')}`),
-  ...['H05', 'H06', 'H07', 'H08', 'H09', 'H10', 'H11', 'H12', 'H13', 'H14', 'H16'],
-];
-const FIRST_RELEASE_LINES = ['slice_0', 'r1', 'r2'];
-
-/// Contract labels that name an architectural property instead of a callable
-/// capability in `schemas/catalog/capabilities.json`. Kept deliberately tiny:
-/// every entry has to say why it is not a capability, so an unreviewed label
-/// cannot quietly become an exemption.
-const NON_CAPABILITY_CONTRACTS = new Map([
-  [
-    'plugin-hosts-and-ipc',
-    'A06 describes the host/IPC architecture and its trust boundary, not a callable wire contract; the catalog lists callable contracts only.',
-  ],
-]);
-
-export async function readRegistry() {
-  return YAML.parse(await readFile('tests/registry.yaml', 'utf8'));
+export const BASELINE='docs/digital-host-agent-design-V4.8.md';
+export const ID_RE=/^ACC-[A-Z]+-[0-9]{2}$/;
+export const STATUSES=['pending','implemented','tested','blocked','not_applicable','not_selected','simulated'];
+export async function readRegistry(){return YAML.parse(await readFile('tests/registry.yaml','utf8'));}
+export function baselineRequirements(text){
+ const s=text.split('## 39. 验收矩阵与交付证据')[1]?.split('## 40.')[0];if(!s)throw Error('acceptance section missing');
+ return [...s.matchAll(/^\| (ACC-[A-Z]+-\d+) \| (.*?) \| (.*?) \|$/gm)].map(m=>({id:m[1],title:m[2],expected:m[3]}));
 }
-
-/// Capability ids as declared in the catalog, in any stage.
-///
-/// Draft entries count. A registry row that references a draft contract names
-/// something the catalog has actually recorded, which is what this gate is
-/// about; it says nothing about the referenced acceptance passing, and must not
-/// be read as one.
-export async function readCatalogIds() {
-  const catalog = JSON.parse(
-    await readFile('schemas/catalog/capabilities.json', 'utf8'),
-  );
-  return new Set(catalog.capabilities.map(capability => capability.id));
+export function validateRegistry(r,text){
+ const errors=[],required=baselineRequirements(text),seen=new Set();
+ if(r.schema_version!==2||r.baseline!==BASELINE)errors.push('registry baseline/version mismatch');
+ const tasks=new Set(Array.from({length:15},(_,i)=>`V48-${String(i+1).padStart(2,'0')}`));
+ if(JSON.stringify([...(r.work_items??[])].sort())!==JSON.stringify([...tasks].sort()))errors.push('V48-01..15 incomplete');
+ const invs=new Set(Array.from({length:62},(_,i)=>`INV-${String(i+1).padStart(2,'0')}`));
+ const invRows=r.invariants??[];
+ if(invRows.length!==62||new Set(invRows.map(i=>i.id)).size!==62||invRows.some(i=>!invs.has(i.id)))errors.push('INV-01..62 incomplete');
+ for(const m of text.matchAll(/^\| (INV-\d{2}) \| (.*?) \|$/gm))if(!invRows.some(i=>i.id===m[1]&&i.requirement===m[2]))errors.push(`${m[1]} text drift`);
+ for(const a of r.acceptance??[]){
+  if(!ID_RE.test(a.id)||seen.has(a.id))errors.push(`invalid/duplicate ${a.id}`);seen.add(a.id);
+  const s=required.find(v=>v.id===a.id);if(!s||s.title!==a.title||s.expected!==a.expected)errors.push(`${a.id} requirement drift`);
+  if(!a.work_items?.length||a.work_items.some(t=>!tasks.has(t)))errors.push(`${a.id} unknown work item`);
+  if(!a.invariants?.length||a.invariants.some(i=>!invs.has(i)))errors.push(`${a.id} unknown invariant`);
+  if(!STATUSES.includes(a.status))errors.push(`${a.id} invalid status`);
+  const es=a.evidence??[];
+  if(['not_applicable','not_selected'].includes(a.status)&&(!a.condition||a.condition.result!=='false'||a.condition.claimed!==false||!a.condition.reason||!a.condition.expression))errors.push(`${a.id} exclusion requires false unclaimed condition`);
+  if(a.status==='simulated'&&!es.some(e=>e.result==='simulated'))errors.push(`${a.id} simulated requires simulated evidence`);
+  if(es.some(e=>e.kind==='prerequisite'&&e.complete))errors.push(`${a.id} prerequisite cannot be complete acceptance`);
+  if(a.status==='tested'&&!es.some(e=>e.kind==='acceptance'&&e.complete&&e.result==='passed'&&typeof e.environment==='string'&&!/simulat|mock|fixture/i.test(e.environment)))errors.push(`${a.id} tested requires complete real acceptance evidence`);
+  if(a.status!=='pending'&&!es.length)errors.push(`${a.id} status requires evidence/condition`);
+  for(const e of es)if(!e.report||e.report.startsWith('/')||e.report.includes('..')||/[:\\]/.test(e.report))errors.push(`${a.id} unsafe evidence path`);
+ }
+ for(const a of required)if(!seen.has(a.id))errors.push(`${a.id} missing`);
+ return errors;
 }
-
-export function validateRegistry(registry, catalogIds) {
-  const errors = [];
-  if (registry.schema_version !== 1) errors.push('schema_version must be 1');
-  if (!(catalogIds instanceof Set)) {
-    errors.push('catalog capability ids are required to validate contract references');
-  }
-  for (const line of RELEASE_LINES) {
-    if (!registry.release_lines || !registry.release_lines[line]) {
-      errors.push(`release_lines.${line} missing`);
-    }
-  }
-  // A contract reference is a promise that the catalog knows the name. Without
-  // this the registry can point at capabilities that do not exist at all, and
-  // the "开放兼容" surface stays silently empty.
-  const resolvable = value =>
-    catalogIds instanceof Set &&
-    (catalogIds.has(value) || NON_CAPABILITY_CONTRACTS.has(value));
-  const seen = new Set();
-  for (const item of registry.acceptance ?? []) {
-    if (!ID_RE.test(item.id)) errors.push(`invalid acceptance id: ${item.id}`);
-    if (seen.has(item.id)) errors.push(`duplicate acceptance id: ${item.id}`);
-    seen.add(item.id);
-    if (!RELEASE_LINES.includes(item.release_line)) {
-      errors.push(`${item.id}: invalid release_line ${item.release_line}`);
-    }
-    if (!STATUSES.includes(item.status)) {
-      errors.push(`${item.id}: invalid status ${item.status}`);
-    }
-    if (item.contract !== undefined && !resolvable(item.contract)) {
-      errors.push(
-        `${item.id}: contract ${item.contract} is neither a catalog capability nor a registered non-capability contract`,
-      );
-    }
-  }
-  // Mapping: every D target must resolve to an existing acceptance id.
-  for (const [task, entry] of Object.entries(registry.mapping?.d01_to_d14 ?? {})) {
-    if (!/^D[0-9]{2}$/.test(task)) errors.push(`invalid mapping key: ${task}`);
-    if (!STATUSES.includes(entry.status)) {
-      errors.push(`${task}: invalid status ${entry.status}`);
-    }
-    for (const target of entry.targets ?? []) {
-      if (!seen.has(target)) errors.push(`${task}: target ${target} not in acceptance`);
-    }
-  }
-  // New legacy ids (T/E/U) must not appear in acceptance ids.
-  for (const item of registry.acceptance ?? []) {
-    if (/^(T|E|U)[0-9]{2}$/.test(item.id)) errors.push(`legacy id ${item.id} must not be re-added`);
-  }
-  // Every family the baseline defines as a complete range must be registered in
-  // full. Counted and compared per family: summing M and H into one "at least 36
-  // rows" total would let one family's surplus hide the other's hole.
-  for (const [family, {count, baseline}] of COMPLETE_FAMILIES) {
-    const expected = Array.from(
-      {length: count},
-      (_, index) => `${family}${String(index + 1).padStart(2, '0')}`,
-    );
-    const present = [...seen].filter(id => id.startsWith(family));
-    const missing = expected.filter(id => !present.includes(id));
-    if (missing.length > 0) {
-      errors.push(
-        `${family} family incomplete (${baseline}, ${count} items): missing ${missing.join(', ')}`,
-      );
-    }
-    const extra = present.filter(id => !expected.includes(id));
-    if (extra.length > 0) {
-      errors.push(`${family} family has ids outside the defined range: ${extra.join(', ')}`);
-    }
-  }
-  // The capability-pack split (V3.9 §51.3, INV-33). Checked from both sides so
-  // neither "quietly promote a pack into the first release" nor "quietly demote
-  // a first-release item into a pack" can pass, and the check cannot be
-  // satisfied by an empty pack line.
-  const byId = new Map((registry.acceptance ?? []).map(item => [item.id, item]));
-  const packSet = new Set(CAPABILITY_PACK_IDS);
-  const onPackLine = [...byId.values()]
-    .filter(item => item.release_line === 'capability_pack')
-    .map(item => item.id);
-  const notOnPackLine = CAPABILITY_PACK_IDS.filter(id => !onPackLine.includes(id));
-  if (notOnPackLine.length > 0) {
-    errors.push(
-      `capability pack set incomplete (V3.11 §51.3): not on capability_pack line: ${notOnPackLine.join(', ')}`,
-    );
-  }
-  const strayOnPackLine = onPackLine.filter(id => !packSet.has(id));
-  if (strayOnPackLine.length > 0) {
-    errors.push(
-      `capability_pack line holds ids outside the V3.11 §51.3 set: ${strayOnPackLine.join(', ')}`,
-    );
-  }
-  const leaked = [...byId.values()]
-    .filter(item => packSet.has(item.id) && FIRST_RELEASE_LINES.includes(item.release_line))
-    .map(item => `${item.id}=${item.release_line}`);
-  if (leaked.length > 0) {
-    errors.push(
-      `capability pack ids must not sit on a first-release line (INV-33): ${leaked.join(', ')}`,
-    );
-  }
-  return errors;
-}
+export async function inspectRegistry(r=undefined){r??=await readRegistry();const errors=validateRegistry(r,await readFile(BASELINE,'utf8'));for(const a of r.acceptance??[])for(const e of a.evidence??[]){try{await access(e.report);}catch{errors.push(`${a.id} missing evidence ${e.report}`);}}return errors;}

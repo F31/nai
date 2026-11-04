@@ -2,6 +2,100 @@ use super::*;
 use nai_media_core::{MediaError, MediaGate};
 
 const TOKEN: &str = "test_only_credential_01234567890123456789";
+
+struct NeutralProbe(std::sync::atomic::AtomicUsize);
+impl ManualEventSurface for NeutralProbe {
+    fn submit(&self, _: ManualEventRequest) -> Result<(), ErrorCode> {
+        Err(ErrorCode::CapabilityNotReady)
+    }
+    fn events(&self) -> Result<Vec<ManualEventView>, ErrorCode> {
+        Ok(vec![])
+    }
+    fn prewarm(&self, _: OutputPrewarmRequest) -> Result<(), ErrorCode> {
+        self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Ok(())
+    }
+}
+#[tokio::test]
+async fn output_prewarm_has_own_permission_shared_idempotence_and_epoch_fence() {
+    let probe = Arc::new(NeutralProbe(std::sync::atomic::AtomicUsize::new(0)));
+    async fn send(api: &ControlApi, route: &str, body: &Value) -> HttpResponse {
+        api.handle(
+            Request::builder()
+                .method("POST")
+                .uri(route)
+                .header("authorization", format!("Bearer {TOKEN}"))
+                .header("content-type", "application/json")
+                .body(Full::new(Bytes::from(serde_json::to_vec(body).unwrap())))
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+    }
+    for allowed in [false, true] {
+        let permissions = if allowed {
+            vec!["media.prepare", "media.mute", "event.manual.write"]
+        } else {
+            vec!["runtime.read"]
+        };
+        let api = ControlApi::new(
+            Session::new("s", "w").unwrap(),
+            EmergencyHandle::default(),
+            Arc::new(Access::new(TOKEN, "device", &permissions, Duration::from_secs(20)).unwrap()),
+        )
+        .unwrap()
+        .with_manual_events(probe.clone());
+        let request = body("prepare-output", 1, 0, 0);
+        let response = send(&api, "/api/v1/sessions/s/output-prewarm", &request).await;
+        if !allowed {
+            assert_eq!(response.status(), 403);
+            assert_eq!(probe.0.load(std::sync::atomic::Ordering::SeqCst), 0);
+            continue;
+        }
+        assert_eq!(response.status(), 200);
+        assert_eq!(
+            send(&api, "/api/v1/sessions/s/output-prewarm", &request)
+                .await
+                .status(),
+            200
+        );
+        assert_eq!(probe.0.load(std::sync::atomic::Ordering::SeqCst), 1);
+        let mut foreign = request.clone();
+        foreign["device_id"] = json!("foreign");
+        assert_eq!(
+            send(&api, "/api/v1/sessions/s/output-prewarm", &foreign)
+                .await
+                .status(),
+            403
+        );
+        let mut collision = request.clone();
+        collision["source"] = json!("manual");
+        collision["text"] = json!("not neutral");
+        assert_eq!(
+            send(&api, "/api/v1/sessions/s/manual-events", &collision)
+                .await
+                .status(),
+            409
+        );
+        assert_eq!(
+            send(&api, "/api/v1/sessions/s/mute", &body("mute", 2, 0, 0))
+                .await
+                .status(),
+            200
+        );
+        assert_eq!(
+            send(
+                &api,
+                "/api/v1/sessions/s/output-prewarm",
+                &body("stale", 3, 0, 0)
+            )
+            .await
+            .status(),
+            409
+        );
+        assert_eq!(probe.0.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+}
 struct Harness {
     api: Arc<ControlApi>,
     gate: MediaGate,

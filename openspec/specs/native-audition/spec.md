@@ -1,0 +1,18 @@
+# native-audition Specification
+
+## Purpose
+为固定短句TTS测试音频提供显式本机试听、独立原生设备进程、有界媒体传输及挑战锚定租约和优先停止，区分样本提交与硬件播放完成，防止失联或迟到请求恢复旧试听。
+
+## Requirements
+
+### Requirement: 独立原生试听
+系统 SHALL 在明确点击试听后把有效TTS测试产物交给独立原生进程，不经JSON/Base64发送PCM，不自动请求Provider或恢复播放。
+#### Scenario: 设备不可用
+- **WHEN** 原生设备或格式不满足执行条件
+- **THEN** 显式Unavailable，不用演练结果或提交进度声称硬件播放成功
+
+### Requirement: 独立租约与优先停止
+worker SHALL 以自身单调时钟challenge锚定不超过500ms的租约，迟到/重放不能续播，EOF/优先停止/失联必须静音；界面隐藏、离开或退出时停止，不自动恢复。
+#### Scenario: 控制卡住
+- **WHEN** 控制写入、数据库或父进程失联
+- **THEN** 原生输出不等待普通锁，租约失效清零并关闭；显式再次点击才可重启

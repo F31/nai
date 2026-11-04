@@ -1,0 +1,2136 @@
+{
+  "schema_version": 2,
+  "baseline": "docs/digital-host-agent-design-V4.3.md",
+  "work_items": [
+    "V43-RF01",
+    "V43-RF02",
+    "V43-RF03",
+    "V43-RF04",
+    "V43-RF05",
+    "V43-RF06",
+    "V43-RF07",
+    "V43-RF08",
+    "V43-RF09",
+    "V43-RF10",
+    "V43-RF11",
+    "V43-RF12"
+  ],
+  "invariants": [
+    {
+      "id": "INV-01",
+      "requirement": "无相应渠道/用途/行为许可不外发受限内容，unknown不当granted"
+    },
+    {
+      "id": "INV-02",
+      "requirement": "AI/模板/缓存/预生成均执行input/evidence/output及交付前门控（媒体preplay/其他pre-dispatch），不绕过guard"
+    },
+    {
+      "id": "INV-03",
+      "requirement": "审批绑定bundle hash、session/epoch、版本、角色/范围、TTL，不接受模型自授"
+    },
+    {
+      "id": "INV-04",
+      "requirement": "旧epoch/过期/撤销结果不得再次提交/播放，重新连接不自动恢复"
+    },
+    {
+      "id": "INV-05",
+      "requirement": "敏感事实依据当前有效发布源，图/字幕/素材同样绑定与失效"
+    },
+    {
+      "id": "INV-06",
+      "requirement": "本地P0独立于engine/云/DB，鉴权后幂等先停，实际ACK不等于平台已静音"
+    },
+    {
+      "id": "INV-07",
+      "requirement": "新授权扩大先持久化，撤销/静音先执行后审计，失败保持拒绝"
+    },
+    {
+      "id": "INV-08",
+      "requirement": "值守由主动确认短租约，网络心跳不续人工值守"
+    },
+    {
+      "id": "INV-09",
+      "requirement": "外部文本/文档/工具/Agent均不具有系统指令或授权权力"
+    },
+    {
+      "id": "INV-10",
+      "requirement": "模型无高风险交易/配置/任意执行权限，动作白名单与实际执行器复核"
+    },
+    {
+      "id": "INV-11",
+      "requirement": "所有队列/循环/结果/调用有界，deadline与预算并行约束"
+    },
+    {
+      "id": "INV-12",
+      "requirement": "签名不等于安全，原生进程不等于沙箱，未知原生不进内核"
+    },
+    {
+      "id": "INV-13",
+      "requirement": "凭据受控引用，UI/仓库/日志/支持包不含明文，生产限制完整转储"
+    },
+    {
+      "id": "INV-14",
+      "requirement": "local_only/个人数据按用途与目的地强制过滤，不以“本地库”掩盖API外发"
+    },
+    {
+      "id": "INV-15",
+      "requirement": "访客长期记忆默认关，作用域/同意/保留/删除可验证，不跨平台昵称合并"
+    },
+    {
+      "id": "INV-16",
+      "requirement": "真人原声不宣称经过LLM语义预审；设备/音轨/平台/标识/P0仍执行"
+    },
+    {
+      "id": "INV-17",
+      "requirement": "每个音轨/输出ownership明确，全静音覆盖全部bus，无双重收音"
+    },
+    {
+      "id": "INV-18",
+      "requirement": "必需视觉/模型帧就绪才commit，可选只用预授权替代，不展示其他对象"
+    },
+    {
+      "id": "INV-19",
+      "requirement": "影子/试听私有sink隔离，不能误进入真实直播输出"
+    },
+    {
+      "id": "INV-20",
+      "requirement": "实际完成以对应目标的播放/发送/动作ACK证据，生成/HTTP202不算完成；不推定用户已读"
+    },
+    {
+      "id": "INV-21",
+      "requirement": "决策链完整性不等于防管理员篡改；删除payload不能被回放恢复"
+    },
+    {
+      "id": "INV-22",
+      "requirement": "升级维护窗口+可恢复journal，回滚不静默丢新增数据"
+    },
+    {
+      "id": "INV-23",
+      "requirement": "三档同核心；edition/deployment/presentation/behavior/delivery不硬编码等价"
+    },
+    {
+      "id": "INV-24",
+      "requirement": "未启用不启动对应资源；市场/许可证暂不可达不自动切断合法本地会话"
+    },
+    {
+      "id": "INV-25",
+      "requirement": "安全/肖像/声线/权限撤销优先即时，不被商业宽限覆盖"
+    },
+    {
+      "id": "INV-26",
+      "requirement": "kernel不依赖业务插件/SDK/Tauri，插件无直接实现依赖"
+    },
+    {
+      "id": "INV-27",
+      "requirement": "能力生命周期、实现、认证、证据独立，不能用mock/文档检查冒充真实通过"
+    },
+    {
+      "id": "INV-28",
+      "requirement": "已发布内容不可原地覆盖，需求/演示/交接确认与推断区分"
+    },
+    {
+      "id": "INV-29",
+      "requirement": "任意生产输出走DeliveryGate；纯文字不依赖假音频，也不绕过授权"
+    },
+    {
+      "id": "INV-30",
+      "requirement": "影响分析未知不可当无影响；处置部分失败不解除已有撤销"
+    },
+    {
+      "id": "INV-31",
+      "requirement": "失败后替代展示不冒充实时步骤成功，不静默替换批准对象"
+    },
+    {
+      "id": "INV-32",
+      "requirement": "传输ACK、已读、接手、采纳与解决分别取证，未知保持未知"
+    },
+    {
+      "id": "INV-33",
+      "requirement": "呈现/部署可选；订阅升级不隐含写实、云或平台已获准"
+    },
+    {
+      "id": "INV-34",
+      "requirement": "停止/撤销对未交付与已交付结果分别报告，不宣称撤回外部已执行动作"
+    },
+    {
+      "id": "INV-35",
+      "requirement": "角色化智能体共用授权/预算；context过时重检，不因建议采纳绕过输出门"
+    },
+    {
+      "id": "INV-36",
+      "requirement": "系列复用不复制旧批准/租约/观众身份；偏好和复盘不自动成为权威事实"
+    },
+    {
+      "id": "INV-37",
+      "requirement": "私有提词/联系方式与公共画面隔离，场景切换不可误捕获"
+    },
+    {
+      "id": "INV-38",
+      "requirement": "无授权数据不伪造热度/个体画像/效果；无意义播报时长不是优化目标"
+    },
+    {
+      "id": "INV-39",
+      "requirement": "主持权显式切换；VAD/网络心跳/模型建议不能授予自动外发权限"
+    },
+    {
+      "id": "INV-40",
+      "requirement": "复盘/生成有单独预算且可取消，未启用辅助不产生对应付费后台任务"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "ACC-UX-01",
+      "title": "新用户首次配置到预演",
+      "expected": "普通入口完成资料导入、事实确认、试听和预演；时间、求助次数、错误单报",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06",
+        "V43-RF09",
+        "V43-RF11",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-19",
+        "INV-27",
+        "INV-33",
+        "INV-37",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native + production browser UI",
+          "scope": "RF03 manual preparation/private ContentOnly preview only: scoped persistent owner, product/show publication, exact frontend receipt, stop/restart and version revoke/correction; no first-user study, TTS/public media/OBS/platform certification",
+          "report": "docs/reports/2026-10-22-v43-rf03-preparation-workbench.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-UX-02",
+      "title": "无密钥/断网/空资料",
+      "expected": "准确说明可用能力与下一步；不把离线素材预览标成AI回答",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06",
+        "V43-RF09",
+        "V43-RF11",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-19",
+        "INV-27",
+        "INV-33",
+        "INV-37",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native + production browser UI",
+          "scope": "RF03 manual preparation/private ContentOnly preview only: scoped persistent owner, product/show publication, exact frontend receipt, stop/restart and version revoke/correction; no first-user study, TTS/public media/OBS/platform certification",
+          "report": "docs/reports/2026-10-22-v43-rf03-preparation-workbench.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-UX-03",
+      "title": "键盘和辅助技术",
+      "expected": "核心任务可键盘完成，焦点可见，状态有文本，错误可定位",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06",
+        "V43-RF09",
+        "V43-RF11",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-19",
+        "INV-27",
+        "INV-33",
+        "INV-37",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-UX-04",
+      "title": "操作员满载直播",
+      "expected": "当前/下一条/对象/费用/问题可辨；P0和接管可快速到达",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06",
+        "V43-RF09",
+        "V43-RF11",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-19",
+        "INV-27",
+        "INV-33",
+        "INV-37",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-UX-05",
+      "title": "访客体验",
+      "expected": "内容优先；不强迫开麦、注册或留资才能查看已公开内容",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06",
+        "V43-RF09",
+        "V43-RF11",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-19",
+        "INV-27",
+        "INV-33",
+        "INV-37",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-UX-06",
+      "title": "移动控制",
+      "expected": "过期/重发/断连显示真实ACK，危险动作不因界面重试重复执行",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06",
+        "V43-RF09",
+        "V43-RF11",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-19",
+        "INV-27",
+        "INV-33",
+        "INV-37",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-CONT-01",
+      "title": "事实更新与发布",
+      "expected": "显示影响范围与diff；运行引用确定snapshot",
+      "work_items": [
+        "V43-RF03"
+      ],
+      "invariants": [
+        "INV-03",
+        "INV-05",
+        "INV-07",
+        "INV-28",
+        "INV-30"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native",
+          "scope": "RF03 private ContentOnly publication foundation: exact closure, field impact/watermark races, immutable snapshots and durable product-version revocation through audit failure/restart; no workbench UI/private preview/public media/cache/platform certification",
+          "report": "docs/reports/2026-10-22-v43-rf03-publication.md"
+        },
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native + production browser UI",
+          "scope": "RF03 manual preparation/private ContentOnly preview only: scoped persistent owner, product/show publication, exact frontend receipt, stop/restart and version revoke/correction; no first-user study, TTS/public media/OBS/platform certification",
+          "report": "docs/reports/2026-10-22-v43-rf03-preparation-workbench.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-CONT-02",
+      "title": "紧急撤销旧事实",
+      "expected": "旧包、缓存与未播放队列按撤销规则阻断；不等索引慢更新",
+      "work_items": [
+        "V43-RF03"
+      ],
+      "invariants": [
+        "INV-03",
+        "INV-05",
+        "INV-07",
+        "INV-28",
+        "INV-30"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native",
+          "scope": "RF03 private ContentOnly publication foundation: exact closure, field impact/watermark races, immutable snapshots and durable product-version revocation through audit failure/restart; no workbench UI/private preview/public media/cache/platform certification",
+          "report": "docs/reports/2026-10-22-v43-rf03-publication.md"
+        },
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native + production browser UI",
+          "scope": "RF03 manual preparation/private ContentOnly preview only: scoped persistent owner, product/show publication, exact frontend receipt, stop/restart and version revoke/correction; no first-user study, TTS/public media/OBS/platform certification",
+          "report": "docs/reports/2026-10-22-v43-rf03-preparation-workbench.md"
+        },
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native + production browser UI",
+          "scope": "RF04 exact FAQ preparation only: scoped published sources, private candidate/context expiry/revocation, bounded manual lookup, cancel/ignore and atomic draft adoption; zero provider calls, no semantic retrieval/API cancellation/paid budget/live media certification",
+          "report": "docs/reports/2026-10-22-v43-rf04-exact-faq.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-CONT-03",
+      "title": "金额/单位/发音",
+      "expected": "数值有类型，金额无浮点误差，发音版本进入媒体缓存身份",
+      "work_items": [
+        "V43-RF03"
+      ],
+      "invariants": [
+        "INV-03",
+        "INV-05",
+        "INV-07",
+        "INV-28",
+        "INV-30"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-CONT-04",
+      "title": "多产品对比",
+      "expected": "同维度/版本可追溯，缺失标未知，不补造竞品事实",
+      "work_items": [
+        "V43-RF03"
+      ],
+      "invariants": [
+        "INV-03",
+        "INV-05",
+        "INV-07",
+        "INV-28",
+        "INV-30"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-KB-01",
+      "title": "中文本地检索",
+      "expected": "用真实中文问题评估召回/排序；FTS分词假设经验证",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-05",
+        "INV-09",
+        "INV-14",
+        "INV-15",
+        "INV-21"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-KB-02",
+      "title": "跨workspace/ACL",
+      "expected": "检索前后过滤、缓存和引用校验均无法越权",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-05",
+        "INV-09",
+        "INV-14",
+        "INV-15",
+        "INV-21"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native + production browser UI",
+          "scope": "RF04 exact FAQ preparation only: scoped published sources, private candidate/context expiry/revocation, bounded manual lookup, cancel/ignore and atomic draft adoption; zero provider calls, no semantic retrieval/API cancellation/paid budget/live media certification",
+          "report": "docs/reports/2026-10-22-v43-rf04-exact-faq.md"
+        },
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native vault/engine + production browser UI",
+          "scope": "RF04 private bounded LLM drafting: encrypted isolated credentials, exact published references, explicit budget reservation/unknown settlement, local HTTP cancellation/restart, atomic draft adoption; synthetic provider only, no paid-provider/semantic RAG/cache/live media certification",
+          "report": "docs/reports/2026-10-22-v43-rf04-bounded-llm.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-KB-03",
+      "title": "外部知识API",
+      "expected": "answer-only、无引用、超时、空结果、拒绝访问分别呈现",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-05",
+        "INV-09",
+        "INV-14",
+        "INV-15",
+        "INV-21"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-KB-04",
+      "title": "语料/embedding变更",
+      "expected": "索引身份不同；可重建/切换，不混用维度或旧ACL",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-05",
+        "INV-09",
+        "INV-14",
+        "INV-15",
+        "INV-21"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-KB-05",
+      "title": "删除/撤权",
+      "expected": "chunk、索引、缓存和恢复路径执行删除/撤权水位",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-05",
+        "INV-09",
+        "INV-14",
+        "INV-15",
+        "INV-21"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-AG-01",
+      "title": "上下文与注入",
+      "expected": "数据/指令分离；资料和插件描述不能提升工具权限",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-09",
+        "INV-10",
+        "INV-11",
+        "INV-14",
+        "INV-20",
+        "INV-35",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-AG-02",
+      "title": "API断流/取消",
+      "expected": "EOF不当成功；取消传播到provider/媒体，费用与残留任务可观察",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-09",
+        "INV-10",
+        "INV-11",
+        "INV-14",
+        "INV-20",
+        "INV-35",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native vault/engine + production browser UI",
+          "scope": "RF04 private bounded LLM drafting: encrypted isolated credentials, exact published references, explicit budget reservation/unknown settlement, local HTTP cancellation/restart, atomic draft adoption; synthetic provider only, no paid-provider/semantic RAG/cache/live media certification",
+          "report": "docs/reports/2026-10-22-v43-rf04-bounded-llm.md"
+        },
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows native vault/engine/host + production UI",
+          "scope": "Read-only local readiness/cost quotation; no provider request or durable task/budget/audit writes; stale-context and occupied physical worker refusal. Real paid API not executed.",
+          "report": "docs/reports/2026-10-23-v43-rf04-llm-local-check.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-AG-03",
+      "title": "限额与并发",
+      "expected": "预留避免并发超发；未知费用待对账，预算不足可解释",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-09",
+        "INV-10",
+        "INV-11",
+        "INV-14",
+        "INV-20",
+        "INV-35",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-AG-04",
+      "title": "工具与记忆",
+      "expected": "有界调用；风险副作用需独立授权；私有记忆不跨参与者",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-09",
+        "INV-10",
+        "INV-11",
+        "INV-14",
+        "INV-20",
+        "INV-35",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-AG-05",
+      "title": "精确与语义缓存",
+      "expected": "语义命中重新核验；只有最终精确媒体身份相同才复用音频",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-09",
+        "INV-10",
+        "INV-11",
+        "INV-14",
+        "INV-20",
+        "INV-35",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-PRES-01",
+      "title": "受控演示",
+      "expected": "只执行allowlist动作；检查点失败走明确分支，不能假装演示成功",
+      "work_items": [
+        "V43-RF09",
+        "V43-RF05",
+        "V43-RF06"
+      ],
+      "invariants": [
+        "INV-03",
+        "INV-05",
+        "INV-18",
+        "INV-20",
+        "INV-31"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-PRES-02",
+      "title": "内容/音频/素材同步",
+      "expected": "必需cue未就绪时按规则等待/降级；不讲A却显示B",
+      "work_items": [
+        "V43-RF09",
+        "V43-RF05",
+        "V43-RF06"
+      ],
+      "invariants": [
+        "INV-03",
+        "INV-05",
+        "INV-18",
+        "INV-20",
+        "INV-31"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-PRES-03",
+      "title": "个性化分支",
+      "expected": "基于已知需求选择已批准分支；推断有标记，不改真实系统数据",
+      "work_items": [
+        "V43-RF09",
+        "V43-RF05",
+        "V43-RF06"
+      ],
+      "invariants": [
+        "INV-03",
+        "INV-05",
+        "INV-18",
+        "INV-20",
+        "INV-31"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-HAND-01",
+      "title": "真人接管",
+      "expected": "不丢上下文；已确认、推断、未知和用户同意范围分开",
+      "work_items": [
+        "V43-RF09"
+      ],
+      "invariants": [
+        "INV-14",
+        "INV-15",
+        "INV-20",
+        "INV-28",
+        "INV-32",
+        "INV-34"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-HAND-02",
+      "title": "外部发送超时",
+      "expected": "显示待确认/失败；无ACK不显示接收成功，不盲重试副作用",
+      "work_items": [
+        "V43-RF09"
+      ],
+      "invariants": [
+        "INV-14",
+        "INV-15",
+        "INV-20",
+        "INV-28",
+        "INV-32",
+        "INV-34"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-HAND-03",
+      "title": "复盘回写",
+      "expected": "新知识是待审核建议，聊天内容不自动成为发布事实",
+      "work_items": [
+        "V43-RF09"
+      ],
+      "invariants": [
+        "INV-14",
+        "INV-15",
+        "INV-20",
+        "INV-28",
+        "INV-32",
+        "INV-34"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-MEDIA-01",
+      "title": "P0",
+      "expected": "在认证负载下计时；目标bus停止、字幕/未播cue失效，残余缓冲单报",
+      "work_items": [
+        "V43-RF05",
+        "V43-RF10"
+      ],
+      "invariants": [
+        "INV-04",
+        "INV-06",
+        "INV-07",
+        "INV-16",
+        "INV-17",
+        "INV-18",
+        "INV-19",
+        "INV-20",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-MEDIA-02",
+      "title": "kill engine/worker",
+      "expected": "keeper依据租约停止；重启不复用旧epoch/批准",
+      "work_items": [
+        "V43-RF05",
+        "V43-RF10"
+      ],
+      "invariants": [
+        "INV-04",
+        "INV-06",
+        "INV-07",
+        "INV-16",
+        "INV-17",
+        "INV-18",
+        "INV-19",
+        "INV-20",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-MEDIA-03",
+      "title": "有界缓存与时基",
+      "expected": "队列不无限增长；丢帧/欠载可诊断，音频时钟与字幕对齐",
+      "work_items": [
+        "V43-RF05",
+        "V43-RF10"
+      ],
+      "invariants": [
+        "INV-04",
+        "INV-06",
+        "INV-07",
+        "INV-16",
+        "INV-17",
+        "INV-18",
+        "INV-19",
+        "INV-20",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-MEDIA-04",
+      "title": "人声/AI分流",
+      "expected": "按已定义静音目标工作；全静音确实覆盖所有目标bus",
+      "work_items": [
+        "V43-RF05",
+        "V43-RF10"
+      ],
+      "invariants": [
+        "INV-04",
+        "INV-06",
+        "INV-07",
+        "INV-16",
+        "INV-17",
+        "INV-18",
+        "INV-19",
+        "INV-20",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-MEDIA-05",
+      "title": "写实全链路",
+      "expected": "目标模型全部本地运行；无隐藏Python/云推理依赖；模型和硬件认证可重现",
+      "work_items": [
+        "V43-RF05",
+        "V43-RF10"
+      ],
+      "invariants": [
+        "INV-04",
+        "INV-06",
+        "INV-07",
+        "INV-16",
+        "INV-17",
+        "INV-18",
+        "INV-19",
+        "INV-20",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-MEDIA-06",
+      "title": "GPU失效/OOM",
+      "expected": "明确可用fallback或停止；CPU未经认证不自动冒充可用写实",
+      "work_items": [
+        "V43-RF05",
+        "V43-RF10"
+      ],
+      "invariants": [
+        "INV-04",
+        "INV-06",
+        "INV-07",
+        "INV-16",
+        "INV-17",
+        "INV-18",
+        "INV-19",
+        "INV-20",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-PLAT-01",
+      "title": "抖音事件",
+      "expected": "用实际获准接口验证语义、去重、重连和可用事件，不靠模拟器判完成",
+      "work_items": [
+        "V43-RF08"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-04",
+        "INV-20",
+        "INV-27",
+        "INV-34",
+        "INV-38"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-PLAT-02",
+      "title": "输出链路",
+      "expected": "分别列本地、设备、平台证据；不把本地ACK当观众已看到",
+      "work_items": [
+        "V43-RF08"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-04",
+        "INV-20",
+        "INV-27",
+        "INV-34",
+        "INV-38"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-PLAT-03",
+      "title": "扩平台",
+      "expected": "新adapter接入共用领域内核；未获接口的平台明确Unavailable",
+      "work_items": [
+        "V43-RF08"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-04",
+        "INV-20",
+        "INV-27",
+        "INV-34",
+        "INV-38"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-SEC-01",
+      "title": "bundle批准",
+      "expected": "任一文本/素材/目标/事实版本变化使旧批准失效",
+      "work_items": [
+        "V43-RF02",
+        "V43-RF05",
+        "V43-RF11"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-02",
+        "INV-03",
+        "INV-04",
+        "INV-08",
+        "INV-13",
+        "INV-19",
+        "INV-29"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native",
+          "scope": "RF02 local foundation only: scoped ACL/CAS/revocation, private manual text gate/Submitted, crash uncertainty; no published product/UI rendering/public/device/remote identity certification",
+          "report": "docs/reports/2026-10-22-v43-rf02-foundation.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-SEC-02",
+      "title": "多人批准",
+      "expected": "同一主体重复投票不计多票；角色/期限/撤权在执行前再验证",
+      "work_items": [
+        "V43-RF02",
+        "V43-RF05",
+        "V43-RF11"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-02",
+        "INV-03",
+        "INV-04",
+        "INV-08",
+        "INV-13",
+        "INV-19",
+        "INV-29"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-SEC-03",
+      "title": "shadow",
+      "expected": "能调用受控测试模型但无生产输出、业务写入或真实设备权限",
+      "work_items": [
+        "V43-RF02",
+        "V43-RF05",
+        "V43-RF11"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-02",
+        "INV-03",
+        "INV-04",
+        "INV-08",
+        "INV-13",
+        "INV-19",
+        "INV-29"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-SEC-04",
+      "title": "本地/远程认证",
+      "expected": "loopback不被视为天然可信；配对、origin、撤权与限流通过测试",
+      "work_items": [
+        "V43-RF02",
+        "V43-RF05",
+        "V43-RF11"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-02",
+        "INV-03",
+        "INV-04",
+        "INV-08",
+        "INV-13",
+        "INV-19",
+        "INV-29"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "Windows native + WSL portable",
+          "scope": "RF01 bootstrap only: dependency inspection/authentication; no business execution, device, remote pairing or full ACC acceptance",
+          "report": "docs/reports/2026-10-22-v43-rf01-contracts-and-bootstrap.md"
+        },
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native",
+          "scope": "RF02 local foundation only: scoped ACL/CAS/revocation, private manual text gate/Submitted, crash uncertainty; no published product/UI rendering/public/device/remote identity certification",
+          "report": "docs/reports/2026-10-22-v43-rf02-foundation.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-EXT-01",
+      "title": "第三方原生插件",
+      "expected": "崩溃/卡死可隔离；签名不替代权限或沙箱说明",
+      "work_items": [
+        "V43-RF10"
+      ],
+      "invariants": [
+        "INV-10",
+        "INV-12",
+        "INV-13",
+        "INV-24",
+        "INV-25",
+        "INV-26"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-EXT-02",
+      "title": "Connector安全",
+      "expected": "URL/重定向/内网地址/凭证范围受控；声明式动作无任意执行",
+      "work_items": [
+        "V43-RF10"
+      ],
+      "invariants": [
+        "INV-10",
+        "INV-12",
+        "INV-13",
+        "INV-24",
+        "INV-25",
+        "INV-26"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-EXT-03",
+      "title": "MCP/A2A",
+      "expected": "工具变化重审；不可信远端信息不提升风险等级或扩散自主调用",
+      "work_items": [
+        "V43-RF10"
+      ],
+      "invariants": [
+        "INV-10",
+        "INV-12",
+        "INV-13",
+        "INV-24",
+        "INV-25",
+        "INV-26"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-EXT-04",
+      "title": "市场供应链",
+      "expected": "hash/签名/依赖/过期/撤销/许可分别验证；市场离线不使本地合法包失效",
+      "work_items": [
+        "V43-RF10"
+      ],
+      "invariants": [
+        "INV-10",
+        "INV-12",
+        "INV-13",
+        "INV-24",
+        "INV-25",
+        "INV-26"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-EXT-05",
+      "title": "安装/卸载",
+      "expected": "权限新增可见；卸载释放资源，数据处置可解释，主程序不残留活动句柄",
+      "work_items": [
+        "V43-RF10"
+      ],
+      "invariants": [
+        "INV-10",
+        "INV-12",
+        "INV-13",
+        "INV-24",
+        "INV-25",
+        "INV-26"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-DEP-01",
+      "title": "Lite离线启动",
+      "expected": "无必需云主机/数据库服务；网络API不可用时界限准确",
+      "work_items": [
+        "V43-RF11"
+      ],
+      "invariants": [
+        "INV-13",
+        "INV-22",
+        "INV-23",
+        "INV-24",
+        "INV-33"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-DEP-02",
+      "title": "直升Standard/Pro",
+      "expected": "同内核、无中间版本依赖；计划显示资源、费用、权限和外部条件",
+      "work_items": [
+        "V43-RF11"
+      ],
+      "invariants": [
+        "INV-13",
+        "INV-22",
+        "INV-23",
+        "INV-24",
+        "INV-33"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-DEP-03",
+      "title": "升级失败/恢复",
+      "expected": "注入断电/下载失败/迁移失败；不损坏原可用安装，不恢复丢失新业务写入",
+      "work_items": [
+        "V43-RF11"
+      ],
+      "invariants": [
+        "INV-13",
+        "INV-22",
+        "INV-23",
+        "INV-24",
+        "INV-33"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-DEP-04",
+      "title": "备份与恢复",
+      "expected": "一致备份可恢复；恢复不复活旧租约、撤权、删除数据或旧批准",
+      "work_items": [
+        "V43-RF11"
+      ],
+      "invariants": [
+        "INV-13",
+        "INV-22",
+        "INV-23",
+        "INV-24",
+        "INV-33"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-OBS-01",
+      "title": "审计与回放",
+      "expected": "能解释采用事实、策略、费用和输出状态；脱敏、保留期和在线调用边界清楚",
+      "work_items": [
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-11",
+        "INV-20",
+        "INV-21",
+        "INV-27"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-OBS-02",
+      "title": "压力与长稳",
+      "expected": "按34.4条件测试；RSS/VRAM/日志与请求队列无无界增长",
+      "work_items": [
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-11",
+        "INV-20",
+        "INV-21",
+        "INV-27"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-BIZ-01",
+      "title": "真实任务收益",
+      "expected": "与现有流程同口径对照；人工维护/交接/内容更新成本有记录",
+      "work_items": [
+        "V43-RF07",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-23",
+        "INV-27",
+        "INV-38",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-BIZ-02",
+      "title": "商业假设",
+      "expected": "真实客户愿付费、复用、续用及支持成本有证据；演示好评不替代付费验证",
+      "work_items": [
+        "V43-RF07",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-23",
+        "INV-27",
+        "INV-38",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-UX-07",
+      "title": "发布决策任务",
+      "expected": "用户能找出字段变化、受影响会话及合适动作；不依赖查看技术图或日志",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06",
+        "V43-RF09",
+        "V43-RF11",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-19",
+        "INV-27",
+        "INV-33",
+        "INV-37",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-UX-08",
+      "title": "接收端快速阅读",
+      "expected": "手机完成理解摘要、认领、定位证据与下一步；30秒目标按真实复杂度实测",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06",
+        "V43-RF09",
+        "V43-RF11",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-19",
+        "INV-27",
+        "INV-33",
+        "INV-37",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-CONT-05",
+      "title": "非结构化依赖",
+      "expected": "图片/录屏未识别字段标未知；无可靠依赖不误报无影响",
+      "work_items": [
+        "V43-RF03"
+      ],
+      "invariants": [
+        "INV-03",
+        "INV-05",
+        "INV-07",
+        "INV-28",
+        "INV-30"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-CONT-06",
+      "title": "影响报告竞态",
+      "expected": "预览后新增会话/变更时，发布重查水位；不依旧报告错误放行",
+      "work_items": [
+        "V43-RF03"
+      ],
+      "invariants": [
+        "INV-03",
+        "INV-05",
+        "INV-07",
+        "INV-28",
+        "INV-30"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-CONT-07",
+      "title": "活动会话处置",
+      "expected": "一般更新、即时撤销、已播更正各走正确路径；部分失败不撤回收紧",
+      "work_items": [
+        "V43-RF03"
+      ],
+      "invariants": [
+        "INV-03",
+        "INV-05",
+        "INV-07",
+        "INV-28",
+        "INV-30"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-PRES-04",
+      "title": "解释性降级",
+      "expected": "实时失败可切获准匹配替代，明确标注；fallback展示不记执行成功",
+      "work_items": [
+        "V43-RF09",
+        "V43-RF05",
+        "V43-RF06"
+      ],
+      "invariants": [
+        "INV-03",
+        "INV-05",
+        "INV-18",
+        "INV-20",
+        "INV-31"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-HAND-04",
+      "title": "原子认领",
+      "expected": "两名销售同时认领仅一人成功，转派/撤权后范围正确",
+      "work_items": [
+        "V43-RF09"
+      ],
+      "invariants": [
+        "INV-14",
+        "INV-15",
+        "INV-20",
+        "INV-28",
+        "INV-32",
+        "INV-34"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-HAND-05",
+      "title": "回执与采纳",
+      "expected": "HTTP ACK、已读、接手、采纳、解决独立；未知不冒充已读/成功",
+      "work_items": [
+        "V43-RF09"
+      ],
+      "invariants": [
+        "INV-14",
+        "INV-15",
+        "INV-20",
+        "INV-28",
+        "INV-32",
+        "INV-34"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-HAND-06",
+      "title": "同意与接收权限",
+      "expected": "撤销链接/联系方式范围后拒绝新读取，第三方复制边界清晰",
+      "work_items": [
+        "V43-RF09"
+      ],
+      "invariants": [
+        "INV-14",
+        "INV-15",
+        "INV-20",
+        "INV-28",
+        "INV-32",
+        "INV-34"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-MODE-01",
+      "title": "ContentOnly",
+      "expected": "无TTS/音频/GPU/形象依赖仍可发布、演示、文字问答和交接",
+      "work_items": [
+        "V43-RF02",
+        "V43-RF04",
+        "V43-RF05"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-17",
+        "INV-19",
+        "INV-23",
+        "INV-29",
+        "INV-33",
+        "INV-34",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "Windows native + WSL portable",
+          "scope": "RF01 bootstrap only: dependency inspection/authentication; no business execution, device, remote pairing or full ACC acceptance",
+          "report": "docs/reports/2026-10-22-v43-rf01-contracts-and-bootstrap.md"
+        },
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native",
+          "scope": "RF02 local foundation only: scoped ACL/CAS/revocation, private manual text gate/Submitted, crash uncertainty; no published product/UI rendering/public/device/remote identity certification",
+          "report": "docs/reports/2026-10-22-v43-rf02-foundation.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-MODE-02",
+      "title": "Voice/HumanAssist",
+      "expected": "Voice无需avatar；真人主持不自动抢音轨，按需发声",
+      "work_items": [
+        "V43-RF02",
+        "V43-RF04",
+        "V43-RF05"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-17",
+        "INV-19",
+        "INV-23",
+        "INV-29",
+        "INV-33",
+        "INV-34",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "Windows native + WSL portable",
+          "scope": "RF01 bootstrap only: dependency inspection/authentication; no business execution, device, remote pairing or full ACC acceptance",
+          "report": "docs/reports/2026-10-22-v43-rf01-contracts-and-bootstrap.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-MODE-03",
+      "title": "非媒体门控",
+      "expected": "文字/网页执行guard、撤销、TTL和目标权限；紧急停自动阻止未发内容",
+      "work_items": [
+        "V43-RF02",
+        "V43-RF04",
+        "V43-RF05"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-17",
+        "INV-19",
+        "INV-23",
+        "INV-29",
+        "INV-33",
+        "INV-34",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native",
+          "scope": "RF02 local foundation only: scoped ACL/CAS/revocation, private manual text gate/Submitted, crash uncertainty; no published product/UI rendering/public/device/remote identity certification",
+          "report": "docs/reports/2026-10-22-v43-rf02-foundation.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-MODE-04",
+      "title": "呈现切换",
+      "expected": "内容/目标/范围变化按规则重批，不继承不匹配的媒体批准",
+      "work_items": [
+        "V43-RF02",
+        "V43-RF04",
+        "V43-RF05"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-17",
+        "INV-19",
+        "INV-23",
+        "INV-29",
+        "INV-33",
+        "INV-34",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-DEP-05",
+      "title": "档位与依赖",
+      "expected": "Standard可无写实，Pro可无云；未启用包无进程/轮询/显存/付费调用",
+      "work_items": [
+        "V43-RF11"
+      ],
+      "invariants": [
+        "INV-13",
+        "INV-22",
+        "INV-23",
+        "INV-24",
+        "INV-33"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "Windows native + WSL portable",
+          "scope": "RF01 bootstrap only: dependency inspection/authentication; no business execution, device, remote pairing or full ACC acceptance",
+          "report": "docs/reports/2026-10-22-v43-rf01-contracts-and-bootstrap.md"
+        },
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native",
+          "scope": "RF02 local foundation only: scoped ACL/CAS/revocation, private manual text gate/Submitted, crash uncertainty; no published product/UI rendering/public/device/remote identity certification",
+          "report": "docs/reports/2026-10-22-v43-rf02-foundation.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-BIZ-03",
+      "title": "计价与核算",
+      "expected": "发布/快照/转人工不逐次惩罚计费；容量定义及费用估算/结算透明",
+      "work_items": [
+        "V43-RF07",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-23",
+        "INV-27",
+        "INV-38",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-BIZ-04",
+      "title": "基线与决策",
+      "expected": "真实基线、采购证据等级、90天起点与有期限例外均可审查",
+      "work_items": [
+        "V43-RF07",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-23",
+        "INV-27",
+        "INV-38",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-LIVE-01",
+      "title": "首场备播",
+      "expected": "少量真实资料能形成可审查节目、预演和缺项；无长配置强迫完成",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-03",
+        "INV-04",
+        "INV-05",
+        "INV-18",
+        "INV-20",
+        "INV-35",
+        "INV-36",
+        "INV-37",
+        "INV-38",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-LIVE-02",
+      "title": "下场复用",
+      "expected": "保留节目/偏好，显示变更，旧租约/批准/访客身份不复制",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-03",
+        "INV-04",
+        "INV-05",
+        "INV-18",
+        "INV-20",
+        "INV-35",
+        "INV-36",
+        "INV-37",
+        "INV-38",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-LIVE-03",
+      "title": "主持权",
+      "expected": "真人主讲不被AI抢话；显式点播/接管、VAD辅助与权限分离",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-03",
+        "INV-04",
+        "INV-05",
+        "INV-18",
+        "INV-20",
+        "INV-35",
+        "INV-36",
+        "INV-37",
+        "INV-38",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-LIVE-04",
+      "title": "节目中断恢复",
+      "expected": "插问/换产品后恢复正确段落，旧对象候选和素材不能补播",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-03",
+        "INV-04",
+        "INV-05",
+        "INV-18",
+        "INV-20",
+        "INV-35",
+        "INV-36",
+        "INV-37",
+        "INV-38",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-LIVE-05",
+      "title": "私有公有隔离",
+      "expected": "OBS/平台输出无私有提示/联系信息；窗口/场景切换仍正确",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-03",
+        "INV-04",
+        "INV-05",
+        "INV-18",
+        "INV-20",
+        "INV-35",
+        "INV-36",
+        "INV-37",
+        "INV-38",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-LIVE-06",
+      "title": "相关问题处理",
+      "expected": "去重/聚合/公平/TTL工作；事件缺失不用假欢迎或假自动互动",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-03",
+        "INV-04",
+        "INV-05",
+        "INV-18",
+        "INV-20",
+        "INV-35",
+        "INV-36",
+        "INV-37",
+        "INV-38",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-LIVE-07",
+      "title": "安静与重复",
+      "expected": "没问题可按节目/等待；不强行填话，同主题冷却可解释",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-03",
+        "INV-04",
+        "INV-05",
+        "INV-18",
+        "INV-20",
+        "INV-35",
+        "INV-36",
+        "INV-37",
+        "INV-38",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-LIVE-08",
+      "title": "形象与表达",
+      "expected": "风格/读法/字幕/动作按profile，身份清楚，事实条件不被改写",
+      "work_items": [
+        "V43-RF03",
+        "V43-RF06"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-03",
+        "INV-04",
+        "INV-05",
+        "INV-18",
+        "INV-20",
+        "INV-35",
+        "INV-36",
+        "INV-37",
+        "INV-38",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-AG-06",
+      "title": "角色任务化",
+      "expected": "共用harness、授权/预算；不依赖多个常驻Agent互聊",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-09",
+        "INV-10",
+        "INV-11",
+        "INV-14",
+        "INV-20",
+        "INV-35",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-AG-07",
+      "title": "建议频控",
+      "expected": "默认少量卡片，合并/冷却/静默可用，安全阻断不受普通冷却",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-09",
+        "INV-10",
+        "INV-11",
+        "INV-14",
+        "INV-20",
+        "INV-35",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-AG-08",
+      "title": "context与取消",
+      "expected": "相关版本变更重检/取消，迟到输出丢弃，费用仍记录",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-09",
+        "INV-10",
+        "INV-11",
+        "INV-14",
+        "INV-20",
+        "INV-35",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": [
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native + production browser UI",
+          "scope": "RF04 exact FAQ preparation only: scoped published sources, private candidate/context expiry/revocation, bounded manual lookup, cancel/ignore and atomic draft adoption; zero provider calls, no semantic retrieval/API cancellation/paid budget/live media certification",
+          "report": "docs/reports/2026-10-22-v43-rf04-exact-faq.md"
+        },
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows MSVC native vault/engine + production browser UI",
+          "scope": "RF04 private bounded LLM drafting: encrypted isolated credentials, exact published references, explicit budget reservation/unknown settlement, local HTTP cancellation/restart, atomic draft adoption; synthetic provider only, no paid-provider/semantic RAG/cache/live media certification",
+          "report": "docs/reports/2026-10-22-v43-rf04-bounded-llm.md"
+        },
+        {
+          "kind": "prerequisite",
+          "result": "passed",
+          "complete": false,
+          "environment": "WSL Linux + Windows native vault/engine/host + production UI",
+          "scope": "Read-only local readiness/cost quotation; no provider request or durable task/budget/audit writes; stale-context and occupied physical worker refusal. Real paid API not executed.",
+          "report": "docs/reports/2026-10-23-v43-rf04-llm-local-check.md"
+        }
+      ]
+    },
+    {
+      "id": "ACC-AG-09",
+      "title": "经验持久化",
+      "expected": "本场/偏好/产品事实/团队经验分开，未经采纳审核不自动回写",
+      "work_items": [
+        "V43-RF04"
+      ],
+      "invariants": [
+        "INV-02",
+        "INV-09",
+        "INV-10",
+        "INV-11",
+        "INV-14",
+        "INV-20",
+        "INV-35",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-REUSE-01",
+      "title": "复盘到下场",
+      "expected": "真运行证据生成具体diff，采纳进入草稿、发布前核验",
+      "work_items": [
+        "V43-RF07",
+        "V43-RF09"
+      ],
+      "invariants": [
+        "INV-14",
+        "INV-15",
+        "INV-21",
+        "INV-28",
+        "INV-32",
+        "INV-36",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-REUSE-02",
+      "title": "后台成本",
+      "expected": "复盘可关/取消/限额，低优先不阻塞实时，不启用不付费调用",
+      "work_items": [
+        "V43-RF07",
+        "V43-RF09"
+      ],
+      "invariants": [
+        "INV-14",
+        "INV-15",
+        "INV-21",
+        "INV-28",
+        "INV-32",
+        "INV-36",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-REUSE-03",
+      "title": "咨询连续性",
+      "expected": "同意下跨会话，陈述者/时间/范围/取代关系正确，无昵称擅自关联",
+      "work_items": [
+        "V43-RF07",
+        "V43-RF09"
+      ],
+      "invariants": [
+        "INV-14",
+        "INV-15",
+        "INV-21",
+        "INV-28",
+        "INV-32",
+        "INV-36",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-REUSE-04",
+      "title": "可迁移资产",
+      "expected": "资产/偏好可看可改可导出，删除后不从日志恢复",
+      "work_items": [
+        "V43-RF07",
+        "V43-RF09"
+      ],
+      "invariants": [
+        "INV-14",
+        "INV-15",
+        "INV-21",
+        "INV-28",
+        "INV-32",
+        "INV-36",
+        "INV-40"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-UE-01",
+      "title": "现场任务测试",
+      "expected": "完成备播、接问、切段、接管、停止；时间/求助/误操作/负担实测",
+      "work_items": [
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-27",
+        "INV-37",
+        "INV-38",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-UE-02",
+      "title": "真实持续使用",
+      "expected": "两场真实任务和成熟窗口留存有口径，不用演练/点击伪造复用",
+      "work_items": [
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-27",
+        "INV-37",
+        "INV-38",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-DATA-01",
+      "title": "指标证据",
+      "expected": "平台数据无权/缺失显示不可用；工具ACK不冒充观众看到/购买",
+      "work_items": [
+        "V43-RF07",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-13",
+        "INV-14",
+        "INV-15",
+        "INV-20",
+        "INV-21",
+        "INV-27",
+        "INV-38"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-DATA-02",
+      "title": "埋点隐私",
+      "expected": "原文/身份/音频默认不进使用遥测，按同意和保留期处理",
+      "work_items": [
+        "V43-RF07",
+        "V43-RF12"
+      ],
+      "invariants": [
+        "INV-13",
+        "INV-14",
+        "INV-15",
+        "INV-20",
+        "INV-21",
+        "INV-27",
+        "INV-38"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-OPS-01",
+      "title": "场控适配",
+      "expected": "获准OBS动作白名单、认证与ACK，私有窗口不被捕获；实际版本认证",
+      "work_items": [
+        "V43-RF06",
+        "V43-RF08"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-06",
+        "INV-17",
+        "INV-19",
+        "INV-20",
+        "INV-37",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    },
+    {
+      "id": "ACC-OPS-02",
+      "title": "模式与平台",
+      "expected": "Assisted/AutoSupervised独立校验，不因人工心跳或购买档位假定平台允许",
+      "work_items": [
+        "V43-RF06",
+        "V43-RF08"
+      ],
+      "invariants": [
+        "INV-01",
+        "INV-06",
+        "INV-17",
+        "INV-19",
+        "INV-20",
+        "INV-37",
+        "INV-39"
+      ],
+      "status": "pending",
+      "evidence": []
+    }
+  ]
+}

@@ -2,6 +2,91 @@ use nai_contracts::{MAX_CONTROL_BYTES, decode_envelope, negotiate, v1::*, valida
 use prost::Message;
 
 #[test]
+fn character_action_metadata_preserves_identity_large_cursors_and_unknown_phase() {
+    let identity = CharacterIdentity {
+        workspace_id: "工作区".into(),
+        character_id: "角色".into(),
+        version: "v1".into(),
+        package_sha256: "a".repeat(64),
+        rights_sha256: "b".repeat(64),
+    };
+    let state = CharacterActionState {
+        request_id: "请求".into(),
+        character: Some(identity),
+        session_id: "场次".into(),
+        generation_epoch: 9_007_199_254_740_993,
+        output_id: "输出".into(),
+        action_id: "wave".into(),
+        phase: 77,
+        reason_code: "UNKNOWN".into(),
+        sequence: u64::MAX,
+        source_sample_position: Some(0),
+        frame_sequence: None,
+    };
+    let mut bytes = state.encode_to_vec();
+    bytes.extend([0x98, 0x06, 0x07]);
+    assert_eq!(
+        CharacterActionState::decode(bytes.as_slice()).unwrap(),
+        state
+    );
+    assert!(CharacterActionPhase::try_from(state.phase).is_err());
+    assert_eq!(
+        CharacterActionState::default().phase,
+        CharacterActionPhase::Unspecified as i32
+    );
+}
+
+#[test]
+fn character_runtime_view_preserves_state_and_unknown_future_field() {
+    let identity = CharacterIdentity {
+        workspace_id: "00000000-0000-4000-8000-000000000001".into(),
+        character_id: "builtin-2d".into(),
+        version: "v1".into(),
+        package_sha256: "a".repeat(64),
+        rights_sha256: "b".repeat(64),
+    };
+    let media = CharacterBoundedMedia {
+        identity: Some(identity.clone()),
+        session_id: "00000000-0000-4000-8000-000000000003".into(),
+        epoch: 1,
+        action_id: "speak".into(),
+        width: 512,
+        height: 288,
+        sample_rate: 24000,
+        channels: 1,
+        max_frames: 600,
+        max_samples: 480_000,
+        samples_per_frame: 800,
+        pixel_format: "rgb32le".into(),
+        pcm_format: "s16le-mono-24000".into(),
+    };
+    let view = CharacterRuntimeView {
+        identity: Some(identity),
+        state: CharacterRuntimeState::PublicActive as i32,
+        session_id: media.session_id.clone(),
+        epoch: 1,
+        action_id: "speak".into(),
+        media: Some(media),
+        reason_code: String::new(),
+    };
+    let mut bytes = view.encode_to_vec();
+    bytes.extend([0x98, 0x06, 0x07]);
+    assert_eq!(
+        CharacterRuntimeView::decode(bytes.as_slice()).unwrap(),
+        view
+    );
+    assert_eq!(
+        CharacterRuntimeState::try_from(view.state).unwrap(),
+        CharacterRuntimeState::PublicActive
+    );
+    assert!(CharacterRuntimeState::try_from(77).is_err());
+    assert_eq!(
+        CharacterRuntimeView::default().state,
+        CharacterRuntimeState::Unspecified as i32
+    );
+}
+
+#[test]
 fn platform_epoch_presence_and_large_connection_generation_roundtrip() {
     let legacy = PlatformEvent::decode(&[][..]).unwrap();
     assert_eq!(legacy.generation_epoch, None);
@@ -21,7 +106,7 @@ fn platform_epoch_presence_and_large_connection_generation_roundtrip() {
 fn envelope() -> Envelope {
     Envelope {
         protocol_major: 1,
-        message_type: "nai.v1.ControlCommand".into(),
+        message_type: "nai.workbench.v1.FoundationRequest".into(),
         message_id: "m".into(),
         request_id: "r".into(),
         trace_id: "t".into(),
@@ -52,7 +137,9 @@ fn mandatory_fields_and_session_epoch_are_not_defaults() {
         ErrorCode::InvalidArgument as i32
     );
     missing = envelope();
-    missing.session_id.clear();
+    // The current catalog has no mandatory session-scoped messages. When a
+    // caller supplies a session, whitespace is not a valid session identity.
+    missing.session_id = " ".into();
     assert!(validate_envelope(&missing).is_err());
     missing = envelope();
     missing.sent_at_utc_ms = None;
@@ -104,6 +191,11 @@ fn rejects_malformed_oversized_expired_and_incompatible_messages() {
     bad = envelope();
     bad.message_type = "nai.v1.FutureAdminCommand".into();
     assert!(validate_envelope(&bad).is_err());
+    bad.message_type = "nai.v1.ControlCommand".into();
+    assert!(
+        validate_envelope(&bad).is_err(),
+        "retired messages are not re-enabled by tests"
+    );
     bad = envelope();
     bad.protocol_minor = 10;
     assert!(

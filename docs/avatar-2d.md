@@ -1,5 +1,7 @@
 # 2D 软件渲染核心（W06 前置）
 
+V4.8新增默认资源（2026-10-24）：`crates/nai-media-core/src/public_avatar.rs`提供独立的内置几何2D贴图及随附许可观察，root与公共keeper已接线为实际静态待机形象，不使用下述旧cue接口。业务口型/音轨与公共批准仍未完成。见[本轮报告](reports/2026-10-24-v48-05-builtin-public-avatar.md)及ADR0160；下文保留W06历史边界。
+
 `plugins/avatar-2d` 提供 `nai-avatar-2d` 库：实际 RGBA8 分层合成、按样本时轴计算的 RMS 嘴型，以及有界/可取消的帧生产。
 当前是可嵌入核心，尚无生产 `apps/render-worker`、共享内存传输、宿主 capability 注册或 Windows 窗口/设备；不授予 Ready/播放权限。
 

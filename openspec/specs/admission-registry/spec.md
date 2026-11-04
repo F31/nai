@@ -1,6 +1,8 @@
 # admission-registry Specification
 
 ## Purpose
+
+本规格下列旧编号/发布线规则限定为V3.11历史追溯。RF01起当前注册表规则由`workbench-bootstrap`和ADR0148显式取代；旧要求不再作用于V4.3 ACC。
 建立唯一的机器可读验收注册表，作为**当前基线**发布线（Slice-0/R1/R2/R3/实验/能力包）的单一事实源；自建 D01–D14 到新验收编号的映射与回填规则，落实 ADR 0015 对基线文本内部矛盾的勘误裁决，保证后续任务卡、认证与报告使用同一套编号且旧编号不再新增。
 
 ## Requirements

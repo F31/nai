@@ -14,9 +14,17 @@ nai-contracts.workspace = true
 nai-plugin-sdk.workspace = true
 nai-media-core = { path = "../../crates/nai-media-core" }
 prost.workspace = true
+sha2.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+cpal = "=0.16.0"
+wasapi = "=0.23.0"
+minifb = { version = "=0.28.0", default-features = false }
 
 [dev-dependencies]
 tempfile.workspace = true
+
+
 
 [lints]
 workspace = true

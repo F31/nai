@@ -19,6 +19,19 @@ dist/
 # 诊断产物（CI 门控日志等）。它们**刻意**住在仓库内，好让凭据扫描器有明确的扫描域
 # （见 xtask/src/secrets.rs 的 ARTIFACTS）；但它们不是要被发布的东西。
 /.nai-diagnostics/
-# Tauri 构建产物（引入真实依赖后才会出现；当前只声明不构建，见 ADR 0046 D3）
-/apps/desktop/src-tauri/target/
-/apps/desktop/src-tauri/gen/
+# Tauri 独立原生构建产物（ADR 0129）
+# Native Windows artifacts are separate from the Linux target cache.
+/target-windows/
+/.codegraph/
+/.codegraph
+/.codegraph-*/
+/.codex/config.toml
+/.archify/
+/codegraph.json
+/scripts/__pycache__/
+
+# V4.3 independent native bootstrap generated resources
+/apps/workbench-desktop/target/
+/apps/workbench-desktop/gen/
+/apps/workbench-desktop/icons/
+

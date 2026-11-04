@@ -1,0 +1,14 @@
+import type {Workbench} from './workbench';
+import {ttsPresets,qwenVoices,qwenLanguages,type TtsForm} from './tts';
+export function TtsEditor({v,onSaved,onCancel}:{v:Workbench;onSaved:()=>void;onCancel:()=>void}){
+ const l=v.llm,f=l.tts,local=f.protocol==='qwen_local',preset=ttsPresets.find(p=>p.id===f.preset)??ttsPresets[0];const patch=(p:Partial<TtsForm>)=>l.setTts({...f,...p});
+ const fields=<><label>API 地址<input required type="url" maxLength={2048} value={f.url} onChange={e=>patch({url:e.target.value})}/></label><label>模型标识<input required maxLength={128} value={f.model} onChange={e=>patch({model:e.target.value})}/></label></>;
+ return <section className="model-editor"><h2>{f.revision==='0'?'新增语音模型':'编辑语音模型'}</h2><form onSubmit={e=>{e.preventDefault();void v.run(async()=>{await l.saveTts();onSaved();});}}><fieldset disabled={v.busy}>
+ <label>常用服务<select value={f.preset} onChange={e=>{const p=ttsPresets.find(x=>x.id===e.target.value)!;patch({preset:p.id,url:p.baseUrl,model:p.model,voice:p.voice,protocol:p.protocol,language:p.language,key:'',credentialSaved:false,customVoice:p.id==='custom',name:p.id==='qwen_local'?'本地 Qwen3-TTS':p.id==='siliconflow'?'SiliconFlow 语音模型':'自定义语音模型'});}}>{ttsPresets.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+ <label>显示名称<input required maxLength={128} value={f.name} onChange={e=>patch({name:e.target.value})}/></label>
+ {f.preset==='custom'?fields:local?<details><summary>本地服务：{f.url}</summary>{fields}</details>:<p className="hint">API：{f.url}<br/>模型：{f.model}</p>}
+ <label>音色<select value={f.customVoice?'custom':f.voice} onChange={e=>patch({customVoice:e.target.value==='custom',voice:e.target.value==='custom'?'':e.target.value})}>{local?qwenVoices.map(voice=><option key={voice} value={voice}>{voice}{voice==='serena'?'（默认）':''}</option>):<option value={preset.voice||ttsPresets[0].voice}>Alex · CosyVoice2</option>}<option value="custom">自定义音色</option></select></label>
+ {f.customVoice&&<label>音色标识<input required maxLength={128} value={f.voice} onChange={e=>patch({voice:e.target.value})}/></label>}
+ {local?<><label>语言<select value={f.language} onChange={e=>patch({language:e.target.value})}>{qwenLanguages.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><p className="hint">本地服务无需 API Key。请先保持 Qwen3-TTS 服务运行；地址仅支持本机回环。</p></>:<><label>API Key{f.credentialSaved?'（已保存，留空保留）':''}<input type="password" autoComplete="new-password" required={!f.credentialSaved} maxLength={4096} value={f.key} onChange={e=>patch({key:e.target.value})}/></label><p className="hint">Key 加密保存且无法读回；更换服务地址时须重新填写。切Tab或离开设置会清空输入框。</p></>}
+ <label className="check"><input type="checkbox" checked={f.enabled} onChange={e=>patch({enabled:e.target.checked})}/>启用此模型</label><div className="actions"><button className="primary">保存语音模型</button><button type="button" onClick={onCancel}>取消</button></div></fieldset></form></section>;
+}

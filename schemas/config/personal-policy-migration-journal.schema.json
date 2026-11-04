@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nai.dev/schemas/config/personal-policy-migration-journal-v1",
+  "title": "PersonalPolicyMigrationJournal",
+  "description": "Maintenance journal metadata only; never a grant or a rollback instruction.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "migration_id", "source_version", "target_version", "phase", "backup_id", "backup_manifest_sha256"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "migration_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"},
+    "source_version": {"const": 2},
+    "target_version": {"const": 3},
+    "phase": {"enum": ["prepared", "backup_verified", "committed"]},
+    "backup_id": {"type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"},
+    "backup_manifest_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

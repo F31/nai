@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "pixel_format": "rgba8",
+  "sample_rate": 8000,
+  "max_buffer_samples": 8000,
+  "noise_gate": 0.02,
+  "full_open_rms": 0.5,
+  "attack_ms": 10,
+  "release_ms": 100,
+  "layers": [
+    {
+      "asset_id": "base",
+      "role": "base",
+      "width": 2,
+      "height": 1,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "asset_id": "closed",
+      "role": "mouth_closed",
+      "width": 1,
+      "height": 1,
+      "x": 1,
+      "y": 0
+    },
+    {
+      "asset_id": "open",
+      "role": "mouth_open",
+      "width": 1,
+      "height": 1,
+      "x": 1,
+      "y": 0
+    }
+  ]
+}

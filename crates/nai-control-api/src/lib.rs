@@ -2,7 +2,7 @@
 //! device authentication, preflight or hardware playback/mute acknowledgement.
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full};
-use hyper::{Request, Response, body::Incoming, service::service_fn};
+use hyper::{Request, Response, body::Body, service::service_fn};
 use hyper_util::rt::TokioIo;
 use nai_contracts::{control_http::SCHEMAS_JSON, v1::*};
 use nai_kernel::evaluate::memory::{
@@ -290,6 +290,9 @@ pub const PERMISSION_VOCABULARY: &[&str] = &[
     "memory.forget",
     "runtime.upgrade",
     "job.read",
+    "event.manual.write",
+    "knowledge.publish",
+    "media.prepare",
 ];
 
 /// Root-created, single device credential. Only its hash is retained here.
@@ -377,6 +380,7 @@ pub struct ControlApi {
     state: Mutex<State>,
     command_schema: jsonschema::Validator,
     approval_schema: jsonschema::Validator,
+    preview_schema: jsonschema::Validator,
     /// 升级 plan 请求体（`{"manifest": {…}}`）。清单**内部**字段不在契约里重述：
     /// 结构真相只有一份，在 `schemas/config/upgrade-package.schema.json`，
     /// 由 `UpgradePackage::parse` 读同一份文件。
@@ -388,8 +392,121 @@ pub struct ControlApi {
     /// §42.3/§42.4 记忆面后端。**缺失 ⇒ `CAPABILITY_NOT_READY`**，MUST NOT 假成功
     /// （与 `approvals` 同形）。
     memory: Option<Arc<dyn MemorySurface>>,
+    manual: Option<Arc<dyn ManualEventSurface>>,
+    manual_schema: jsonschema::Validator,
+    knowledge_schema: jsonschema::Validator,
+    program_schema: jsonschema::Validator,
+    previews: Option<Arc<dyn PreviewSurface>>,
+    /// 最近一次 `nai-engine --preflight` 的报告读取方。**缺失或读不到报告 ⇒
+    /// `CAPABILITY_NOT_READY`**，MUST NOT 伪造一份空报告冒充已检查。
+    preflight: Option<Arc<dyn PreflightSurface>>,
 }
+
+/// App-owned generation lane. A successful submit means admitted, not generated or played.
+pub struct ManualEventRequest {
+    pub command_id: String,
+    pub text: String,
+    pub epoch: u64,
+    pub deadline: Instant,
+}
+pub struct ManualEventView {
+    pub id: String,
+    pub status: String,
+    pub message: String,
+    pub candidate_hash: String,
+}
+pub trait ManualEventSurface: Send + Sync {
+    fn submit(&self, request: ManualEventRequest) -> Result<(), ErrorCode>;
+    fn events(&self) -> Result<Vec<ManualEventView>, ErrorCode>;
+    fn program(&self, _request: ProgramRequest) -> Result<(), ErrorCode> {
+        Err(ErrorCode::CapabilityNotReady)
+    }
+    fn program_view(&self) -> Result<Value, ErrorCode> {
+        Err(ErrorCode::CapabilityNotReady)
+    }
+    fn knowledge(&self, _request: KnowledgePublishRequest) -> Result<(), ErrorCode> {
+        Err(ErrorCode::CapabilityNotReady)
+    }
+    fn prewarm(&self, _request: OutputPrewarmRequest) -> Result<(), ErrorCode> {
+        Err(ErrorCode::CapabilityNotReady)
+    }
+}
+pub struct OutputPrewarmRequest {
+    pub command_id: String,
+    pub epoch: u64,
+    pub deadline: Instant,
+}
+pub struct ProgramRequest {
+    pub command_id: String,
+    pub epoch: u64,
+    pub deadline: Instant,
+    pub action: String,
+    pub program_id: String,
+    pub snapshot: String,
+    pub prompts: Vec<String>,
+    pub candidate_hash: String,
+}
+#[derive(Clone, Copy)]
+enum TaskLane {
+    Manual,
+    Knowledge,
+    OutputPrewarm,
+    Program,
+}
+pub struct KnowledgePublishRequest {
+    pub command_id: String,
+    pub resource_ref: String,
+    pub prepare: bool,
+    pub epoch: u64,
+    pub revision: u64,
+}
+
+/// One approved-candidate preview. `artifact_ref` names a local file; it is not
+/// a playback acknowledgement and never contains media bytes.
+pub struct PreviewRequest {
+    pub local_playback: bool,
+    pub command_id: String,
+    pub candidate_hash: String,
+    pub epoch: u64,
+    pub deadline: Instant,
+}
+#[derive(Clone)]
+pub struct PreviewView {
+    pub local_playback: bool,
+    pub candidate_hash: String,
+    pub status: String,
+    pub message: String,
+    pub sample_count: u64,
+    pub frame_count: u32,
+    pub artifact_ref: String,
+    pub audio_sha256: String,
+}
+pub trait PreviewSurface: Send + Sync {
+    fn submit(&self, request: PreviewRequest) -> Result<(), ErrorCode>;
+    fn previews(&self) -> Result<Vec<PreviewView>, ErrorCode>;
+}
+
+/// The last one-key preflight report. It is read-only for the control surface:
+/// the report itself belongs to the engine's own preflight command.
+pub trait PreflightSurface: Send + Sync {
+    /// Returns the persisted report, or `Err(CapabilityNotReady)` when no
+    /// preflight has been run or the report cannot be read.
+    fn report(&self) -> Result<serde_json::Value, ErrorCode>;
+}
+
 impl ControlApi {
+    pub fn with_manual_events(mut self, manual: Arc<dyn ManualEventSurface>) -> Self {
+        self.manual = Some(manual);
+        self
+    }
+    pub fn with_previews(mut self, previews: Arc<dyn PreviewSurface>) -> Self {
+        self.previews = Some(previews);
+        self
+    }
+    pub fn with_preflight(mut self, preflight: Arc<dyn PreflightSurface>) -> Self {
+        self.preflight = Some(preflight);
+        self
+    }
     /// 挂上记忆面后端。链式是为了不破坏既有构造器的调用点。
     pub fn with_memory(mut self, memory: Arc<dyn MemorySurface>) -> Self {
         self.memory = Some(memory);
@@ -430,6 +547,14 @@ impl ControlApi {
         let command_schema = jsonschema::validator_for(&schema).map_err(|e| e.to_string())?;
         schema["$ref"] = json!("#/$defs/ApprovalCommand");
         let approval_schema = jsonschema::validator_for(&schema).map_err(|e| e.to_string())?;
+        schema["$ref"] = json!("#/$defs/PreviewCommand");
+        let preview_schema = jsonschema::validator_for(&schema).map_err(|e| e.to_string())?;
+        schema["$ref"] = json!("#/$defs/ManualEventCommand");
+        let manual_schema = jsonschema::validator_for(&schema).map_err(|e| e.to_string())?;
+        schema["$ref"] = json!("#/$defs/KnowledgePublishCommand");
+        let knowledge_schema = jsonschema::validator_for(&schema).map_err(|e| e.to_string())?;
+        schema["$ref"] = json!("#/$defs/ProgramCommand");
+        let program_schema = jsonschema::validator_for(&schema).map_err(|e| e.to_string())?;
         schema["$ref"] = json!("#/$defs/UpgradePlanRequest");
         let plan_schema = jsonschema::validator_for(&schema).map_err(|e| e.to_string())?;
         let session_snapshot = session
@@ -462,14 +587,25 @@ impl ControlApi {
             }),
             command_schema,
             approval_schema,
+            preview_schema,
             plan_schema,
             approvals,
             jobs: None,
             memory: None,
+            manual: None,
+            manual_schema,
+            knowledge_schema,
+            program_schema,
+            previews: None,
+            preflight: None,
         })
     }
 
-    async fn handle(&self, mut request: Request<Incoming>) -> Result<HttpResponse, Infallible> {
+    /// Both HTTP and private inherited control use this one judgement path.
+    pub async fn handle<B>(&self, mut request: Request<B>) -> Result<HttpResponse, Infallible>
+    where
+        B: Body<Data = Bytes> + Unpin,
+    {
         let origin = request
             .headers()
             .get("origin")
@@ -509,8 +645,28 @@ impl ControlApi {
                 && matches!(path.as_str(), "/api/v1/health" | "/api/v1/runtime/status")
             {
                 Some("runtime.read")
-            } else if method == hyper::Method::GET && path == session_route {
+            } else if method == hyper::Method::GET
+                && (path == session_route
+                    || path == format!("{session_route}/events")
+                    || path == format!("{session_route}/previews")
+                    || path == format!("{session_route}/preflight")
+                    || path == format!("{session_route}/program"))
+            {
                 Some("session.read")
+            } else if method == hyper::Method::POST && path == format!("{session_route}/previews") {
+                Some("approval.write")
+            } else if method == hyper::Method::POST
+                && (path == format!("{session_route}/manual-events")
+                    || path == format!("{session_route}/program"))
+            {
+                Some("event.manual.write")
+            } else if method == hyper::Method::POST && path == format!("{session_route}/knowledge")
+            {
+                Some("knowledge.publish")
+            } else if method == hyper::Method::POST
+                && path == format!("{session_route}/output-prewarm")
+            {
+                Some("media.prepare")
             } else if method == hyper::Method::POST && path == format!("{session_route}/mute") {
                 Some("media.mute")
             } else if method == hyper::Method::POST && path == format!("{session_route}/takeover") {
@@ -544,6 +700,28 @@ impl ControlApi {
                         ErrorCode::PermissionDenied,
                         "control permission denied",
                     )
+                } else if method == hyper::Method::GET
+                    && path == format!("{session_route}/previews")
+                {
+                    self.previews_list()
+                } else if method == hyper::Method::GET
+                    && path == format!("{session_route}/preflight")
+                {
+                    self.preflight_report()
+                } else if method == hyper::Method::GET && path == format!("{session_route}/events")
+                {
+                    self.manual_events()
+                } else if method == hyper::Method::GET && path == format!("{session_route}/program")
+                {
+                    match self
+                        .manual
+                        .as_ref()
+                        .ok_or(ErrorCode::CapabilityNotReady)
+                        .and_then(|b| b.program_view())
+                    {
+                        Ok(view) => reply(200, view),
+                        Err(code) => fault(code),
+                    }
                 } else if method == hyper::Method::GET && path == "/api/v1/approvals" {
                     self.approvals_list()
                 } else if method == hyper::Method::GET && path.starts_with("/api/v1/jobs/") {
@@ -618,6 +796,16 @@ impl ControlApi {
                         response
                     } else if !self.access.authorized(&token) {
                         error(401, ErrorCode::Unauthenticated, "control identity invalid")
+                    } else if path == format!("{session_route}/previews") {
+                        self.preview_submit(&bytes, received)
+                    } else if path == format!("{session_route}/manual-events") {
+                        self.lane_submit(&bytes, received, TaskLane::Manual)
+                    } else if path == format!("{session_route}/program") {
+                        self.lane_submit(&bytes, received, TaskLane::Program)
+                    } else if path == format!("{session_route}/knowledge") {
+                        self.lane_submit(&bytes, received, TaskLane::Knowledge)
+                    } else if path == format!("{session_route}/output-prewarm") {
+                        self.lane_submit(&bytes, received, TaskLane::OutputPrewarm)
                     } else if path == "/api/v1/memory/read" {
                         self.memory_read(&bytes)
                     } else if path == "/api/v1/memory/forget" {
@@ -1121,6 +1309,316 @@ impl ControlApi {
                  so no step can be staged, snapshotted or committed; no job id is minted"
             ),
         )
+    }
+
+    /// The latest one-key preflight report, or an explicit "not run yet". The
+    /// report is owned by the engine's own `--preflight` command; the control
+    /// surface only reads it back. Missing report is `CAPABILITY_NOT_READY`, never
+    /// a fabricated empty pass.
+    fn preflight_report(&self) -> HttpResponse {
+        let Some(backend) = &self.preflight else {
+            return error(
+                503,
+                ErrorCode::CapabilityNotReady,
+                "preflight surface not configured",
+            );
+        };
+        match backend.report() {
+            Ok(report) => reply(
+                200,
+                json!({
+                    "resource_id": self.session_id,
+                    "revision": "preflight",
+                    "status": "preflight_ok",
+                    "safe_message": "本机预检报告；未播放、未接设备，playback_ack=false。",
+                    "report": report,
+                }),
+            ),
+            Err(ErrorCode::CapabilityNotReady) => error(
+                503,
+                ErrorCode::CapabilityNotReady,
+                "preflight not run yet: run `nai-engine --preflight <scene>` and start the engine with the same data root; no report is fabricated",
+            ),
+            Err(code) => error(503, code, "preflight report unreadable"),
+        }
+    }
+
+    fn previews_list(&self) -> HttpResponse {
+        let Some(backend) = &self.previews else {
+            return error(
+                503,
+                ErrorCode::CapabilityNotReady,
+                "preview surface not configured",
+            );
+        };
+        match backend.previews() {
+            Ok(items) => reply(
+                200,
+                json!({
+                    "resource_id": self.session_id,
+                    "revision": "previews",
+                    "status": "previews_ok",
+                    "safe_message": "文件预览不播放；本机播放须显式操作，设备提交不等于硬件完成，playback_ack=false。",
+                    "items": items.into_iter().map(|item| {
+                        let digest = item.audio_sha256;
+                        let mut value = json!({
+                        "id": item.candidate_hash,
+                        "revision": if item.local_playback { "local-playback" } else { "preview" },
+                        "status": item.status,
+                        "display_text": item.message,
+                        "encoded_contract_ref": item.artifact_ref,
+                        "sample_count": item.sample_count.to_string(),
+                        "frame_count": item.frame_count.to_string(),
+                    });
+                        if !digest.is_empty() { value["audio_sha256"] = json!(digest); }
+                        value
+                    }).collect::<Vec<_>>(),
+                }),
+            ),
+            Err(code) => fault(code),
+        }
+    }
+
+    fn preview_submit(&self, bytes: &[u8], received: Instant) -> HttpResponse {
+        let Some(backend) = &self.previews else {
+            return error(
+                503,
+                ErrorCode::CapabilityNotReady,
+                "preview surface not configured",
+            );
+        };
+        let Ok(body) = serde_json::from_slice::<Value>(bytes) else {
+            return error(400, ErrorCode::InvalidArgument, "invalid preview JSON");
+        };
+        if !self.preview_schema.is_valid(&body) {
+            return error(400, ErrorCode::InvalidArgument, "preview schema rejected");
+        }
+        let number = |key: &str| {
+            body[key]
+                .as_str()
+                .and_then(|value| value.parse::<u64>().ok())
+        };
+        let (Some(epoch), Some(revision), Some(seq)) = (
+            number("generation_epoch"),
+            number("expected_state_revision"),
+            number("seq"),
+        ) else {
+            return error(400, ErrorCode::InvalidArgument, "uint64 out of range");
+        };
+        if body["session_id"] != self.session_id || body["device_id"] != self.access.device {
+            return error(403, ErrorCode::PermissionDenied, "preview scope mismatch");
+        }
+        let candidate = body["candidate_hash"].as_str().unwrap_or("");
+        if candidate.len() != 64
+            || !candidate
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+            || body["hash_algorithm"] != "sha256-canonical-v1"
+        {
+            return error(
+                400,
+                ErrorCode::InvalidArgument,
+                "preview candidate mismatch",
+            );
+        }
+        let ttl = body["ttl_ms"].as_u64().unwrap_or(0);
+        if ttl == 0 || ttl > 30000 || body["command_id"].as_str().unwrap_or("").len() > 256 {
+            return error(400, ErrorCode::InvalidArgument, "preview limit");
+        }
+        let deadline = received + Duration::from_millis(ttl);
+        if Instant::now() >= deadline {
+            return error(409, ErrorCode::DeadlineExceeded, "preview TTL expired");
+        }
+        let Ok(mut state) = self.state.try_lock() else {
+            return error(409, ErrorCode::Conflict, "control state busy");
+        };
+        let mut ledger = std::mem::replace(&mut state.commands, CommandLedger::new(256));
+        let Ok(session) = self.session.try_lock() else {
+            return error(409, ErrorCode::Conflict, "session state busy");
+        };
+        let fingerprint = serde_json::to_vec(&json!({"preview": body})).unwrap();
+        let command_id = body["command_id"].as_str().unwrap_or("").to_owned();
+        let now = Instant::now();
+        let mut backend_error = None;
+        let result = ledger.execute(
+            &command_id,
+            &fingerprint,
+            now,
+            now + Duration::from_secs(300),
+            || {
+                if seq <= state.seq {
+                    return Err(SessionError::Stale);
+                }
+                let snapshot = session.snapshot();
+                if epoch != snapshot.generation_epoch || revision != snapshot.state_revision {
+                    return Err(SessionError::Stale);
+                }
+                if body["local_playback"].as_bool() == Some(true)
+                    && snapshot.mode != SessionMode::Assisted as i32
+                {
+                    backend_error = Some(ErrorCode::PermissionDenied);
+                    return Err(SessionError::Conflict);
+                }
+                backend
+                    .submit(PreviewRequest {
+                        local_playback: body["local_playback"].as_bool().unwrap_or(false),
+                        command_id: command_id.clone(),
+                        candidate_hash: candidate.into(),
+                        epoch,
+                        deadline,
+                    })
+                    .map_err(|code| {
+                        backend_error = Some(code);
+                        SessionError::Conflict
+                    })?;
+                state.seq = seq;
+                Ok(json!({
+                    "command_id": command_id,
+                    "executed": true,
+                    "state_revision": revision.to_string(),
+                    "generation_epoch": epoch.to_string(),
+                }))
+            },
+        );
+        state.commands = ledger;
+        if let Some(code) = backend_error {
+            return fault(code);
+        }
+        match result {
+            Ok(ack) => reply(200, ack),
+            Err(_) => fault(ErrorCode::Conflict),
+        }
+    }
+
+    fn manual_events(&self) -> HttpResponse {
+        let Some(backend) = &self.manual else {
+            return error(
+                503,
+                ErrorCode::CapabilityNotReady,
+                "manual generation is not configured",
+            );
+        };
+        match backend.events() {
+            Ok(items) => reply(
+                200,
+                json!({
+                    "resource_id":self.session_id,"revision":"manual-events","status":"events_ok",
+                "safe_message":"任务接收不代表生成或播放；列出最近100条历史结果，候选有效性以审批列表为准。",
+                    "items":items.into_iter().map(|v| json!({"id":v.id,"revision":"1","status":v.status,
+                        "display_text":v.message,"encoded_contract_ref":v.candidate_hash})).collect::<Vec<_>>()
+                }),
+            ),
+            Err(code) => fault(code),
+        }
+    }
+
+    fn lane_submit(&self, bytes: &[u8], received: Instant, lane: TaskLane) -> HttpResponse {
+        let Some(backend) = &self.manual else {
+            return error(
+                503,
+                ErrorCode::CapabilityNotReady,
+                "manual generation is not configured",
+            );
+        };
+        let Ok(body) = serde_json::from_slice::<Value>(bytes) else {
+            return error(400, ErrorCode::InvalidArgument, "invalid manual event JSON");
+        };
+        if !(match lane {
+            TaskLane::Knowledge => &self.knowledge_schema,
+            TaskLane::Manual => &self.manual_schema,
+            TaskLane::OutputPrewarm => &self.command_schema,
+            TaskLane::Program => &self.program_schema,
+        })
+        .is_valid(&body)
+        {
+            return error(
+                400,
+                ErrorCode::InvalidArgument,
+                "manual event schema rejected",
+            );
+        }
+        let number = |key: &str| body[key].as_str().and_then(|v| v.parse::<u64>().ok());
+        let (Some(epoch), Some(revision), Some(seq)) = (
+            number("generation_epoch"),
+            number("expected_state_revision"),
+            number("seq"),
+        ) else {
+            return error(400, ErrorCode::InvalidArgument, "uint64 out of range");
+        };
+        if body["session_id"] != self.session_id || body["device_id"] != self.access.device {
+            return error(
+                403,
+                ErrorCode::PermissionDenied,
+                "manual event scope mismatch",
+            );
+        }
+        let id = body["command_id"].as_str().unwrap_or("");
+        let text = body[match lane {
+            TaskLane::Knowledge => "resource_ref",
+            TaskLane::Manual => "text",
+            TaskLane::OutputPrewarm => "command_id",
+            TaskLane::Program => "program_id",
+        }]
+        .as_str()
+        .unwrap_or("")
+        .trim();
+        let ttl = body["ttl_ms"].as_u64().unwrap_or(0);
+        if id.len() > 128
+            || !id
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"_-".contains(&b))
+            || text.is_empty()
+            || ttl > 30000
+        {
+            return error(400, ErrorCode::InvalidArgument, "manual event limit");
+        }
+        let deadline = received + Duration::from_millis(ttl);
+        if Instant::now() >= deadline {
+            return fault(ErrorCode::DeadlineExceeded);
+        }
+        let Ok(mut state) = self.state.try_lock() else {
+            return fault(ErrorCode::Conflict);
+        };
+        let Ok(session) = self.session.try_lock() else {
+            return fault(ErrorCode::Conflict);
+        };
+        let admitted = session.snapshot().clone();
+        drop(session);
+        let mut ledger = std::mem::replace(&mut state.commands, CommandLedger::new(256));
+        let fingerprint = serde_json::to_vec(
+            &json!({"lane":match lane {TaskLane::Knowledge=>"knowledge",TaskLane::Manual=>"manual",TaskLane::OutputPrewarm=>"output-prewarm",TaskLane::Program=>"program"},"body":body}),
+        )
+        .unwrap();
+        let now = Instant::now();
+        let mut backend_error = None;
+        let result = ledger.execute(id,&fingerprint,now,now+Duration::from_secs(300),|| {
+            if seq<=state.seq || epoch!=admitted.generation_epoch || revision!=admitted.state_revision {
+                return Err(SessionError::Stale);
+            }
+            (match lane {
+                TaskLane::Knowledge=>backend.knowledge(KnowledgePublishRequest { command_id:id.into(),resource_ref:text.into(),prepare:body["phase"]=="prepare",epoch,revision }),
+                TaskLane::Manual=>backend.submit(ManualEventRequest { command_id:id.into(),text:text.into(),epoch,deadline }),
+                TaskLane::OutputPrewarm=>backend.prewarm(OutputPrewarmRequest{command_id:id.into(),epoch,deadline}),
+                TaskLane::Program=>backend.program(ProgramRequest {
+                    command_id:id.into(),epoch,deadline,
+                    action:body["action"].as_str().unwrap_or("").into(),
+                    program_id:text.into(), snapshot:body["snapshot"].as_str().unwrap_or("").into(),
+                    prompts:body["prompts"].as_array().map(|p|p.iter().map(|v|v.as_str().unwrap_or("").to_owned()).collect()).unwrap_or_default(),
+                    candidate_hash:body["candidate_hash"].as_str().unwrap_or("").into(),
+                }),
+            })
+                .map_err(|code| { backend_error=Some(code); SessionError::Conflict })?;
+            state.seq=seq;
+            Ok(json!({"command_id":id,"executed":true,"generation_epoch":epoch.to_string(),"state_revision":revision.to_string()}))
+        });
+        state.commands = ledger;
+        if let Some(code) = backend_error {
+            return fault(code);
+        }
+        match result {
+            Ok(ack) => reply(200, ack),
+            Err(_) => fault(ErrorCode::Conflict),
+        }
     }
 
     fn approvals_list(&self) -> HttpResponse {

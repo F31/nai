@@ -1,0 +1,9 @@
+## Design
+安全wasapi 0.23.0，COM对象全部在专用线程创建使用，固定48k双声道浮点共享事件流；一个stream跨cue/待机复用。队列容量1，预分配4800帧缓冲，单次事件等待100ms，初始化主线程等候至多2秒；Drop只设停止信号，线程退出RAII停止，不阻塞P0。
+DeviceClockCursor按同stream频率转换position，拒绝倒退/越界。所有成功提交（含零样本）累计绝对帧坐标；Queue仅在write成功后将本buffer语音尾部绝对帧记录进最多32条的预分配在途队列，存cue专属原子计数、累计帧数及DrainFence。后续真实position覆盖该尾部且未撤权/换代/过期/error才更新played。无写入/无设备进度不补证，空闲静音不可冒领旧cue。保留旧callback诊断但不作为成功依据。
+LocalPlaybackStatus追加optional device_played_samples、device_position_observed、audio_backend；actual_local_playback_completed仍false。宿主要求精确media摘要/完整copied和played/wasapi-iaudioclock/单stream及窗口提交；未知旧后端拒绝成功，不回退预计时间。
+完整A/V完成ACK与检查点未在本切片实现；画面仍按复制位置更新，无逐帧呈现认证，不把音频位置当作完整节目完成。
+## Validation
+Queue状态机和宿主伪造/缺失进度测试；Windows常驻多句/取消/换代/帧损坏与真实engine本地Provider夹具测试；契约生成无漂移及相关lint。不调用付费API/改安装库，不全仓测试。
+
+规格收尾显式移除上一轮两项预计callback成功条件，改由本轮实际device-position要求替代，避免主规格同时保留互斥成功门槛；旧字段仅诊断。

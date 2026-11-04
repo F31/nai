@@ -1,0 +1,4 @@
+[[permission]]
+identifier="allow-avatar-preparation"
+description="Choose an avatar directory in the native dialog and stage a workspace-authorized private preview; does not grant public playback."
+commands.allow=["workbench_avatar_choose_and_admit","workbench_avatar_stage_preview","workbench_avatar_choose_photo","workbench_avatar_photo_preview","workbench_avatar_choose_video","workbench_avatar_video_preview","workbench_character_generate","workbench_character_action","workbench_character_select","workbench_character_revoke"]

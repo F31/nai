@@ -1,10 +1,21 @@
-//! Portable media authorization and media-basics timeline. No PCM/device
-//! implementation or hardware ACK synthesis.
+//! Portable media authorization, callback PCM boundary and media timeline.
+//! No device backend or hardware ACK synthesis.
+pub mod character_host;
+pub mod character_license;
+pub mod character_workbench;
+pub mod device_callback;
+pub mod device_clock;
 pub mod frame_slots;
 pub mod lineage;
 pub mod mixing;
 pub mod playback;
+pub mod played_frame;
+pub mod public_avatar;
+pub mod public_clip;
+pub mod public_cue;
+pub mod public_device_loss;
 pub mod timeline;
+pub mod video_clock;
 pub use lineage::{
     FacetKind, LineageError, LineageId, LineageNode, LineageRef, LineageRegistry, LineageReport,
     NodeState, RECYCLE_GRACE_MS,
@@ -68,6 +79,7 @@ pub struct Preplay<'a> {
 }
 
 pub struct MediaGate {
+    callback_epoch: Arc<AtomicU64>,
     session: String,
     epoch: u64,
     emergency: EmergencyHandle,
@@ -106,6 +118,7 @@ impl MediaGate {
     /// keeper restarts. This sets no lease or playback permission.
     pub fn with_epoch_floor(session: &str, capacity: usize, epoch_floor: u64) -> Self {
         Self {
+            callback_epoch: Arc::new(AtomicU64::new(0)),
             session: session.into(),
             epoch: epoch_floor,
             emergency: EmergencyHandle::default(),
@@ -163,11 +176,14 @@ impl MediaGate {
         {
             return Err(MediaError::Unauthorized);
         }
+        // Revoke old callback objects before changing generation-owned state.
+        self.callback_epoch.store(0, Ordering::SeqCst);
         let cancelled = self.rearm_lineage(&lease, utc_ms);
         self.armed_revision = arm_revision;
         self.deadline = Some(now + Duration::from_millis(ttl));
         self.lease = Some(lease);
         self.cancellation = Some(cancelled);
+        self.callback_epoch.store(self.epoch, Ordering::SeqCst);
         Ok(())
     }
     /// Install a new generation: cancel and name what was in flight, move the
@@ -204,6 +220,7 @@ impl MediaGate {
             None
         };
         if let Some(error) = error {
+            self.callback_epoch.store(0, Ordering::SeqCst);
             // Name what the expiry or the mute dropped before clearing the
             // queue, so the caller can report a manifest instead of a number.
             let cancelled = self.lineage.cancel_scope();
@@ -357,6 +374,12 @@ impl MediaGate {
     }
 }
 
+impl Drop for MediaGate {
+    fn drop(&mut self) {
+        self.callback_epoch.store(0, Ordering::SeqCst);
+    }
+}
+
 /// Owned by an output invocation, not an automatic replay queue.
 pub struct PlaybackProgress {
     output: String,
@@ -397,3 +420,9 @@ impl PlaybackProgress {
         Ok(self.completed)
     }
 }
+
+pub mod public_pipe;
+
+pub mod window_preload;
+
+pub mod public_caption;

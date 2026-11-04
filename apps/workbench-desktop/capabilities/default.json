@@ -1,0 +1,14 @@
+{
+  "identifier": "default",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "allow-bootstrap-inspection",
+    "allow-preparation-workbench",
+    "allow-private-audio-control",
+    "allow-public-output-standby",
+    "allow-human-microphone",
+    "allow-avatar-preparation"
+  ]
+}

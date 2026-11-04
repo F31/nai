@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.20)
+project(nai_workbench_wire LANGUAGES CXX)
+find_package(Protobuf 3.21.12 EXACT REQUIRED)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_executable(workbench-roundtrip main.cpp ../../../native/contracts/generated/workbench/bootstrap.pb.cc ../../../native/contracts/generated/workbench/foundation.pb.cc)
+target_include_directories(workbench-roundtrip PRIVATE ../../../native/contracts/generated)
+target_link_libraries(workbench-roundtrip PRIVATE protobuf::libprotobuf)

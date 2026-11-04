@@ -137,3 +137,11 @@
   **演示包没有证据目录约定**，其真值来自**真实演练与真实端点**，不是仓库载荷。**臆造** `tests/demo` 属过度绑定。
 - 注册表 **O01 保持 `pending`**。相关：[UI 层](ui.md)（O05 成本显示）、[升级器](upgrade.md)、
   [本轮报告](reports/2026-10-11-w49-o01-o05-in-repo-closeout.md)。
+
+## 仓内演示包与一键预检（r1-demo-preflight）
+
+判定机制之上，R1 顺序 3 的仓内可验证一半已交付：`demos/manual-demo/` 是随源码入仓的**合法演示包**
+（原创 2D 素材闭包 + SHA-256 + `nai-demo-license`、schema 合法 operator 场景），
+`nai-engine --preflight <scene>` 是**一键只读预检**（复用运行期素材准入；逐轴三态；拒绝于不确定；可选受预算连通探针）。
+这**没有**改变 O01 的 registry 状态：真实形象/知识正文/真实连通/人工演练仍外部。见
+[引擎](engine.md)、[报告](reports/2026-10-19-r1-demo-preflight.md)。

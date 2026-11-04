@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workbench-avatar-choose-and-admit"
+description = "Enables the workbench_avatar_choose_and_admit command without any pre-configured scope."
+commands.allow = ["workbench_avatar_choose_and_admit"]
+
+[[permission]]
+identifier = "deny-workbench-avatar-choose-and-admit"
+description = "Denies the workbench_avatar_choose_and_admit command without any pre-configured scope."
+commands.deny = ["workbench_avatar_choose_and_admit"]

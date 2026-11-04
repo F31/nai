@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-foundation-command"
+description = "Enables the foundation_command command without any pre-configured scope."
+commands.allow = ["foundation_command"]
+
+[[permission]]
+identifier = "deny-foundation-command"
+description = "Denies the foundation_command command without any pre-configured scope."
+commands.deny = ["foundation_command"]

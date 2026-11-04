@@ -31,6 +31,7 @@ export const CONFIG_SCHEMAS = [
   'schemas/config/avatar-2d.schema.json',
   'schemas/config/backup.schema.json',
   'schemas/config/binding-plan.schema.json',
+  'schemas/config/product-draft.schema.json',
   'schemas/config/provider.schema.json',
   'schemas/config/runtime.schema.json',
   'schemas/config/upgrade-package.schema.json',
@@ -338,6 +339,9 @@ export const WIRED = new Map([
 
 /// **[C] 既无读取点、也未被钉死的键 → 成因 id**（逐键具名，手写）。
 export const UNWIRED = new Map([
+  ['schemas/config/product-draft.schema.json#name','legacy-ui-retired'],
+  ['schemas/config/product-draft.schema.json#documents','legacy-ui-retired'],
+  ['schemas/config/product-draft.schema.json#segments','legacy-ui-retired'],
   // runtime：沿用 W90 的 23 条（扩面后逐项不变）。
   ['schemas/config/runtime.schema.json#scheduler.max_pending_utterances', 'constructor-injected'],
   ['schemas/config/runtime.schema.json#scheduler.max_pending_speech_ms', 'constructor-injected'],
@@ -380,6 +384,7 @@ export const UNWIRED = new Map([
 
 /// **成因表**。每条 MUST 是可核实的陈述，且 MUST 至少被一个键引用（否则它是装饰）。
 export const UNWIRED_CAUSES = new Map([
+  ['legacy-ui-retired','旧Engineering桌面壳已退役，该旧商品草稿格式不再由运行UI消费；新工作台使用content/preparation契约。旧schema保留用于历史后端验证，不声称新线接线，见docs/adr/0154-retire-legacy-ui.md。'],
   [
     'constructor-injected',
     '值以构造器/参数由调用方注入，而该调用方在生产代码里**不存在**（实测：`Book::new(workspace, limits)`、' +
@@ -591,3 +596,4 @@ export function scanExclusionErrors(exclusions, files) {
 }
 
 export { SCAN_EXCLUSIONS };
+

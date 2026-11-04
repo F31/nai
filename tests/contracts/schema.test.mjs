@@ -59,6 +59,25 @@ const REMOTE = 'schemas/openapi/remote-knowledge.yaml';
 const controlDeclared = OPENAPI_DOCUMENTS[CONTROL].implemented;
 
 const check = await validators();
+test('finite program OpenAPI fixes bounds and distinguishes human confirmation from hardware ACK', async()=>{
+  const api=await apiDocument();
+  const command=api.components.schemas.ProgramCommand.allOf[1];
+  assert.deepEqual(command.properties.action.enum,['start','next','confirm']);
+  assert.equal(command.properties.prompts.minItems,4);assert.equal(command.properties.prompts.maxItems,4);
+  assert.deepEqual(api.components.schemas.ProgramView.properties.playback_ack.enum,[false]);
+  assert.equal(api.paths['/sessions/{id}/program'].post['x-required-permission'],'event.manual.write');
+  assert.equal(api.paths['/sessions/{id}/program'].get['x-required-permission'],'session.read');
+  const emitted=await readFile('crates/nai-contracts/src/generated/control_http.rs','utf8');
+  const json=JSON.parse(emitted.match(/r###"(.*)"###/s)[1]);
+  assert.equal(json.$defs.ProgramCommand.additionalProperties,false);
+  assert.deepEqual(json.$defs.ProgramCommand.properties.prompts,command.properties.prompts);
+});
+test('product fact validity is an optional paired bounded integer contract',()=>{
+  const draft=document=>({name:'商品',documents:[{source:'说明书',text:'保修一年',local_only:false,...document}],segments:['介绍保修']});
+  assert.equal(check.productDraft(draft({})),true);
+  assert.equal(check.productDraft(draft({valid_from_utc_ms:0,valid_until_utc_ms:253402300799999})),true);
+  for(const document of [{valid_from_utc_ms:0},{valid_until_utc_ms:100},{valid_from_utc_ms:-1,valid_until_utc_ms:100},{valid_from_utc_ms:0,valid_until_utc_ms:253402300800000},{valid_from_utc_ms:'0',valid_until_utc_ms:100},{valid_from_utc_ms:0.5,valid_until_utc_ms:100},{valid_from_utc_ms:null,valid_until_utc_ms:100}])assert.equal(check.productDraft(draft(document)),false,JSON.stringify(document));
+});
 const runtime = await readJson('tests/fixtures/contracts/runtime.json');
 const catalog = await readJson('schemas/catalog/capabilities.json');
 const provider = {schema_version:1,id:'tts-test',protocol:'http_stream',endpoint:'https://example.invalid/tts',model:'test',credential_ref:'credential:test',region:'test',data_policy_ref:'test',timeout_ms:1000,max_retries:1,max_concurrency:1,price_revision:'test'};
@@ -161,7 +180,7 @@ test('avatar and UI schemas reject missing license fields or arbitrary HTML/scri
   assert.equal(check.ui(ui),false);
 });
 test('backup schema requires bounded hashes/versions and rejects escaping content paths', () => {
-  const backup = {schema_version:1,db_schema_version:12,created_at_utc_ms:'1',runtime_version:'0.1.0',contract_catalog_sha256:'a'.repeat(64),sensitive_scope:'configuration-facts-audit-registered-content;credential-references-only',database:{path:'state.sqlite3',sha256:'b'.repeat(64),bytes:1024},artifacts:[{path:`knowledge/${'c'.repeat(64)}`,sha256:'c'.repeat(64),bytes:5}]};
+  const backup = {schema_version:1,db_schema_version:13,created_at_utc_ms:'1',runtime_version:'0.1.0',contract_catalog_sha256:'a'.repeat(64),sensitive_scope:'configuration-facts-audit-registered-content;credential-references-only',database:{path:'state.sqlite3',sha256:'b'.repeat(64),bytes:1024},artifacts:[{path:`knowledge/${'c'.repeat(64)}`,sha256:'c'.repeat(64),bytes:5}]};
   assert.equal(check.backup(backup),true);
   assert.equal(check.backup({...backup,db_schema_version:2}),false);
   // Pin the immediately-previous version too: a schema-version bump is a
@@ -179,7 +198,7 @@ test('backup schema requires bounded hashes/versions and rejects escaping conten
   // ③`backup.schema.json` const ④Rust 契约样本断言(`tests/knowledge_publication.rs`)
   // ⑤本样本 + 上一版被拒 ⑥`packages/contracts-ts/src/generated/config/backup.ts`。
   // W142 现测复核：仍是这六处（升到 12 时逐个数过，未新增承载物）。
-  assert.equal(check.backup({...backup,db_schema_version:11}),false);
+  assert.equal(check.backup({...backup,db_schema_version:12}),false);
   const bad=structuredClone(backup);bad.artifacts[0].path='../../outside';assert.equal(check.backup(bad),false);
   bad.artifacts=[];bad.database.bytes=268435457;assert.equal(check.backup(bad),false);
 });
@@ -1365,8 +1384,11 @@ test('every schema under schemas/ is enforced by an execution path or named with
   // 每条来源的自负其责，**逐条钉死成员**（不是「非空就行」——那正是原先那句空洞断言的形式）。
   assert.deepEqual(
     exclusiveTo(consumed, RUST_SOURCE_LABEL),
-    ['schemas/config/upgrade-package.schema.json'],
-    'the Rust-side include_str! must be the only source that finds upgrade-package',
+    [
+      'schemas/config/upgrade-package.schema.json',
+      'schemas/operator/manual-session.schema.json',
+    ],
+    'the Rust-side include_str! is the only source for exactly the schemas it loads',
   );
   assert.ok(
     exclusiveTo(consumed, AJV_SOURCE_LABEL).includes('schemas/tests/registry.schema.json') &&

@@ -1,0 +1,5 @@
+export function providerFailureMessage(reason:string){
+ const code=reason.replace(/^WORKBENCH_ERROR_/,'');
+ const labels:Record<string,string>={CONNECT_TIMEOUT:'连接供应商超时，请核对网络和代理。',CONNECTION_FAILED:'无法建立供应商连接，请核对网络、代理或证书。',RESPONSE_TIMEOUT:'等待供应商响应超时，可能仍在排队或生成；未自动重试。',AUDIO_DOWNLOAD_TIMEOUT:'供应商已响应，但音频下载超时；请核对网络或供应商状态。',BALANCE_INSUFFICIENT:'供应商账户余额不足或欠费，请充值后再测试。',HTTP_401:'认证失败，请检查模型的 API Key。',HTTP_402:'供应商账户余额不足或欠费，请充值后再测试。',HTTP_403:'供应商拒绝访问，请检查模型权限或账户状态。',HTTP_404:'接口或模型不存在，请检查 API 地址和模型名称。',HTTP_429:'供应商限流或配额不足，请稍后测试或核对账户额度。',DEADLINE_EXCEEDED:'请求超时，请检查网络或服务状态；未自动重试。',OUTCOME_UNKNOWN:'网络请求失败，是否计费未知；请检查网络及供应商记录。',PROTOCOL_ERROR:'供应商响应格式或音频格式不符合要求。',RESPONSE_INVALID_JSON:'供应商返回了无效 JSON。',RESPONSE_EMPTY_CONTENT:'接口有响应，但没有返回可用正文。',RESPONSE_TRUNCATED:'响应达到输出长度上限，未取得完整正文。',RESPONSE_FINISH_UNEXPECTED:'供应商响应未正常完成。',RESPONSE_SENSITIVE_CONTENT:'响应包含敏感凭据，已隐藏。',WORKER_LOST:'本机合成工作进程退出，请重新连接后核对。',CAPABILITY_UNAVAILABLE:'模型或凭据不可用，请检查配置。',CANCELLED:'测试已取消。',RESTARTED_NO_RETRY:'引擎已重启，旧任务未重试。'};
+ return labels[code]??(/^HTTP_5\d\d$/.test(code)?'供应商服务异常，请稍后再试。':'服务调用失败，请核对模型配置、网络及供应商账户；未自动重试。');
+}

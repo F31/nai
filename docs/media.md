@@ -3,6 +3,17 @@
 `nai-media-core::timeline` 是可移植、纯逻辑的媒体时序内核，仅依赖 contracts；
 Windows 独立窗口/音轨与设备不在这里实现。
 
+`nai-media-core::device_callback` 提供回调侧软件授权边界。可信调用方先 `enqueue`，再用当前
+`Preplay` 调用 `MediaGate::device_chunk`，传入最多 600ms 的归一化交错 f32 PCM。
+后端用当前单调时间调用 `DeviceChunk::fill`，目标缓冲最多 10ms；输出默认清零，P0、换代、
+owner 析构或最早授权期限会永久停止该块。续租不延长已经交出的块，后续块必须重新授权。
+`fill` 返回复制的交错样本数，不能用作已播放样本数或设备 ACK。`revoked` 只用于适配器合并多个
+分片后再做拒绝检查，返回false不授予输出权限。见 [回调报告](reports/2026-10-20-r1-device-callback-gate.md)。
+
+keeper 已有显式 Windows `--device-smoke` 音频/窗口演练入口：实际WASAPI回调与像素窗口，
+原生缓冲分片且计入预测设备排队时间；真机完成到期/P0/主线程暂停三场景。它只播放固定测试音，
+不接生产候选；画面独立失联待机和设备完成ACK仍未实现。见 [设备入口](windows-device-smoke.md)。
+
 ```bash
 cargo test -p nai-media-core
 cargo test -p nai-output-keeper
@@ -132,3 +143,7 @@ cargo test -p nai-runtime -p nai-render-worker --offline
 
 实测见 [报告](reports/2026-10-09-w05-w06-composition-root.md)。`apps/engine` 可执行、
 loopback HTTP 服务启动、broker 装配接线、真实设备与性能认证仍未实现。
+
+## R1 已批准候选本机输出（2026-10-20）
+
+Windows已接通真实持久化审批→API PCM→有界重采样→2D→隔离keeper→WASAPI与窗口，详见 [local-playback.md](local-playback.md)。仅显式Assisted动作，最长5秒、15%试听增益；持续复检事实与短租约，静音/换代撤权。submitted只代表本机提交，不写硬件PlaybackAck；付费Provider和设备矩阵认证仍未完成。

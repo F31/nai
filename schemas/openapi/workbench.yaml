@@ -1,0 +1,44 @@
+openapi: 3.1.0
+info:
+  title: nai workbench bootstrap target API
+  version: 2.0.0
+  description: RF01 implements private protobuf IPC only. These HTTP operations are not served.
+x-implementation-status: contract-only
+security: [{localBearer: []}]
+paths:
+  /api/v2/capabilities:
+    get:
+      operationId: inspectWorkbench
+      x-required-permission: workbench.inspect
+      responses:
+        '200':
+          description: Typed capability view, never grants output authorization
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CapabilityView'}
+        '401': {description: Authentication required}
+  /api/v2/prepare:
+    post:
+      operationId: prepareWorkbench
+      x-required-permission: workbench.prepare
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '../config/workbench.schema.json'}
+      responses:
+        '503': {description: Business dependencies not implemented; no output grant}
+        '401': {description: Authentication required}
+components:
+  securitySchemes:
+    localBearer: {type: http, scheme: bearer}
+  schemas:
+    CapabilityView:
+      type: object
+      additionalProperties: false
+      required: [capability_id, available, implementation, reason_code]
+      properties:
+        capability_id: {type: string}
+        available: {type: boolean}
+        implementation: {type: string, enum: [implemented, not_started]}
+        reason_code: {type: string}

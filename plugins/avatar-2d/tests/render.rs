@@ -12,6 +12,90 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[test]
+fn assembled_layers_pass_real_admission_and_reject_invalid_inputs() {
+    use nai_avatar_2d::package_builder::{Layers, assemble};
+    let base = vec![10, 20, 30, 255, 0, 0, 255, 255];
+    let closed = vec![0, 0, 0, 255];
+    let open = vec![255, 0, 0, 255];
+    let layers = Layers {
+        width: 2,
+        height: 1,
+        mouth_width: 1,
+        mouth_height: 1,
+        mouth_x: 1,
+        mouth_y: 0,
+        base: &base,
+        mouth_closed: &closed,
+        mouth_open: &open,
+    };
+    let package = assemble(&layers, "test-avatar", "test-license").unwrap();
+    let again = assemble(&layers, "test-avatar", "test-license").unwrap();
+    assert_eq!(package.manifest, again.manifest);
+    assert_eq!(package.config, again.config);
+    let assets = [
+        AssetBytes {
+            id: "base",
+            bytes: &base,
+        },
+        AssetBytes {
+            id: "closed",
+            bytes: &closed,
+        },
+        AssetBytes {
+            id: "open",
+            bytes: &open,
+        },
+    ];
+    let grants = LicenseGrants::from(["test-license".into()]);
+    let context = ctx(1);
+    let avatar = Avatar::admit(
+        &context,
+        &package.manifest,
+        &package.config,
+        &assets,
+        &grants,
+    )
+    .unwrap();
+    assert_eq!(
+        avatar.standby(&context, &grants).unwrap().rgba,
+        vec![10, 20, 30, 255, 0, 0, 0, 255]
+    );
+    assert!(
+        Avatar::admit(
+            &context,
+            &package.manifest,
+            &package.config,
+            &assets,
+            &LicenseGrants::new()
+        )
+        .is_err()
+    );
+    assert!(
+        assemble(
+            &Layers {
+                mouth_x: 2,
+                ..layers
+            },
+            "test-avatar",
+            "test-license"
+        )
+        .is_err()
+    );
+    assert!(
+        assemble(
+            &Layers {
+                base: &[0],
+                ..layers
+            },
+            "test-avatar",
+            "test-license"
+        )
+        .is_err()
+    );
+    assert!(assemble(&layers, "test-avatar", "").is_err());
+}
+
 fn ctx(epoch: u64) -> PluginContext {
     PluginContext::new(
         "nai-avatar-2d",
@@ -502,4 +586,60 @@ fn actual_2d_rgba_enters_a_pinned_slot_and_is_read_without_control_serialization
             .is_err()
     );
     pool.release("keeper-1", &ticket, Instant::now()).unwrap();
+}
+
+#[test]
+fn neutral_standby_is_closed_and_requires_current_license_and_deadline() {
+    let fixture = Fixture::new();
+    let context = ctx(7);
+    let avatar = fixture.avatar(&context);
+    let frame = avatar.standby(&context, &fixture.grants).unwrap();
+    assert_eq!((frame.width, frame.height), (2, 1));
+    assert_eq!(frame.rgba, [10, 20, 30, 255, 0, 0, 0, 255]);
+    assert_eq!(
+        avatar
+            .standby(&context, &LicenseGrants::new())
+            .err()
+            .unwrap()
+            .code,
+        ErrorCode::PermissionDenied as i32
+    );
+    let cancelled = PluginContext::new(
+        "nai-avatar-2d",
+        "s",
+        7,
+        1000,
+        json!({}),
+        [],
+        Instant::now() + Duration::from_secs(1),
+        Arc::new(AtomicBool::new(true)),
+        1000,
+    );
+    assert_eq!(
+        avatar
+            .standby(&cancelled, &fixture.grants)
+            .err()
+            .unwrap()
+            .code,
+        ErrorCode::Cancelled as i32
+    );
+    let expired = PluginContext::new(
+        "nai-avatar-2d",
+        "s",
+        7,
+        1,
+        json!({}),
+        [],
+        Instant::now() - Duration::from_millis(1),
+        Arc::new(AtomicBool::new(false)),
+        1000,
+    );
+    assert_eq!(
+        avatar
+            .standby(&expired, &fixture.grants)
+            .err()
+            .unwrap()
+            .code,
+        ErrorCode::DeadlineExceeded as i32
+    );
 }

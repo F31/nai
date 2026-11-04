@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workbench-inspect"
+description = "Enables the workbench_inspect command without any pre-configured scope."
+commands.allow = ["workbench_inspect"]
+
+[[permission]]
+identifier = "deny-workbench-inspect"
+description = "Denies the workbench_inspect command without any pre-configured scope."
+commands.deny = ["workbench_inspect"]

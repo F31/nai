@@ -1,0 +1,15 @@
+[package]
+name="nai-live"
+version.workspace=true
+edition.workspace=true
+rust-version.workspace=true
+license.workspace=true
+[package.metadata.nai]
+layer="core"
+[dependencies]
+nai-contracts.workspace=true
+serde_json.workspace=true
+serde.workspace=true
+jsonschema.workspace=true
+[lints]
+workspace=true

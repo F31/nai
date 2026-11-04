@@ -4,7 +4,8 @@
 // 否则「矩阵通过」与「检查恒真」无法区分。
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +22,18 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 const matrix = readMatrix(ROOT);
+
+test('Windows build artifacts stay outside the platform source branch domain', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'nai-platform-build-'));
+  try {
+    mkdirSync(path.join(root, 'src'));
+    mkdirSync(path.join(root, 'target-windows/debug'), { recursive: true });
+    const source = '#[cfg(windows)]\npub fn native() {}\n';
+    writeFileSync(path.join(root, 'src/live.rs'), source);
+    writeFileSync(path.join(root, 'target-windows/debug/generated.rs'), source);
+    assert.deepEqual([...collectPlatformBranchFiles(root).keys()], ['src/live.rs']);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
 
 /** 深拷贝后改一处，用于注入。 */
 const mutate = (edit) => {

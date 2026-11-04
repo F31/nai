@@ -32,7 +32,7 @@ async function load() {
   assert.ok(index.ok, describeFailure(index));
 
   const packages = new Map();
-  for (const dir of ['.', 'packages/contracts-ts', 'apps/desktop']) {
+  for (const dir of ['.', 'packages/contracts-ts', 'apps/workbench-desktop']) {
     const file = dir === '.' ? 'package.json' : `${dir}/package.json`;
     packages.set(dir, await readFile(file, 'utf8'));
   }
@@ -97,7 +97,7 @@ const LIB_STUB = [
 const DRIVER_STUB = [
   'const STEPS = [',
   "  ['.', 'test:ui'],",
-  "  ['apps/desktop', 'test'],",
+  "  ['apps/workbench-desktop', 'test'],",
   '];',
   "const KNOWN_EXECUTABLES = new Set(['node']);",
 ].join('\n');
@@ -224,7 +224,7 @@ test('a full site whose package dir has no driver step is named', () => {
 });
 
 test('a driver step whose script body does not name the marker is an indirection, not a payment', () => {
-  // `apps/desktop` 有 typecheck / build / test 三个 STEP，只有 test 的体含 `tests/*.test.mjs`
+  // `apps/workbench-desktop` 有 typecheck / build / test 三个 STEP，只有 test 的体含 `tests/*.test.mjs`
   // ——「该目录出现过 STEP」不算兑付。
   const wrong = JSON.stringify({ name: 'root', scripts: { 'test:ui': 'node --test tests/other/*.test.mjs' } });
   const errors = tierErrors({ ...fakeInputs(), packages: new Map([['.', wrong]]) });
@@ -246,10 +246,10 @@ test('a full site whose host is not a package manifest is named', () => {
 });
 
 test('a full site whose manifest was not provided is named, not silently skipped', () => {
-  const sites = fakeSites().map(site => (site.id === 'front' ? { ...site, host: 'apps/desktop/package.json' } : site));
+  const sites = fakeSites().map(site => (site.id === 'front' ? { ...site, host: 'apps/workbench-desktop/package.json' } : site));
   const errors = tierErrors({ ...fakeInputs(), sites }); // packages 里只有 `.`
   assert.ok(
-    errors.some(error => error.includes('front') && error.includes('manifest of package dir "apps/desktop" was not provided')),
+    errors.some(error => error.includes('front') && error.includes('manifest of package dir "apps/workbench-desktop" was not provided')),
     `a missing manifest must be named; got ${JSON.stringify(errors)}`,
   );
 });
@@ -424,3 +424,4 @@ test('renaming a CI step reds the workflow judge but not the tier judge', async 
   // W99：tier 只看 `run` 文本，不看 step 名 ⇒ 仍绿。
   assert.deepEqual(tierErrors({ ...inputs, workflowText: renamed }), [], 'the tier judge must not read step names');
 });
+

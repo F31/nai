@@ -791,3 +791,72 @@ fn the_transport_shape_is_a_function_of_the_protocol_alone() {
     assert_eq!(Capability::Llm, Protocol::OpenAiCompatible.capability());
     assert_eq!(Capability::Speech, Protocol::ElevenLabs.capability());
 }
+
+#[tokio::test]
+async fn siliconflow_speech_requests_explicit_pcm_rate_without_openai_rate_assumptions() {
+    let mock = openai_speech_mock();
+    let p = profile(
+        "silicon-fixture",
+        mock.endpoint(),
+        Protocol::SiliconFlow,
+        "FunAudioLLM/CosyVoice2-0.5B",
+    );
+    let client = p
+        .client(Secret::new(SECRET.as_bytes().to_vec()).unwrap())
+        .unwrap();
+    let speech = p.speech(&client).unwrap();
+    let mut gateway = gateway(&p.provider_ref);
+    let op = Operation::new(Duration::from_secs(5)).unwrap();
+    let (_, format) = speech
+        .tts_pcm(
+            &op,
+            &tts_request("测试", "FunAudioLLM/CosyVoice2-0.5B:alex", 8000),
+            &mut gateway,
+            usage_entry(&p.provider_ref, "silicon-1", "characters", 64),
+        )
+        .await
+        .unwrap();
+    assert_eq!(format.sample_rate, 8000);
+    assert_eq!(format.channels, 1);
+    let sent = &mock.requests()[0];
+    assert_eq!(sent.path, "/audio/speech");
+    assert_eq!(sent.json()["sample_rate"], 8000);
+    assert_eq!(sent.json()["stream"], false);
+    assert_eq!(sent.json()["voice"], "FunAudioLLM/CosyVoice2-0.5B:alex");
+    assert_eq!(
+        sent.header("authorization"),
+        Some(format!("Bearer {SECRET}").as_str())
+    );
+    let mut invalid = tts_request("测试", "voice", 22050);
+    assert!(
+        speech
+            .tts_pcm(
+                &op,
+                &invalid,
+                &mut gateway,
+                usage_entry(&p.provider_ref, "silicon-invalid", "characters", 64)
+            )
+            .await
+            .is_err()
+    );
+    invalid.format.as_mut().unwrap().sample_rate = 24000;
+    invalid.format.as_mut().unwrap().channels = 2;
+    assert!(
+        speech
+            .tts_pcm(
+                &op,
+                &invalid,
+                &mut gateway,
+                usage_entry(&p.provider_ref, "silicon-stereo", "characters", 64)
+            )
+            .await
+            .is_err()
+    );
+    assert_eq!(mock.requests().len(), 1);
+    assert!(
+        gateway
+            .book()
+            .get(&p.provider_ref, "silicon-invalid")
+            .is_none()
+    );
+}

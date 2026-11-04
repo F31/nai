@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "73d398aa-06c3-44a5-9379-9fc7413b12f0",
+  "status": "current",
+  "command": "deliver",
+  "type": "waterfall",
+  "input": "E:\\projects\\nai\\.archify\\waterfall-v48-latency-20261023-180435\\candidate.json",
+  "output": "E:\\projects\\nai\\docs\\whitepaper\\diagrams\\06-latency-budget.html",
+  "specification": {
+    "sha256": "265f0be3c96bb5aa5e006ffac80ea9570cac37ab82687ea10e58fc243f3cb898",
+    "bytes": 2341
+  },
+  "artifact": {
+    "sha256": "942be37f5ae94e54173ca5a4ee8f1da9c80adec8160e0f33e8946ac02f24f2ed",
+    "bytes": 820868
+  }
+}

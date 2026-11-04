@@ -1,12 +1,16 @@
 # nai
 
+当前按V4.8推进。唯一在用桌面UI为apps/workbench-desktop（ui/、index.html）；旧apps/desktop及旧桌面壳源码已退役，未卸载已安装的旧Engineering程序。共享模型和工作区永久清理已交付，164项ACC仍pending。见[开发计划](docs/development-plan.md)与[旧UI退役报告](docs/reports/2026-10-24-retire-legacy-ui.md)。
+
 智能体结合的直播数字人系统。首发面向 Windows 桌面与抖音，采用统一 Rust 内核、版本化能力契约与按需插件。
 
 项目仓库：https://github.com/F31/nai
 
 ## 设计基线
 
-- [V3.11 完整设计（唯一实现基线）](docs/直播数字人%20%2B%20智能体系统技术方案%20V3.11.md)
+- [V4.8 完整设计（当前目标）](docs/digital-host-agent-design-V4.8.md)
+- [V4.3 完整设计（历史重构起点）](docs/digital-host-agent-design-V4.3.md)
+- [V4.3 仓库重构设计](docs/architecture/v43-product-reconstruction.md)与[实施任务](docs/v43-reconstruction-plan.md)（ADR0147；RF01最小装配已实现，业务领域由RF02继续）
 - [设计入口](docs/design.md)
 - [开发任务与验收跟踪](docs/development-plan.md)
 - [开发准备记录](docs/reports/2026-10-07-development-readiness.md)
@@ -23,6 +27,8 @@
 - Local 不要求自建云主机；未启用的能力不启动或占用对应资源。
 
 ## 当前状态
+
+2026-10-22：后续重构按V4.3备播—协作—复盘—下场复用实施，不保留旧代码/ABI兼容，保护现有用户资产。已安装Engineering版保留，旧验收不自动转为新ACC通过；详见[设计入口](docs/design.md)。下列D阶段文字仅为早期历史摘要。
 
 已实现 D01–D11：workspace、契约生成、SQLite owner/迁移、事实权限、快照恢复、凭据 broker、
 内核绑定、宿主/IPC、会话/epoch/媒体租约，以及有界调度、共享预算持久账本、API Provider 传输、
@@ -46,7 +52,7 @@ cargo xtask check --profile portable
 pnpm typecheck
 pnpm build
 pnpm spec:validate
-pnpm --filter @nai/desktop test
+pnpm check:frontend
 pnpm test:control-smoke
 ```
 
@@ -82,3 +88,4 @@ cargo xtask test --suite knowledge
 [D15 验收注册表报告](docs/reports/2026-10-08-d15-admission-registry.md)。本机操作步骤见 [控制指南](docs/control.md)。
 
 开发按 D01–D19 的依赖顺序推进。Windows 输出、真实 Provider、官方平台接入、写实模型和升级认证均需分别提供实际测试结果；规划与文档不代表认证通过。
+

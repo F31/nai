@@ -23,7 +23,7 @@ export const CONNECTOR_PATH = 'crates/nai-plugin-sdk/src/connector.rs';
 /** macOS 的发布线归属：用户拍板覆盖 R2（Standard）与 R3（Pro），写成数据断言。 */
 export const MACOS_REQUIRED_RELEASE_LINES = ['r2', 'r3'];
 
-const SKIP_DIRS = new Set(['node_modules', 'target', '.git', 'dist', '.workbuddy', 'gen']);
+const SKIP_DIRS = new Set(['node_modules', 'target', 'target-windows', '.git', 'dist', '.workbuddy', 'gen']);
 const SOURCE_EXTENSIONS = new Set(['.rs', '.toml']);
 
 /**

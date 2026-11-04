@@ -1,6 +1,7 @@
+// Retired V3.11 governance helper; not an active V4.3 registry consumer.
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { RELEASE_LINES, CAPABILITY_PACK_IDS } from './registry.mjs';
+import { RELEASE_LINES, CAPABILITY_PACK_IDS } from '../../tests/legacy/v311/registry-checker.mjs';
 
 /// 冻结基线与在册状态的对账。
 ///

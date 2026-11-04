@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "kind": "product_draft",
+  "name": "nai 数字人直播工作台",
+  "facts": [
+    {
+      "id": "prompter",
+      "label": "本机功能",
+      "value_type": "text",
+      "value": "手动提词",
+      "source": "docs/nai-v4.8-technical-whitepaper.docx 第03/07章的产品目标；docs/reports/2026-10-24-v48-04-manual-preparation.md 的实现证据。2026-10-27由开发协作者核对本机工程能力。",
+      "authority": "owner_confirmed",
+      "conditions": "本机工作台",
+      "valid_from_ms": null,
+      "valid_until_ms": null
+    },
+    {
+      "id": "program",
+      "label": "本机功能",
+      "value_type": "text",
+      "value": "节目编排",
+      "source": "docs/nai-v4.8-technical-whitepaper.docx 第03/07章的产品目标；docs/reports/2026-10-24-v48-04-manual-preparation.md 及当前节目草稿/发布实现。2026-10-27由开发协作者核对本机工程能力。",
+      "authority": "owner_confirmed",
+      "conditions": "本机工作台",
+      "valid_from_ms": null,
+      "valid_until_ms": null
+    }
+  ],
+  "faq": [
+    {
+      "id": "prepare",
+      "question": "如何准备直播内容？",
+      "text": "本机工作台支持手动提词。",
+      "fact_ids": ["prompter"]
+    }
+  ],
+  "talk_tracks": [
+    {
+      "id": "opening",
+      "text": "本机工作台支持手动提词。",
+      "fact_ids": ["prompter"]
+    }
+  ],
+  "prohibitions": [
+    "不得宣称无人值守",
+    "不得宣称保证收益",
+    "不得宣称平台认证"
+  ]
+}

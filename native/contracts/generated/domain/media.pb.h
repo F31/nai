@@ -32,6 +32,7 @@
 #include <google/protobuf/map.h>  // IWYU pragma: export
 #include <google/protobuf/map_entry.h>
 #include <google/protobuf/map_field_inl.h>
+#include <google/protobuf/generated_enum_reflection.h>
 #include <google/protobuf/unknown_field_set.h>
 #include "core/base.pb.h"
 #include "core/error.pb.h"
@@ -77,6 +78,27 @@ extern ChannelDescriptorDefaultTypeInternal _ChannelDescriptor_default_instance_
 class ChannelRequest;
 struct ChannelRequestDefaultTypeInternal;
 extern ChannelRequestDefaultTypeInternal _ChannelRequest_default_instance_;
+class CharacterActionRequest;
+struct CharacterActionRequestDefaultTypeInternal;
+extern CharacterActionRequestDefaultTypeInternal _CharacterActionRequest_default_instance_;
+class CharacterActionState;
+struct CharacterActionStateDefaultTypeInternal;
+extern CharacterActionStateDefaultTypeInternal _CharacterActionState_default_instance_;
+class CharacterBoundedMedia;
+struct CharacterBoundedMediaDefaultTypeInternal;
+extern CharacterBoundedMediaDefaultTypeInternal _CharacterBoundedMedia_default_instance_;
+class CharacterCapability;
+struct CharacterCapabilityDefaultTypeInternal;
+extern CharacterCapabilityDefaultTypeInternal _CharacterCapability_default_instance_;
+class CharacterIdentity;
+struct CharacterIdentityDefaultTypeInternal;
+extern CharacterIdentityDefaultTypeInternal _CharacterIdentity_default_instance_;
+class CharacterProfile;
+struct CharacterProfileDefaultTypeInternal;
+extern CharacterProfileDefaultTypeInternal _CharacterProfile_default_instance_;
+class CharacterRuntimeView;
+struct CharacterRuntimeViewDefaultTypeInternal;
+extern CharacterRuntimeViewDefaultTypeInternal _CharacterRuntimeView_default_instance_;
 class ClockRequest;
 struct ClockRequestDefaultTypeInternal;
 extern ClockRequestDefaultTypeInternal _ClockRequest_default_instance_;
@@ -92,9 +114,30 @@ extern FrameSlotEventDefaultTypeInternal _FrameSlotEvent_default_instance_;
 class FrameSlotTicket;
 struct FrameSlotTicketDefaultTypeInternal;
 extern FrameSlotTicketDefaultTypeInternal _FrameSlotTicket_default_instance_;
+class LocalOutputCommand;
+struct LocalOutputCommandDefaultTypeInternal;
+extern LocalOutputCommandDefaultTypeInternal _LocalOutputCommand_default_instance_;
+class LocalOutputWarmup;
+struct LocalOutputWarmupDefaultTypeInternal;
+extern LocalOutputWarmupDefaultTypeInternal _LocalOutputWarmup_default_instance_;
+class LocalPlaybackGrant;
+struct LocalPlaybackGrantDefaultTypeInternal;
+extern LocalPlaybackGrantDefaultTypeInternal _LocalPlaybackGrant_default_instance_;
+class LocalPlaybackMedia;
+struct LocalPlaybackMediaDefaultTypeInternal;
+extern LocalPlaybackMediaDefaultTypeInternal _LocalPlaybackMedia_default_instance_;
+class LocalPlaybackStatus;
+struct LocalPlaybackStatusDefaultTypeInternal;
+extern LocalPlaybackStatusDefaultTypeInternal _LocalPlaybackStatus_default_instance_;
+class LocalStandbyMedia;
+struct LocalStandbyMediaDefaultTypeInternal;
+extern LocalStandbyMediaDefaultTypeInternal _LocalStandbyMedia_default_instance_;
 class MediaClock;
 struct MediaClockDefaultTypeInternal;
 extern MediaClockDefaultTypeInternal _MediaClock_default_instance_;
+class NativeDeviceSmokeReport;
+struct NativeDeviceSmokeReportDefaultTypeInternal;
+extern NativeDeviceSmokeReportDefaultTypeInternal _NativeDeviceSmokeReport_default_instance_;
 class OutputAck;
 struct OutputAckDefaultTypeInternal;
 extern OutputAckDefaultTypeInternal _OutputAck_default_instance_;
@@ -133,12 +176,26 @@ template<> ::nai::v1::AvatarRenderRequest* Arena::CreateMaybeMessage<::nai::v1::
 template<> ::nai::v1::AvatarRenderResult* Arena::CreateMaybeMessage<::nai::v1::AvatarRenderResult>(Arena*);
 template<> ::nai::v1::ChannelDescriptor* Arena::CreateMaybeMessage<::nai::v1::ChannelDescriptor>(Arena*);
 template<> ::nai::v1::ChannelRequest* Arena::CreateMaybeMessage<::nai::v1::ChannelRequest>(Arena*);
+template<> ::nai::v1::CharacterActionRequest* Arena::CreateMaybeMessage<::nai::v1::CharacterActionRequest>(Arena*);
+template<> ::nai::v1::CharacterActionState* Arena::CreateMaybeMessage<::nai::v1::CharacterActionState>(Arena*);
+template<> ::nai::v1::CharacterBoundedMedia* Arena::CreateMaybeMessage<::nai::v1::CharacterBoundedMedia>(Arena*);
+template<> ::nai::v1::CharacterCapability* Arena::CreateMaybeMessage<::nai::v1::CharacterCapability>(Arena*);
+template<> ::nai::v1::CharacterIdentity* Arena::CreateMaybeMessage<::nai::v1::CharacterIdentity>(Arena*);
+template<> ::nai::v1::CharacterProfile* Arena::CreateMaybeMessage<::nai::v1::CharacterProfile>(Arena*);
+template<> ::nai::v1::CharacterRuntimeView* Arena::CreateMaybeMessage<::nai::v1::CharacterRuntimeView>(Arena*);
 template<> ::nai::v1::ClockRequest* Arena::CreateMaybeMessage<::nai::v1::ClockRequest>(Arena*);
 template<> ::nai::v1::FrameMetadata* Arena::CreateMaybeMessage<::nai::v1::FrameMetadata>(Arena*);
 template<> ::nai::v1::FrameSlotCommit* Arena::CreateMaybeMessage<::nai::v1::FrameSlotCommit>(Arena*);
 template<> ::nai::v1::FrameSlotEvent* Arena::CreateMaybeMessage<::nai::v1::FrameSlotEvent>(Arena*);
 template<> ::nai::v1::FrameSlotTicket* Arena::CreateMaybeMessage<::nai::v1::FrameSlotTicket>(Arena*);
+template<> ::nai::v1::LocalOutputCommand* Arena::CreateMaybeMessage<::nai::v1::LocalOutputCommand>(Arena*);
+template<> ::nai::v1::LocalOutputWarmup* Arena::CreateMaybeMessage<::nai::v1::LocalOutputWarmup>(Arena*);
+template<> ::nai::v1::LocalPlaybackGrant* Arena::CreateMaybeMessage<::nai::v1::LocalPlaybackGrant>(Arena*);
+template<> ::nai::v1::LocalPlaybackMedia* Arena::CreateMaybeMessage<::nai::v1::LocalPlaybackMedia>(Arena*);
+template<> ::nai::v1::LocalPlaybackStatus* Arena::CreateMaybeMessage<::nai::v1::LocalPlaybackStatus>(Arena*);
+template<> ::nai::v1::LocalStandbyMedia* Arena::CreateMaybeMessage<::nai::v1::LocalStandbyMedia>(Arena*);
 template<> ::nai::v1::MediaClock* Arena::CreateMaybeMessage<::nai::v1::MediaClock>(Arena*);
+template<> ::nai::v1::NativeDeviceSmokeReport* Arena::CreateMaybeMessage<::nai::v1::NativeDeviceSmokeReport>(Arena*);
 template<> ::nai::v1::OutputAck* Arena::CreateMaybeMessage<::nai::v1::OutputAck>(Arena*);
 template<> ::nai::v1::OutputRequest* Arena::CreateMaybeMessage<::nai::v1::OutputRequest>(Arena*);
 template<> ::nai::v1::OutputWatchdogCommand* Arena::CreateMaybeMessage<::nai::v1::OutputWatchdogCommand>(Arena*);
@@ -152,6 +209,119 @@ PROTOBUF_NAMESPACE_CLOSE
 namespace nai {
 namespace v1 {
 
+enum CharacterRendererKind : int {
+  CHARACTER_RENDERER_UNSPECIFIED = 0,
+  CHARACTER_RENDERER_2D = 1,
+  CHARACTER_RENDERER_3D = 2,
+  CharacterRendererKind_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
+  CharacterRendererKind_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
+};
+bool CharacterRendererKind_IsValid(int value);
+constexpr CharacterRendererKind CharacterRendererKind_MIN = CHARACTER_RENDERER_UNSPECIFIED;
+constexpr CharacterRendererKind CharacterRendererKind_MAX = CHARACTER_RENDERER_3D;
+constexpr int CharacterRendererKind_ARRAYSIZE = CharacterRendererKind_MAX + 1;
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* CharacterRendererKind_descriptor();
+template<typename T>
+inline const std::string& CharacterRendererKind_Name(T enum_t_value) {
+  static_assert(::std::is_same<T, CharacterRendererKind>::value ||
+    ::std::is_integral<T>::value,
+    "Incorrect type passed to function CharacterRendererKind_Name.");
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    CharacterRendererKind_descriptor(), enum_t_value);
+}
+inline bool CharacterRendererKind_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, CharacterRendererKind* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<CharacterRendererKind>(
+    CharacterRendererKind_descriptor(), name, value);
+}
+enum CharacterLipSyncKind : int {
+  CHARACTER_LIP_SYNC_UNSPECIFIED = 0,
+  CHARACTER_LIP_SYNC_AMPLITUDE = 1,
+  CHARACTER_LIP_SYNC_PHONEME = 2,
+  CHARACTER_LIP_SYNC_AUDIO_DRIVEN = 3,
+  CharacterLipSyncKind_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
+  CharacterLipSyncKind_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
+};
+bool CharacterLipSyncKind_IsValid(int value);
+constexpr CharacterLipSyncKind CharacterLipSyncKind_MIN = CHARACTER_LIP_SYNC_UNSPECIFIED;
+constexpr CharacterLipSyncKind CharacterLipSyncKind_MAX = CHARACTER_LIP_SYNC_AUDIO_DRIVEN;
+constexpr int CharacterLipSyncKind_ARRAYSIZE = CharacterLipSyncKind_MAX + 1;
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* CharacterLipSyncKind_descriptor();
+template<typename T>
+inline const std::string& CharacterLipSyncKind_Name(T enum_t_value) {
+  static_assert(::std::is_same<T, CharacterLipSyncKind>::value ||
+    ::std::is_integral<T>::value,
+    "Incorrect type passed to function CharacterLipSyncKind_Name.");
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    CharacterLipSyncKind_descriptor(), enum_t_value);
+}
+inline bool CharacterLipSyncKind_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, CharacterLipSyncKind* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<CharacterLipSyncKind>(
+    CharacterLipSyncKind_descriptor(), name, value);
+}
+enum CharacterActionPhase : int {
+  CHARACTER_ACTION_PHASE_UNSPECIFIED = 0,
+  CHARACTER_ACTION_PHASE_ACCEPTED = 1,
+  CHARACTER_ACTION_PHASE_EXECUTING = 2,
+  CHARACTER_ACTION_PHASE_COMPLETED = 3,
+  CHARACTER_ACTION_PHASE_CANCELLED = 4,
+  CHARACTER_ACTION_PHASE_FAILED = 5,
+  CHARACTER_ACTION_PHASE_REJECTED = 6,
+  CharacterActionPhase_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
+  CharacterActionPhase_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
+};
+bool CharacterActionPhase_IsValid(int value);
+constexpr CharacterActionPhase CharacterActionPhase_MIN = CHARACTER_ACTION_PHASE_UNSPECIFIED;
+constexpr CharacterActionPhase CharacterActionPhase_MAX = CHARACTER_ACTION_PHASE_REJECTED;
+constexpr int CharacterActionPhase_ARRAYSIZE = CharacterActionPhase_MAX + 1;
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* CharacterActionPhase_descriptor();
+template<typename T>
+inline const std::string& CharacterActionPhase_Name(T enum_t_value) {
+  static_assert(::std::is_same<T, CharacterActionPhase>::value ||
+    ::std::is_integral<T>::value,
+    "Incorrect type passed to function CharacterActionPhase_Name.");
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    CharacterActionPhase_descriptor(), enum_t_value);
+}
+inline bool CharacterActionPhase_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, CharacterActionPhase* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<CharacterActionPhase>(
+    CharacterActionPhase_descriptor(), name, value);
+}
+enum CharacterRuntimeState : int {
+  CHARACTER_RUNTIME_STATE_UNSPECIFIED = 0,
+  CHARACTER_RUNTIME_STATE_UNAVAILABLE = 1,
+  CHARACTER_RUNTIME_STATE_PREVIEW = 2,
+  CHARACTER_RUNTIME_STATE_PUBLIC_STANDBY = 3,
+  CHARACTER_RUNTIME_STATE_PUBLIC_ACTIVE = 4,
+  CHARACTER_RUNTIME_STATE_LOST = 5,
+  CHARACTER_RUNTIME_STATE_REVOKED = 6,
+  CharacterRuntimeState_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::min(),
+  CharacterRuntimeState_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<int32_t>::max()
+};
+bool CharacterRuntimeState_IsValid(int value);
+constexpr CharacterRuntimeState CharacterRuntimeState_MIN = CHARACTER_RUNTIME_STATE_UNSPECIFIED;
+constexpr CharacterRuntimeState CharacterRuntimeState_MAX = CHARACTER_RUNTIME_STATE_REVOKED;
+constexpr int CharacterRuntimeState_ARRAYSIZE = CharacterRuntimeState_MAX + 1;
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* CharacterRuntimeState_descriptor();
+template<typename T>
+inline const std::string& CharacterRuntimeState_Name(T enum_t_value) {
+  static_assert(::std::is_same<T, CharacterRuntimeState>::value ||
+    ::std::is_integral<T>::value,
+    "Incorrect type passed to function CharacterRuntimeState_Name.");
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    CharacterRuntimeState_descriptor(), enum_t_value);
+}
+inline bool CharacterRuntimeState_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, CharacterRuntimeState* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<CharacterRuntimeState>(
+    CharacterRuntimeState_descriptor(), name, value);
+}
 // ===================================================================
 
 class AudioBlockMetadata final :
@@ -1680,6 +1850,1759 @@ class AvatarProfile final :
 };
 // -------------------------------------------------------------------
 
+class CharacterIdentity final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.CharacterIdentity) */ {
+ public:
+  inline CharacterIdentity() : CharacterIdentity(nullptr) {}
+  ~CharacterIdentity() override;
+  explicit PROTOBUF_CONSTEXPR CharacterIdentity(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  CharacterIdentity(const CharacterIdentity& from);
+  CharacterIdentity(CharacterIdentity&& from) noexcept
+    : CharacterIdentity() {
+    *this = ::std::move(from);
+  }
+
+  inline CharacterIdentity& operator=(const CharacterIdentity& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline CharacterIdentity& operator=(CharacterIdentity&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const CharacterIdentity& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const CharacterIdentity* internal_default_instance() {
+    return reinterpret_cast<const CharacterIdentity*>(
+               &_CharacterIdentity_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    6;
+
+  friend void swap(CharacterIdentity& a, CharacterIdentity& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(CharacterIdentity* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(CharacterIdentity* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  CharacterIdentity* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<CharacterIdentity>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const CharacterIdentity& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const CharacterIdentity& from) {
+    CharacterIdentity::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(CharacterIdentity* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.CharacterIdentity";
+  }
+  protected:
+  explicit CharacterIdentity(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kWorkspaceIdFieldNumber = 1,
+    kCharacterIdFieldNumber = 2,
+    kVersionFieldNumber = 3,
+    kPackageSha256FieldNumber = 4,
+    kRightsSha256FieldNumber = 5,
+  };
+  // string workspace_id = 1;
+  void clear_workspace_id();
+  const std::string& workspace_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_workspace_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_workspace_id();
+  PROTOBUF_NODISCARD std::string* release_workspace_id();
+  void set_allocated_workspace_id(std::string* workspace_id);
+  private:
+  const std::string& _internal_workspace_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_workspace_id(const std::string& value);
+  std::string* _internal_mutable_workspace_id();
+  public:
+
+  // string character_id = 2;
+  void clear_character_id();
+  const std::string& character_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_character_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_character_id();
+  PROTOBUF_NODISCARD std::string* release_character_id();
+  void set_allocated_character_id(std::string* character_id);
+  private:
+  const std::string& _internal_character_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_character_id(const std::string& value);
+  std::string* _internal_mutable_character_id();
+  public:
+
+  // string version = 3;
+  void clear_version();
+  const std::string& version() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_version(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_version();
+  PROTOBUF_NODISCARD std::string* release_version();
+  void set_allocated_version(std::string* version);
+  private:
+  const std::string& _internal_version() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_version(const std::string& value);
+  std::string* _internal_mutable_version();
+  public:
+
+  // string package_sha256 = 4;
+  void clear_package_sha256();
+  const std::string& package_sha256() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_package_sha256(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_package_sha256();
+  PROTOBUF_NODISCARD std::string* release_package_sha256();
+  void set_allocated_package_sha256(std::string* package_sha256);
+  private:
+  const std::string& _internal_package_sha256() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_package_sha256(const std::string& value);
+  std::string* _internal_mutable_package_sha256();
+  public:
+
+  // string rights_sha256 = 5;
+  void clear_rights_sha256();
+  const std::string& rights_sha256() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_rights_sha256(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_rights_sha256();
+  PROTOBUF_NODISCARD std::string* release_rights_sha256();
+  void set_allocated_rights_sha256(std::string* rights_sha256);
+  private:
+  const std::string& _internal_rights_sha256() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_rights_sha256(const std::string& value);
+  std::string* _internal_mutable_rights_sha256();
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.CharacterIdentity)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr workspace_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr character_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr version_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr package_sha256_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr rights_sha256_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
+class CharacterCapability final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.CharacterCapability) */ {
+ public:
+  inline CharacterCapability() : CharacterCapability(nullptr) {}
+  ~CharacterCapability() override;
+  explicit PROTOBUF_CONSTEXPR CharacterCapability(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  CharacterCapability(const CharacterCapability& from);
+  CharacterCapability(CharacterCapability&& from) noexcept
+    : CharacterCapability() {
+    *this = ::std::move(from);
+  }
+
+  inline CharacterCapability& operator=(const CharacterCapability& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline CharacterCapability& operator=(CharacterCapability&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const CharacterCapability& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const CharacterCapability* internal_default_instance() {
+    return reinterpret_cast<const CharacterCapability*>(
+               &_CharacterCapability_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    7;
+
+  friend void swap(CharacterCapability& a, CharacterCapability& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(CharacterCapability* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(CharacterCapability* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  CharacterCapability* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<CharacterCapability>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const CharacterCapability& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const CharacterCapability& from) {
+    CharacterCapability::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(CharacterCapability* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.CharacterCapability";
+  }
+  protected:
+  explicit CharacterCapability(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kLipSyncFieldNumber = 2,
+    kSupportedActionIdsFieldNumber = 3,
+    kRendererFieldNumber = 1,
+  };
+  // repeated .nai.v1.CharacterLipSyncKind lip_sync = 2;
+  int lip_sync_size() const;
+  private:
+  int _internal_lip_sync_size() const;
+  public:
+  void clear_lip_sync();
+  private:
+  ::nai::v1::CharacterLipSyncKind _internal_lip_sync(int index) const;
+  void _internal_add_lip_sync(::nai::v1::CharacterLipSyncKind value);
+  ::PROTOBUF_NAMESPACE_ID::RepeatedField<int>* _internal_mutable_lip_sync();
+  public:
+  ::nai::v1::CharacterLipSyncKind lip_sync(int index) const;
+  void set_lip_sync(int index, ::nai::v1::CharacterLipSyncKind value);
+  void add_lip_sync(::nai::v1::CharacterLipSyncKind value);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedField<int>& lip_sync() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedField<int>* mutable_lip_sync();
+
+  // repeated string supported_action_ids = 3;
+  int supported_action_ids_size() const;
+  private:
+  int _internal_supported_action_ids_size() const;
+  public:
+  void clear_supported_action_ids();
+  const std::string& supported_action_ids(int index) const;
+  std::string* mutable_supported_action_ids(int index);
+  void set_supported_action_ids(int index, const std::string& value);
+  void set_supported_action_ids(int index, std::string&& value);
+  void set_supported_action_ids(int index, const char* value);
+  void set_supported_action_ids(int index, const char* value, size_t size);
+  std::string* add_supported_action_ids();
+  void add_supported_action_ids(const std::string& value);
+  void add_supported_action_ids(std::string&& value);
+  void add_supported_action_ids(const char* value);
+  void add_supported_action_ids(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& supported_action_ids() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_supported_action_ids();
+  private:
+  const std::string& _internal_supported_action_ids(int index) const;
+  std::string* _internal_add_supported_action_ids();
+  public:
+
+  // .nai.v1.CharacterRendererKind renderer = 1;
+  void clear_renderer();
+  ::nai::v1::CharacterRendererKind renderer() const;
+  void set_renderer(::nai::v1::CharacterRendererKind value);
+  private:
+  ::nai::v1::CharacterRendererKind _internal_renderer() const;
+  void _internal_set_renderer(::nai::v1::CharacterRendererKind value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.CharacterCapability)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::RepeatedField<int> lip_sync_;
+    mutable std::atomic<int> _lip_sync_cached_byte_size_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> supported_action_ids_;
+    int renderer_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
+class CharacterProfile final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.CharacterProfile) */ {
+ public:
+  inline CharacterProfile() : CharacterProfile(nullptr) {}
+  ~CharacterProfile() override;
+  explicit PROTOBUF_CONSTEXPR CharacterProfile(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  CharacterProfile(const CharacterProfile& from);
+  CharacterProfile(CharacterProfile&& from) noexcept
+    : CharacterProfile() {
+    *this = ::std::move(from);
+  }
+
+  inline CharacterProfile& operator=(const CharacterProfile& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline CharacterProfile& operator=(CharacterProfile&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const CharacterProfile& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const CharacterProfile* internal_default_instance() {
+    return reinterpret_cast<const CharacterProfile*>(
+               &_CharacterProfile_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    8;
+
+  friend void swap(CharacterProfile& a, CharacterProfile& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(CharacterProfile* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(CharacterProfile* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  CharacterProfile* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<CharacterProfile>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const CharacterProfile& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const CharacterProfile& from) {
+    CharacterProfile::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(CharacterProfile* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.CharacterProfile";
+  }
+  protected:
+  explicit CharacterProfile(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kIdentityFieldNumber = 2,
+    kCapabilityFieldNumber = 3,
+    kSchemaVersionFieldNumber = 1,
+  };
+  // .nai.v1.CharacterIdentity identity = 2;
+  bool has_identity() const;
+  private:
+  bool _internal_has_identity() const;
+  public:
+  void clear_identity();
+  const ::nai::v1::CharacterIdentity& identity() const;
+  PROTOBUF_NODISCARD ::nai::v1::CharacterIdentity* release_identity();
+  ::nai::v1::CharacterIdentity* mutable_identity();
+  void set_allocated_identity(::nai::v1::CharacterIdentity* identity);
+  private:
+  const ::nai::v1::CharacterIdentity& _internal_identity() const;
+  ::nai::v1::CharacterIdentity* _internal_mutable_identity();
+  public:
+  void unsafe_arena_set_allocated_identity(
+      ::nai::v1::CharacterIdentity* identity);
+  ::nai::v1::CharacterIdentity* unsafe_arena_release_identity();
+
+  // .nai.v1.CharacterCapability capability = 3;
+  bool has_capability() const;
+  private:
+  bool _internal_has_capability() const;
+  public:
+  void clear_capability();
+  const ::nai::v1::CharacterCapability& capability() const;
+  PROTOBUF_NODISCARD ::nai::v1::CharacterCapability* release_capability();
+  ::nai::v1::CharacterCapability* mutable_capability();
+  void set_allocated_capability(::nai::v1::CharacterCapability* capability);
+  private:
+  const ::nai::v1::CharacterCapability& _internal_capability() const;
+  ::nai::v1::CharacterCapability* _internal_mutable_capability();
+  public:
+  void unsafe_arena_set_allocated_capability(
+      ::nai::v1::CharacterCapability* capability);
+  ::nai::v1::CharacterCapability* unsafe_arena_release_capability();
+
+  // uint32 schema_version = 1;
+  void clear_schema_version();
+  uint32_t schema_version() const;
+  void set_schema_version(uint32_t value);
+  private:
+  uint32_t _internal_schema_version() const;
+  void _internal_set_schema_version(uint32_t value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.CharacterProfile)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::nai::v1::CharacterIdentity* identity_;
+    ::nai::v1::CharacterCapability* capability_;
+    uint32_t schema_version_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
+class CharacterActionRequest final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.CharacterActionRequest) */ {
+ public:
+  inline CharacterActionRequest() : CharacterActionRequest(nullptr) {}
+  ~CharacterActionRequest() override;
+  explicit PROTOBUF_CONSTEXPR CharacterActionRequest(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  CharacterActionRequest(const CharacterActionRequest& from);
+  CharacterActionRequest(CharacterActionRequest&& from) noexcept
+    : CharacterActionRequest() {
+    *this = ::std::move(from);
+  }
+
+  inline CharacterActionRequest& operator=(const CharacterActionRequest& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline CharacterActionRequest& operator=(CharacterActionRequest&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const CharacterActionRequest& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const CharacterActionRequest* internal_default_instance() {
+    return reinterpret_cast<const CharacterActionRequest*>(
+               &_CharacterActionRequest_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    9;
+
+  friend void swap(CharacterActionRequest& a, CharacterActionRequest& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(CharacterActionRequest* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(CharacterActionRequest* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  CharacterActionRequest* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<CharacterActionRequest>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const CharacterActionRequest& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const CharacterActionRequest& from) {
+    CharacterActionRequest::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(CharacterActionRequest* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.CharacterActionRequest";
+  }
+  protected:
+  explicit CharacterActionRequest(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kRequestIdFieldNumber = 1,
+    kSessionIdFieldNumber = 3,
+    kOutputIdFieldNumber = 5,
+    kApprovalRefFieldNumber = 6,
+    kLeaseIdFieldNumber = 7,
+    kActionIdFieldNumber = 8,
+    kCharacterFieldNumber = 2,
+    kGenerationEpochFieldNumber = 4,
+    kPriorityFieldNumber = 9,
+    kRemainingBudgetMsFieldNumber = 10,
+    kSequenceFieldNumber = 11,
+  };
+  // string request_id = 1;
+  void clear_request_id();
+  const std::string& request_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_request_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_request_id();
+  PROTOBUF_NODISCARD std::string* release_request_id();
+  void set_allocated_request_id(std::string* request_id);
+  private:
+  const std::string& _internal_request_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_request_id(const std::string& value);
+  std::string* _internal_mutable_request_id();
+  public:
+
+  // string session_id = 3;
+  void clear_session_id();
+  const std::string& session_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_session_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_session_id();
+  PROTOBUF_NODISCARD std::string* release_session_id();
+  void set_allocated_session_id(std::string* session_id);
+  private:
+  const std::string& _internal_session_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_session_id(const std::string& value);
+  std::string* _internal_mutable_session_id();
+  public:
+
+  // string output_id = 5;
+  void clear_output_id();
+  const std::string& output_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_output_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_output_id();
+  PROTOBUF_NODISCARD std::string* release_output_id();
+  void set_allocated_output_id(std::string* output_id);
+  private:
+  const std::string& _internal_output_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_output_id(const std::string& value);
+  std::string* _internal_mutable_output_id();
+  public:
+
+  // string approval_ref = 6;
+  void clear_approval_ref();
+  const std::string& approval_ref() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_approval_ref(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_approval_ref();
+  PROTOBUF_NODISCARD std::string* release_approval_ref();
+  void set_allocated_approval_ref(std::string* approval_ref);
+  private:
+  const std::string& _internal_approval_ref() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_approval_ref(const std::string& value);
+  std::string* _internal_mutable_approval_ref();
+  public:
+
+  // string lease_id = 7;
+  void clear_lease_id();
+  const std::string& lease_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_lease_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_lease_id();
+  PROTOBUF_NODISCARD std::string* release_lease_id();
+  void set_allocated_lease_id(std::string* lease_id);
+  private:
+  const std::string& _internal_lease_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_lease_id(const std::string& value);
+  std::string* _internal_mutable_lease_id();
+  public:
+
+  // string action_id = 8;
+  void clear_action_id();
+  const std::string& action_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_action_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_action_id();
+  PROTOBUF_NODISCARD std::string* release_action_id();
+  void set_allocated_action_id(std::string* action_id);
+  private:
+  const std::string& _internal_action_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_action_id(const std::string& value);
+  std::string* _internal_mutable_action_id();
+  public:
+
+  // .nai.v1.CharacterIdentity character = 2;
+  bool has_character() const;
+  private:
+  bool _internal_has_character() const;
+  public:
+  void clear_character();
+  const ::nai::v1::CharacterIdentity& character() const;
+  PROTOBUF_NODISCARD ::nai::v1::CharacterIdentity* release_character();
+  ::nai::v1::CharacterIdentity* mutable_character();
+  void set_allocated_character(::nai::v1::CharacterIdentity* character);
+  private:
+  const ::nai::v1::CharacterIdentity& _internal_character() const;
+  ::nai::v1::CharacterIdentity* _internal_mutable_character();
+  public:
+  void unsafe_arena_set_allocated_character(
+      ::nai::v1::CharacterIdentity* character);
+  ::nai::v1::CharacterIdentity* unsafe_arena_release_character();
+
+  // uint64 generation_epoch = 4;
+  void clear_generation_epoch();
+  uint64_t generation_epoch() const;
+  void set_generation_epoch(uint64_t value);
+  private:
+  uint64_t _internal_generation_epoch() const;
+  void _internal_set_generation_epoch(uint64_t value);
+  public:
+
+  // uint32 priority = 9;
+  void clear_priority();
+  uint32_t priority() const;
+  void set_priority(uint32_t value);
+  private:
+  uint32_t _internal_priority() const;
+  void _internal_set_priority(uint32_t value);
+  public:
+
+  // uint32 remaining_budget_ms = 10;
+  void clear_remaining_budget_ms();
+  uint32_t remaining_budget_ms() const;
+  void set_remaining_budget_ms(uint32_t value);
+  private:
+  uint32_t _internal_remaining_budget_ms() const;
+  void _internal_set_remaining_budget_ms(uint32_t value);
+  public:
+
+  // uint64 sequence = 11;
+  void clear_sequence();
+  uint64_t sequence() const;
+  void set_sequence(uint64_t value);
+  private:
+  uint64_t _internal_sequence() const;
+  void _internal_set_sequence(uint64_t value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.CharacterActionRequest)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr request_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr session_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr output_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr approval_ref_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr lease_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr action_id_;
+    ::nai::v1::CharacterIdentity* character_;
+    uint64_t generation_epoch_;
+    uint32_t priority_;
+    uint32_t remaining_budget_ms_;
+    uint64_t sequence_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
+class CharacterActionState final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.CharacterActionState) */ {
+ public:
+  inline CharacterActionState() : CharacterActionState(nullptr) {}
+  ~CharacterActionState() override;
+  explicit PROTOBUF_CONSTEXPR CharacterActionState(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  CharacterActionState(const CharacterActionState& from);
+  CharacterActionState(CharacterActionState&& from) noexcept
+    : CharacterActionState() {
+    *this = ::std::move(from);
+  }
+
+  inline CharacterActionState& operator=(const CharacterActionState& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline CharacterActionState& operator=(CharacterActionState&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const CharacterActionState& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const CharacterActionState* internal_default_instance() {
+    return reinterpret_cast<const CharacterActionState*>(
+               &_CharacterActionState_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    10;
+
+  friend void swap(CharacterActionState& a, CharacterActionState& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(CharacterActionState* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(CharacterActionState* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  CharacterActionState* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<CharacterActionState>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const CharacterActionState& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const CharacterActionState& from) {
+    CharacterActionState::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(CharacterActionState* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.CharacterActionState";
+  }
+  protected:
+  explicit CharacterActionState(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kRequestIdFieldNumber = 1,
+    kSessionIdFieldNumber = 3,
+    kOutputIdFieldNumber = 5,
+    kActionIdFieldNumber = 6,
+    kReasonCodeFieldNumber = 8,
+    kCharacterFieldNumber = 2,
+    kGenerationEpochFieldNumber = 4,
+    kSequenceFieldNumber = 9,
+    kSourceSamplePositionFieldNumber = 10,
+    kFrameSequenceFieldNumber = 11,
+    kPhaseFieldNumber = 7,
+  };
+  // string request_id = 1;
+  void clear_request_id();
+  const std::string& request_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_request_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_request_id();
+  PROTOBUF_NODISCARD std::string* release_request_id();
+  void set_allocated_request_id(std::string* request_id);
+  private:
+  const std::string& _internal_request_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_request_id(const std::string& value);
+  std::string* _internal_mutable_request_id();
+  public:
+
+  // string session_id = 3;
+  void clear_session_id();
+  const std::string& session_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_session_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_session_id();
+  PROTOBUF_NODISCARD std::string* release_session_id();
+  void set_allocated_session_id(std::string* session_id);
+  private:
+  const std::string& _internal_session_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_session_id(const std::string& value);
+  std::string* _internal_mutable_session_id();
+  public:
+
+  // string output_id = 5;
+  void clear_output_id();
+  const std::string& output_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_output_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_output_id();
+  PROTOBUF_NODISCARD std::string* release_output_id();
+  void set_allocated_output_id(std::string* output_id);
+  private:
+  const std::string& _internal_output_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_output_id(const std::string& value);
+  std::string* _internal_mutable_output_id();
+  public:
+
+  // string action_id = 6;
+  void clear_action_id();
+  const std::string& action_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_action_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_action_id();
+  PROTOBUF_NODISCARD std::string* release_action_id();
+  void set_allocated_action_id(std::string* action_id);
+  private:
+  const std::string& _internal_action_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_action_id(const std::string& value);
+  std::string* _internal_mutable_action_id();
+  public:
+
+  // string reason_code = 8;
+  void clear_reason_code();
+  const std::string& reason_code() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_reason_code(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_reason_code();
+  PROTOBUF_NODISCARD std::string* release_reason_code();
+  void set_allocated_reason_code(std::string* reason_code);
+  private:
+  const std::string& _internal_reason_code() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_reason_code(const std::string& value);
+  std::string* _internal_mutable_reason_code();
+  public:
+
+  // .nai.v1.CharacterIdentity character = 2;
+  bool has_character() const;
+  private:
+  bool _internal_has_character() const;
+  public:
+  void clear_character();
+  const ::nai::v1::CharacterIdentity& character() const;
+  PROTOBUF_NODISCARD ::nai::v1::CharacterIdentity* release_character();
+  ::nai::v1::CharacterIdentity* mutable_character();
+  void set_allocated_character(::nai::v1::CharacterIdentity* character);
+  private:
+  const ::nai::v1::CharacterIdentity& _internal_character() const;
+  ::nai::v1::CharacterIdentity* _internal_mutable_character();
+  public:
+  void unsafe_arena_set_allocated_character(
+      ::nai::v1::CharacterIdentity* character);
+  ::nai::v1::CharacterIdentity* unsafe_arena_release_character();
+
+  // uint64 generation_epoch = 4;
+  void clear_generation_epoch();
+  uint64_t generation_epoch() const;
+  void set_generation_epoch(uint64_t value);
+  private:
+  uint64_t _internal_generation_epoch() const;
+  void _internal_set_generation_epoch(uint64_t value);
+  public:
+
+  // uint64 sequence = 9;
+  void clear_sequence();
+  uint64_t sequence() const;
+  void set_sequence(uint64_t value);
+  private:
+  uint64_t _internal_sequence() const;
+  void _internal_set_sequence(uint64_t value);
+  public:
+
+  // optional uint64 source_sample_position = 10;
+  bool has_source_sample_position() const;
+  private:
+  bool _internal_has_source_sample_position() const;
+  public:
+  void clear_source_sample_position();
+  uint64_t source_sample_position() const;
+  void set_source_sample_position(uint64_t value);
+  private:
+  uint64_t _internal_source_sample_position() const;
+  void _internal_set_source_sample_position(uint64_t value);
+  public:
+
+  // optional uint64 frame_sequence = 11;
+  bool has_frame_sequence() const;
+  private:
+  bool _internal_has_frame_sequence() const;
+  public:
+  void clear_frame_sequence();
+  uint64_t frame_sequence() const;
+  void set_frame_sequence(uint64_t value);
+  private:
+  uint64_t _internal_frame_sequence() const;
+  void _internal_set_frame_sequence(uint64_t value);
+  public:
+
+  // .nai.v1.CharacterActionPhase phase = 7;
+  void clear_phase();
+  ::nai::v1::CharacterActionPhase phase() const;
+  void set_phase(::nai::v1::CharacterActionPhase value);
+  private:
+  ::nai::v1::CharacterActionPhase _internal_phase() const;
+  void _internal_set_phase(::nai::v1::CharacterActionPhase value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.CharacterActionState)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr request_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr session_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr output_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr action_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr reason_code_;
+    ::nai::v1::CharacterIdentity* character_;
+    uint64_t generation_epoch_;
+    uint64_t sequence_;
+    uint64_t source_sample_position_;
+    uint64_t frame_sequence_;
+    int phase_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
+class CharacterBoundedMedia final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.CharacterBoundedMedia) */ {
+ public:
+  inline CharacterBoundedMedia() : CharacterBoundedMedia(nullptr) {}
+  ~CharacterBoundedMedia() override;
+  explicit PROTOBUF_CONSTEXPR CharacterBoundedMedia(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  CharacterBoundedMedia(const CharacterBoundedMedia& from);
+  CharacterBoundedMedia(CharacterBoundedMedia&& from) noexcept
+    : CharacterBoundedMedia() {
+    *this = ::std::move(from);
+  }
+
+  inline CharacterBoundedMedia& operator=(const CharacterBoundedMedia& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline CharacterBoundedMedia& operator=(CharacterBoundedMedia&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const CharacterBoundedMedia& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const CharacterBoundedMedia* internal_default_instance() {
+    return reinterpret_cast<const CharacterBoundedMedia*>(
+               &_CharacterBoundedMedia_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    11;
+
+  friend void swap(CharacterBoundedMedia& a, CharacterBoundedMedia& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(CharacterBoundedMedia* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(CharacterBoundedMedia* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  CharacterBoundedMedia* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<CharacterBoundedMedia>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const CharacterBoundedMedia& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const CharacterBoundedMedia& from) {
+    CharacterBoundedMedia::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(CharacterBoundedMedia* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.CharacterBoundedMedia";
+  }
+  protected:
+  explicit CharacterBoundedMedia(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kSessionIdFieldNumber = 2,
+    kActionIdFieldNumber = 4,
+    kPixelFormatFieldNumber = 12,
+    kPcmFormatFieldNumber = 13,
+    kIdentityFieldNumber = 1,
+    kEpochFieldNumber = 3,
+    kWidthFieldNumber = 5,
+    kHeightFieldNumber = 6,
+    kSampleRateFieldNumber = 7,
+    kChannelsFieldNumber = 8,
+    kMaxFramesFieldNumber = 9,
+    kMaxSamplesFieldNumber = 10,
+    kSamplesPerFrameFieldNumber = 11,
+  };
+  // string session_id = 2;
+  void clear_session_id();
+  const std::string& session_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_session_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_session_id();
+  PROTOBUF_NODISCARD std::string* release_session_id();
+  void set_allocated_session_id(std::string* session_id);
+  private:
+  const std::string& _internal_session_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_session_id(const std::string& value);
+  std::string* _internal_mutable_session_id();
+  public:
+
+  // string action_id = 4;
+  void clear_action_id();
+  const std::string& action_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_action_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_action_id();
+  PROTOBUF_NODISCARD std::string* release_action_id();
+  void set_allocated_action_id(std::string* action_id);
+  private:
+  const std::string& _internal_action_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_action_id(const std::string& value);
+  std::string* _internal_mutable_action_id();
+  public:
+
+  // string pixel_format = 12;
+  void clear_pixel_format();
+  const std::string& pixel_format() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_pixel_format(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_pixel_format();
+  PROTOBUF_NODISCARD std::string* release_pixel_format();
+  void set_allocated_pixel_format(std::string* pixel_format);
+  private:
+  const std::string& _internal_pixel_format() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_pixel_format(const std::string& value);
+  std::string* _internal_mutable_pixel_format();
+  public:
+
+  // string pcm_format = 13;
+  void clear_pcm_format();
+  const std::string& pcm_format() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_pcm_format(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_pcm_format();
+  PROTOBUF_NODISCARD std::string* release_pcm_format();
+  void set_allocated_pcm_format(std::string* pcm_format);
+  private:
+  const std::string& _internal_pcm_format() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_pcm_format(const std::string& value);
+  std::string* _internal_mutable_pcm_format();
+  public:
+
+  // .nai.v1.CharacterIdentity identity = 1;
+  bool has_identity() const;
+  private:
+  bool _internal_has_identity() const;
+  public:
+  void clear_identity();
+  const ::nai::v1::CharacterIdentity& identity() const;
+  PROTOBUF_NODISCARD ::nai::v1::CharacterIdentity* release_identity();
+  ::nai::v1::CharacterIdentity* mutable_identity();
+  void set_allocated_identity(::nai::v1::CharacterIdentity* identity);
+  private:
+  const ::nai::v1::CharacterIdentity& _internal_identity() const;
+  ::nai::v1::CharacterIdentity* _internal_mutable_identity();
+  public:
+  void unsafe_arena_set_allocated_identity(
+      ::nai::v1::CharacterIdentity* identity);
+  ::nai::v1::CharacterIdentity* unsafe_arena_release_identity();
+
+  // uint64 epoch = 3;
+  void clear_epoch();
+  uint64_t epoch() const;
+  void set_epoch(uint64_t value);
+  private:
+  uint64_t _internal_epoch() const;
+  void _internal_set_epoch(uint64_t value);
+  public:
+
+  // uint32 width = 5;
+  void clear_width();
+  uint32_t width() const;
+  void set_width(uint32_t value);
+  private:
+  uint32_t _internal_width() const;
+  void _internal_set_width(uint32_t value);
+  public:
+
+  // uint32 height = 6;
+  void clear_height();
+  uint32_t height() const;
+  void set_height(uint32_t value);
+  private:
+  uint32_t _internal_height() const;
+  void _internal_set_height(uint32_t value);
+  public:
+
+  // uint32 sample_rate = 7;
+  void clear_sample_rate();
+  uint32_t sample_rate() const;
+  void set_sample_rate(uint32_t value);
+  private:
+  uint32_t _internal_sample_rate() const;
+  void _internal_set_sample_rate(uint32_t value);
+  public:
+
+  // uint32 channels = 8;
+  void clear_channels();
+  uint32_t channels() const;
+  void set_channels(uint32_t value);
+  private:
+  uint32_t _internal_channels() const;
+  void _internal_set_channels(uint32_t value);
+  public:
+
+  // uint64 max_frames = 9;
+  void clear_max_frames();
+  uint64_t max_frames() const;
+  void set_max_frames(uint64_t value);
+  private:
+  uint64_t _internal_max_frames() const;
+  void _internal_set_max_frames(uint64_t value);
+  public:
+
+  // uint64 max_samples = 10;
+  void clear_max_samples();
+  uint64_t max_samples() const;
+  void set_max_samples(uint64_t value);
+  private:
+  uint64_t _internal_max_samples() const;
+  void _internal_set_max_samples(uint64_t value);
+  public:
+
+  // uint32 samples_per_frame = 11;
+  void clear_samples_per_frame();
+  uint32_t samples_per_frame() const;
+  void set_samples_per_frame(uint32_t value);
+  private:
+  uint32_t _internal_samples_per_frame() const;
+  void _internal_set_samples_per_frame(uint32_t value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.CharacterBoundedMedia)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr session_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr action_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr pixel_format_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr pcm_format_;
+    ::nai::v1::CharacterIdentity* identity_;
+    uint64_t epoch_;
+    uint32_t width_;
+    uint32_t height_;
+    uint32_t sample_rate_;
+    uint32_t channels_;
+    uint64_t max_frames_;
+    uint64_t max_samples_;
+    uint32_t samples_per_frame_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
+class CharacterRuntimeView final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.CharacterRuntimeView) */ {
+ public:
+  inline CharacterRuntimeView() : CharacterRuntimeView(nullptr) {}
+  ~CharacterRuntimeView() override;
+  explicit PROTOBUF_CONSTEXPR CharacterRuntimeView(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  CharacterRuntimeView(const CharacterRuntimeView& from);
+  CharacterRuntimeView(CharacterRuntimeView&& from) noexcept
+    : CharacterRuntimeView() {
+    *this = ::std::move(from);
+  }
+
+  inline CharacterRuntimeView& operator=(const CharacterRuntimeView& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline CharacterRuntimeView& operator=(CharacterRuntimeView&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const CharacterRuntimeView& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const CharacterRuntimeView* internal_default_instance() {
+    return reinterpret_cast<const CharacterRuntimeView*>(
+               &_CharacterRuntimeView_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    12;
+
+  friend void swap(CharacterRuntimeView& a, CharacterRuntimeView& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(CharacterRuntimeView* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(CharacterRuntimeView* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  CharacterRuntimeView* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<CharacterRuntimeView>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const CharacterRuntimeView& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const CharacterRuntimeView& from) {
+    CharacterRuntimeView::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(CharacterRuntimeView* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.CharacterRuntimeView";
+  }
+  protected:
+  explicit CharacterRuntimeView(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kSessionIdFieldNumber = 3,
+    kActionIdFieldNumber = 5,
+    kReasonCodeFieldNumber = 7,
+    kIdentityFieldNumber = 1,
+    kMediaFieldNumber = 6,
+    kEpochFieldNumber = 4,
+    kStateFieldNumber = 2,
+  };
+  // string session_id = 3;
+  void clear_session_id();
+  const std::string& session_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_session_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_session_id();
+  PROTOBUF_NODISCARD std::string* release_session_id();
+  void set_allocated_session_id(std::string* session_id);
+  private:
+  const std::string& _internal_session_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_session_id(const std::string& value);
+  std::string* _internal_mutable_session_id();
+  public:
+
+  // string action_id = 5;
+  void clear_action_id();
+  const std::string& action_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_action_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_action_id();
+  PROTOBUF_NODISCARD std::string* release_action_id();
+  void set_allocated_action_id(std::string* action_id);
+  private:
+  const std::string& _internal_action_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_action_id(const std::string& value);
+  std::string* _internal_mutable_action_id();
+  public:
+
+  // string reason_code = 7;
+  void clear_reason_code();
+  const std::string& reason_code() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_reason_code(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_reason_code();
+  PROTOBUF_NODISCARD std::string* release_reason_code();
+  void set_allocated_reason_code(std::string* reason_code);
+  private:
+  const std::string& _internal_reason_code() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_reason_code(const std::string& value);
+  std::string* _internal_mutable_reason_code();
+  public:
+
+  // .nai.v1.CharacterIdentity identity = 1;
+  bool has_identity() const;
+  private:
+  bool _internal_has_identity() const;
+  public:
+  void clear_identity();
+  const ::nai::v1::CharacterIdentity& identity() const;
+  PROTOBUF_NODISCARD ::nai::v1::CharacterIdentity* release_identity();
+  ::nai::v1::CharacterIdentity* mutable_identity();
+  void set_allocated_identity(::nai::v1::CharacterIdentity* identity);
+  private:
+  const ::nai::v1::CharacterIdentity& _internal_identity() const;
+  ::nai::v1::CharacterIdentity* _internal_mutable_identity();
+  public:
+  void unsafe_arena_set_allocated_identity(
+      ::nai::v1::CharacterIdentity* identity);
+  ::nai::v1::CharacterIdentity* unsafe_arena_release_identity();
+
+  // .nai.v1.CharacterBoundedMedia media = 6;
+  bool has_media() const;
+  private:
+  bool _internal_has_media() const;
+  public:
+  void clear_media();
+  const ::nai::v1::CharacterBoundedMedia& media() const;
+  PROTOBUF_NODISCARD ::nai::v1::CharacterBoundedMedia* release_media();
+  ::nai::v1::CharacterBoundedMedia* mutable_media();
+  void set_allocated_media(::nai::v1::CharacterBoundedMedia* media);
+  private:
+  const ::nai::v1::CharacterBoundedMedia& _internal_media() const;
+  ::nai::v1::CharacterBoundedMedia* _internal_mutable_media();
+  public:
+  void unsafe_arena_set_allocated_media(
+      ::nai::v1::CharacterBoundedMedia* media);
+  ::nai::v1::CharacterBoundedMedia* unsafe_arena_release_media();
+
+  // uint64 epoch = 4;
+  void clear_epoch();
+  uint64_t epoch() const;
+  void set_epoch(uint64_t value);
+  private:
+  uint64_t _internal_epoch() const;
+  void _internal_set_epoch(uint64_t value);
+  public:
+
+  // .nai.v1.CharacterRuntimeState state = 2;
+  void clear_state();
+  ::nai::v1::CharacterRuntimeState state() const;
+  void set_state(::nai::v1::CharacterRuntimeState value);
+  private:
+  ::nai::v1::CharacterRuntimeState _internal_state() const;
+  void _internal_set_state(::nai::v1::CharacterRuntimeState value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.CharacterRuntimeView)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr session_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr action_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr reason_code_;
+    ::nai::v1::CharacterIdentity* identity_;
+    ::nai::v1::CharacterBoundedMedia* media_;
+    uint64_t epoch_;
+    int state_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
 class AvatarRenderRequest final :
     public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.AvatarRenderRequest) */ {
  public:
@@ -1728,7 +3651,7 @@ class AvatarRenderRequest final :
                &_AvatarRenderRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    6;
+    13;
 
   friend void swap(AvatarRenderRequest& a, AvatarRenderRequest& b) {
     a.Swap(&b);
@@ -1941,7 +3864,7 @@ class AvatarRenderResult final :
                &_AvatarRenderResult_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    7;
+    14;
 
   friend void swap(AvatarRenderResult& a, AvatarRenderResult& b) {
     a.Swap(&b);
@@ -2109,7 +4032,7 @@ class OutputRequest final :
                &_OutputRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    8;
+    15;
 
   friend void swap(OutputRequest& a, OutputRequest& b) {
     a.Swap(&b);
@@ -2358,7 +4281,7 @@ class OutputAck final :
                &_OutputAck_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    9;
+    16;
 
   friend void swap(OutputAck& a, OutputAck& b) {
     a.Swap(&b);
@@ -2587,7 +4510,7 @@ class ChannelRequest final :
                &_ChannelRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    10;
+    17;
 
   friend void swap(ChannelRequest& a, ChannelRequest& b) {
     a.Swap(&b);
@@ -2798,7 +4721,7 @@ class ChannelDescriptor final :
                &_ChannelDescriptor_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    11;
+    18;
 
   friend void swap(ChannelDescriptor& a, ChannelDescriptor& b) {
     a.Swap(&b);
@@ -3037,7 +4960,7 @@ class ClockRequest final :
                &_ClockRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    12;
+    19;
 
   friend void swap(ClockRequest& a, ClockRequest& b) {
     a.Swap(&b);
@@ -3210,7 +5133,7 @@ class MediaClock final :
                &_MediaClock_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    13;
+    20;
 
   friend void swap(MediaClock& a, MediaClock& b) {
     a.Swap(&b);
@@ -3418,7 +5341,7 @@ class TimelineRequest final :
                &_TimelineRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    14;
+    21;
 
   friend void swap(TimelineRequest& a, TimelineRequest& b) {
     a.Swap(&b);
@@ -3591,7 +5514,7 @@ class AudioTimeline final :
                &_AudioTimeline_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    15;
+    22;
 
   friend void swap(AudioTimeline& a, AudioTimeline& b) {
     a.Swap(&b);
@@ -3826,7 +5749,7 @@ class PreviewRequest final :
                &_PreviewRequest_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    16;
+    23;
 
   friend void swap(PreviewRequest& a, PreviewRequest& b) {
     a.Swap(&b);
@@ -4021,7 +5944,7 @@ class PreviewDescriptor final :
                &_PreviewDescriptor_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    17;
+    24;
 
   friend void swap(PreviewDescriptor& a, PreviewDescriptor& b) {
     a.Swap(&b);
@@ -4169,6 +6092,1345 @@ class PreviewDescriptor final :
 };
 // -------------------------------------------------------------------
 
+class LocalPlaybackMedia final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.LocalPlaybackMedia) */ {
+ public:
+  inline LocalPlaybackMedia() : LocalPlaybackMedia(nullptr) {}
+  ~LocalPlaybackMedia() override;
+  explicit PROTOBUF_CONSTEXPR LocalPlaybackMedia(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  LocalPlaybackMedia(const LocalPlaybackMedia& from);
+  LocalPlaybackMedia(LocalPlaybackMedia&& from) noexcept
+    : LocalPlaybackMedia() {
+    *this = ::std::move(from);
+  }
+
+  inline LocalPlaybackMedia& operator=(const LocalPlaybackMedia& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline LocalPlaybackMedia& operator=(LocalPlaybackMedia&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const LocalPlaybackMedia& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const LocalPlaybackMedia* internal_default_instance() {
+    return reinterpret_cast<const LocalPlaybackMedia*>(
+               &_LocalPlaybackMedia_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    25;
+
+  friend void swap(LocalPlaybackMedia& a, LocalPlaybackMedia& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(LocalPlaybackMedia* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(LocalPlaybackMedia* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  LocalPlaybackMedia* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<LocalPlaybackMedia>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const LocalPlaybackMedia& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const LocalPlaybackMedia& from) {
+    LocalPlaybackMedia::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(LocalPlaybackMedia* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.LocalPlaybackMedia";
+  }
+  protected:
+  explicit LocalPlaybackMedia(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kFrameSha256FieldNumber = 14,
+    kSessionIdFieldNumber = 2,
+    kCandidateHashFieldNumber = 4,
+    kAudioSha256FieldNumber = 12,
+    kFramesSha256FieldNumber = 13,
+    kStandbySha256FieldNumber = 15,
+    kGenerationEpochFieldNumber = 3,
+    kVersionFieldNumber = 1,
+    kSampleRateFieldNumber = 5,
+    kSampleCountFieldNumber = 6,
+    kWidthFieldNumber = 7,
+    kHeightFieldNumber = 8,
+    kFrameCountFieldNumber = 9,
+    kFpsNumFieldNumber = 10,
+    kFpsDenFieldNumber = 11,
+  };
+  // repeated string frame_sha256 = 14;
+  int frame_sha256_size() const;
+  private:
+  int _internal_frame_sha256_size() const;
+  public:
+  void clear_frame_sha256();
+  const std::string& frame_sha256(int index) const;
+  std::string* mutable_frame_sha256(int index);
+  void set_frame_sha256(int index, const std::string& value);
+  void set_frame_sha256(int index, std::string&& value);
+  void set_frame_sha256(int index, const char* value);
+  void set_frame_sha256(int index, const char* value, size_t size);
+  std::string* add_frame_sha256();
+  void add_frame_sha256(const std::string& value);
+  void add_frame_sha256(std::string&& value);
+  void add_frame_sha256(const char* value);
+  void add_frame_sha256(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& frame_sha256() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_frame_sha256();
+  private:
+  const std::string& _internal_frame_sha256(int index) const;
+  std::string* _internal_add_frame_sha256();
+  public:
+
+  // string session_id = 2;
+  void clear_session_id();
+  const std::string& session_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_session_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_session_id();
+  PROTOBUF_NODISCARD std::string* release_session_id();
+  void set_allocated_session_id(std::string* session_id);
+  private:
+  const std::string& _internal_session_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_session_id(const std::string& value);
+  std::string* _internal_mutable_session_id();
+  public:
+
+  // string candidate_hash = 4;
+  void clear_candidate_hash();
+  const std::string& candidate_hash() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_candidate_hash(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_candidate_hash();
+  PROTOBUF_NODISCARD std::string* release_candidate_hash();
+  void set_allocated_candidate_hash(std::string* candidate_hash);
+  private:
+  const std::string& _internal_candidate_hash() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_candidate_hash(const std::string& value);
+  std::string* _internal_mutable_candidate_hash();
+  public:
+
+  // string audio_sha256 = 12;
+  void clear_audio_sha256();
+  const std::string& audio_sha256() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_audio_sha256(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_audio_sha256();
+  PROTOBUF_NODISCARD std::string* release_audio_sha256();
+  void set_allocated_audio_sha256(std::string* audio_sha256);
+  private:
+  const std::string& _internal_audio_sha256() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_audio_sha256(const std::string& value);
+  std::string* _internal_mutable_audio_sha256();
+  public:
+
+  // string frames_sha256 = 13;
+  void clear_frames_sha256();
+  const std::string& frames_sha256() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_frames_sha256(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_frames_sha256();
+  PROTOBUF_NODISCARD std::string* release_frames_sha256();
+  void set_allocated_frames_sha256(std::string* frames_sha256);
+  private:
+  const std::string& _internal_frames_sha256() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_frames_sha256(const std::string& value);
+  std::string* _internal_mutable_frames_sha256();
+  public:
+
+  // string standby_sha256 = 15;
+  void clear_standby_sha256();
+  const std::string& standby_sha256() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_standby_sha256(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_standby_sha256();
+  PROTOBUF_NODISCARD std::string* release_standby_sha256();
+  void set_allocated_standby_sha256(std::string* standby_sha256);
+  private:
+  const std::string& _internal_standby_sha256() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_standby_sha256(const std::string& value);
+  std::string* _internal_mutable_standby_sha256();
+  public:
+
+  // uint64 generation_epoch = 3;
+  void clear_generation_epoch();
+  uint64_t generation_epoch() const;
+  void set_generation_epoch(uint64_t value);
+  private:
+  uint64_t _internal_generation_epoch() const;
+  void _internal_set_generation_epoch(uint64_t value);
+  public:
+
+  // uint32 version = 1;
+  void clear_version();
+  uint32_t version() const;
+  void set_version(uint32_t value);
+  private:
+  uint32_t _internal_version() const;
+  void _internal_set_version(uint32_t value);
+  public:
+
+  // uint32 sample_rate = 5;
+  void clear_sample_rate();
+  uint32_t sample_rate() const;
+  void set_sample_rate(uint32_t value);
+  private:
+  uint32_t _internal_sample_rate() const;
+  void _internal_set_sample_rate(uint32_t value);
+  public:
+
+  // uint64 sample_count = 6;
+  void clear_sample_count();
+  uint64_t sample_count() const;
+  void set_sample_count(uint64_t value);
+  private:
+  uint64_t _internal_sample_count() const;
+  void _internal_set_sample_count(uint64_t value);
+  public:
+
+  // uint32 width = 7;
+  void clear_width();
+  uint32_t width() const;
+  void set_width(uint32_t value);
+  private:
+  uint32_t _internal_width() const;
+  void _internal_set_width(uint32_t value);
+  public:
+
+  // uint32 height = 8;
+  void clear_height();
+  uint32_t height() const;
+  void set_height(uint32_t value);
+  private:
+  uint32_t _internal_height() const;
+  void _internal_set_height(uint32_t value);
+  public:
+
+  // uint32 frame_count = 9;
+  void clear_frame_count();
+  uint32_t frame_count() const;
+  void set_frame_count(uint32_t value);
+  private:
+  uint32_t _internal_frame_count() const;
+  void _internal_set_frame_count(uint32_t value);
+  public:
+
+  // uint32 fps_num = 10;
+  void clear_fps_num();
+  uint32_t fps_num() const;
+  void set_fps_num(uint32_t value);
+  private:
+  uint32_t _internal_fps_num() const;
+  void _internal_set_fps_num(uint32_t value);
+  public:
+
+  // uint32 fps_den = 11;
+  void clear_fps_den();
+  uint32_t fps_den() const;
+  void set_fps_den(uint32_t value);
+  private:
+  uint32_t _internal_fps_den() const;
+  void _internal_set_fps_den(uint32_t value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.LocalPlaybackMedia)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> frame_sha256_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr session_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr candidate_hash_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr audio_sha256_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr frames_sha256_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr standby_sha256_;
+    uint64_t generation_epoch_;
+    uint32_t version_;
+    uint32_t sample_rate_;
+    uint64_t sample_count_;
+    uint32_t width_;
+    uint32_t height_;
+    uint32_t frame_count_;
+    uint32_t fps_num_;
+    uint32_t fps_den_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
+class LocalPlaybackGrant final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.LocalPlaybackGrant) */ {
+ public:
+  inline LocalPlaybackGrant() : LocalPlaybackGrant(nullptr) {}
+  ~LocalPlaybackGrant() override;
+  explicit PROTOBUF_CONSTEXPR LocalPlaybackGrant(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  LocalPlaybackGrant(const LocalPlaybackGrant& from);
+  LocalPlaybackGrant(LocalPlaybackGrant&& from) noexcept
+    : LocalPlaybackGrant() {
+    *this = ::std::move(from);
+  }
+
+  inline LocalPlaybackGrant& operator=(const LocalPlaybackGrant& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline LocalPlaybackGrant& operator=(LocalPlaybackGrant&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const LocalPlaybackGrant& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const LocalPlaybackGrant* internal_default_instance() {
+    return reinterpret_cast<const LocalPlaybackGrant*>(
+               &_LocalPlaybackGrant_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    26;
+
+  friend void swap(LocalPlaybackGrant& a, LocalPlaybackGrant& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(LocalPlaybackGrant* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(LocalPlaybackGrant* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  LocalPlaybackGrant* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<LocalPlaybackGrant>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const LocalPlaybackGrant& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const LocalPlaybackGrant& from) {
+    LocalPlaybackGrant::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(LocalPlaybackGrant* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.LocalPlaybackGrant";
+  }
+  protected:
+  explicit LocalPlaybackGrant(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kMediaSha256FieldNumber = 6,
+    kCueFieldNumber = 3,
+    kApprovalFieldNumber = 4,
+    kLeaseFieldNumber = 5,
+    kSeqFieldNumber = 2,
+    kVersionFieldNumber = 1,
+  };
+  // string media_sha256 = 6;
+  void clear_media_sha256();
+  const std::string& media_sha256() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_media_sha256(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_media_sha256();
+  PROTOBUF_NODISCARD std::string* release_media_sha256();
+  void set_allocated_media_sha256(std::string* media_sha256);
+  private:
+  const std::string& _internal_media_sha256() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_media_sha256(const std::string& value);
+  std::string* _internal_mutable_media_sha256();
+  public:
+
+  // .nai.v1.PerformanceCue cue = 3;
+  bool has_cue() const;
+  private:
+  bool _internal_has_cue() const;
+  public:
+  void clear_cue();
+  const ::nai::v1::PerformanceCue& cue() const;
+  PROTOBUF_NODISCARD ::nai::v1::PerformanceCue* release_cue();
+  ::nai::v1::PerformanceCue* mutable_cue();
+  void set_allocated_cue(::nai::v1::PerformanceCue* cue);
+  private:
+  const ::nai::v1::PerformanceCue& _internal_cue() const;
+  ::nai::v1::PerformanceCue* _internal_mutable_cue();
+  public:
+  void unsafe_arena_set_allocated_cue(
+      ::nai::v1::PerformanceCue* cue);
+  ::nai::v1::PerformanceCue* unsafe_arena_release_cue();
+
+  // .nai.v1.Approval approval = 4;
+  bool has_approval() const;
+  private:
+  bool _internal_has_approval() const;
+  public:
+  void clear_approval();
+  const ::nai::v1::Approval& approval() const;
+  PROTOBUF_NODISCARD ::nai::v1::Approval* release_approval();
+  ::nai::v1::Approval* mutable_approval();
+  void set_allocated_approval(::nai::v1::Approval* approval);
+  private:
+  const ::nai::v1::Approval& _internal_approval() const;
+  ::nai::v1::Approval* _internal_mutable_approval();
+  public:
+  void unsafe_arena_set_allocated_approval(
+      ::nai::v1::Approval* approval);
+  ::nai::v1::Approval* unsafe_arena_release_approval();
+
+  // .nai.v1.PlaybackLease lease = 5;
+  bool has_lease() const;
+  private:
+  bool _internal_has_lease() const;
+  public:
+  void clear_lease();
+  const ::nai::v1::PlaybackLease& lease() const;
+  PROTOBUF_NODISCARD ::nai::v1::PlaybackLease* release_lease();
+  ::nai::v1::PlaybackLease* mutable_lease();
+  void set_allocated_lease(::nai::v1::PlaybackLease* lease);
+  private:
+  const ::nai::v1::PlaybackLease& _internal_lease() const;
+  ::nai::v1::PlaybackLease* _internal_mutable_lease();
+  public:
+  void unsafe_arena_set_allocated_lease(
+      ::nai::v1::PlaybackLease* lease);
+  ::nai::v1::PlaybackLease* unsafe_arena_release_lease();
+
+  // uint64 seq = 2;
+  void clear_seq();
+  uint64_t seq() const;
+  void set_seq(uint64_t value);
+  private:
+  uint64_t _internal_seq() const;
+  void _internal_set_seq(uint64_t value);
+  public:
+
+  // uint32 version = 1;
+  void clear_version();
+  uint32_t version() const;
+  void set_version(uint32_t value);
+  private:
+  uint32_t _internal_version() const;
+  void _internal_set_version(uint32_t value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.LocalPlaybackGrant)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr media_sha256_;
+    ::nai::v1::PerformanceCue* cue_;
+    ::nai::v1::Approval* approval_;
+    ::nai::v1::PlaybackLease* lease_;
+    uint64_t seq_;
+    uint32_t version_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
+class LocalPlaybackStatus final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.LocalPlaybackStatus) */ {
+ public:
+  inline LocalPlaybackStatus() : LocalPlaybackStatus(nullptr) {}
+  ~LocalPlaybackStatus() override;
+  explicit PROTOBUF_CONSTEXPR LocalPlaybackStatus(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  LocalPlaybackStatus(const LocalPlaybackStatus& from);
+  LocalPlaybackStatus(LocalPlaybackStatus&& from) noexcept
+    : LocalPlaybackStatus() {
+    *this = ::std::move(from);
+  }
+
+  inline LocalPlaybackStatus& operator=(const LocalPlaybackStatus& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline LocalPlaybackStatus& operator=(LocalPlaybackStatus&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const LocalPlaybackStatus& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const LocalPlaybackStatus* internal_default_instance() {
+    return reinterpret_cast<const LocalPlaybackStatus*>(
+               &_LocalPlaybackStatus_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    27;
+
+  friend void swap(LocalPlaybackStatus& a, LocalPlaybackStatus& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(LocalPlaybackStatus* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(LocalPlaybackStatus* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  LocalPlaybackStatus* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<LocalPlaybackStatus>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const LocalPlaybackStatus& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const LocalPlaybackStatus& from) {
+    LocalPlaybackStatus::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(LocalPlaybackStatus* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.LocalPlaybackStatus";
+  }
+  protected:
+  explicit LocalPlaybackStatus(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kStateFieldNumber = 2,
+    kErrorCodeFieldNumber = 5,
+    kStandbySha256FieldNumber = 8,
+    kMediaSha256FieldNumber = 9,
+    kAudioBackendFieldNumber = 14,
+    kCopiedSamplesFieldNumber = 3,
+    kWindowUpdatesFieldNumber = 4,
+    kVersionFieldNumber = 1,
+    kAudioStreamOpenCountFieldNumber = 7,
+    kCallbackDrainedSamplesFieldNumber = 10,
+    kDevicePlayedSamplesFieldNumber = 12,
+    kActualLocalPlaybackCompletedFieldNumber = 6,
+    kCallbackDrainObservedFieldNumber = 11,
+    kDevicePositionObservedFieldNumber = 13,
+    kVideoTailSubmittedFieldNumber = 17,
+    kVideoFrameIndexFieldNumber = 15,
+    kVideoDeviceSamplesFieldNumber = 16,
+  };
+  // string state = 2;
+  void clear_state();
+  const std::string& state() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_state(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_state();
+  PROTOBUF_NODISCARD std::string* release_state();
+  void set_allocated_state(std::string* state);
+  private:
+  const std::string& _internal_state() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_state(const std::string& value);
+  std::string* _internal_mutable_state();
+  public:
+
+  // string error_code = 5;
+  void clear_error_code();
+  const std::string& error_code() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_error_code(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_error_code();
+  PROTOBUF_NODISCARD std::string* release_error_code();
+  void set_allocated_error_code(std::string* error_code);
+  private:
+  const std::string& _internal_error_code() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_error_code(const std::string& value);
+  std::string* _internal_mutable_error_code();
+  public:
+
+  // string standby_sha256 = 8;
+  void clear_standby_sha256();
+  const std::string& standby_sha256() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_standby_sha256(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_standby_sha256();
+  PROTOBUF_NODISCARD std::string* release_standby_sha256();
+  void set_allocated_standby_sha256(std::string* standby_sha256);
+  private:
+  const std::string& _internal_standby_sha256() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_standby_sha256(const std::string& value);
+  std::string* _internal_mutable_standby_sha256();
+  public:
+
+  // string media_sha256 = 9;
+  void clear_media_sha256();
+  const std::string& media_sha256() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_media_sha256(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_media_sha256();
+  PROTOBUF_NODISCARD std::string* release_media_sha256();
+  void set_allocated_media_sha256(std::string* media_sha256);
+  private:
+  const std::string& _internal_media_sha256() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_media_sha256(const std::string& value);
+  std::string* _internal_mutable_media_sha256();
+  public:
+
+  // string audio_backend = 14;
+  void clear_audio_backend();
+  const std::string& audio_backend() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_audio_backend(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_audio_backend();
+  PROTOBUF_NODISCARD std::string* release_audio_backend();
+  void set_allocated_audio_backend(std::string* audio_backend);
+  private:
+  const std::string& _internal_audio_backend() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_audio_backend(const std::string& value);
+  std::string* _internal_mutable_audio_backend();
+  public:
+
+  // optional uint64 copied_samples = 3;
+  bool has_copied_samples() const;
+  private:
+  bool _internal_has_copied_samples() const;
+  public:
+  void clear_copied_samples();
+  uint64_t copied_samples() const;
+  void set_copied_samples(uint64_t value);
+  private:
+  uint64_t _internal_copied_samples() const;
+  void _internal_set_copied_samples(uint64_t value);
+  public:
+
+  // optional uint64 window_updates = 4;
+  bool has_window_updates() const;
+  private:
+  bool _internal_has_window_updates() const;
+  public:
+  void clear_window_updates();
+  uint64_t window_updates() const;
+  void set_window_updates(uint64_t value);
+  private:
+  uint64_t _internal_window_updates() const;
+  void _internal_set_window_updates(uint64_t value);
+  public:
+
+  // uint32 version = 1;
+  void clear_version();
+  uint32_t version() const;
+  void set_version(uint32_t value);
+  private:
+  uint32_t _internal_version() const;
+  void _internal_set_version(uint32_t value);
+  public:
+
+  // uint32 audio_stream_open_count = 7;
+  void clear_audio_stream_open_count();
+  uint32_t audio_stream_open_count() const;
+  void set_audio_stream_open_count(uint32_t value);
+  private:
+  uint32_t _internal_audio_stream_open_count() const;
+  void _internal_set_audio_stream_open_count(uint32_t value);
+  public:
+
+  // optional uint64 callback_drained_samples = 10;
+  bool has_callback_drained_samples() const;
+  private:
+  bool _internal_has_callback_drained_samples() const;
+  public:
+  void clear_callback_drained_samples();
+  uint64_t callback_drained_samples() const;
+  void set_callback_drained_samples(uint64_t value);
+  private:
+  uint64_t _internal_callback_drained_samples() const;
+  void _internal_set_callback_drained_samples(uint64_t value);
+  public:
+
+  // optional uint64 device_played_samples = 12;
+  bool has_device_played_samples() const;
+  private:
+  bool _internal_has_device_played_samples() const;
+  public:
+  void clear_device_played_samples();
+  uint64_t device_played_samples() const;
+  void set_device_played_samples(uint64_t value);
+  private:
+  uint64_t _internal_device_played_samples() const;
+  void _internal_set_device_played_samples(uint64_t value);
+  public:
+
+  // bool actual_local_playback_completed = 6;
+  void clear_actual_local_playback_completed();
+  bool actual_local_playback_completed() const;
+  void set_actual_local_playback_completed(bool value);
+  private:
+  bool _internal_actual_local_playback_completed() const;
+  void _internal_set_actual_local_playback_completed(bool value);
+  public:
+
+  // bool callback_drain_observed = 11;
+  void clear_callback_drain_observed();
+  bool callback_drain_observed() const;
+  void set_callback_drain_observed(bool value);
+  private:
+  bool _internal_callback_drain_observed() const;
+  void _internal_set_callback_drain_observed(bool value);
+  public:
+
+  // bool device_position_observed = 13;
+  void clear_device_position_observed();
+  bool device_position_observed() const;
+  void set_device_position_observed(bool value);
+  private:
+  bool _internal_device_position_observed() const;
+  void _internal_set_device_position_observed(bool value);
+  public:
+
+  // bool video_tail_submitted = 17;
+  void clear_video_tail_submitted();
+  bool video_tail_submitted() const;
+  void set_video_tail_submitted(bool value);
+  private:
+  bool _internal_video_tail_submitted() const;
+  void _internal_set_video_tail_submitted(bool value);
+  public:
+
+  // optional uint32 video_frame_index = 15;
+  bool has_video_frame_index() const;
+  private:
+  bool _internal_has_video_frame_index() const;
+  public:
+  void clear_video_frame_index();
+  uint32_t video_frame_index() const;
+  void set_video_frame_index(uint32_t value);
+  private:
+  uint32_t _internal_video_frame_index() const;
+  void _internal_set_video_frame_index(uint32_t value);
+  public:
+
+  // optional uint64 video_device_samples = 16;
+  bool has_video_device_samples() const;
+  private:
+  bool _internal_has_video_device_samples() const;
+  public:
+  void clear_video_device_samples();
+  uint64_t video_device_samples() const;
+  void set_video_device_samples(uint64_t value);
+  private:
+  uint64_t _internal_video_device_samples() const;
+  void _internal_set_video_device_samples(uint64_t value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.LocalPlaybackStatus)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr state_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_code_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr standby_sha256_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr media_sha256_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr audio_backend_;
+    uint64_t copied_samples_;
+    uint64_t window_updates_;
+    uint32_t version_;
+    uint32_t audio_stream_open_count_;
+    uint64_t callback_drained_samples_;
+    uint64_t device_played_samples_;
+    bool actual_local_playback_completed_;
+    bool callback_drain_observed_;
+    bool device_position_observed_;
+    bool video_tail_submitted_;
+    uint32_t video_frame_index_;
+    uint64_t video_device_samples_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
+class NativeDeviceSmokeReport final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.NativeDeviceSmokeReport) */ {
+ public:
+  inline NativeDeviceSmokeReport() : NativeDeviceSmokeReport(nullptr) {}
+  ~NativeDeviceSmokeReport() override;
+  explicit PROTOBUF_CONSTEXPR NativeDeviceSmokeReport(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  NativeDeviceSmokeReport(const NativeDeviceSmokeReport& from);
+  NativeDeviceSmokeReport(NativeDeviceSmokeReport&& from) noexcept
+    : NativeDeviceSmokeReport() {
+    *this = ::std::move(from);
+  }
+
+  inline NativeDeviceSmokeReport& operator=(const NativeDeviceSmokeReport& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline NativeDeviceSmokeReport& operator=(NativeDeviceSmokeReport&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const NativeDeviceSmokeReport& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const NativeDeviceSmokeReport* internal_default_instance() {
+    return reinterpret_cast<const NativeDeviceSmokeReport*>(
+               &_NativeDeviceSmokeReport_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    28;
+
+  friend void swap(NativeDeviceSmokeReport& a, NativeDeviceSmokeReport& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(NativeDeviceSmokeReport* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(NativeDeviceSmokeReport* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  NativeDeviceSmokeReport* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<NativeDeviceSmokeReport>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const NativeDeviceSmokeReport& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const NativeDeviceSmokeReport& from) {
+    NativeDeviceSmokeReport::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(NativeDeviceSmokeReport* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.NativeDeviceSmokeReport";
+  }
+  protected:
+  explicit NativeDeviceSmokeReport(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kScopeFieldNumber = 2,
+    kScenarioFieldNumber = 3,
+    kBackendFieldNumber = 4,
+    kErrorCodeFieldNumber = 18,
+    kSchemaVersionFieldNumber = 1,
+    kSampleRateFieldNumber = 7,
+    kCallbacksFieldNumber = 9,
+    kCopiedInterleavedSamplesFieldNumber = 10,
+    kSilentCallbacksAfterStopFieldNumber = 11,
+    kChannelsFieldNumber = 8,
+    kAudioOpenedFieldNumber = 5,
+    kWindowOpenedFieldNumber = 6,
+    kSuccessFieldNumber = 19,
+    kActualLocalPlaybackCompletedFieldNumber = 20,
+    kNonzeroCallbacksAfterStopFieldNumber = 12,
+    kWindowUpdatesFieldNumber = 13,
+    kMaxPredictedLatencyUsFieldNumber = 14,
+    kLastNonzeroAtUsFieldNumber = 15,
+    kStopAtUsFieldNumber = 16,
+    kElapsedMsFieldNumber = 17,
+    kMaxCallbackFramesFieldNumber = 21,
+  };
+  // string scope = 2;
+  void clear_scope();
+  const std::string& scope() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_scope(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_scope();
+  PROTOBUF_NODISCARD std::string* release_scope();
+  void set_allocated_scope(std::string* scope);
+  private:
+  const std::string& _internal_scope() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_scope(const std::string& value);
+  std::string* _internal_mutable_scope();
+  public:
+
+  // string scenario = 3;
+  void clear_scenario();
+  const std::string& scenario() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_scenario(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_scenario();
+  PROTOBUF_NODISCARD std::string* release_scenario();
+  void set_allocated_scenario(std::string* scenario);
+  private:
+  const std::string& _internal_scenario() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_scenario(const std::string& value);
+  std::string* _internal_mutable_scenario();
+  public:
+
+  // string backend = 4;
+  void clear_backend();
+  const std::string& backend() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_backend(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_backend();
+  PROTOBUF_NODISCARD std::string* release_backend();
+  void set_allocated_backend(std::string* backend);
+  private:
+  const std::string& _internal_backend() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_backend(const std::string& value);
+  std::string* _internal_mutable_backend();
+  public:
+
+  // string error_code = 18;
+  void clear_error_code();
+  const std::string& error_code() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_error_code(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_error_code();
+  PROTOBUF_NODISCARD std::string* release_error_code();
+  void set_allocated_error_code(std::string* error_code);
+  private:
+  const std::string& _internal_error_code() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_error_code(const std::string& value);
+  std::string* _internal_mutable_error_code();
+  public:
+
+  // uint32 schema_version = 1;
+  void clear_schema_version();
+  uint32_t schema_version() const;
+  void set_schema_version(uint32_t value);
+  private:
+  uint32_t _internal_schema_version() const;
+  void _internal_set_schema_version(uint32_t value);
+  public:
+
+  // uint32 sample_rate = 7;
+  void clear_sample_rate();
+  uint32_t sample_rate() const;
+  void set_sample_rate(uint32_t value);
+  private:
+  uint32_t _internal_sample_rate() const;
+  void _internal_set_sample_rate(uint32_t value);
+  public:
+
+  // uint64 callbacks = 9;
+  void clear_callbacks();
+  uint64_t callbacks() const;
+  void set_callbacks(uint64_t value);
+  private:
+  uint64_t _internal_callbacks() const;
+  void _internal_set_callbacks(uint64_t value);
+  public:
+
+  // uint64 copied_interleaved_samples = 10;
+  void clear_copied_interleaved_samples();
+  uint64_t copied_interleaved_samples() const;
+  void set_copied_interleaved_samples(uint64_t value);
+  private:
+  uint64_t _internal_copied_interleaved_samples() const;
+  void _internal_set_copied_interleaved_samples(uint64_t value);
+  public:
+
+  // uint64 silent_callbacks_after_stop = 11;
+  void clear_silent_callbacks_after_stop();
+  uint64_t silent_callbacks_after_stop() const;
+  void set_silent_callbacks_after_stop(uint64_t value);
+  private:
+  uint64_t _internal_silent_callbacks_after_stop() const;
+  void _internal_set_silent_callbacks_after_stop(uint64_t value);
+  public:
+
+  // uint32 channels = 8;
+  void clear_channels();
+  uint32_t channels() const;
+  void set_channels(uint32_t value);
+  private:
+  uint32_t _internal_channels() const;
+  void _internal_set_channels(uint32_t value);
+  public:
+
+  // bool audio_opened = 5;
+  void clear_audio_opened();
+  bool audio_opened() const;
+  void set_audio_opened(bool value);
+  private:
+  bool _internal_audio_opened() const;
+  void _internal_set_audio_opened(bool value);
+  public:
+
+  // bool window_opened = 6;
+  void clear_window_opened();
+  bool window_opened() const;
+  void set_window_opened(bool value);
+  private:
+  bool _internal_window_opened() const;
+  void _internal_set_window_opened(bool value);
+  public:
+
+  // bool success = 19;
+  void clear_success();
+  bool success() const;
+  void set_success(bool value);
+  private:
+  bool _internal_success() const;
+  void _internal_set_success(bool value);
+  public:
+
+  // bool actual_local_playback_completed = 20;
+  void clear_actual_local_playback_completed();
+  bool actual_local_playback_completed() const;
+  void set_actual_local_playback_completed(bool value);
+  private:
+  bool _internal_actual_local_playback_completed() const;
+  void _internal_set_actual_local_playback_completed(bool value);
+  public:
+
+  // uint64 nonzero_callbacks_after_stop = 12;
+  void clear_nonzero_callbacks_after_stop();
+  uint64_t nonzero_callbacks_after_stop() const;
+  void set_nonzero_callbacks_after_stop(uint64_t value);
+  private:
+  uint64_t _internal_nonzero_callbacks_after_stop() const;
+  void _internal_set_nonzero_callbacks_after_stop(uint64_t value);
+  public:
+
+  // uint64 window_updates = 13;
+  void clear_window_updates();
+  uint64_t window_updates() const;
+  void set_window_updates(uint64_t value);
+  private:
+  uint64_t _internal_window_updates() const;
+  void _internal_set_window_updates(uint64_t value);
+  public:
+
+  // uint64 max_predicted_latency_us = 14;
+  void clear_max_predicted_latency_us();
+  uint64_t max_predicted_latency_us() const;
+  void set_max_predicted_latency_us(uint64_t value);
+  private:
+  uint64_t _internal_max_predicted_latency_us() const;
+  void _internal_set_max_predicted_latency_us(uint64_t value);
+  public:
+
+  // uint64 last_nonzero_at_us = 15;
+  void clear_last_nonzero_at_us();
+  uint64_t last_nonzero_at_us() const;
+  void set_last_nonzero_at_us(uint64_t value);
+  private:
+  uint64_t _internal_last_nonzero_at_us() const;
+  void _internal_set_last_nonzero_at_us(uint64_t value);
+  public:
+
+  // uint64 stop_at_us = 16;
+  void clear_stop_at_us();
+  uint64_t stop_at_us() const;
+  void set_stop_at_us(uint64_t value);
+  private:
+  uint64_t _internal_stop_at_us() const;
+  void _internal_set_stop_at_us(uint64_t value);
+  public:
+
+  // uint64 elapsed_ms = 17;
+  void clear_elapsed_ms();
+  uint64_t elapsed_ms() const;
+  void set_elapsed_ms(uint64_t value);
+  private:
+  uint64_t _internal_elapsed_ms() const;
+  void _internal_set_elapsed_ms(uint64_t value);
+  public:
+
+  // uint64 max_callback_frames = 21;
+  void clear_max_callback_frames();
+  uint64_t max_callback_frames() const;
+  void set_max_callback_frames(uint64_t value);
+  private:
+  uint64_t _internal_max_callback_frames() const;
+  void _internal_set_max_callback_frames(uint64_t value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.NativeDeviceSmokeReport)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr scope_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr scenario_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr backend_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_code_;
+    uint32_t schema_version_;
+    uint32_t sample_rate_;
+    uint64_t callbacks_;
+    uint64_t copied_interleaved_samples_;
+    uint64_t silent_callbacks_after_stop_;
+    uint32_t channels_;
+    bool audio_opened_;
+    bool window_opened_;
+    bool success_;
+    bool actual_local_playback_completed_;
+    uint64_t nonzero_callbacks_after_stop_;
+    uint64_t window_updates_;
+    uint64_t max_predicted_latency_us_;
+    uint64_t last_nonzero_at_us_;
+    uint64_t stop_at_us_;
+    uint64_t elapsed_ms_;
+    uint64_t max_callback_frames_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
 class OutputWatchdogCommand final :
     public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.OutputWatchdogCommand) */ {
  public:
@@ -4225,7 +7487,7 @@ class OutputWatchdogCommand final :
                &_OutputWatchdogCommand_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    18;
+    29;
 
   friend void swap(OutputWatchdogCommand& a, OutputWatchdogCommand& b) {
     a.Swap(&b);
@@ -4501,7 +7763,7 @@ class OutputWatchdogStatus final :
                &_OutputWatchdogStatus_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    19;
+    30;
 
   friend void swap(OutputWatchdogStatus& a, OutputWatchdogStatus& b) {
     a.Swap(&b);
@@ -4852,7 +8114,7 @@ class FrameSlotTicket final :
                &_FrameSlotTicket_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    20;
+    31;
 
   friend void swap(FrameSlotTicket& a, FrameSlotTicket& b) {
     a.Swap(&b);
@@ -5139,7 +8401,7 @@ class FrameSlotCommit final :
                &_FrameSlotCommit_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    21;
+    32;
 
   friend void swap(FrameSlotCommit& a, FrameSlotCommit& b) {
     a.Swap(&b);
@@ -5330,7 +8592,7 @@ class FrameSlotEvent final :
                &_FrameSlotEvent_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    22;
+    33;
 
   friend void swap(FrameSlotEvent& a, FrameSlotEvent& b) {
     a.Swap(&b);
@@ -5482,6 +8744,678 @@ class FrameSlotEvent final :
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     uint32_t _oneof_case_[1];
 
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
+class LocalOutputCommand final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.LocalOutputCommand) */ {
+ public:
+  inline LocalOutputCommand() : LocalOutputCommand(nullptr) {}
+  ~LocalOutputCommand() override;
+  explicit PROTOBUF_CONSTEXPR LocalOutputCommand(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  LocalOutputCommand(const LocalOutputCommand& from);
+  LocalOutputCommand(LocalOutputCommand&& from) noexcept
+    : LocalOutputCommand() {
+    *this = ::std::move(from);
+  }
+
+  inline LocalOutputCommand& operator=(const LocalOutputCommand& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline LocalOutputCommand& operator=(LocalOutputCommand&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const LocalOutputCommand& default_instance() {
+    return *internal_default_instance();
+  }
+  enum CommandCase {
+    kDescriptorPath = 1,
+    kGrant = 2,
+    kShutdown = 3,
+    kCancelCue = 4,
+    kWarmup = 5,
+    COMMAND_NOT_SET = 0,
+  };
+
+  static inline const LocalOutputCommand* internal_default_instance() {
+    return reinterpret_cast<const LocalOutputCommand*>(
+               &_LocalOutputCommand_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    34;
+
+  friend void swap(LocalOutputCommand& a, LocalOutputCommand& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(LocalOutputCommand* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(LocalOutputCommand* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  LocalOutputCommand* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<LocalOutputCommand>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const LocalOutputCommand& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const LocalOutputCommand& from) {
+    LocalOutputCommand::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(LocalOutputCommand* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.LocalOutputCommand";
+  }
+  protected:
+  explicit LocalOutputCommand(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kDescriptorPathFieldNumber = 1,
+    kGrantFieldNumber = 2,
+    kShutdownFieldNumber = 3,
+    kCancelCueFieldNumber = 4,
+    kWarmupFieldNumber = 5,
+  };
+  // string descriptor_path = 1;
+  bool has_descriptor_path() const;
+  private:
+  bool _internal_has_descriptor_path() const;
+  public:
+  void clear_descriptor_path();
+  const std::string& descriptor_path() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_descriptor_path(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_descriptor_path();
+  PROTOBUF_NODISCARD std::string* release_descriptor_path();
+  void set_allocated_descriptor_path(std::string* descriptor_path);
+  private:
+  const std::string& _internal_descriptor_path() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_descriptor_path(const std::string& value);
+  std::string* _internal_mutable_descriptor_path();
+  public:
+
+  // .nai.v1.LocalPlaybackGrant grant = 2;
+  bool has_grant() const;
+  private:
+  bool _internal_has_grant() const;
+  public:
+  void clear_grant();
+  const ::nai::v1::LocalPlaybackGrant& grant() const;
+  PROTOBUF_NODISCARD ::nai::v1::LocalPlaybackGrant* release_grant();
+  ::nai::v1::LocalPlaybackGrant* mutable_grant();
+  void set_allocated_grant(::nai::v1::LocalPlaybackGrant* grant);
+  private:
+  const ::nai::v1::LocalPlaybackGrant& _internal_grant() const;
+  ::nai::v1::LocalPlaybackGrant* _internal_mutable_grant();
+  public:
+  void unsafe_arena_set_allocated_grant(
+      ::nai::v1::LocalPlaybackGrant* grant);
+  ::nai::v1::LocalPlaybackGrant* unsafe_arena_release_grant();
+
+  // bool shutdown = 3;
+  bool has_shutdown() const;
+  private:
+  bool _internal_has_shutdown() const;
+  public:
+  void clear_shutdown();
+  bool shutdown() const;
+  void set_shutdown(bool value);
+  private:
+  bool _internal_shutdown() const;
+  void _internal_set_shutdown(bool value);
+  public:
+
+  // bool cancel_cue = 4;
+  bool has_cancel_cue() const;
+  private:
+  bool _internal_has_cancel_cue() const;
+  public:
+  void clear_cancel_cue();
+  bool cancel_cue() const;
+  void set_cancel_cue(bool value);
+  private:
+  bool _internal_cancel_cue() const;
+  void _internal_set_cancel_cue(bool value);
+  public:
+
+  // .nai.v1.LocalOutputWarmup warmup = 5;
+  bool has_warmup() const;
+  private:
+  bool _internal_has_warmup() const;
+  public:
+  void clear_warmup();
+  const ::nai::v1::LocalOutputWarmup& warmup() const;
+  PROTOBUF_NODISCARD ::nai::v1::LocalOutputWarmup* release_warmup();
+  ::nai::v1::LocalOutputWarmup* mutable_warmup();
+  void set_allocated_warmup(::nai::v1::LocalOutputWarmup* warmup);
+  private:
+  const ::nai::v1::LocalOutputWarmup& _internal_warmup() const;
+  ::nai::v1::LocalOutputWarmup* _internal_mutable_warmup();
+  public:
+  void unsafe_arena_set_allocated_warmup(
+      ::nai::v1::LocalOutputWarmup* warmup);
+  ::nai::v1::LocalOutputWarmup* unsafe_arena_release_warmup();
+
+  void clear_command();
+  CommandCase command_case() const;
+  // @@protoc_insertion_point(class_scope:nai.v1.LocalOutputCommand)
+ private:
+  class _Internal;
+  void set_has_descriptor_path();
+  void set_has_grant();
+  void set_has_shutdown();
+  void set_has_cancel_cue();
+  void set_has_warmup();
+
+  inline bool has_command() const;
+  inline void clear_has_command();
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    union CommandUnion {
+      constexpr CommandUnion() : _constinit_{} {}
+        ::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized _constinit_;
+      ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr descriptor_path_;
+      ::nai::v1::LocalPlaybackGrant* grant_;
+      bool shutdown_;
+      bool cancel_cue_;
+      ::nai::v1::LocalOutputWarmup* warmup_;
+    } command_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    uint32_t _oneof_case_[1];
+
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
+class LocalStandbyMedia final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.LocalStandbyMedia) */ {
+ public:
+  inline LocalStandbyMedia() : LocalStandbyMedia(nullptr) {}
+  ~LocalStandbyMedia() override;
+  explicit PROTOBUF_CONSTEXPR LocalStandbyMedia(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  LocalStandbyMedia(const LocalStandbyMedia& from);
+  LocalStandbyMedia(LocalStandbyMedia&& from) noexcept
+    : LocalStandbyMedia() {
+    *this = ::std::move(from);
+  }
+
+  inline LocalStandbyMedia& operator=(const LocalStandbyMedia& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline LocalStandbyMedia& operator=(LocalStandbyMedia&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const LocalStandbyMedia& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const LocalStandbyMedia* internal_default_instance() {
+    return reinterpret_cast<const LocalStandbyMedia*>(
+               &_LocalStandbyMedia_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    35;
+
+  friend void swap(LocalStandbyMedia& a, LocalStandbyMedia& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(LocalStandbyMedia* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(LocalStandbyMedia* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  LocalStandbyMedia* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<LocalStandbyMedia>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const LocalStandbyMedia& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const LocalStandbyMedia& from) {
+    LocalStandbyMedia::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(LocalStandbyMedia* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.LocalStandbyMedia";
+  }
+  protected:
+  explicit LocalStandbyMedia(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kSessionIdFieldNumber = 2,
+    kStandbySha256FieldNumber = 6,
+    kVersionFieldNumber = 1,
+    kWidthFieldNumber = 4,
+    kGenerationEpochFieldNumber = 3,
+    kHeightFieldNumber = 5,
+  };
+  // string session_id = 2;
+  void clear_session_id();
+  const std::string& session_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_session_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_session_id();
+  PROTOBUF_NODISCARD std::string* release_session_id();
+  void set_allocated_session_id(std::string* session_id);
+  private:
+  const std::string& _internal_session_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_session_id(const std::string& value);
+  std::string* _internal_mutable_session_id();
+  public:
+
+  // string standby_sha256 = 6;
+  void clear_standby_sha256();
+  const std::string& standby_sha256() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_standby_sha256(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_standby_sha256();
+  PROTOBUF_NODISCARD std::string* release_standby_sha256();
+  void set_allocated_standby_sha256(std::string* standby_sha256);
+  private:
+  const std::string& _internal_standby_sha256() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_standby_sha256(const std::string& value);
+  std::string* _internal_mutable_standby_sha256();
+  public:
+
+  // uint32 version = 1;
+  void clear_version();
+  uint32_t version() const;
+  void set_version(uint32_t value);
+  private:
+  uint32_t _internal_version() const;
+  void _internal_set_version(uint32_t value);
+  public:
+
+  // uint32 width = 4;
+  void clear_width();
+  uint32_t width() const;
+  void set_width(uint32_t value);
+  private:
+  uint32_t _internal_width() const;
+  void _internal_set_width(uint32_t value);
+  public:
+
+  // uint64 generation_epoch = 3;
+  void clear_generation_epoch();
+  uint64_t generation_epoch() const;
+  void set_generation_epoch(uint64_t value);
+  private:
+  uint64_t _internal_generation_epoch() const;
+  void _internal_set_generation_epoch(uint64_t value);
+  public:
+
+  // uint32 height = 5;
+  void clear_height();
+  uint32_t height() const;
+  void set_height(uint32_t value);
+  private:
+  uint32_t _internal_height() const;
+  void _internal_set_height(uint32_t value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.LocalStandbyMedia)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr session_id_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr standby_sha256_;
+    uint32_t version_;
+    uint32_t width_;
+    uint64_t generation_epoch_;
+    uint32_t height_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_domain_2fmedia_2eproto;
+};
+// -------------------------------------------------------------------
+
+class LocalOutputWarmup final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:nai.v1.LocalOutputWarmup) */ {
+ public:
+  inline LocalOutputWarmup() : LocalOutputWarmup(nullptr) {}
+  ~LocalOutputWarmup() override;
+  explicit PROTOBUF_CONSTEXPR LocalOutputWarmup(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  LocalOutputWarmup(const LocalOutputWarmup& from);
+  LocalOutputWarmup(LocalOutputWarmup&& from) noexcept
+    : LocalOutputWarmup() {
+    *this = ::std::move(from);
+  }
+
+  inline LocalOutputWarmup& operator=(const LocalOutputWarmup& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline LocalOutputWarmup& operator=(LocalOutputWarmup&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const LocalOutputWarmup& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const LocalOutputWarmup* internal_default_instance() {
+    return reinterpret_cast<const LocalOutputWarmup*>(
+               &_LocalOutputWarmup_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    36;
+
+  friend void swap(LocalOutputWarmup& a, LocalOutputWarmup& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(LocalOutputWarmup* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(LocalOutputWarmup* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  LocalOutputWarmup* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<LocalOutputWarmup>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const LocalOutputWarmup& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const LocalOutputWarmup& from) {
+    LocalOutputWarmup::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(LocalOutputWarmup* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "nai.v1.LocalOutputWarmup";
+  }
+  protected:
+  explicit LocalOutputWarmup(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kDescriptorPathFieldNumber = 1,
+    kDescriptorSha256FieldNumber = 2,
+    kSessionIdFieldNumber = 3,
+    kGenerationEpochFieldNumber = 4,
+    kRemainingBudgetMsFieldNumber = 5,
+  };
+  // string descriptor_path = 1;
+  void clear_descriptor_path();
+  const std::string& descriptor_path() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_descriptor_path(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_descriptor_path();
+  PROTOBUF_NODISCARD std::string* release_descriptor_path();
+  void set_allocated_descriptor_path(std::string* descriptor_path);
+  private:
+  const std::string& _internal_descriptor_path() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_descriptor_path(const std::string& value);
+  std::string* _internal_mutable_descriptor_path();
+  public:
+
+  // string descriptor_sha256 = 2;
+  void clear_descriptor_sha256();
+  const std::string& descriptor_sha256() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_descriptor_sha256(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_descriptor_sha256();
+  PROTOBUF_NODISCARD std::string* release_descriptor_sha256();
+  void set_allocated_descriptor_sha256(std::string* descriptor_sha256);
+  private:
+  const std::string& _internal_descriptor_sha256() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_descriptor_sha256(const std::string& value);
+  std::string* _internal_mutable_descriptor_sha256();
+  public:
+
+  // string session_id = 3;
+  void clear_session_id();
+  const std::string& session_id() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_session_id(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_session_id();
+  PROTOBUF_NODISCARD std::string* release_session_id();
+  void set_allocated_session_id(std::string* session_id);
+  private:
+  const std::string& _internal_session_id() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_session_id(const std::string& value);
+  std::string* _internal_mutable_session_id();
+  public:
+
+  // uint64 generation_epoch = 4;
+  void clear_generation_epoch();
+  uint64_t generation_epoch() const;
+  void set_generation_epoch(uint64_t value);
+  private:
+  uint64_t _internal_generation_epoch() const;
+  void _internal_set_generation_epoch(uint64_t value);
+  public:
+
+  // uint32 remaining_budget_ms = 5;
+  void clear_remaining_budget_ms();
+  uint32_t remaining_budget_ms() const;
+  void set_remaining_budget_ms(uint32_t value);
+  private:
+  uint32_t _internal_remaining_budget_ms() const;
+  void _internal_set_remaining_budget_ms(uint32_t value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:nai.v1.LocalOutputWarmup)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr descriptor_path_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr descriptor_sha256_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr session_id_;
+    uint64_t generation_epoch_;
+    uint32_t remaining_budget_ms_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_domain_2fmedia_2eproto;
@@ -7601,6 +11535,2368 @@ inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
 AvatarProfile::mutable_certified_fallback_refs() {
   // @@protoc_insertion_point(field_mutable_list:nai.v1.AvatarProfile.certified_fallback_refs)
   return &_impl_.certified_fallback_refs_;
+}
+
+// -------------------------------------------------------------------
+
+// CharacterIdentity
+
+// string workspace_id = 1;
+inline void CharacterIdentity::clear_workspace_id() {
+  _impl_.workspace_id_.ClearToEmpty();
+}
+inline const std::string& CharacterIdentity::workspace_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterIdentity.workspace_id)
+  return _internal_workspace_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterIdentity::set_workspace_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.workspace_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterIdentity.workspace_id)
+}
+inline std::string* CharacterIdentity::mutable_workspace_id() {
+  std::string* _s = _internal_mutable_workspace_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterIdentity.workspace_id)
+  return _s;
+}
+inline const std::string& CharacterIdentity::_internal_workspace_id() const {
+  return _impl_.workspace_id_.Get();
+}
+inline void CharacterIdentity::_internal_set_workspace_id(const std::string& value) {
+  
+  _impl_.workspace_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterIdentity::_internal_mutable_workspace_id() {
+  
+  return _impl_.workspace_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterIdentity::release_workspace_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterIdentity.workspace_id)
+  return _impl_.workspace_id_.Release();
+}
+inline void CharacterIdentity::set_allocated_workspace_id(std::string* workspace_id) {
+  if (workspace_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.workspace_id_.SetAllocated(workspace_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.workspace_id_.IsDefault()) {
+    _impl_.workspace_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterIdentity.workspace_id)
+}
+
+// string character_id = 2;
+inline void CharacterIdentity::clear_character_id() {
+  _impl_.character_id_.ClearToEmpty();
+}
+inline const std::string& CharacterIdentity::character_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterIdentity.character_id)
+  return _internal_character_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterIdentity::set_character_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.character_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterIdentity.character_id)
+}
+inline std::string* CharacterIdentity::mutable_character_id() {
+  std::string* _s = _internal_mutable_character_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterIdentity.character_id)
+  return _s;
+}
+inline const std::string& CharacterIdentity::_internal_character_id() const {
+  return _impl_.character_id_.Get();
+}
+inline void CharacterIdentity::_internal_set_character_id(const std::string& value) {
+  
+  _impl_.character_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterIdentity::_internal_mutable_character_id() {
+  
+  return _impl_.character_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterIdentity::release_character_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterIdentity.character_id)
+  return _impl_.character_id_.Release();
+}
+inline void CharacterIdentity::set_allocated_character_id(std::string* character_id) {
+  if (character_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.character_id_.SetAllocated(character_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.character_id_.IsDefault()) {
+    _impl_.character_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterIdentity.character_id)
+}
+
+// string version = 3;
+inline void CharacterIdentity::clear_version() {
+  _impl_.version_.ClearToEmpty();
+}
+inline const std::string& CharacterIdentity::version() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterIdentity.version)
+  return _internal_version();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterIdentity::set_version(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.version_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterIdentity.version)
+}
+inline std::string* CharacterIdentity::mutable_version() {
+  std::string* _s = _internal_mutable_version();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterIdentity.version)
+  return _s;
+}
+inline const std::string& CharacterIdentity::_internal_version() const {
+  return _impl_.version_.Get();
+}
+inline void CharacterIdentity::_internal_set_version(const std::string& value) {
+  
+  _impl_.version_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterIdentity::_internal_mutable_version() {
+  
+  return _impl_.version_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterIdentity::release_version() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterIdentity.version)
+  return _impl_.version_.Release();
+}
+inline void CharacterIdentity::set_allocated_version(std::string* version) {
+  if (version != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.version_.SetAllocated(version, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.version_.IsDefault()) {
+    _impl_.version_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterIdentity.version)
+}
+
+// string package_sha256 = 4;
+inline void CharacterIdentity::clear_package_sha256() {
+  _impl_.package_sha256_.ClearToEmpty();
+}
+inline const std::string& CharacterIdentity::package_sha256() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterIdentity.package_sha256)
+  return _internal_package_sha256();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterIdentity::set_package_sha256(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.package_sha256_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterIdentity.package_sha256)
+}
+inline std::string* CharacterIdentity::mutable_package_sha256() {
+  std::string* _s = _internal_mutable_package_sha256();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterIdentity.package_sha256)
+  return _s;
+}
+inline const std::string& CharacterIdentity::_internal_package_sha256() const {
+  return _impl_.package_sha256_.Get();
+}
+inline void CharacterIdentity::_internal_set_package_sha256(const std::string& value) {
+  
+  _impl_.package_sha256_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterIdentity::_internal_mutable_package_sha256() {
+  
+  return _impl_.package_sha256_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterIdentity::release_package_sha256() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterIdentity.package_sha256)
+  return _impl_.package_sha256_.Release();
+}
+inline void CharacterIdentity::set_allocated_package_sha256(std::string* package_sha256) {
+  if (package_sha256 != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.package_sha256_.SetAllocated(package_sha256, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.package_sha256_.IsDefault()) {
+    _impl_.package_sha256_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterIdentity.package_sha256)
+}
+
+// string rights_sha256 = 5;
+inline void CharacterIdentity::clear_rights_sha256() {
+  _impl_.rights_sha256_.ClearToEmpty();
+}
+inline const std::string& CharacterIdentity::rights_sha256() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterIdentity.rights_sha256)
+  return _internal_rights_sha256();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterIdentity::set_rights_sha256(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.rights_sha256_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterIdentity.rights_sha256)
+}
+inline std::string* CharacterIdentity::mutable_rights_sha256() {
+  std::string* _s = _internal_mutable_rights_sha256();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterIdentity.rights_sha256)
+  return _s;
+}
+inline const std::string& CharacterIdentity::_internal_rights_sha256() const {
+  return _impl_.rights_sha256_.Get();
+}
+inline void CharacterIdentity::_internal_set_rights_sha256(const std::string& value) {
+  
+  _impl_.rights_sha256_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterIdentity::_internal_mutable_rights_sha256() {
+  
+  return _impl_.rights_sha256_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterIdentity::release_rights_sha256() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterIdentity.rights_sha256)
+  return _impl_.rights_sha256_.Release();
+}
+inline void CharacterIdentity::set_allocated_rights_sha256(std::string* rights_sha256) {
+  if (rights_sha256 != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.rights_sha256_.SetAllocated(rights_sha256, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.rights_sha256_.IsDefault()) {
+    _impl_.rights_sha256_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterIdentity.rights_sha256)
+}
+
+// -------------------------------------------------------------------
+
+// CharacterCapability
+
+// .nai.v1.CharacterRendererKind renderer = 1;
+inline void CharacterCapability::clear_renderer() {
+  _impl_.renderer_ = 0;
+}
+inline ::nai::v1::CharacterRendererKind CharacterCapability::_internal_renderer() const {
+  return static_cast< ::nai::v1::CharacterRendererKind >(_impl_.renderer_);
+}
+inline ::nai::v1::CharacterRendererKind CharacterCapability::renderer() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterCapability.renderer)
+  return _internal_renderer();
+}
+inline void CharacterCapability::_internal_set_renderer(::nai::v1::CharacterRendererKind value) {
+  
+  _impl_.renderer_ = value;
+}
+inline void CharacterCapability::set_renderer(::nai::v1::CharacterRendererKind value) {
+  _internal_set_renderer(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterCapability.renderer)
+}
+
+// repeated .nai.v1.CharacterLipSyncKind lip_sync = 2;
+inline int CharacterCapability::_internal_lip_sync_size() const {
+  return _impl_.lip_sync_.size();
+}
+inline int CharacterCapability::lip_sync_size() const {
+  return _internal_lip_sync_size();
+}
+inline void CharacterCapability::clear_lip_sync() {
+  _impl_.lip_sync_.Clear();
+}
+inline ::nai::v1::CharacterLipSyncKind CharacterCapability::_internal_lip_sync(int index) const {
+  return static_cast< ::nai::v1::CharacterLipSyncKind >(_impl_.lip_sync_.Get(index));
+}
+inline ::nai::v1::CharacterLipSyncKind CharacterCapability::lip_sync(int index) const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterCapability.lip_sync)
+  return _internal_lip_sync(index);
+}
+inline void CharacterCapability::set_lip_sync(int index, ::nai::v1::CharacterLipSyncKind value) {
+  _impl_.lip_sync_.Set(index, value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterCapability.lip_sync)
+}
+inline void CharacterCapability::_internal_add_lip_sync(::nai::v1::CharacterLipSyncKind value) {
+  _impl_.lip_sync_.Add(value);
+}
+inline void CharacterCapability::add_lip_sync(::nai::v1::CharacterLipSyncKind value) {
+  _internal_add_lip_sync(value);
+  // @@protoc_insertion_point(field_add:nai.v1.CharacterCapability.lip_sync)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedField<int>&
+CharacterCapability::lip_sync() const {
+  // @@protoc_insertion_point(field_list:nai.v1.CharacterCapability.lip_sync)
+  return _impl_.lip_sync_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedField<int>*
+CharacterCapability::_internal_mutable_lip_sync() {
+  return &_impl_.lip_sync_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedField<int>*
+CharacterCapability::mutable_lip_sync() {
+  // @@protoc_insertion_point(field_mutable_list:nai.v1.CharacterCapability.lip_sync)
+  return _internal_mutable_lip_sync();
+}
+
+// repeated string supported_action_ids = 3;
+inline int CharacterCapability::_internal_supported_action_ids_size() const {
+  return _impl_.supported_action_ids_.size();
+}
+inline int CharacterCapability::supported_action_ids_size() const {
+  return _internal_supported_action_ids_size();
+}
+inline void CharacterCapability::clear_supported_action_ids() {
+  _impl_.supported_action_ids_.Clear();
+}
+inline std::string* CharacterCapability::add_supported_action_ids() {
+  std::string* _s = _internal_add_supported_action_ids();
+  // @@protoc_insertion_point(field_add_mutable:nai.v1.CharacterCapability.supported_action_ids)
+  return _s;
+}
+inline const std::string& CharacterCapability::_internal_supported_action_ids(int index) const {
+  return _impl_.supported_action_ids_.Get(index);
+}
+inline const std::string& CharacterCapability::supported_action_ids(int index) const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterCapability.supported_action_ids)
+  return _internal_supported_action_ids(index);
+}
+inline std::string* CharacterCapability::mutable_supported_action_ids(int index) {
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterCapability.supported_action_ids)
+  return _impl_.supported_action_ids_.Mutable(index);
+}
+inline void CharacterCapability::set_supported_action_ids(int index, const std::string& value) {
+  _impl_.supported_action_ids_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterCapability.supported_action_ids)
+}
+inline void CharacterCapability::set_supported_action_ids(int index, std::string&& value) {
+  _impl_.supported_action_ids_.Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterCapability.supported_action_ids)
+}
+inline void CharacterCapability::set_supported_action_ids(int index, const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.supported_action_ids_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:nai.v1.CharacterCapability.supported_action_ids)
+}
+inline void CharacterCapability::set_supported_action_ids(int index, const char* value, size_t size) {
+  _impl_.supported_action_ids_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:nai.v1.CharacterCapability.supported_action_ids)
+}
+inline std::string* CharacterCapability::_internal_add_supported_action_ids() {
+  return _impl_.supported_action_ids_.Add();
+}
+inline void CharacterCapability::add_supported_action_ids(const std::string& value) {
+  _impl_.supported_action_ids_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:nai.v1.CharacterCapability.supported_action_ids)
+}
+inline void CharacterCapability::add_supported_action_ids(std::string&& value) {
+  _impl_.supported_action_ids_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:nai.v1.CharacterCapability.supported_action_ids)
+}
+inline void CharacterCapability::add_supported_action_ids(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.supported_action_ids_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:nai.v1.CharacterCapability.supported_action_ids)
+}
+inline void CharacterCapability::add_supported_action_ids(const char* value, size_t size) {
+  _impl_.supported_action_ids_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:nai.v1.CharacterCapability.supported_action_ids)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+CharacterCapability::supported_action_ids() const {
+  // @@protoc_insertion_point(field_list:nai.v1.CharacterCapability.supported_action_ids)
+  return _impl_.supported_action_ids_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+CharacterCapability::mutable_supported_action_ids() {
+  // @@protoc_insertion_point(field_mutable_list:nai.v1.CharacterCapability.supported_action_ids)
+  return &_impl_.supported_action_ids_;
+}
+
+// -------------------------------------------------------------------
+
+// CharacterProfile
+
+// uint32 schema_version = 1;
+inline void CharacterProfile::clear_schema_version() {
+  _impl_.schema_version_ = 0u;
+}
+inline uint32_t CharacterProfile::_internal_schema_version() const {
+  return _impl_.schema_version_;
+}
+inline uint32_t CharacterProfile::schema_version() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterProfile.schema_version)
+  return _internal_schema_version();
+}
+inline void CharacterProfile::_internal_set_schema_version(uint32_t value) {
+  
+  _impl_.schema_version_ = value;
+}
+inline void CharacterProfile::set_schema_version(uint32_t value) {
+  _internal_set_schema_version(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterProfile.schema_version)
+}
+
+// .nai.v1.CharacterIdentity identity = 2;
+inline bool CharacterProfile::_internal_has_identity() const {
+  return this != internal_default_instance() && _impl_.identity_ != nullptr;
+}
+inline bool CharacterProfile::has_identity() const {
+  return _internal_has_identity();
+}
+inline void CharacterProfile::clear_identity() {
+  if (GetArenaForAllocation() == nullptr && _impl_.identity_ != nullptr) {
+    delete _impl_.identity_;
+  }
+  _impl_.identity_ = nullptr;
+}
+inline const ::nai::v1::CharacterIdentity& CharacterProfile::_internal_identity() const {
+  const ::nai::v1::CharacterIdentity* p = _impl_.identity_;
+  return p != nullptr ? *p : reinterpret_cast<const ::nai::v1::CharacterIdentity&>(
+      ::nai::v1::_CharacterIdentity_default_instance_);
+}
+inline const ::nai::v1::CharacterIdentity& CharacterProfile::identity() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterProfile.identity)
+  return _internal_identity();
+}
+inline void CharacterProfile::unsafe_arena_set_allocated_identity(
+    ::nai::v1::CharacterIdentity* identity) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.identity_);
+  }
+  _impl_.identity_ = identity;
+  if (identity) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.v1.CharacterProfile.identity)
+}
+inline ::nai::v1::CharacterIdentity* CharacterProfile::release_identity() {
+  
+  ::nai::v1::CharacterIdentity* temp = _impl_.identity_;
+  _impl_.identity_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::nai::v1::CharacterIdentity* CharacterProfile::unsafe_arena_release_identity() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterProfile.identity)
+  
+  ::nai::v1::CharacterIdentity* temp = _impl_.identity_;
+  _impl_.identity_ = nullptr;
+  return temp;
+}
+inline ::nai::v1::CharacterIdentity* CharacterProfile::_internal_mutable_identity() {
+  
+  if (_impl_.identity_ == nullptr) {
+    auto* p = CreateMaybeMessage<::nai::v1::CharacterIdentity>(GetArenaForAllocation());
+    _impl_.identity_ = p;
+  }
+  return _impl_.identity_;
+}
+inline ::nai::v1::CharacterIdentity* CharacterProfile::mutable_identity() {
+  ::nai::v1::CharacterIdentity* _msg = _internal_mutable_identity();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterProfile.identity)
+  return _msg;
+}
+inline void CharacterProfile::set_allocated_identity(::nai::v1::CharacterIdentity* identity) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.identity_;
+  }
+  if (identity) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(identity);
+    if (message_arena != submessage_arena) {
+      identity = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, identity, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.identity_ = identity;
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterProfile.identity)
+}
+
+// .nai.v1.CharacterCapability capability = 3;
+inline bool CharacterProfile::_internal_has_capability() const {
+  return this != internal_default_instance() && _impl_.capability_ != nullptr;
+}
+inline bool CharacterProfile::has_capability() const {
+  return _internal_has_capability();
+}
+inline void CharacterProfile::clear_capability() {
+  if (GetArenaForAllocation() == nullptr && _impl_.capability_ != nullptr) {
+    delete _impl_.capability_;
+  }
+  _impl_.capability_ = nullptr;
+}
+inline const ::nai::v1::CharacterCapability& CharacterProfile::_internal_capability() const {
+  const ::nai::v1::CharacterCapability* p = _impl_.capability_;
+  return p != nullptr ? *p : reinterpret_cast<const ::nai::v1::CharacterCapability&>(
+      ::nai::v1::_CharacterCapability_default_instance_);
+}
+inline const ::nai::v1::CharacterCapability& CharacterProfile::capability() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterProfile.capability)
+  return _internal_capability();
+}
+inline void CharacterProfile::unsafe_arena_set_allocated_capability(
+    ::nai::v1::CharacterCapability* capability) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.capability_);
+  }
+  _impl_.capability_ = capability;
+  if (capability) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.v1.CharacterProfile.capability)
+}
+inline ::nai::v1::CharacterCapability* CharacterProfile::release_capability() {
+  
+  ::nai::v1::CharacterCapability* temp = _impl_.capability_;
+  _impl_.capability_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::nai::v1::CharacterCapability* CharacterProfile::unsafe_arena_release_capability() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterProfile.capability)
+  
+  ::nai::v1::CharacterCapability* temp = _impl_.capability_;
+  _impl_.capability_ = nullptr;
+  return temp;
+}
+inline ::nai::v1::CharacterCapability* CharacterProfile::_internal_mutable_capability() {
+  
+  if (_impl_.capability_ == nullptr) {
+    auto* p = CreateMaybeMessage<::nai::v1::CharacterCapability>(GetArenaForAllocation());
+    _impl_.capability_ = p;
+  }
+  return _impl_.capability_;
+}
+inline ::nai::v1::CharacterCapability* CharacterProfile::mutable_capability() {
+  ::nai::v1::CharacterCapability* _msg = _internal_mutable_capability();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterProfile.capability)
+  return _msg;
+}
+inline void CharacterProfile::set_allocated_capability(::nai::v1::CharacterCapability* capability) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.capability_;
+  }
+  if (capability) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(capability);
+    if (message_arena != submessage_arena) {
+      capability = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, capability, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.capability_ = capability;
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterProfile.capability)
+}
+
+// -------------------------------------------------------------------
+
+// CharacterActionRequest
+
+// string request_id = 1;
+inline void CharacterActionRequest::clear_request_id() {
+  _impl_.request_id_.ClearToEmpty();
+}
+inline const std::string& CharacterActionRequest::request_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionRequest.request_id)
+  return _internal_request_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterActionRequest::set_request_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.request_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionRequest.request_id)
+}
+inline std::string* CharacterActionRequest::mutable_request_id() {
+  std::string* _s = _internal_mutable_request_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionRequest.request_id)
+  return _s;
+}
+inline const std::string& CharacterActionRequest::_internal_request_id() const {
+  return _impl_.request_id_.Get();
+}
+inline void CharacterActionRequest::_internal_set_request_id(const std::string& value) {
+  
+  _impl_.request_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterActionRequest::_internal_mutable_request_id() {
+  
+  return _impl_.request_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterActionRequest::release_request_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionRequest.request_id)
+  return _impl_.request_id_.Release();
+}
+inline void CharacterActionRequest::set_allocated_request_id(std::string* request_id) {
+  if (request_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.request_id_.SetAllocated(request_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.request_id_.IsDefault()) {
+    _impl_.request_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionRequest.request_id)
+}
+
+// .nai.v1.CharacterIdentity character = 2;
+inline bool CharacterActionRequest::_internal_has_character() const {
+  return this != internal_default_instance() && _impl_.character_ != nullptr;
+}
+inline bool CharacterActionRequest::has_character() const {
+  return _internal_has_character();
+}
+inline void CharacterActionRequest::clear_character() {
+  if (GetArenaForAllocation() == nullptr && _impl_.character_ != nullptr) {
+    delete _impl_.character_;
+  }
+  _impl_.character_ = nullptr;
+}
+inline const ::nai::v1::CharacterIdentity& CharacterActionRequest::_internal_character() const {
+  const ::nai::v1::CharacterIdentity* p = _impl_.character_;
+  return p != nullptr ? *p : reinterpret_cast<const ::nai::v1::CharacterIdentity&>(
+      ::nai::v1::_CharacterIdentity_default_instance_);
+}
+inline const ::nai::v1::CharacterIdentity& CharacterActionRequest::character() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionRequest.character)
+  return _internal_character();
+}
+inline void CharacterActionRequest::unsafe_arena_set_allocated_character(
+    ::nai::v1::CharacterIdentity* character) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.character_);
+  }
+  _impl_.character_ = character;
+  if (character) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.v1.CharacterActionRequest.character)
+}
+inline ::nai::v1::CharacterIdentity* CharacterActionRequest::release_character() {
+  
+  ::nai::v1::CharacterIdentity* temp = _impl_.character_;
+  _impl_.character_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::nai::v1::CharacterIdentity* CharacterActionRequest::unsafe_arena_release_character() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionRequest.character)
+  
+  ::nai::v1::CharacterIdentity* temp = _impl_.character_;
+  _impl_.character_ = nullptr;
+  return temp;
+}
+inline ::nai::v1::CharacterIdentity* CharacterActionRequest::_internal_mutable_character() {
+  
+  if (_impl_.character_ == nullptr) {
+    auto* p = CreateMaybeMessage<::nai::v1::CharacterIdentity>(GetArenaForAllocation());
+    _impl_.character_ = p;
+  }
+  return _impl_.character_;
+}
+inline ::nai::v1::CharacterIdentity* CharacterActionRequest::mutable_character() {
+  ::nai::v1::CharacterIdentity* _msg = _internal_mutable_character();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionRequest.character)
+  return _msg;
+}
+inline void CharacterActionRequest::set_allocated_character(::nai::v1::CharacterIdentity* character) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.character_;
+  }
+  if (character) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(character);
+    if (message_arena != submessage_arena) {
+      character = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, character, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.character_ = character;
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionRequest.character)
+}
+
+// string session_id = 3;
+inline void CharacterActionRequest::clear_session_id() {
+  _impl_.session_id_.ClearToEmpty();
+}
+inline const std::string& CharacterActionRequest::session_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionRequest.session_id)
+  return _internal_session_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterActionRequest::set_session_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.session_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionRequest.session_id)
+}
+inline std::string* CharacterActionRequest::mutable_session_id() {
+  std::string* _s = _internal_mutable_session_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionRequest.session_id)
+  return _s;
+}
+inline const std::string& CharacterActionRequest::_internal_session_id() const {
+  return _impl_.session_id_.Get();
+}
+inline void CharacterActionRequest::_internal_set_session_id(const std::string& value) {
+  
+  _impl_.session_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterActionRequest::_internal_mutable_session_id() {
+  
+  return _impl_.session_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterActionRequest::release_session_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionRequest.session_id)
+  return _impl_.session_id_.Release();
+}
+inline void CharacterActionRequest::set_allocated_session_id(std::string* session_id) {
+  if (session_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.session_id_.SetAllocated(session_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.session_id_.IsDefault()) {
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionRequest.session_id)
+}
+
+// uint64 generation_epoch = 4;
+inline void CharacterActionRequest::clear_generation_epoch() {
+  _impl_.generation_epoch_ = uint64_t{0u};
+}
+inline uint64_t CharacterActionRequest::_internal_generation_epoch() const {
+  return _impl_.generation_epoch_;
+}
+inline uint64_t CharacterActionRequest::generation_epoch() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionRequest.generation_epoch)
+  return _internal_generation_epoch();
+}
+inline void CharacterActionRequest::_internal_set_generation_epoch(uint64_t value) {
+  
+  _impl_.generation_epoch_ = value;
+}
+inline void CharacterActionRequest::set_generation_epoch(uint64_t value) {
+  _internal_set_generation_epoch(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionRequest.generation_epoch)
+}
+
+// string output_id = 5;
+inline void CharacterActionRequest::clear_output_id() {
+  _impl_.output_id_.ClearToEmpty();
+}
+inline const std::string& CharacterActionRequest::output_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionRequest.output_id)
+  return _internal_output_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterActionRequest::set_output_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.output_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionRequest.output_id)
+}
+inline std::string* CharacterActionRequest::mutable_output_id() {
+  std::string* _s = _internal_mutable_output_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionRequest.output_id)
+  return _s;
+}
+inline const std::string& CharacterActionRequest::_internal_output_id() const {
+  return _impl_.output_id_.Get();
+}
+inline void CharacterActionRequest::_internal_set_output_id(const std::string& value) {
+  
+  _impl_.output_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterActionRequest::_internal_mutable_output_id() {
+  
+  return _impl_.output_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterActionRequest::release_output_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionRequest.output_id)
+  return _impl_.output_id_.Release();
+}
+inline void CharacterActionRequest::set_allocated_output_id(std::string* output_id) {
+  if (output_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.output_id_.SetAllocated(output_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.output_id_.IsDefault()) {
+    _impl_.output_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionRequest.output_id)
+}
+
+// string approval_ref = 6;
+inline void CharacterActionRequest::clear_approval_ref() {
+  _impl_.approval_ref_.ClearToEmpty();
+}
+inline const std::string& CharacterActionRequest::approval_ref() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionRequest.approval_ref)
+  return _internal_approval_ref();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterActionRequest::set_approval_ref(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.approval_ref_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionRequest.approval_ref)
+}
+inline std::string* CharacterActionRequest::mutable_approval_ref() {
+  std::string* _s = _internal_mutable_approval_ref();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionRequest.approval_ref)
+  return _s;
+}
+inline const std::string& CharacterActionRequest::_internal_approval_ref() const {
+  return _impl_.approval_ref_.Get();
+}
+inline void CharacterActionRequest::_internal_set_approval_ref(const std::string& value) {
+  
+  _impl_.approval_ref_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterActionRequest::_internal_mutable_approval_ref() {
+  
+  return _impl_.approval_ref_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterActionRequest::release_approval_ref() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionRequest.approval_ref)
+  return _impl_.approval_ref_.Release();
+}
+inline void CharacterActionRequest::set_allocated_approval_ref(std::string* approval_ref) {
+  if (approval_ref != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.approval_ref_.SetAllocated(approval_ref, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.approval_ref_.IsDefault()) {
+    _impl_.approval_ref_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionRequest.approval_ref)
+}
+
+// string lease_id = 7;
+inline void CharacterActionRequest::clear_lease_id() {
+  _impl_.lease_id_.ClearToEmpty();
+}
+inline const std::string& CharacterActionRequest::lease_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionRequest.lease_id)
+  return _internal_lease_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterActionRequest::set_lease_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.lease_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionRequest.lease_id)
+}
+inline std::string* CharacterActionRequest::mutable_lease_id() {
+  std::string* _s = _internal_mutable_lease_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionRequest.lease_id)
+  return _s;
+}
+inline const std::string& CharacterActionRequest::_internal_lease_id() const {
+  return _impl_.lease_id_.Get();
+}
+inline void CharacterActionRequest::_internal_set_lease_id(const std::string& value) {
+  
+  _impl_.lease_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterActionRequest::_internal_mutable_lease_id() {
+  
+  return _impl_.lease_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterActionRequest::release_lease_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionRequest.lease_id)
+  return _impl_.lease_id_.Release();
+}
+inline void CharacterActionRequest::set_allocated_lease_id(std::string* lease_id) {
+  if (lease_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.lease_id_.SetAllocated(lease_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.lease_id_.IsDefault()) {
+    _impl_.lease_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionRequest.lease_id)
+}
+
+// string action_id = 8;
+inline void CharacterActionRequest::clear_action_id() {
+  _impl_.action_id_.ClearToEmpty();
+}
+inline const std::string& CharacterActionRequest::action_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionRequest.action_id)
+  return _internal_action_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterActionRequest::set_action_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.action_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionRequest.action_id)
+}
+inline std::string* CharacterActionRequest::mutable_action_id() {
+  std::string* _s = _internal_mutable_action_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionRequest.action_id)
+  return _s;
+}
+inline const std::string& CharacterActionRequest::_internal_action_id() const {
+  return _impl_.action_id_.Get();
+}
+inline void CharacterActionRequest::_internal_set_action_id(const std::string& value) {
+  
+  _impl_.action_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterActionRequest::_internal_mutable_action_id() {
+  
+  return _impl_.action_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterActionRequest::release_action_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionRequest.action_id)
+  return _impl_.action_id_.Release();
+}
+inline void CharacterActionRequest::set_allocated_action_id(std::string* action_id) {
+  if (action_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.action_id_.SetAllocated(action_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.action_id_.IsDefault()) {
+    _impl_.action_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionRequest.action_id)
+}
+
+// uint32 priority = 9;
+inline void CharacterActionRequest::clear_priority() {
+  _impl_.priority_ = 0u;
+}
+inline uint32_t CharacterActionRequest::_internal_priority() const {
+  return _impl_.priority_;
+}
+inline uint32_t CharacterActionRequest::priority() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionRequest.priority)
+  return _internal_priority();
+}
+inline void CharacterActionRequest::_internal_set_priority(uint32_t value) {
+  
+  _impl_.priority_ = value;
+}
+inline void CharacterActionRequest::set_priority(uint32_t value) {
+  _internal_set_priority(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionRequest.priority)
+}
+
+// uint32 remaining_budget_ms = 10;
+inline void CharacterActionRequest::clear_remaining_budget_ms() {
+  _impl_.remaining_budget_ms_ = 0u;
+}
+inline uint32_t CharacterActionRequest::_internal_remaining_budget_ms() const {
+  return _impl_.remaining_budget_ms_;
+}
+inline uint32_t CharacterActionRequest::remaining_budget_ms() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionRequest.remaining_budget_ms)
+  return _internal_remaining_budget_ms();
+}
+inline void CharacterActionRequest::_internal_set_remaining_budget_ms(uint32_t value) {
+  
+  _impl_.remaining_budget_ms_ = value;
+}
+inline void CharacterActionRequest::set_remaining_budget_ms(uint32_t value) {
+  _internal_set_remaining_budget_ms(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionRequest.remaining_budget_ms)
+}
+
+// uint64 sequence = 11;
+inline void CharacterActionRequest::clear_sequence() {
+  _impl_.sequence_ = uint64_t{0u};
+}
+inline uint64_t CharacterActionRequest::_internal_sequence() const {
+  return _impl_.sequence_;
+}
+inline uint64_t CharacterActionRequest::sequence() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionRequest.sequence)
+  return _internal_sequence();
+}
+inline void CharacterActionRequest::_internal_set_sequence(uint64_t value) {
+  
+  _impl_.sequence_ = value;
+}
+inline void CharacterActionRequest::set_sequence(uint64_t value) {
+  _internal_set_sequence(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionRequest.sequence)
+}
+
+// -------------------------------------------------------------------
+
+// CharacterActionState
+
+// string request_id = 1;
+inline void CharacterActionState::clear_request_id() {
+  _impl_.request_id_.ClearToEmpty();
+}
+inline const std::string& CharacterActionState::request_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionState.request_id)
+  return _internal_request_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterActionState::set_request_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.request_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionState.request_id)
+}
+inline std::string* CharacterActionState::mutable_request_id() {
+  std::string* _s = _internal_mutable_request_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionState.request_id)
+  return _s;
+}
+inline const std::string& CharacterActionState::_internal_request_id() const {
+  return _impl_.request_id_.Get();
+}
+inline void CharacterActionState::_internal_set_request_id(const std::string& value) {
+  
+  _impl_.request_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterActionState::_internal_mutable_request_id() {
+  
+  return _impl_.request_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterActionState::release_request_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionState.request_id)
+  return _impl_.request_id_.Release();
+}
+inline void CharacterActionState::set_allocated_request_id(std::string* request_id) {
+  if (request_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.request_id_.SetAllocated(request_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.request_id_.IsDefault()) {
+    _impl_.request_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionState.request_id)
+}
+
+// .nai.v1.CharacterIdentity character = 2;
+inline bool CharacterActionState::_internal_has_character() const {
+  return this != internal_default_instance() && _impl_.character_ != nullptr;
+}
+inline bool CharacterActionState::has_character() const {
+  return _internal_has_character();
+}
+inline void CharacterActionState::clear_character() {
+  if (GetArenaForAllocation() == nullptr && _impl_.character_ != nullptr) {
+    delete _impl_.character_;
+  }
+  _impl_.character_ = nullptr;
+}
+inline const ::nai::v1::CharacterIdentity& CharacterActionState::_internal_character() const {
+  const ::nai::v1::CharacterIdentity* p = _impl_.character_;
+  return p != nullptr ? *p : reinterpret_cast<const ::nai::v1::CharacterIdentity&>(
+      ::nai::v1::_CharacterIdentity_default_instance_);
+}
+inline const ::nai::v1::CharacterIdentity& CharacterActionState::character() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionState.character)
+  return _internal_character();
+}
+inline void CharacterActionState::unsafe_arena_set_allocated_character(
+    ::nai::v1::CharacterIdentity* character) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.character_);
+  }
+  _impl_.character_ = character;
+  if (character) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.v1.CharacterActionState.character)
+}
+inline ::nai::v1::CharacterIdentity* CharacterActionState::release_character() {
+  
+  ::nai::v1::CharacterIdentity* temp = _impl_.character_;
+  _impl_.character_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::nai::v1::CharacterIdentity* CharacterActionState::unsafe_arena_release_character() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionState.character)
+  
+  ::nai::v1::CharacterIdentity* temp = _impl_.character_;
+  _impl_.character_ = nullptr;
+  return temp;
+}
+inline ::nai::v1::CharacterIdentity* CharacterActionState::_internal_mutable_character() {
+  
+  if (_impl_.character_ == nullptr) {
+    auto* p = CreateMaybeMessage<::nai::v1::CharacterIdentity>(GetArenaForAllocation());
+    _impl_.character_ = p;
+  }
+  return _impl_.character_;
+}
+inline ::nai::v1::CharacterIdentity* CharacterActionState::mutable_character() {
+  ::nai::v1::CharacterIdentity* _msg = _internal_mutable_character();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionState.character)
+  return _msg;
+}
+inline void CharacterActionState::set_allocated_character(::nai::v1::CharacterIdentity* character) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.character_;
+  }
+  if (character) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(character);
+    if (message_arena != submessage_arena) {
+      character = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, character, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.character_ = character;
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionState.character)
+}
+
+// string session_id = 3;
+inline void CharacterActionState::clear_session_id() {
+  _impl_.session_id_.ClearToEmpty();
+}
+inline const std::string& CharacterActionState::session_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionState.session_id)
+  return _internal_session_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterActionState::set_session_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.session_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionState.session_id)
+}
+inline std::string* CharacterActionState::mutable_session_id() {
+  std::string* _s = _internal_mutable_session_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionState.session_id)
+  return _s;
+}
+inline const std::string& CharacterActionState::_internal_session_id() const {
+  return _impl_.session_id_.Get();
+}
+inline void CharacterActionState::_internal_set_session_id(const std::string& value) {
+  
+  _impl_.session_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterActionState::_internal_mutable_session_id() {
+  
+  return _impl_.session_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterActionState::release_session_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionState.session_id)
+  return _impl_.session_id_.Release();
+}
+inline void CharacterActionState::set_allocated_session_id(std::string* session_id) {
+  if (session_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.session_id_.SetAllocated(session_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.session_id_.IsDefault()) {
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionState.session_id)
+}
+
+// uint64 generation_epoch = 4;
+inline void CharacterActionState::clear_generation_epoch() {
+  _impl_.generation_epoch_ = uint64_t{0u};
+}
+inline uint64_t CharacterActionState::_internal_generation_epoch() const {
+  return _impl_.generation_epoch_;
+}
+inline uint64_t CharacterActionState::generation_epoch() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionState.generation_epoch)
+  return _internal_generation_epoch();
+}
+inline void CharacterActionState::_internal_set_generation_epoch(uint64_t value) {
+  
+  _impl_.generation_epoch_ = value;
+}
+inline void CharacterActionState::set_generation_epoch(uint64_t value) {
+  _internal_set_generation_epoch(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionState.generation_epoch)
+}
+
+// string output_id = 5;
+inline void CharacterActionState::clear_output_id() {
+  _impl_.output_id_.ClearToEmpty();
+}
+inline const std::string& CharacterActionState::output_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionState.output_id)
+  return _internal_output_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterActionState::set_output_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.output_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionState.output_id)
+}
+inline std::string* CharacterActionState::mutable_output_id() {
+  std::string* _s = _internal_mutable_output_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionState.output_id)
+  return _s;
+}
+inline const std::string& CharacterActionState::_internal_output_id() const {
+  return _impl_.output_id_.Get();
+}
+inline void CharacterActionState::_internal_set_output_id(const std::string& value) {
+  
+  _impl_.output_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterActionState::_internal_mutable_output_id() {
+  
+  return _impl_.output_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterActionState::release_output_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionState.output_id)
+  return _impl_.output_id_.Release();
+}
+inline void CharacterActionState::set_allocated_output_id(std::string* output_id) {
+  if (output_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.output_id_.SetAllocated(output_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.output_id_.IsDefault()) {
+    _impl_.output_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionState.output_id)
+}
+
+// string action_id = 6;
+inline void CharacterActionState::clear_action_id() {
+  _impl_.action_id_.ClearToEmpty();
+}
+inline const std::string& CharacterActionState::action_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionState.action_id)
+  return _internal_action_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterActionState::set_action_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.action_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionState.action_id)
+}
+inline std::string* CharacterActionState::mutable_action_id() {
+  std::string* _s = _internal_mutable_action_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionState.action_id)
+  return _s;
+}
+inline const std::string& CharacterActionState::_internal_action_id() const {
+  return _impl_.action_id_.Get();
+}
+inline void CharacterActionState::_internal_set_action_id(const std::string& value) {
+  
+  _impl_.action_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterActionState::_internal_mutable_action_id() {
+  
+  return _impl_.action_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterActionState::release_action_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionState.action_id)
+  return _impl_.action_id_.Release();
+}
+inline void CharacterActionState::set_allocated_action_id(std::string* action_id) {
+  if (action_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.action_id_.SetAllocated(action_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.action_id_.IsDefault()) {
+    _impl_.action_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionState.action_id)
+}
+
+// .nai.v1.CharacterActionPhase phase = 7;
+inline void CharacterActionState::clear_phase() {
+  _impl_.phase_ = 0;
+}
+inline ::nai::v1::CharacterActionPhase CharacterActionState::_internal_phase() const {
+  return static_cast< ::nai::v1::CharacterActionPhase >(_impl_.phase_);
+}
+inline ::nai::v1::CharacterActionPhase CharacterActionState::phase() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionState.phase)
+  return _internal_phase();
+}
+inline void CharacterActionState::_internal_set_phase(::nai::v1::CharacterActionPhase value) {
+  
+  _impl_.phase_ = value;
+}
+inline void CharacterActionState::set_phase(::nai::v1::CharacterActionPhase value) {
+  _internal_set_phase(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionState.phase)
+}
+
+// string reason_code = 8;
+inline void CharacterActionState::clear_reason_code() {
+  _impl_.reason_code_.ClearToEmpty();
+}
+inline const std::string& CharacterActionState::reason_code() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionState.reason_code)
+  return _internal_reason_code();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterActionState::set_reason_code(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.reason_code_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionState.reason_code)
+}
+inline std::string* CharacterActionState::mutable_reason_code() {
+  std::string* _s = _internal_mutable_reason_code();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterActionState.reason_code)
+  return _s;
+}
+inline const std::string& CharacterActionState::_internal_reason_code() const {
+  return _impl_.reason_code_.Get();
+}
+inline void CharacterActionState::_internal_set_reason_code(const std::string& value) {
+  
+  _impl_.reason_code_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterActionState::_internal_mutable_reason_code() {
+  
+  return _impl_.reason_code_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterActionState::release_reason_code() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterActionState.reason_code)
+  return _impl_.reason_code_.Release();
+}
+inline void CharacterActionState::set_allocated_reason_code(std::string* reason_code) {
+  if (reason_code != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.reason_code_.SetAllocated(reason_code, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.reason_code_.IsDefault()) {
+    _impl_.reason_code_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterActionState.reason_code)
+}
+
+// uint64 sequence = 9;
+inline void CharacterActionState::clear_sequence() {
+  _impl_.sequence_ = uint64_t{0u};
+}
+inline uint64_t CharacterActionState::_internal_sequence() const {
+  return _impl_.sequence_;
+}
+inline uint64_t CharacterActionState::sequence() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionState.sequence)
+  return _internal_sequence();
+}
+inline void CharacterActionState::_internal_set_sequence(uint64_t value) {
+  
+  _impl_.sequence_ = value;
+}
+inline void CharacterActionState::set_sequence(uint64_t value) {
+  _internal_set_sequence(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionState.sequence)
+}
+
+// optional uint64 source_sample_position = 10;
+inline bool CharacterActionState::_internal_has_source_sample_position() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  return value;
+}
+inline bool CharacterActionState::has_source_sample_position() const {
+  return _internal_has_source_sample_position();
+}
+inline void CharacterActionState::clear_source_sample_position() {
+  _impl_.source_sample_position_ = uint64_t{0u};
+  _impl_._has_bits_[0] &= ~0x00000001u;
+}
+inline uint64_t CharacterActionState::_internal_source_sample_position() const {
+  return _impl_.source_sample_position_;
+}
+inline uint64_t CharacterActionState::source_sample_position() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionState.source_sample_position)
+  return _internal_source_sample_position();
+}
+inline void CharacterActionState::_internal_set_source_sample_position(uint64_t value) {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  _impl_.source_sample_position_ = value;
+}
+inline void CharacterActionState::set_source_sample_position(uint64_t value) {
+  _internal_set_source_sample_position(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionState.source_sample_position)
+}
+
+// optional uint64 frame_sequence = 11;
+inline bool CharacterActionState::_internal_has_frame_sequence() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  return value;
+}
+inline bool CharacterActionState::has_frame_sequence() const {
+  return _internal_has_frame_sequence();
+}
+inline void CharacterActionState::clear_frame_sequence() {
+  _impl_.frame_sequence_ = uint64_t{0u};
+  _impl_._has_bits_[0] &= ~0x00000002u;
+}
+inline uint64_t CharacterActionState::_internal_frame_sequence() const {
+  return _impl_.frame_sequence_;
+}
+inline uint64_t CharacterActionState::frame_sequence() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterActionState.frame_sequence)
+  return _internal_frame_sequence();
+}
+inline void CharacterActionState::_internal_set_frame_sequence(uint64_t value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.frame_sequence_ = value;
+}
+inline void CharacterActionState::set_frame_sequence(uint64_t value) {
+  _internal_set_frame_sequence(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterActionState.frame_sequence)
+}
+
+// -------------------------------------------------------------------
+
+// CharacterBoundedMedia
+
+// .nai.v1.CharacterIdentity identity = 1;
+inline bool CharacterBoundedMedia::_internal_has_identity() const {
+  return this != internal_default_instance() && _impl_.identity_ != nullptr;
+}
+inline bool CharacterBoundedMedia::has_identity() const {
+  return _internal_has_identity();
+}
+inline void CharacterBoundedMedia::clear_identity() {
+  if (GetArenaForAllocation() == nullptr && _impl_.identity_ != nullptr) {
+    delete _impl_.identity_;
+  }
+  _impl_.identity_ = nullptr;
+}
+inline const ::nai::v1::CharacterIdentity& CharacterBoundedMedia::_internal_identity() const {
+  const ::nai::v1::CharacterIdentity* p = _impl_.identity_;
+  return p != nullptr ? *p : reinterpret_cast<const ::nai::v1::CharacterIdentity&>(
+      ::nai::v1::_CharacterIdentity_default_instance_);
+}
+inline const ::nai::v1::CharacterIdentity& CharacterBoundedMedia::identity() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.identity)
+  return _internal_identity();
+}
+inline void CharacterBoundedMedia::unsafe_arena_set_allocated_identity(
+    ::nai::v1::CharacterIdentity* identity) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.identity_);
+  }
+  _impl_.identity_ = identity;
+  if (identity) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.v1.CharacterBoundedMedia.identity)
+}
+inline ::nai::v1::CharacterIdentity* CharacterBoundedMedia::release_identity() {
+  
+  ::nai::v1::CharacterIdentity* temp = _impl_.identity_;
+  _impl_.identity_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::nai::v1::CharacterIdentity* CharacterBoundedMedia::unsafe_arena_release_identity() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterBoundedMedia.identity)
+  
+  ::nai::v1::CharacterIdentity* temp = _impl_.identity_;
+  _impl_.identity_ = nullptr;
+  return temp;
+}
+inline ::nai::v1::CharacterIdentity* CharacterBoundedMedia::_internal_mutable_identity() {
+  
+  if (_impl_.identity_ == nullptr) {
+    auto* p = CreateMaybeMessage<::nai::v1::CharacterIdentity>(GetArenaForAllocation());
+    _impl_.identity_ = p;
+  }
+  return _impl_.identity_;
+}
+inline ::nai::v1::CharacterIdentity* CharacterBoundedMedia::mutable_identity() {
+  ::nai::v1::CharacterIdentity* _msg = _internal_mutable_identity();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterBoundedMedia.identity)
+  return _msg;
+}
+inline void CharacterBoundedMedia::set_allocated_identity(::nai::v1::CharacterIdentity* identity) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.identity_;
+  }
+  if (identity) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(identity);
+    if (message_arena != submessage_arena) {
+      identity = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, identity, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.identity_ = identity;
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterBoundedMedia.identity)
+}
+
+// string session_id = 2;
+inline void CharacterBoundedMedia::clear_session_id() {
+  _impl_.session_id_.ClearToEmpty();
+}
+inline const std::string& CharacterBoundedMedia::session_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.session_id)
+  return _internal_session_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterBoundedMedia::set_session_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.session_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterBoundedMedia.session_id)
+}
+inline std::string* CharacterBoundedMedia::mutable_session_id() {
+  std::string* _s = _internal_mutable_session_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterBoundedMedia.session_id)
+  return _s;
+}
+inline const std::string& CharacterBoundedMedia::_internal_session_id() const {
+  return _impl_.session_id_.Get();
+}
+inline void CharacterBoundedMedia::_internal_set_session_id(const std::string& value) {
+  
+  _impl_.session_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterBoundedMedia::_internal_mutable_session_id() {
+  
+  return _impl_.session_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterBoundedMedia::release_session_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterBoundedMedia.session_id)
+  return _impl_.session_id_.Release();
+}
+inline void CharacterBoundedMedia::set_allocated_session_id(std::string* session_id) {
+  if (session_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.session_id_.SetAllocated(session_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.session_id_.IsDefault()) {
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterBoundedMedia.session_id)
+}
+
+// uint64 epoch = 3;
+inline void CharacterBoundedMedia::clear_epoch() {
+  _impl_.epoch_ = uint64_t{0u};
+}
+inline uint64_t CharacterBoundedMedia::_internal_epoch() const {
+  return _impl_.epoch_;
+}
+inline uint64_t CharacterBoundedMedia::epoch() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.epoch)
+  return _internal_epoch();
+}
+inline void CharacterBoundedMedia::_internal_set_epoch(uint64_t value) {
+  
+  _impl_.epoch_ = value;
+}
+inline void CharacterBoundedMedia::set_epoch(uint64_t value) {
+  _internal_set_epoch(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterBoundedMedia.epoch)
+}
+
+// string action_id = 4;
+inline void CharacterBoundedMedia::clear_action_id() {
+  _impl_.action_id_.ClearToEmpty();
+}
+inline const std::string& CharacterBoundedMedia::action_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.action_id)
+  return _internal_action_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterBoundedMedia::set_action_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.action_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterBoundedMedia.action_id)
+}
+inline std::string* CharacterBoundedMedia::mutable_action_id() {
+  std::string* _s = _internal_mutable_action_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterBoundedMedia.action_id)
+  return _s;
+}
+inline const std::string& CharacterBoundedMedia::_internal_action_id() const {
+  return _impl_.action_id_.Get();
+}
+inline void CharacterBoundedMedia::_internal_set_action_id(const std::string& value) {
+  
+  _impl_.action_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterBoundedMedia::_internal_mutable_action_id() {
+  
+  return _impl_.action_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterBoundedMedia::release_action_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterBoundedMedia.action_id)
+  return _impl_.action_id_.Release();
+}
+inline void CharacterBoundedMedia::set_allocated_action_id(std::string* action_id) {
+  if (action_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.action_id_.SetAllocated(action_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.action_id_.IsDefault()) {
+    _impl_.action_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterBoundedMedia.action_id)
+}
+
+// uint32 width = 5;
+inline void CharacterBoundedMedia::clear_width() {
+  _impl_.width_ = 0u;
+}
+inline uint32_t CharacterBoundedMedia::_internal_width() const {
+  return _impl_.width_;
+}
+inline uint32_t CharacterBoundedMedia::width() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.width)
+  return _internal_width();
+}
+inline void CharacterBoundedMedia::_internal_set_width(uint32_t value) {
+  
+  _impl_.width_ = value;
+}
+inline void CharacterBoundedMedia::set_width(uint32_t value) {
+  _internal_set_width(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterBoundedMedia.width)
+}
+
+// uint32 height = 6;
+inline void CharacterBoundedMedia::clear_height() {
+  _impl_.height_ = 0u;
+}
+inline uint32_t CharacterBoundedMedia::_internal_height() const {
+  return _impl_.height_;
+}
+inline uint32_t CharacterBoundedMedia::height() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.height)
+  return _internal_height();
+}
+inline void CharacterBoundedMedia::_internal_set_height(uint32_t value) {
+  
+  _impl_.height_ = value;
+}
+inline void CharacterBoundedMedia::set_height(uint32_t value) {
+  _internal_set_height(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterBoundedMedia.height)
+}
+
+// uint32 sample_rate = 7;
+inline void CharacterBoundedMedia::clear_sample_rate() {
+  _impl_.sample_rate_ = 0u;
+}
+inline uint32_t CharacterBoundedMedia::_internal_sample_rate() const {
+  return _impl_.sample_rate_;
+}
+inline uint32_t CharacterBoundedMedia::sample_rate() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.sample_rate)
+  return _internal_sample_rate();
+}
+inline void CharacterBoundedMedia::_internal_set_sample_rate(uint32_t value) {
+  
+  _impl_.sample_rate_ = value;
+}
+inline void CharacterBoundedMedia::set_sample_rate(uint32_t value) {
+  _internal_set_sample_rate(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterBoundedMedia.sample_rate)
+}
+
+// uint32 channels = 8;
+inline void CharacterBoundedMedia::clear_channels() {
+  _impl_.channels_ = 0u;
+}
+inline uint32_t CharacterBoundedMedia::_internal_channels() const {
+  return _impl_.channels_;
+}
+inline uint32_t CharacterBoundedMedia::channels() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.channels)
+  return _internal_channels();
+}
+inline void CharacterBoundedMedia::_internal_set_channels(uint32_t value) {
+  
+  _impl_.channels_ = value;
+}
+inline void CharacterBoundedMedia::set_channels(uint32_t value) {
+  _internal_set_channels(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterBoundedMedia.channels)
+}
+
+// uint64 max_frames = 9;
+inline void CharacterBoundedMedia::clear_max_frames() {
+  _impl_.max_frames_ = uint64_t{0u};
+}
+inline uint64_t CharacterBoundedMedia::_internal_max_frames() const {
+  return _impl_.max_frames_;
+}
+inline uint64_t CharacterBoundedMedia::max_frames() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.max_frames)
+  return _internal_max_frames();
+}
+inline void CharacterBoundedMedia::_internal_set_max_frames(uint64_t value) {
+  
+  _impl_.max_frames_ = value;
+}
+inline void CharacterBoundedMedia::set_max_frames(uint64_t value) {
+  _internal_set_max_frames(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterBoundedMedia.max_frames)
+}
+
+// uint64 max_samples = 10;
+inline void CharacterBoundedMedia::clear_max_samples() {
+  _impl_.max_samples_ = uint64_t{0u};
+}
+inline uint64_t CharacterBoundedMedia::_internal_max_samples() const {
+  return _impl_.max_samples_;
+}
+inline uint64_t CharacterBoundedMedia::max_samples() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.max_samples)
+  return _internal_max_samples();
+}
+inline void CharacterBoundedMedia::_internal_set_max_samples(uint64_t value) {
+  
+  _impl_.max_samples_ = value;
+}
+inline void CharacterBoundedMedia::set_max_samples(uint64_t value) {
+  _internal_set_max_samples(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterBoundedMedia.max_samples)
+}
+
+// uint32 samples_per_frame = 11;
+inline void CharacterBoundedMedia::clear_samples_per_frame() {
+  _impl_.samples_per_frame_ = 0u;
+}
+inline uint32_t CharacterBoundedMedia::_internal_samples_per_frame() const {
+  return _impl_.samples_per_frame_;
+}
+inline uint32_t CharacterBoundedMedia::samples_per_frame() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.samples_per_frame)
+  return _internal_samples_per_frame();
+}
+inline void CharacterBoundedMedia::_internal_set_samples_per_frame(uint32_t value) {
+  
+  _impl_.samples_per_frame_ = value;
+}
+inline void CharacterBoundedMedia::set_samples_per_frame(uint32_t value) {
+  _internal_set_samples_per_frame(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterBoundedMedia.samples_per_frame)
+}
+
+// string pixel_format = 12;
+inline void CharacterBoundedMedia::clear_pixel_format() {
+  _impl_.pixel_format_.ClearToEmpty();
+}
+inline const std::string& CharacterBoundedMedia::pixel_format() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.pixel_format)
+  return _internal_pixel_format();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterBoundedMedia::set_pixel_format(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.pixel_format_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterBoundedMedia.pixel_format)
+}
+inline std::string* CharacterBoundedMedia::mutable_pixel_format() {
+  std::string* _s = _internal_mutable_pixel_format();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterBoundedMedia.pixel_format)
+  return _s;
+}
+inline const std::string& CharacterBoundedMedia::_internal_pixel_format() const {
+  return _impl_.pixel_format_.Get();
+}
+inline void CharacterBoundedMedia::_internal_set_pixel_format(const std::string& value) {
+  
+  _impl_.pixel_format_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterBoundedMedia::_internal_mutable_pixel_format() {
+  
+  return _impl_.pixel_format_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterBoundedMedia::release_pixel_format() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterBoundedMedia.pixel_format)
+  return _impl_.pixel_format_.Release();
+}
+inline void CharacterBoundedMedia::set_allocated_pixel_format(std::string* pixel_format) {
+  if (pixel_format != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.pixel_format_.SetAllocated(pixel_format, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.pixel_format_.IsDefault()) {
+    _impl_.pixel_format_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterBoundedMedia.pixel_format)
+}
+
+// string pcm_format = 13;
+inline void CharacterBoundedMedia::clear_pcm_format() {
+  _impl_.pcm_format_.ClearToEmpty();
+}
+inline const std::string& CharacterBoundedMedia::pcm_format() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterBoundedMedia.pcm_format)
+  return _internal_pcm_format();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterBoundedMedia::set_pcm_format(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.pcm_format_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterBoundedMedia.pcm_format)
+}
+inline std::string* CharacterBoundedMedia::mutable_pcm_format() {
+  std::string* _s = _internal_mutable_pcm_format();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterBoundedMedia.pcm_format)
+  return _s;
+}
+inline const std::string& CharacterBoundedMedia::_internal_pcm_format() const {
+  return _impl_.pcm_format_.Get();
+}
+inline void CharacterBoundedMedia::_internal_set_pcm_format(const std::string& value) {
+  
+  _impl_.pcm_format_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterBoundedMedia::_internal_mutable_pcm_format() {
+  
+  return _impl_.pcm_format_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterBoundedMedia::release_pcm_format() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterBoundedMedia.pcm_format)
+  return _impl_.pcm_format_.Release();
+}
+inline void CharacterBoundedMedia::set_allocated_pcm_format(std::string* pcm_format) {
+  if (pcm_format != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.pcm_format_.SetAllocated(pcm_format, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.pcm_format_.IsDefault()) {
+    _impl_.pcm_format_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterBoundedMedia.pcm_format)
+}
+
+// -------------------------------------------------------------------
+
+// CharacterRuntimeView
+
+// .nai.v1.CharacterIdentity identity = 1;
+inline bool CharacterRuntimeView::_internal_has_identity() const {
+  return this != internal_default_instance() && _impl_.identity_ != nullptr;
+}
+inline bool CharacterRuntimeView::has_identity() const {
+  return _internal_has_identity();
+}
+inline void CharacterRuntimeView::clear_identity() {
+  if (GetArenaForAllocation() == nullptr && _impl_.identity_ != nullptr) {
+    delete _impl_.identity_;
+  }
+  _impl_.identity_ = nullptr;
+}
+inline const ::nai::v1::CharacterIdentity& CharacterRuntimeView::_internal_identity() const {
+  const ::nai::v1::CharacterIdentity* p = _impl_.identity_;
+  return p != nullptr ? *p : reinterpret_cast<const ::nai::v1::CharacterIdentity&>(
+      ::nai::v1::_CharacterIdentity_default_instance_);
+}
+inline const ::nai::v1::CharacterIdentity& CharacterRuntimeView::identity() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterRuntimeView.identity)
+  return _internal_identity();
+}
+inline void CharacterRuntimeView::unsafe_arena_set_allocated_identity(
+    ::nai::v1::CharacterIdentity* identity) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.identity_);
+  }
+  _impl_.identity_ = identity;
+  if (identity) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.v1.CharacterRuntimeView.identity)
+}
+inline ::nai::v1::CharacterIdentity* CharacterRuntimeView::release_identity() {
+  
+  ::nai::v1::CharacterIdentity* temp = _impl_.identity_;
+  _impl_.identity_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::nai::v1::CharacterIdentity* CharacterRuntimeView::unsafe_arena_release_identity() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterRuntimeView.identity)
+  
+  ::nai::v1::CharacterIdentity* temp = _impl_.identity_;
+  _impl_.identity_ = nullptr;
+  return temp;
+}
+inline ::nai::v1::CharacterIdentity* CharacterRuntimeView::_internal_mutable_identity() {
+  
+  if (_impl_.identity_ == nullptr) {
+    auto* p = CreateMaybeMessage<::nai::v1::CharacterIdentity>(GetArenaForAllocation());
+    _impl_.identity_ = p;
+  }
+  return _impl_.identity_;
+}
+inline ::nai::v1::CharacterIdentity* CharacterRuntimeView::mutable_identity() {
+  ::nai::v1::CharacterIdentity* _msg = _internal_mutable_identity();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterRuntimeView.identity)
+  return _msg;
+}
+inline void CharacterRuntimeView::set_allocated_identity(::nai::v1::CharacterIdentity* identity) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.identity_;
+  }
+  if (identity) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(identity);
+    if (message_arena != submessage_arena) {
+      identity = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, identity, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.identity_ = identity;
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterRuntimeView.identity)
+}
+
+// .nai.v1.CharacterRuntimeState state = 2;
+inline void CharacterRuntimeView::clear_state() {
+  _impl_.state_ = 0;
+}
+inline ::nai::v1::CharacterRuntimeState CharacterRuntimeView::_internal_state() const {
+  return static_cast< ::nai::v1::CharacterRuntimeState >(_impl_.state_);
+}
+inline ::nai::v1::CharacterRuntimeState CharacterRuntimeView::state() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterRuntimeView.state)
+  return _internal_state();
+}
+inline void CharacterRuntimeView::_internal_set_state(::nai::v1::CharacterRuntimeState value) {
+  
+  _impl_.state_ = value;
+}
+inline void CharacterRuntimeView::set_state(::nai::v1::CharacterRuntimeState value) {
+  _internal_set_state(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterRuntimeView.state)
+}
+
+// string session_id = 3;
+inline void CharacterRuntimeView::clear_session_id() {
+  _impl_.session_id_.ClearToEmpty();
+}
+inline const std::string& CharacterRuntimeView::session_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterRuntimeView.session_id)
+  return _internal_session_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterRuntimeView::set_session_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.session_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterRuntimeView.session_id)
+}
+inline std::string* CharacterRuntimeView::mutable_session_id() {
+  std::string* _s = _internal_mutable_session_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterRuntimeView.session_id)
+  return _s;
+}
+inline const std::string& CharacterRuntimeView::_internal_session_id() const {
+  return _impl_.session_id_.Get();
+}
+inline void CharacterRuntimeView::_internal_set_session_id(const std::string& value) {
+  
+  _impl_.session_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterRuntimeView::_internal_mutable_session_id() {
+  
+  return _impl_.session_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterRuntimeView::release_session_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterRuntimeView.session_id)
+  return _impl_.session_id_.Release();
+}
+inline void CharacterRuntimeView::set_allocated_session_id(std::string* session_id) {
+  if (session_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.session_id_.SetAllocated(session_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.session_id_.IsDefault()) {
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterRuntimeView.session_id)
+}
+
+// uint64 epoch = 4;
+inline void CharacterRuntimeView::clear_epoch() {
+  _impl_.epoch_ = uint64_t{0u};
+}
+inline uint64_t CharacterRuntimeView::_internal_epoch() const {
+  return _impl_.epoch_;
+}
+inline uint64_t CharacterRuntimeView::epoch() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterRuntimeView.epoch)
+  return _internal_epoch();
+}
+inline void CharacterRuntimeView::_internal_set_epoch(uint64_t value) {
+  
+  _impl_.epoch_ = value;
+}
+inline void CharacterRuntimeView::set_epoch(uint64_t value) {
+  _internal_set_epoch(value);
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterRuntimeView.epoch)
+}
+
+// string action_id = 5;
+inline void CharacterRuntimeView::clear_action_id() {
+  _impl_.action_id_.ClearToEmpty();
+}
+inline const std::string& CharacterRuntimeView::action_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterRuntimeView.action_id)
+  return _internal_action_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterRuntimeView::set_action_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.action_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterRuntimeView.action_id)
+}
+inline std::string* CharacterRuntimeView::mutable_action_id() {
+  std::string* _s = _internal_mutable_action_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterRuntimeView.action_id)
+  return _s;
+}
+inline const std::string& CharacterRuntimeView::_internal_action_id() const {
+  return _impl_.action_id_.Get();
+}
+inline void CharacterRuntimeView::_internal_set_action_id(const std::string& value) {
+  
+  _impl_.action_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterRuntimeView::_internal_mutable_action_id() {
+  
+  return _impl_.action_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterRuntimeView::release_action_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterRuntimeView.action_id)
+  return _impl_.action_id_.Release();
+}
+inline void CharacterRuntimeView::set_allocated_action_id(std::string* action_id) {
+  if (action_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.action_id_.SetAllocated(action_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.action_id_.IsDefault()) {
+    _impl_.action_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterRuntimeView.action_id)
+}
+
+// .nai.v1.CharacterBoundedMedia media = 6;
+inline bool CharacterRuntimeView::_internal_has_media() const {
+  return this != internal_default_instance() && _impl_.media_ != nullptr;
+}
+inline bool CharacterRuntimeView::has_media() const {
+  return _internal_has_media();
+}
+inline void CharacterRuntimeView::clear_media() {
+  if (GetArenaForAllocation() == nullptr && _impl_.media_ != nullptr) {
+    delete _impl_.media_;
+  }
+  _impl_.media_ = nullptr;
+}
+inline const ::nai::v1::CharacterBoundedMedia& CharacterRuntimeView::_internal_media() const {
+  const ::nai::v1::CharacterBoundedMedia* p = _impl_.media_;
+  return p != nullptr ? *p : reinterpret_cast<const ::nai::v1::CharacterBoundedMedia&>(
+      ::nai::v1::_CharacterBoundedMedia_default_instance_);
+}
+inline const ::nai::v1::CharacterBoundedMedia& CharacterRuntimeView::media() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterRuntimeView.media)
+  return _internal_media();
+}
+inline void CharacterRuntimeView::unsafe_arena_set_allocated_media(
+    ::nai::v1::CharacterBoundedMedia* media) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.media_);
+  }
+  _impl_.media_ = media;
+  if (media) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.v1.CharacterRuntimeView.media)
+}
+inline ::nai::v1::CharacterBoundedMedia* CharacterRuntimeView::release_media() {
+  
+  ::nai::v1::CharacterBoundedMedia* temp = _impl_.media_;
+  _impl_.media_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::nai::v1::CharacterBoundedMedia* CharacterRuntimeView::unsafe_arena_release_media() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterRuntimeView.media)
+  
+  ::nai::v1::CharacterBoundedMedia* temp = _impl_.media_;
+  _impl_.media_ = nullptr;
+  return temp;
+}
+inline ::nai::v1::CharacterBoundedMedia* CharacterRuntimeView::_internal_mutable_media() {
+  
+  if (_impl_.media_ == nullptr) {
+    auto* p = CreateMaybeMessage<::nai::v1::CharacterBoundedMedia>(GetArenaForAllocation());
+    _impl_.media_ = p;
+  }
+  return _impl_.media_;
+}
+inline ::nai::v1::CharacterBoundedMedia* CharacterRuntimeView::mutable_media() {
+  ::nai::v1::CharacterBoundedMedia* _msg = _internal_mutable_media();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterRuntimeView.media)
+  return _msg;
+}
+inline void CharacterRuntimeView::set_allocated_media(::nai::v1::CharacterBoundedMedia* media) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.media_;
+  }
+  if (media) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(media);
+    if (message_arena != submessage_arena) {
+      media = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, media, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.media_ = media;
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterRuntimeView.media)
+}
+
+// string reason_code = 7;
+inline void CharacterRuntimeView::clear_reason_code() {
+  _impl_.reason_code_.ClearToEmpty();
+}
+inline const std::string& CharacterRuntimeView::reason_code() const {
+  // @@protoc_insertion_point(field_get:nai.v1.CharacterRuntimeView.reason_code)
+  return _internal_reason_code();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void CharacterRuntimeView::set_reason_code(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.reason_code_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.CharacterRuntimeView.reason_code)
+}
+inline std::string* CharacterRuntimeView::mutable_reason_code() {
+  std::string* _s = _internal_mutable_reason_code();
+  // @@protoc_insertion_point(field_mutable:nai.v1.CharacterRuntimeView.reason_code)
+  return _s;
+}
+inline const std::string& CharacterRuntimeView::_internal_reason_code() const {
+  return _impl_.reason_code_.Get();
+}
+inline void CharacterRuntimeView::_internal_set_reason_code(const std::string& value) {
+  
+  _impl_.reason_code_.Set(value, GetArenaForAllocation());
+}
+inline std::string* CharacterRuntimeView::_internal_mutable_reason_code() {
+  
+  return _impl_.reason_code_.Mutable(GetArenaForAllocation());
+}
+inline std::string* CharacterRuntimeView::release_reason_code() {
+  // @@protoc_insertion_point(field_release:nai.v1.CharacterRuntimeView.reason_code)
+  return _impl_.reason_code_.Release();
+}
+inline void CharacterRuntimeView::set_allocated_reason_code(std::string* reason_code) {
+  if (reason_code != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.reason_code_.SetAllocated(reason_code, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.reason_code_.IsDefault()) {
+    _impl_.reason_code_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.CharacterRuntimeView.reason_code)
 }
 
 // -------------------------------------------------------------------
@@ -10208,6 +16504,1955 @@ inline void PreviewDescriptor::set_active(bool value) {
 
 // -------------------------------------------------------------------
 
+// LocalPlaybackMedia
+
+// uint32 version = 1;
+inline void LocalPlaybackMedia::clear_version() {
+  _impl_.version_ = 0u;
+}
+inline uint32_t LocalPlaybackMedia::_internal_version() const {
+  return _impl_.version_;
+}
+inline uint32_t LocalPlaybackMedia::version() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.version)
+  return _internal_version();
+}
+inline void LocalPlaybackMedia::_internal_set_version(uint32_t value) {
+  
+  _impl_.version_ = value;
+}
+inline void LocalPlaybackMedia::set_version(uint32_t value) {
+  _internal_set_version(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.version)
+}
+
+// string session_id = 2;
+inline void LocalPlaybackMedia::clear_session_id() {
+  _impl_.session_id_.ClearToEmpty();
+}
+inline const std::string& LocalPlaybackMedia::session_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.session_id)
+  return _internal_session_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalPlaybackMedia::set_session_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.session_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.session_id)
+}
+inline std::string* LocalPlaybackMedia::mutable_session_id() {
+  std::string* _s = _internal_mutable_session_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackMedia.session_id)
+  return _s;
+}
+inline const std::string& LocalPlaybackMedia::_internal_session_id() const {
+  return _impl_.session_id_.Get();
+}
+inline void LocalPlaybackMedia::_internal_set_session_id(const std::string& value) {
+  
+  _impl_.session_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackMedia::_internal_mutable_session_id() {
+  
+  return _impl_.session_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackMedia::release_session_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackMedia.session_id)
+  return _impl_.session_id_.Release();
+}
+inline void LocalPlaybackMedia::set_allocated_session_id(std::string* session_id) {
+  if (session_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.session_id_.SetAllocated(session_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.session_id_.IsDefault()) {
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackMedia.session_id)
+}
+
+// uint64 generation_epoch = 3;
+inline void LocalPlaybackMedia::clear_generation_epoch() {
+  _impl_.generation_epoch_ = uint64_t{0u};
+}
+inline uint64_t LocalPlaybackMedia::_internal_generation_epoch() const {
+  return _impl_.generation_epoch_;
+}
+inline uint64_t LocalPlaybackMedia::generation_epoch() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.generation_epoch)
+  return _internal_generation_epoch();
+}
+inline void LocalPlaybackMedia::_internal_set_generation_epoch(uint64_t value) {
+  
+  _impl_.generation_epoch_ = value;
+}
+inline void LocalPlaybackMedia::set_generation_epoch(uint64_t value) {
+  _internal_set_generation_epoch(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.generation_epoch)
+}
+
+// string candidate_hash = 4;
+inline void LocalPlaybackMedia::clear_candidate_hash() {
+  _impl_.candidate_hash_.ClearToEmpty();
+}
+inline const std::string& LocalPlaybackMedia::candidate_hash() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.candidate_hash)
+  return _internal_candidate_hash();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalPlaybackMedia::set_candidate_hash(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.candidate_hash_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.candidate_hash)
+}
+inline std::string* LocalPlaybackMedia::mutable_candidate_hash() {
+  std::string* _s = _internal_mutable_candidate_hash();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackMedia.candidate_hash)
+  return _s;
+}
+inline const std::string& LocalPlaybackMedia::_internal_candidate_hash() const {
+  return _impl_.candidate_hash_.Get();
+}
+inline void LocalPlaybackMedia::_internal_set_candidate_hash(const std::string& value) {
+  
+  _impl_.candidate_hash_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackMedia::_internal_mutable_candidate_hash() {
+  
+  return _impl_.candidate_hash_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackMedia::release_candidate_hash() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackMedia.candidate_hash)
+  return _impl_.candidate_hash_.Release();
+}
+inline void LocalPlaybackMedia::set_allocated_candidate_hash(std::string* candidate_hash) {
+  if (candidate_hash != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.candidate_hash_.SetAllocated(candidate_hash, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.candidate_hash_.IsDefault()) {
+    _impl_.candidate_hash_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackMedia.candidate_hash)
+}
+
+// uint32 sample_rate = 5;
+inline void LocalPlaybackMedia::clear_sample_rate() {
+  _impl_.sample_rate_ = 0u;
+}
+inline uint32_t LocalPlaybackMedia::_internal_sample_rate() const {
+  return _impl_.sample_rate_;
+}
+inline uint32_t LocalPlaybackMedia::sample_rate() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.sample_rate)
+  return _internal_sample_rate();
+}
+inline void LocalPlaybackMedia::_internal_set_sample_rate(uint32_t value) {
+  
+  _impl_.sample_rate_ = value;
+}
+inline void LocalPlaybackMedia::set_sample_rate(uint32_t value) {
+  _internal_set_sample_rate(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.sample_rate)
+}
+
+// uint64 sample_count = 6;
+inline void LocalPlaybackMedia::clear_sample_count() {
+  _impl_.sample_count_ = uint64_t{0u};
+}
+inline uint64_t LocalPlaybackMedia::_internal_sample_count() const {
+  return _impl_.sample_count_;
+}
+inline uint64_t LocalPlaybackMedia::sample_count() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.sample_count)
+  return _internal_sample_count();
+}
+inline void LocalPlaybackMedia::_internal_set_sample_count(uint64_t value) {
+  
+  _impl_.sample_count_ = value;
+}
+inline void LocalPlaybackMedia::set_sample_count(uint64_t value) {
+  _internal_set_sample_count(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.sample_count)
+}
+
+// uint32 width = 7;
+inline void LocalPlaybackMedia::clear_width() {
+  _impl_.width_ = 0u;
+}
+inline uint32_t LocalPlaybackMedia::_internal_width() const {
+  return _impl_.width_;
+}
+inline uint32_t LocalPlaybackMedia::width() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.width)
+  return _internal_width();
+}
+inline void LocalPlaybackMedia::_internal_set_width(uint32_t value) {
+  
+  _impl_.width_ = value;
+}
+inline void LocalPlaybackMedia::set_width(uint32_t value) {
+  _internal_set_width(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.width)
+}
+
+// uint32 height = 8;
+inline void LocalPlaybackMedia::clear_height() {
+  _impl_.height_ = 0u;
+}
+inline uint32_t LocalPlaybackMedia::_internal_height() const {
+  return _impl_.height_;
+}
+inline uint32_t LocalPlaybackMedia::height() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.height)
+  return _internal_height();
+}
+inline void LocalPlaybackMedia::_internal_set_height(uint32_t value) {
+  
+  _impl_.height_ = value;
+}
+inline void LocalPlaybackMedia::set_height(uint32_t value) {
+  _internal_set_height(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.height)
+}
+
+// uint32 frame_count = 9;
+inline void LocalPlaybackMedia::clear_frame_count() {
+  _impl_.frame_count_ = 0u;
+}
+inline uint32_t LocalPlaybackMedia::_internal_frame_count() const {
+  return _impl_.frame_count_;
+}
+inline uint32_t LocalPlaybackMedia::frame_count() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.frame_count)
+  return _internal_frame_count();
+}
+inline void LocalPlaybackMedia::_internal_set_frame_count(uint32_t value) {
+  
+  _impl_.frame_count_ = value;
+}
+inline void LocalPlaybackMedia::set_frame_count(uint32_t value) {
+  _internal_set_frame_count(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.frame_count)
+}
+
+// uint32 fps_num = 10;
+inline void LocalPlaybackMedia::clear_fps_num() {
+  _impl_.fps_num_ = 0u;
+}
+inline uint32_t LocalPlaybackMedia::_internal_fps_num() const {
+  return _impl_.fps_num_;
+}
+inline uint32_t LocalPlaybackMedia::fps_num() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.fps_num)
+  return _internal_fps_num();
+}
+inline void LocalPlaybackMedia::_internal_set_fps_num(uint32_t value) {
+  
+  _impl_.fps_num_ = value;
+}
+inline void LocalPlaybackMedia::set_fps_num(uint32_t value) {
+  _internal_set_fps_num(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.fps_num)
+}
+
+// uint32 fps_den = 11;
+inline void LocalPlaybackMedia::clear_fps_den() {
+  _impl_.fps_den_ = 0u;
+}
+inline uint32_t LocalPlaybackMedia::_internal_fps_den() const {
+  return _impl_.fps_den_;
+}
+inline uint32_t LocalPlaybackMedia::fps_den() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.fps_den)
+  return _internal_fps_den();
+}
+inline void LocalPlaybackMedia::_internal_set_fps_den(uint32_t value) {
+  
+  _impl_.fps_den_ = value;
+}
+inline void LocalPlaybackMedia::set_fps_den(uint32_t value) {
+  _internal_set_fps_den(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.fps_den)
+}
+
+// string audio_sha256 = 12;
+inline void LocalPlaybackMedia::clear_audio_sha256() {
+  _impl_.audio_sha256_.ClearToEmpty();
+}
+inline const std::string& LocalPlaybackMedia::audio_sha256() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.audio_sha256)
+  return _internal_audio_sha256();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalPlaybackMedia::set_audio_sha256(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.audio_sha256_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.audio_sha256)
+}
+inline std::string* LocalPlaybackMedia::mutable_audio_sha256() {
+  std::string* _s = _internal_mutable_audio_sha256();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackMedia.audio_sha256)
+  return _s;
+}
+inline const std::string& LocalPlaybackMedia::_internal_audio_sha256() const {
+  return _impl_.audio_sha256_.Get();
+}
+inline void LocalPlaybackMedia::_internal_set_audio_sha256(const std::string& value) {
+  
+  _impl_.audio_sha256_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackMedia::_internal_mutable_audio_sha256() {
+  
+  return _impl_.audio_sha256_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackMedia::release_audio_sha256() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackMedia.audio_sha256)
+  return _impl_.audio_sha256_.Release();
+}
+inline void LocalPlaybackMedia::set_allocated_audio_sha256(std::string* audio_sha256) {
+  if (audio_sha256 != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.audio_sha256_.SetAllocated(audio_sha256, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.audio_sha256_.IsDefault()) {
+    _impl_.audio_sha256_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackMedia.audio_sha256)
+}
+
+// string frames_sha256 = 13;
+inline void LocalPlaybackMedia::clear_frames_sha256() {
+  _impl_.frames_sha256_.ClearToEmpty();
+}
+inline const std::string& LocalPlaybackMedia::frames_sha256() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.frames_sha256)
+  return _internal_frames_sha256();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalPlaybackMedia::set_frames_sha256(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.frames_sha256_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.frames_sha256)
+}
+inline std::string* LocalPlaybackMedia::mutable_frames_sha256() {
+  std::string* _s = _internal_mutable_frames_sha256();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackMedia.frames_sha256)
+  return _s;
+}
+inline const std::string& LocalPlaybackMedia::_internal_frames_sha256() const {
+  return _impl_.frames_sha256_.Get();
+}
+inline void LocalPlaybackMedia::_internal_set_frames_sha256(const std::string& value) {
+  
+  _impl_.frames_sha256_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackMedia::_internal_mutable_frames_sha256() {
+  
+  return _impl_.frames_sha256_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackMedia::release_frames_sha256() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackMedia.frames_sha256)
+  return _impl_.frames_sha256_.Release();
+}
+inline void LocalPlaybackMedia::set_allocated_frames_sha256(std::string* frames_sha256) {
+  if (frames_sha256 != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.frames_sha256_.SetAllocated(frames_sha256, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.frames_sha256_.IsDefault()) {
+    _impl_.frames_sha256_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackMedia.frames_sha256)
+}
+
+// repeated string frame_sha256 = 14;
+inline int LocalPlaybackMedia::_internal_frame_sha256_size() const {
+  return _impl_.frame_sha256_.size();
+}
+inline int LocalPlaybackMedia::frame_sha256_size() const {
+  return _internal_frame_sha256_size();
+}
+inline void LocalPlaybackMedia::clear_frame_sha256() {
+  _impl_.frame_sha256_.Clear();
+}
+inline std::string* LocalPlaybackMedia::add_frame_sha256() {
+  std::string* _s = _internal_add_frame_sha256();
+  // @@protoc_insertion_point(field_add_mutable:nai.v1.LocalPlaybackMedia.frame_sha256)
+  return _s;
+}
+inline const std::string& LocalPlaybackMedia::_internal_frame_sha256(int index) const {
+  return _impl_.frame_sha256_.Get(index);
+}
+inline const std::string& LocalPlaybackMedia::frame_sha256(int index) const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.frame_sha256)
+  return _internal_frame_sha256(index);
+}
+inline std::string* LocalPlaybackMedia::mutable_frame_sha256(int index) {
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackMedia.frame_sha256)
+  return _impl_.frame_sha256_.Mutable(index);
+}
+inline void LocalPlaybackMedia::set_frame_sha256(int index, const std::string& value) {
+  _impl_.frame_sha256_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.frame_sha256)
+}
+inline void LocalPlaybackMedia::set_frame_sha256(int index, std::string&& value) {
+  _impl_.frame_sha256_.Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.frame_sha256)
+}
+inline void LocalPlaybackMedia::set_frame_sha256(int index, const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.frame_sha256_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:nai.v1.LocalPlaybackMedia.frame_sha256)
+}
+inline void LocalPlaybackMedia::set_frame_sha256(int index, const char* value, size_t size) {
+  _impl_.frame_sha256_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:nai.v1.LocalPlaybackMedia.frame_sha256)
+}
+inline std::string* LocalPlaybackMedia::_internal_add_frame_sha256() {
+  return _impl_.frame_sha256_.Add();
+}
+inline void LocalPlaybackMedia::add_frame_sha256(const std::string& value) {
+  _impl_.frame_sha256_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:nai.v1.LocalPlaybackMedia.frame_sha256)
+}
+inline void LocalPlaybackMedia::add_frame_sha256(std::string&& value) {
+  _impl_.frame_sha256_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:nai.v1.LocalPlaybackMedia.frame_sha256)
+}
+inline void LocalPlaybackMedia::add_frame_sha256(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.frame_sha256_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:nai.v1.LocalPlaybackMedia.frame_sha256)
+}
+inline void LocalPlaybackMedia::add_frame_sha256(const char* value, size_t size) {
+  _impl_.frame_sha256_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:nai.v1.LocalPlaybackMedia.frame_sha256)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+LocalPlaybackMedia::frame_sha256() const {
+  // @@protoc_insertion_point(field_list:nai.v1.LocalPlaybackMedia.frame_sha256)
+  return _impl_.frame_sha256_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+LocalPlaybackMedia::mutable_frame_sha256() {
+  // @@protoc_insertion_point(field_mutable_list:nai.v1.LocalPlaybackMedia.frame_sha256)
+  return &_impl_.frame_sha256_;
+}
+
+// string standby_sha256 = 15;
+inline void LocalPlaybackMedia::clear_standby_sha256() {
+  _impl_.standby_sha256_.ClearToEmpty();
+}
+inline const std::string& LocalPlaybackMedia::standby_sha256() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackMedia.standby_sha256)
+  return _internal_standby_sha256();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalPlaybackMedia::set_standby_sha256(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.standby_sha256_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackMedia.standby_sha256)
+}
+inline std::string* LocalPlaybackMedia::mutable_standby_sha256() {
+  std::string* _s = _internal_mutable_standby_sha256();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackMedia.standby_sha256)
+  return _s;
+}
+inline const std::string& LocalPlaybackMedia::_internal_standby_sha256() const {
+  return _impl_.standby_sha256_.Get();
+}
+inline void LocalPlaybackMedia::_internal_set_standby_sha256(const std::string& value) {
+  
+  _impl_.standby_sha256_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackMedia::_internal_mutable_standby_sha256() {
+  
+  return _impl_.standby_sha256_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackMedia::release_standby_sha256() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackMedia.standby_sha256)
+  return _impl_.standby_sha256_.Release();
+}
+inline void LocalPlaybackMedia::set_allocated_standby_sha256(std::string* standby_sha256) {
+  if (standby_sha256 != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.standby_sha256_.SetAllocated(standby_sha256, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.standby_sha256_.IsDefault()) {
+    _impl_.standby_sha256_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackMedia.standby_sha256)
+}
+
+// -------------------------------------------------------------------
+
+// LocalPlaybackGrant
+
+// uint32 version = 1;
+inline void LocalPlaybackGrant::clear_version() {
+  _impl_.version_ = 0u;
+}
+inline uint32_t LocalPlaybackGrant::_internal_version() const {
+  return _impl_.version_;
+}
+inline uint32_t LocalPlaybackGrant::version() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackGrant.version)
+  return _internal_version();
+}
+inline void LocalPlaybackGrant::_internal_set_version(uint32_t value) {
+  
+  _impl_.version_ = value;
+}
+inline void LocalPlaybackGrant::set_version(uint32_t value) {
+  _internal_set_version(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackGrant.version)
+}
+
+// uint64 seq = 2;
+inline void LocalPlaybackGrant::clear_seq() {
+  _impl_.seq_ = uint64_t{0u};
+}
+inline uint64_t LocalPlaybackGrant::_internal_seq() const {
+  return _impl_.seq_;
+}
+inline uint64_t LocalPlaybackGrant::seq() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackGrant.seq)
+  return _internal_seq();
+}
+inline void LocalPlaybackGrant::_internal_set_seq(uint64_t value) {
+  
+  _impl_.seq_ = value;
+}
+inline void LocalPlaybackGrant::set_seq(uint64_t value) {
+  _internal_set_seq(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackGrant.seq)
+}
+
+// .nai.v1.PerformanceCue cue = 3;
+inline bool LocalPlaybackGrant::_internal_has_cue() const {
+  return this != internal_default_instance() && _impl_.cue_ != nullptr;
+}
+inline bool LocalPlaybackGrant::has_cue() const {
+  return _internal_has_cue();
+}
+inline const ::nai::v1::PerformanceCue& LocalPlaybackGrant::_internal_cue() const {
+  const ::nai::v1::PerformanceCue* p = _impl_.cue_;
+  return p != nullptr ? *p : reinterpret_cast<const ::nai::v1::PerformanceCue&>(
+      ::nai::v1::_PerformanceCue_default_instance_);
+}
+inline const ::nai::v1::PerformanceCue& LocalPlaybackGrant::cue() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackGrant.cue)
+  return _internal_cue();
+}
+inline void LocalPlaybackGrant::unsafe_arena_set_allocated_cue(
+    ::nai::v1::PerformanceCue* cue) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.cue_);
+  }
+  _impl_.cue_ = cue;
+  if (cue) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.v1.LocalPlaybackGrant.cue)
+}
+inline ::nai::v1::PerformanceCue* LocalPlaybackGrant::release_cue() {
+  
+  ::nai::v1::PerformanceCue* temp = _impl_.cue_;
+  _impl_.cue_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::nai::v1::PerformanceCue* LocalPlaybackGrant::unsafe_arena_release_cue() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackGrant.cue)
+  
+  ::nai::v1::PerformanceCue* temp = _impl_.cue_;
+  _impl_.cue_ = nullptr;
+  return temp;
+}
+inline ::nai::v1::PerformanceCue* LocalPlaybackGrant::_internal_mutable_cue() {
+  
+  if (_impl_.cue_ == nullptr) {
+    auto* p = CreateMaybeMessage<::nai::v1::PerformanceCue>(GetArenaForAllocation());
+    _impl_.cue_ = p;
+  }
+  return _impl_.cue_;
+}
+inline ::nai::v1::PerformanceCue* LocalPlaybackGrant::mutable_cue() {
+  ::nai::v1::PerformanceCue* _msg = _internal_mutable_cue();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackGrant.cue)
+  return _msg;
+}
+inline void LocalPlaybackGrant::set_allocated_cue(::nai::v1::PerformanceCue* cue) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.cue_);
+  }
+  if (cue) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
+                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(cue));
+    if (message_arena != submessage_arena) {
+      cue = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, cue, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.cue_ = cue;
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackGrant.cue)
+}
+
+// .nai.v1.Approval approval = 4;
+inline bool LocalPlaybackGrant::_internal_has_approval() const {
+  return this != internal_default_instance() && _impl_.approval_ != nullptr;
+}
+inline bool LocalPlaybackGrant::has_approval() const {
+  return _internal_has_approval();
+}
+inline const ::nai::v1::Approval& LocalPlaybackGrant::_internal_approval() const {
+  const ::nai::v1::Approval* p = _impl_.approval_;
+  return p != nullptr ? *p : reinterpret_cast<const ::nai::v1::Approval&>(
+      ::nai::v1::_Approval_default_instance_);
+}
+inline const ::nai::v1::Approval& LocalPlaybackGrant::approval() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackGrant.approval)
+  return _internal_approval();
+}
+inline void LocalPlaybackGrant::unsafe_arena_set_allocated_approval(
+    ::nai::v1::Approval* approval) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.approval_);
+  }
+  _impl_.approval_ = approval;
+  if (approval) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.v1.LocalPlaybackGrant.approval)
+}
+inline ::nai::v1::Approval* LocalPlaybackGrant::release_approval() {
+  
+  ::nai::v1::Approval* temp = _impl_.approval_;
+  _impl_.approval_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::nai::v1::Approval* LocalPlaybackGrant::unsafe_arena_release_approval() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackGrant.approval)
+  
+  ::nai::v1::Approval* temp = _impl_.approval_;
+  _impl_.approval_ = nullptr;
+  return temp;
+}
+inline ::nai::v1::Approval* LocalPlaybackGrant::_internal_mutable_approval() {
+  
+  if (_impl_.approval_ == nullptr) {
+    auto* p = CreateMaybeMessage<::nai::v1::Approval>(GetArenaForAllocation());
+    _impl_.approval_ = p;
+  }
+  return _impl_.approval_;
+}
+inline ::nai::v1::Approval* LocalPlaybackGrant::mutable_approval() {
+  ::nai::v1::Approval* _msg = _internal_mutable_approval();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackGrant.approval)
+  return _msg;
+}
+inline void LocalPlaybackGrant::set_allocated_approval(::nai::v1::Approval* approval) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.approval_);
+  }
+  if (approval) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
+                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(approval));
+    if (message_arena != submessage_arena) {
+      approval = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, approval, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.approval_ = approval;
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackGrant.approval)
+}
+
+// .nai.v1.PlaybackLease lease = 5;
+inline bool LocalPlaybackGrant::_internal_has_lease() const {
+  return this != internal_default_instance() && _impl_.lease_ != nullptr;
+}
+inline bool LocalPlaybackGrant::has_lease() const {
+  return _internal_has_lease();
+}
+inline void LocalPlaybackGrant::clear_lease() {
+  if (GetArenaForAllocation() == nullptr && _impl_.lease_ != nullptr) {
+    delete _impl_.lease_;
+  }
+  _impl_.lease_ = nullptr;
+}
+inline const ::nai::v1::PlaybackLease& LocalPlaybackGrant::_internal_lease() const {
+  const ::nai::v1::PlaybackLease* p = _impl_.lease_;
+  return p != nullptr ? *p : reinterpret_cast<const ::nai::v1::PlaybackLease&>(
+      ::nai::v1::_PlaybackLease_default_instance_);
+}
+inline const ::nai::v1::PlaybackLease& LocalPlaybackGrant::lease() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackGrant.lease)
+  return _internal_lease();
+}
+inline void LocalPlaybackGrant::unsafe_arena_set_allocated_lease(
+    ::nai::v1::PlaybackLease* lease) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.lease_);
+  }
+  _impl_.lease_ = lease;
+  if (lease) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.v1.LocalPlaybackGrant.lease)
+}
+inline ::nai::v1::PlaybackLease* LocalPlaybackGrant::release_lease() {
+  
+  ::nai::v1::PlaybackLease* temp = _impl_.lease_;
+  _impl_.lease_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::nai::v1::PlaybackLease* LocalPlaybackGrant::unsafe_arena_release_lease() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackGrant.lease)
+  
+  ::nai::v1::PlaybackLease* temp = _impl_.lease_;
+  _impl_.lease_ = nullptr;
+  return temp;
+}
+inline ::nai::v1::PlaybackLease* LocalPlaybackGrant::_internal_mutable_lease() {
+  
+  if (_impl_.lease_ == nullptr) {
+    auto* p = CreateMaybeMessage<::nai::v1::PlaybackLease>(GetArenaForAllocation());
+    _impl_.lease_ = p;
+  }
+  return _impl_.lease_;
+}
+inline ::nai::v1::PlaybackLease* LocalPlaybackGrant::mutable_lease() {
+  ::nai::v1::PlaybackLease* _msg = _internal_mutable_lease();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackGrant.lease)
+  return _msg;
+}
+inline void LocalPlaybackGrant::set_allocated_lease(::nai::v1::PlaybackLease* lease) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.lease_;
+  }
+  if (lease) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(lease);
+    if (message_arena != submessage_arena) {
+      lease = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, lease, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.lease_ = lease;
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackGrant.lease)
+}
+
+// string media_sha256 = 6;
+inline void LocalPlaybackGrant::clear_media_sha256() {
+  _impl_.media_sha256_.ClearToEmpty();
+}
+inline const std::string& LocalPlaybackGrant::media_sha256() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackGrant.media_sha256)
+  return _internal_media_sha256();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalPlaybackGrant::set_media_sha256(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.media_sha256_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackGrant.media_sha256)
+}
+inline std::string* LocalPlaybackGrant::mutable_media_sha256() {
+  std::string* _s = _internal_mutable_media_sha256();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackGrant.media_sha256)
+  return _s;
+}
+inline const std::string& LocalPlaybackGrant::_internal_media_sha256() const {
+  return _impl_.media_sha256_.Get();
+}
+inline void LocalPlaybackGrant::_internal_set_media_sha256(const std::string& value) {
+  
+  _impl_.media_sha256_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackGrant::_internal_mutable_media_sha256() {
+  
+  return _impl_.media_sha256_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackGrant::release_media_sha256() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackGrant.media_sha256)
+  return _impl_.media_sha256_.Release();
+}
+inline void LocalPlaybackGrant::set_allocated_media_sha256(std::string* media_sha256) {
+  if (media_sha256 != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.media_sha256_.SetAllocated(media_sha256, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.media_sha256_.IsDefault()) {
+    _impl_.media_sha256_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackGrant.media_sha256)
+}
+
+// -------------------------------------------------------------------
+
+// LocalPlaybackStatus
+
+// uint32 version = 1;
+inline void LocalPlaybackStatus::clear_version() {
+  _impl_.version_ = 0u;
+}
+inline uint32_t LocalPlaybackStatus::_internal_version() const {
+  return _impl_.version_;
+}
+inline uint32_t LocalPlaybackStatus::version() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.version)
+  return _internal_version();
+}
+inline void LocalPlaybackStatus::_internal_set_version(uint32_t value) {
+  
+  _impl_.version_ = value;
+}
+inline void LocalPlaybackStatus::set_version(uint32_t value) {
+  _internal_set_version(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.version)
+}
+
+// string state = 2;
+inline void LocalPlaybackStatus::clear_state() {
+  _impl_.state_.ClearToEmpty();
+}
+inline const std::string& LocalPlaybackStatus::state() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.state)
+  return _internal_state();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalPlaybackStatus::set_state(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.state_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.state)
+}
+inline std::string* LocalPlaybackStatus::mutable_state() {
+  std::string* _s = _internal_mutable_state();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackStatus.state)
+  return _s;
+}
+inline const std::string& LocalPlaybackStatus::_internal_state() const {
+  return _impl_.state_.Get();
+}
+inline void LocalPlaybackStatus::_internal_set_state(const std::string& value) {
+  
+  _impl_.state_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackStatus::_internal_mutable_state() {
+  
+  return _impl_.state_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackStatus::release_state() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackStatus.state)
+  return _impl_.state_.Release();
+}
+inline void LocalPlaybackStatus::set_allocated_state(std::string* state) {
+  if (state != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.state_.SetAllocated(state, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.state_.IsDefault()) {
+    _impl_.state_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackStatus.state)
+}
+
+// optional uint64 copied_samples = 3;
+inline bool LocalPlaybackStatus::_internal_has_copied_samples() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  return value;
+}
+inline bool LocalPlaybackStatus::has_copied_samples() const {
+  return _internal_has_copied_samples();
+}
+inline void LocalPlaybackStatus::clear_copied_samples() {
+  _impl_.copied_samples_ = uint64_t{0u};
+  _impl_._has_bits_[0] &= ~0x00000001u;
+}
+inline uint64_t LocalPlaybackStatus::_internal_copied_samples() const {
+  return _impl_.copied_samples_;
+}
+inline uint64_t LocalPlaybackStatus::copied_samples() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.copied_samples)
+  return _internal_copied_samples();
+}
+inline void LocalPlaybackStatus::_internal_set_copied_samples(uint64_t value) {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  _impl_.copied_samples_ = value;
+}
+inline void LocalPlaybackStatus::set_copied_samples(uint64_t value) {
+  _internal_set_copied_samples(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.copied_samples)
+}
+
+// optional uint64 window_updates = 4;
+inline bool LocalPlaybackStatus::_internal_has_window_updates() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  return value;
+}
+inline bool LocalPlaybackStatus::has_window_updates() const {
+  return _internal_has_window_updates();
+}
+inline void LocalPlaybackStatus::clear_window_updates() {
+  _impl_.window_updates_ = uint64_t{0u};
+  _impl_._has_bits_[0] &= ~0x00000002u;
+}
+inline uint64_t LocalPlaybackStatus::_internal_window_updates() const {
+  return _impl_.window_updates_;
+}
+inline uint64_t LocalPlaybackStatus::window_updates() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.window_updates)
+  return _internal_window_updates();
+}
+inline void LocalPlaybackStatus::_internal_set_window_updates(uint64_t value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.window_updates_ = value;
+}
+inline void LocalPlaybackStatus::set_window_updates(uint64_t value) {
+  _internal_set_window_updates(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.window_updates)
+}
+
+// string error_code = 5;
+inline void LocalPlaybackStatus::clear_error_code() {
+  _impl_.error_code_.ClearToEmpty();
+}
+inline const std::string& LocalPlaybackStatus::error_code() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.error_code)
+  return _internal_error_code();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalPlaybackStatus::set_error_code(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.error_code_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.error_code)
+}
+inline std::string* LocalPlaybackStatus::mutable_error_code() {
+  std::string* _s = _internal_mutable_error_code();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackStatus.error_code)
+  return _s;
+}
+inline const std::string& LocalPlaybackStatus::_internal_error_code() const {
+  return _impl_.error_code_.Get();
+}
+inline void LocalPlaybackStatus::_internal_set_error_code(const std::string& value) {
+  
+  _impl_.error_code_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackStatus::_internal_mutable_error_code() {
+  
+  return _impl_.error_code_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackStatus::release_error_code() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackStatus.error_code)
+  return _impl_.error_code_.Release();
+}
+inline void LocalPlaybackStatus::set_allocated_error_code(std::string* error_code) {
+  if (error_code != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.error_code_.SetAllocated(error_code, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.error_code_.IsDefault()) {
+    _impl_.error_code_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackStatus.error_code)
+}
+
+// bool actual_local_playback_completed = 6;
+inline void LocalPlaybackStatus::clear_actual_local_playback_completed() {
+  _impl_.actual_local_playback_completed_ = false;
+}
+inline bool LocalPlaybackStatus::_internal_actual_local_playback_completed() const {
+  return _impl_.actual_local_playback_completed_;
+}
+inline bool LocalPlaybackStatus::actual_local_playback_completed() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.actual_local_playback_completed)
+  return _internal_actual_local_playback_completed();
+}
+inline void LocalPlaybackStatus::_internal_set_actual_local_playback_completed(bool value) {
+  
+  _impl_.actual_local_playback_completed_ = value;
+}
+inline void LocalPlaybackStatus::set_actual_local_playback_completed(bool value) {
+  _internal_set_actual_local_playback_completed(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.actual_local_playback_completed)
+}
+
+// uint32 audio_stream_open_count = 7;
+inline void LocalPlaybackStatus::clear_audio_stream_open_count() {
+  _impl_.audio_stream_open_count_ = 0u;
+}
+inline uint32_t LocalPlaybackStatus::_internal_audio_stream_open_count() const {
+  return _impl_.audio_stream_open_count_;
+}
+inline uint32_t LocalPlaybackStatus::audio_stream_open_count() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.audio_stream_open_count)
+  return _internal_audio_stream_open_count();
+}
+inline void LocalPlaybackStatus::_internal_set_audio_stream_open_count(uint32_t value) {
+  
+  _impl_.audio_stream_open_count_ = value;
+}
+inline void LocalPlaybackStatus::set_audio_stream_open_count(uint32_t value) {
+  _internal_set_audio_stream_open_count(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.audio_stream_open_count)
+}
+
+// string standby_sha256 = 8;
+inline void LocalPlaybackStatus::clear_standby_sha256() {
+  _impl_.standby_sha256_.ClearToEmpty();
+}
+inline const std::string& LocalPlaybackStatus::standby_sha256() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.standby_sha256)
+  return _internal_standby_sha256();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalPlaybackStatus::set_standby_sha256(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.standby_sha256_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.standby_sha256)
+}
+inline std::string* LocalPlaybackStatus::mutable_standby_sha256() {
+  std::string* _s = _internal_mutable_standby_sha256();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackStatus.standby_sha256)
+  return _s;
+}
+inline const std::string& LocalPlaybackStatus::_internal_standby_sha256() const {
+  return _impl_.standby_sha256_.Get();
+}
+inline void LocalPlaybackStatus::_internal_set_standby_sha256(const std::string& value) {
+  
+  _impl_.standby_sha256_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackStatus::_internal_mutable_standby_sha256() {
+  
+  return _impl_.standby_sha256_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackStatus::release_standby_sha256() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackStatus.standby_sha256)
+  return _impl_.standby_sha256_.Release();
+}
+inline void LocalPlaybackStatus::set_allocated_standby_sha256(std::string* standby_sha256) {
+  if (standby_sha256 != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.standby_sha256_.SetAllocated(standby_sha256, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.standby_sha256_.IsDefault()) {
+    _impl_.standby_sha256_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackStatus.standby_sha256)
+}
+
+// string media_sha256 = 9;
+inline void LocalPlaybackStatus::clear_media_sha256() {
+  _impl_.media_sha256_.ClearToEmpty();
+}
+inline const std::string& LocalPlaybackStatus::media_sha256() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.media_sha256)
+  return _internal_media_sha256();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalPlaybackStatus::set_media_sha256(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.media_sha256_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.media_sha256)
+}
+inline std::string* LocalPlaybackStatus::mutable_media_sha256() {
+  std::string* _s = _internal_mutable_media_sha256();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackStatus.media_sha256)
+  return _s;
+}
+inline const std::string& LocalPlaybackStatus::_internal_media_sha256() const {
+  return _impl_.media_sha256_.Get();
+}
+inline void LocalPlaybackStatus::_internal_set_media_sha256(const std::string& value) {
+  
+  _impl_.media_sha256_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackStatus::_internal_mutable_media_sha256() {
+  
+  return _impl_.media_sha256_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackStatus::release_media_sha256() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackStatus.media_sha256)
+  return _impl_.media_sha256_.Release();
+}
+inline void LocalPlaybackStatus::set_allocated_media_sha256(std::string* media_sha256) {
+  if (media_sha256 != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.media_sha256_.SetAllocated(media_sha256, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.media_sha256_.IsDefault()) {
+    _impl_.media_sha256_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackStatus.media_sha256)
+}
+
+// optional uint64 callback_drained_samples = 10;
+inline bool LocalPlaybackStatus::_internal_has_callback_drained_samples() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  return value;
+}
+inline bool LocalPlaybackStatus::has_callback_drained_samples() const {
+  return _internal_has_callback_drained_samples();
+}
+inline void LocalPlaybackStatus::clear_callback_drained_samples() {
+  _impl_.callback_drained_samples_ = uint64_t{0u};
+  _impl_._has_bits_[0] &= ~0x00000004u;
+}
+inline uint64_t LocalPlaybackStatus::_internal_callback_drained_samples() const {
+  return _impl_.callback_drained_samples_;
+}
+inline uint64_t LocalPlaybackStatus::callback_drained_samples() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.callback_drained_samples)
+  return _internal_callback_drained_samples();
+}
+inline void LocalPlaybackStatus::_internal_set_callback_drained_samples(uint64_t value) {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_.callback_drained_samples_ = value;
+}
+inline void LocalPlaybackStatus::set_callback_drained_samples(uint64_t value) {
+  _internal_set_callback_drained_samples(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.callback_drained_samples)
+}
+
+// bool callback_drain_observed = 11;
+inline void LocalPlaybackStatus::clear_callback_drain_observed() {
+  _impl_.callback_drain_observed_ = false;
+}
+inline bool LocalPlaybackStatus::_internal_callback_drain_observed() const {
+  return _impl_.callback_drain_observed_;
+}
+inline bool LocalPlaybackStatus::callback_drain_observed() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.callback_drain_observed)
+  return _internal_callback_drain_observed();
+}
+inline void LocalPlaybackStatus::_internal_set_callback_drain_observed(bool value) {
+  
+  _impl_.callback_drain_observed_ = value;
+}
+inline void LocalPlaybackStatus::set_callback_drain_observed(bool value) {
+  _internal_set_callback_drain_observed(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.callback_drain_observed)
+}
+
+// optional uint64 device_played_samples = 12;
+inline bool LocalPlaybackStatus::_internal_has_device_played_samples() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000008u) != 0;
+  return value;
+}
+inline bool LocalPlaybackStatus::has_device_played_samples() const {
+  return _internal_has_device_played_samples();
+}
+inline void LocalPlaybackStatus::clear_device_played_samples() {
+  _impl_.device_played_samples_ = uint64_t{0u};
+  _impl_._has_bits_[0] &= ~0x00000008u;
+}
+inline uint64_t LocalPlaybackStatus::_internal_device_played_samples() const {
+  return _impl_.device_played_samples_;
+}
+inline uint64_t LocalPlaybackStatus::device_played_samples() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.device_played_samples)
+  return _internal_device_played_samples();
+}
+inline void LocalPlaybackStatus::_internal_set_device_played_samples(uint64_t value) {
+  _impl_._has_bits_[0] |= 0x00000008u;
+  _impl_.device_played_samples_ = value;
+}
+inline void LocalPlaybackStatus::set_device_played_samples(uint64_t value) {
+  _internal_set_device_played_samples(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.device_played_samples)
+}
+
+// bool device_position_observed = 13;
+inline void LocalPlaybackStatus::clear_device_position_observed() {
+  _impl_.device_position_observed_ = false;
+}
+inline bool LocalPlaybackStatus::_internal_device_position_observed() const {
+  return _impl_.device_position_observed_;
+}
+inline bool LocalPlaybackStatus::device_position_observed() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.device_position_observed)
+  return _internal_device_position_observed();
+}
+inline void LocalPlaybackStatus::_internal_set_device_position_observed(bool value) {
+  
+  _impl_.device_position_observed_ = value;
+}
+inline void LocalPlaybackStatus::set_device_position_observed(bool value) {
+  _internal_set_device_position_observed(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.device_position_observed)
+}
+
+// string audio_backend = 14;
+inline void LocalPlaybackStatus::clear_audio_backend() {
+  _impl_.audio_backend_.ClearToEmpty();
+}
+inline const std::string& LocalPlaybackStatus::audio_backend() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.audio_backend)
+  return _internal_audio_backend();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalPlaybackStatus::set_audio_backend(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.audio_backend_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.audio_backend)
+}
+inline std::string* LocalPlaybackStatus::mutable_audio_backend() {
+  std::string* _s = _internal_mutable_audio_backend();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalPlaybackStatus.audio_backend)
+  return _s;
+}
+inline const std::string& LocalPlaybackStatus::_internal_audio_backend() const {
+  return _impl_.audio_backend_.Get();
+}
+inline void LocalPlaybackStatus::_internal_set_audio_backend(const std::string& value) {
+  
+  _impl_.audio_backend_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackStatus::_internal_mutable_audio_backend() {
+  
+  return _impl_.audio_backend_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalPlaybackStatus::release_audio_backend() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalPlaybackStatus.audio_backend)
+  return _impl_.audio_backend_.Release();
+}
+inline void LocalPlaybackStatus::set_allocated_audio_backend(std::string* audio_backend) {
+  if (audio_backend != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.audio_backend_.SetAllocated(audio_backend, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.audio_backend_.IsDefault()) {
+    _impl_.audio_backend_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalPlaybackStatus.audio_backend)
+}
+
+// optional uint32 video_frame_index = 15;
+inline bool LocalPlaybackStatus::_internal_has_video_frame_index() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000010u) != 0;
+  return value;
+}
+inline bool LocalPlaybackStatus::has_video_frame_index() const {
+  return _internal_has_video_frame_index();
+}
+inline void LocalPlaybackStatus::clear_video_frame_index() {
+  _impl_.video_frame_index_ = 0u;
+  _impl_._has_bits_[0] &= ~0x00000010u;
+}
+inline uint32_t LocalPlaybackStatus::_internal_video_frame_index() const {
+  return _impl_.video_frame_index_;
+}
+inline uint32_t LocalPlaybackStatus::video_frame_index() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.video_frame_index)
+  return _internal_video_frame_index();
+}
+inline void LocalPlaybackStatus::_internal_set_video_frame_index(uint32_t value) {
+  _impl_._has_bits_[0] |= 0x00000010u;
+  _impl_.video_frame_index_ = value;
+}
+inline void LocalPlaybackStatus::set_video_frame_index(uint32_t value) {
+  _internal_set_video_frame_index(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.video_frame_index)
+}
+
+// optional uint64 video_device_samples = 16;
+inline bool LocalPlaybackStatus::_internal_has_video_device_samples() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000020u) != 0;
+  return value;
+}
+inline bool LocalPlaybackStatus::has_video_device_samples() const {
+  return _internal_has_video_device_samples();
+}
+inline void LocalPlaybackStatus::clear_video_device_samples() {
+  _impl_.video_device_samples_ = uint64_t{0u};
+  _impl_._has_bits_[0] &= ~0x00000020u;
+}
+inline uint64_t LocalPlaybackStatus::_internal_video_device_samples() const {
+  return _impl_.video_device_samples_;
+}
+inline uint64_t LocalPlaybackStatus::video_device_samples() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.video_device_samples)
+  return _internal_video_device_samples();
+}
+inline void LocalPlaybackStatus::_internal_set_video_device_samples(uint64_t value) {
+  _impl_._has_bits_[0] |= 0x00000020u;
+  _impl_.video_device_samples_ = value;
+}
+inline void LocalPlaybackStatus::set_video_device_samples(uint64_t value) {
+  _internal_set_video_device_samples(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.video_device_samples)
+}
+
+// bool video_tail_submitted = 17;
+inline void LocalPlaybackStatus::clear_video_tail_submitted() {
+  _impl_.video_tail_submitted_ = false;
+}
+inline bool LocalPlaybackStatus::_internal_video_tail_submitted() const {
+  return _impl_.video_tail_submitted_;
+}
+inline bool LocalPlaybackStatus::video_tail_submitted() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalPlaybackStatus.video_tail_submitted)
+  return _internal_video_tail_submitted();
+}
+inline void LocalPlaybackStatus::_internal_set_video_tail_submitted(bool value) {
+  
+  _impl_.video_tail_submitted_ = value;
+}
+inline void LocalPlaybackStatus::set_video_tail_submitted(bool value) {
+  _internal_set_video_tail_submitted(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalPlaybackStatus.video_tail_submitted)
+}
+
+// -------------------------------------------------------------------
+
+// NativeDeviceSmokeReport
+
+// uint32 schema_version = 1;
+inline void NativeDeviceSmokeReport::clear_schema_version() {
+  _impl_.schema_version_ = 0u;
+}
+inline uint32_t NativeDeviceSmokeReport::_internal_schema_version() const {
+  return _impl_.schema_version_;
+}
+inline uint32_t NativeDeviceSmokeReport::schema_version() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.schema_version)
+  return _internal_schema_version();
+}
+inline void NativeDeviceSmokeReport::_internal_set_schema_version(uint32_t value) {
+  
+  _impl_.schema_version_ = value;
+}
+inline void NativeDeviceSmokeReport::set_schema_version(uint32_t value) {
+  _internal_set_schema_version(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.schema_version)
+}
+
+// string scope = 2;
+inline void NativeDeviceSmokeReport::clear_scope() {
+  _impl_.scope_.ClearToEmpty();
+}
+inline const std::string& NativeDeviceSmokeReport::scope() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.scope)
+  return _internal_scope();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void NativeDeviceSmokeReport::set_scope(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.scope_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.scope)
+}
+inline std::string* NativeDeviceSmokeReport::mutable_scope() {
+  std::string* _s = _internal_mutable_scope();
+  // @@protoc_insertion_point(field_mutable:nai.v1.NativeDeviceSmokeReport.scope)
+  return _s;
+}
+inline const std::string& NativeDeviceSmokeReport::_internal_scope() const {
+  return _impl_.scope_.Get();
+}
+inline void NativeDeviceSmokeReport::_internal_set_scope(const std::string& value) {
+  
+  _impl_.scope_.Set(value, GetArenaForAllocation());
+}
+inline std::string* NativeDeviceSmokeReport::_internal_mutable_scope() {
+  
+  return _impl_.scope_.Mutable(GetArenaForAllocation());
+}
+inline std::string* NativeDeviceSmokeReport::release_scope() {
+  // @@protoc_insertion_point(field_release:nai.v1.NativeDeviceSmokeReport.scope)
+  return _impl_.scope_.Release();
+}
+inline void NativeDeviceSmokeReport::set_allocated_scope(std::string* scope) {
+  if (scope != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.scope_.SetAllocated(scope, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.scope_.IsDefault()) {
+    _impl_.scope_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.NativeDeviceSmokeReport.scope)
+}
+
+// string scenario = 3;
+inline void NativeDeviceSmokeReport::clear_scenario() {
+  _impl_.scenario_.ClearToEmpty();
+}
+inline const std::string& NativeDeviceSmokeReport::scenario() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.scenario)
+  return _internal_scenario();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void NativeDeviceSmokeReport::set_scenario(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.scenario_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.scenario)
+}
+inline std::string* NativeDeviceSmokeReport::mutable_scenario() {
+  std::string* _s = _internal_mutable_scenario();
+  // @@protoc_insertion_point(field_mutable:nai.v1.NativeDeviceSmokeReport.scenario)
+  return _s;
+}
+inline const std::string& NativeDeviceSmokeReport::_internal_scenario() const {
+  return _impl_.scenario_.Get();
+}
+inline void NativeDeviceSmokeReport::_internal_set_scenario(const std::string& value) {
+  
+  _impl_.scenario_.Set(value, GetArenaForAllocation());
+}
+inline std::string* NativeDeviceSmokeReport::_internal_mutable_scenario() {
+  
+  return _impl_.scenario_.Mutable(GetArenaForAllocation());
+}
+inline std::string* NativeDeviceSmokeReport::release_scenario() {
+  // @@protoc_insertion_point(field_release:nai.v1.NativeDeviceSmokeReport.scenario)
+  return _impl_.scenario_.Release();
+}
+inline void NativeDeviceSmokeReport::set_allocated_scenario(std::string* scenario) {
+  if (scenario != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.scenario_.SetAllocated(scenario, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.scenario_.IsDefault()) {
+    _impl_.scenario_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.NativeDeviceSmokeReport.scenario)
+}
+
+// string backend = 4;
+inline void NativeDeviceSmokeReport::clear_backend() {
+  _impl_.backend_.ClearToEmpty();
+}
+inline const std::string& NativeDeviceSmokeReport::backend() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.backend)
+  return _internal_backend();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void NativeDeviceSmokeReport::set_backend(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.backend_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.backend)
+}
+inline std::string* NativeDeviceSmokeReport::mutable_backend() {
+  std::string* _s = _internal_mutable_backend();
+  // @@protoc_insertion_point(field_mutable:nai.v1.NativeDeviceSmokeReport.backend)
+  return _s;
+}
+inline const std::string& NativeDeviceSmokeReport::_internal_backend() const {
+  return _impl_.backend_.Get();
+}
+inline void NativeDeviceSmokeReport::_internal_set_backend(const std::string& value) {
+  
+  _impl_.backend_.Set(value, GetArenaForAllocation());
+}
+inline std::string* NativeDeviceSmokeReport::_internal_mutable_backend() {
+  
+  return _impl_.backend_.Mutable(GetArenaForAllocation());
+}
+inline std::string* NativeDeviceSmokeReport::release_backend() {
+  // @@protoc_insertion_point(field_release:nai.v1.NativeDeviceSmokeReport.backend)
+  return _impl_.backend_.Release();
+}
+inline void NativeDeviceSmokeReport::set_allocated_backend(std::string* backend) {
+  if (backend != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.backend_.SetAllocated(backend, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.backend_.IsDefault()) {
+    _impl_.backend_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.NativeDeviceSmokeReport.backend)
+}
+
+// bool audio_opened = 5;
+inline void NativeDeviceSmokeReport::clear_audio_opened() {
+  _impl_.audio_opened_ = false;
+}
+inline bool NativeDeviceSmokeReport::_internal_audio_opened() const {
+  return _impl_.audio_opened_;
+}
+inline bool NativeDeviceSmokeReport::audio_opened() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.audio_opened)
+  return _internal_audio_opened();
+}
+inline void NativeDeviceSmokeReport::_internal_set_audio_opened(bool value) {
+  
+  _impl_.audio_opened_ = value;
+}
+inline void NativeDeviceSmokeReport::set_audio_opened(bool value) {
+  _internal_set_audio_opened(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.audio_opened)
+}
+
+// bool window_opened = 6;
+inline void NativeDeviceSmokeReport::clear_window_opened() {
+  _impl_.window_opened_ = false;
+}
+inline bool NativeDeviceSmokeReport::_internal_window_opened() const {
+  return _impl_.window_opened_;
+}
+inline bool NativeDeviceSmokeReport::window_opened() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.window_opened)
+  return _internal_window_opened();
+}
+inline void NativeDeviceSmokeReport::_internal_set_window_opened(bool value) {
+  
+  _impl_.window_opened_ = value;
+}
+inline void NativeDeviceSmokeReport::set_window_opened(bool value) {
+  _internal_set_window_opened(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.window_opened)
+}
+
+// uint32 sample_rate = 7;
+inline void NativeDeviceSmokeReport::clear_sample_rate() {
+  _impl_.sample_rate_ = 0u;
+}
+inline uint32_t NativeDeviceSmokeReport::_internal_sample_rate() const {
+  return _impl_.sample_rate_;
+}
+inline uint32_t NativeDeviceSmokeReport::sample_rate() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.sample_rate)
+  return _internal_sample_rate();
+}
+inline void NativeDeviceSmokeReport::_internal_set_sample_rate(uint32_t value) {
+  
+  _impl_.sample_rate_ = value;
+}
+inline void NativeDeviceSmokeReport::set_sample_rate(uint32_t value) {
+  _internal_set_sample_rate(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.sample_rate)
+}
+
+// uint32 channels = 8;
+inline void NativeDeviceSmokeReport::clear_channels() {
+  _impl_.channels_ = 0u;
+}
+inline uint32_t NativeDeviceSmokeReport::_internal_channels() const {
+  return _impl_.channels_;
+}
+inline uint32_t NativeDeviceSmokeReport::channels() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.channels)
+  return _internal_channels();
+}
+inline void NativeDeviceSmokeReport::_internal_set_channels(uint32_t value) {
+  
+  _impl_.channels_ = value;
+}
+inline void NativeDeviceSmokeReport::set_channels(uint32_t value) {
+  _internal_set_channels(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.channels)
+}
+
+// uint64 callbacks = 9;
+inline void NativeDeviceSmokeReport::clear_callbacks() {
+  _impl_.callbacks_ = uint64_t{0u};
+}
+inline uint64_t NativeDeviceSmokeReport::_internal_callbacks() const {
+  return _impl_.callbacks_;
+}
+inline uint64_t NativeDeviceSmokeReport::callbacks() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.callbacks)
+  return _internal_callbacks();
+}
+inline void NativeDeviceSmokeReport::_internal_set_callbacks(uint64_t value) {
+  
+  _impl_.callbacks_ = value;
+}
+inline void NativeDeviceSmokeReport::set_callbacks(uint64_t value) {
+  _internal_set_callbacks(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.callbacks)
+}
+
+// uint64 copied_interleaved_samples = 10;
+inline void NativeDeviceSmokeReport::clear_copied_interleaved_samples() {
+  _impl_.copied_interleaved_samples_ = uint64_t{0u};
+}
+inline uint64_t NativeDeviceSmokeReport::_internal_copied_interleaved_samples() const {
+  return _impl_.copied_interleaved_samples_;
+}
+inline uint64_t NativeDeviceSmokeReport::copied_interleaved_samples() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.copied_interleaved_samples)
+  return _internal_copied_interleaved_samples();
+}
+inline void NativeDeviceSmokeReport::_internal_set_copied_interleaved_samples(uint64_t value) {
+  
+  _impl_.copied_interleaved_samples_ = value;
+}
+inline void NativeDeviceSmokeReport::set_copied_interleaved_samples(uint64_t value) {
+  _internal_set_copied_interleaved_samples(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.copied_interleaved_samples)
+}
+
+// uint64 silent_callbacks_after_stop = 11;
+inline void NativeDeviceSmokeReport::clear_silent_callbacks_after_stop() {
+  _impl_.silent_callbacks_after_stop_ = uint64_t{0u};
+}
+inline uint64_t NativeDeviceSmokeReport::_internal_silent_callbacks_after_stop() const {
+  return _impl_.silent_callbacks_after_stop_;
+}
+inline uint64_t NativeDeviceSmokeReport::silent_callbacks_after_stop() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.silent_callbacks_after_stop)
+  return _internal_silent_callbacks_after_stop();
+}
+inline void NativeDeviceSmokeReport::_internal_set_silent_callbacks_after_stop(uint64_t value) {
+  
+  _impl_.silent_callbacks_after_stop_ = value;
+}
+inline void NativeDeviceSmokeReport::set_silent_callbacks_after_stop(uint64_t value) {
+  _internal_set_silent_callbacks_after_stop(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.silent_callbacks_after_stop)
+}
+
+// uint64 nonzero_callbacks_after_stop = 12;
+inline void NativeDeviceSmokeReport::clear_nonzero_callbacks_after_stop() {
+  _impl_.nonzero_callbacks_after_stop_ = uint64_t{0u};
+}
+inline uint64_t NativeDeviceSmokeReport::_internal_nonzero_callbacks_after_stop() const {
+  return _impl_.nonzero_callbacks_after_stop_;
+}
+inline uint64_t NativeDeviceSmokeReport::nonzero_callbacks_after_stop() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.nonzero_callbacks_after_stop)
+  return _internal_nonzero_callbacks_after_stop();
+}
+inline void NativeDeviceSmokeReport::_internal_set_nonzero_callbacks_after_stop(uint64_t value) {
+  
+  _impl_.nonzero_callbacks_after_stop_ = value;
+}
+inline void NativeDeviceSmokeReport::set_nonzero_callbacks_after_stop(uint64_t value) {
+  _internal_set_nonzero_callbacks_after_stop(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.nonzero_callbacks_after_stop)
+}
+
+// uint64 window_updates = 13;
+inline void NativeDeviceSmokeReport::clear_window_updates() {
+  _impl_.window_updates_ = uint64_t{0u};
+}
+inline uint64_t NativeDeviceSmokeReport::_internal_window_updates() const {
+  return _impl_.window_updates_;
+}
+inline uint64_t NativeDeviceSmokeReport::window_updates() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.window_updates)
+  return _internal_window_updates();
+}
+inline void NativeDeviceSmokeReport::_internal_set_window_updates(uint64_t value) {
+  
+  _impl_.window_updates_ = value;
+}
+inline void NativeDeviceSmokeReport::set_window_updates(uint64_t value) {
+  _internal_set_window_updates(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.window_updates)
+}
+
+// uint64 max_predicted_latency_us = 14;
+inline void NativeDeviceSmokeReport::clear_max_predicted_latency_us() {
+  _impl_.max_predicted_latency_us_ = uint64_t{0u};
+}
+inline uint64_t NativeDeviceSmokeReport::_internal_max_predicted_latency_us() const {
+  return _impl_.max_predicted_latency_us_;
+}
+inline uint64_t NativeDeviceSmokeReport::max_predicted_latency_us() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.max_predicted_latency_us)
+  return _internal_max_predicted_latency_us();
+}
+inline void NativeDeviceSmokeReport::_internal_set_max_predicted_latency_us(uint64_t value) {
+  
+  _impl_.max_predicted_latency_us_ = value;
+}
+inline void NativeDeviceSmokeReport::set_max_predicted_latency_us(uint64_t value) {
+  _internal_set_max_predicted_latency_us(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.max_predicted_latency_us)
+}
+
+// uint64 last_nonzero_at_us = 15;
+inline void NativeDeviceSmokeReport::clear_last_nonzero_at_us() {
+  _impl_.last_nonzero_at_us_ = uint64_t{0u};
+}
+inline uint64_t NativeDeviceSmokeReport::_internal_last_nonzero_at_us() const {
+  return _impl_.last_nonzero_at_us_;
+}
+inline uint64_t NativeDeviceSmokeReport::last_nonzero_at_us() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.last_nonzero_at_us)
+  return _internal_last_nonzero_at_us();
+}
+inline void NativeDeviceSmokeReport::_internal_set_last_nonzero_at_us(uint64_t value) {
+  
+  _impl_.last_nonzero_at_us_ = value;
+}
+inline void NativeDeviceSmokeReport::set_last_nonzero_at_us(uint64_t value) {
+  _internal_set_last_nonzero_at_us(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.last_nonzero_at_us)
+}
+
+// uint64 stop_at_us = 16;
+inline void NativeDeviceSmokeReport::clear_stop_at_us() {
+  _impl_.stop_at_us_ = uint64_t{0u};
+}
+inline uint64_t NativeDeviceSmokeReport::_internal_stop_at_us() const {
+  return _impl_.stop_at_us_;
+}
+inline uint64_t NativeDeviceSmokeReport::stop_at_us() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.stop_at_us)
+  return _internal_stop_at_us();
+}
+inline void NativeDeviceSmokeReport::_internal_set_stop_at_us(uint64_t value) {
+  
+  _impl_.stop_at_us_ = value;
+}
+inline void NativeDeviceSmokeReport::set_stop_at_us(uint64_t value) {
+  _internal_set_stop_at_us(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.stop_at_us)
+}
+
+// uint64 elapsed_ms = 17;
+inline void NativeDeviceSmokeReport::clear_elapsed_ms() {
+  _impl_.elapsed_ms_ = uint64_t{0u};
+}
+inline uint64_t NativeDeviceSmokeReport::_internal_elapsed_ms() const {
+  return _impl_.elapsed_ms_;
+}
+inline uint64_t NativeDeviceSmokeReport::elapsed_ms() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.elapsed_ms)
+  return _internal_elapsed_ms();
+}
+inline void NativeDeviceSmokeReport::_internal_set_elapsed_ms(uint64_t value) {
+  
+  _impl_.elapsed_ms_ = value;
+}
+inline void NativeDeviceSmokeReport::set_elapsed_ms(uint64_t value) {
+  _internal_set_elapsed_ms(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.elapsed_ms)
+}
+
+// string error_code = 18;
+inline void NativeDeviceSmokeReport::clear_error_code() {
+  _impl_.error_code_.ClearToEmpty();
+}
+inline const std::string& NativeDeviceSmokeReport::error_code() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.error_code)
+  return _internal_error_code();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void NativeDeviceSmokeReport::set_error_code(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.error_code_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.error_code)
+}
+inline std::string* NativeDeviceSmokeReport::mutable_error_code() {
+  std::string* _s = _internal_mutable_error_code();
+  // @@protoc_insertion_point(field_mutable:nai.v1.NativeDeviceSmokeReport.error_code)
+  return _s;
+}
+inline const std::string& NativeDeviceSmokeReport::_internal_error_code() const {
+  return _impl_.error_code_.Get();
+}
+inline void NativeDeviceSmokeReport::_internal_set_error_code(const std::string& value) {
+  
+  _impl_.error_code_.Set(value, GetArenaForAllocation());
+}
+inline std::string* NativeDeviceSmokeReport::_internal_mutable_error_code() {
+  
+  return _impl_.error_code_.Mutable(GetArenaForAllocation());
+}
+inline std::string* NativeDeviceSmokeReport::release_error_code() {
+  // @@protoc_insertion_point(field_release:nai.v1.NativeDeviceSmokeReport.error_code)
+  return _impl_.error_code_.Release();
+}
+inline void NativeDeviceSmokeReport::set_allocated_error_code(std::string* error_code) {
+  if (error_code != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.error_code_.SetAllocated(error_code, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.error_code_.IsDefault()) {
+    _impl_.error_code_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.NativeDeviceSmokeReport.error_code)
+}
+
+// bool success = 19;
+inline void NativeDeviceSmokeReport::clear_success() {
+  _impl_.success_ = false;
+}
+inline bool NativeDeviceSmokeReport::_internal_success() const {
+  return _impl_.success_;
+}
+inline bool NativeDeviceSmokeReport::success() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.success)
+  return _internal_success();
+}
+inline void NativeDeviceSmokeReport::_internal_set_success(bool value) {
+  
+  _impl_.success_ = value;
+}
+inline void NativeDeviceSmokeReport::set_success(bool value) {
+  _internal_set_success(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.success)
+}
+
+// bool actual_local_playback_completed = 20;
+inline void NativeDeviceSmokeReport::clear_actual_local_playback_completed() {
+  _impl_.actual_local_playback_completed_ = false;
+}
+inline bool NativeDeviceSmokeReport::_internal_actual_local_playback_completed() const {
+  return _impl_.actual_local_playback_completed_;
+}
+inline bool NativeDeviceSmokeReport::actual_local_playback_completed() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.actual_local_playback_completed)
+  return _internal_actual_local_playback_completed();
+}
+inline void NativeDeviceSmokeReport::_internal_set_actual_local_playback_completed(bool value) {
+  
+  _impl_.actual_local_playback_completed_ = value;
+}
+inline void NativeDeviceSmokeReport::set_actual_local_playback_completed(bool value) {
+  _internal_set_actual_local_playback_completed(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.actual_local_playback_completed)
+}
+
+// uint64 max_callback_frames = 21;
+inline void NativeDeviceSmokeReport::clear_max_callback_frames() {
+  _impl_.max_callback_frames_ = uint64_t{0u};
+}
+inline uint64_t NativeDeviceSmokeReport::_internal_max_callback_frames() const {
+  return _impl_.max_callback_frames_;
+}
+inline uint64_t NativeDeviceSmokeReport::max_callback_frames() const {
+  // @@protoc_insertion_point(field_get:nai.v1.NativeDeviceSmokeReport.max_callback_frames)
+  return _internal_max_callback_frames();
+}
+inline void NativeDeviceSmokeReport::_internal_set_max_callback_frames(uint64_t value) {
+  
+  _impl_.max_callback_frames_ = value;
+}
+inline void NativeDeviceSmokeReport::set_max_callback_frames(uint64_t value) {
+  _internal_set_max_callback_frames(value);
+  // @@protoc_insertion_point(field_set:nai.v1.NativeDeviceSmokeReport.max_callback_frames)
+}
+
+// -------------------------------------------------------------------
+
 // OutputWatchdogCommand
 
 // uint32 schema_version = 1;
@@ -11932,9 +20177,729 @@ inline void FrameSlotEvent::clear_has_event() {
 inline FrameSlotEvent::EventCase FrameSlotEvent::event_case() const {
   return FrameSlotEvent::EventCase(_impl_._oneof_case_[0]);
 }
+// -------------------------------------------------------------------
+
+// LocalOutputCommand
+
+// string descriptor_path = 1;
+inline bool LocalOutputCommand::_internal_has_descriptor_path() const {
+  return command_case() == kDescriptorPath;
+}
+inline bool LocalOutputCommand::has_descriptor_path() const {
+  return _internal_has_descriptor_path();
+}
+inline void LocalOutputCommand::set_has_descriptor_path() {
+  _impl_._oneof_case_[0] = kDescriptorPath;
+}
+inline void LocalOutputCommand::clear_descriptor_path() {
+  if (_internal_has_descriptor_path()) {
+    _impl_.command_.descriptor_path_.Destroy();
+    clear_has_command();
+  }
+}
+inline const std::string& LocalOutputCommand::descriptor_path() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalOutputCommand.descriptor_path)
+  return _internal_descriptor_path();
+}
+template <typename ArgT0, typename... ArgT>
+inline void LocalOutputCommand::set_descriptor_path(ArgT0&& arg0, ArgT... args) {
+  if (!_internal_has_descriptor_path()) {
+    clear_command();
+    set_has_descriptor_path();
+    _impl_.command_.descriptor_path_.InitDefault();
+  }
+  _impl_.command_.descriptor_path_.Set( static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalOutputCommand.descriptor_path)
+}
+inline std::string* LocalOutputCommand::mutable_descriptor_path() {
+  std::string* _s = _internal_mutable_descriptor_path();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalOutputCommand.descriptor_path)
+  return _s;
+}
+inline const std::string& LocalOutputCommand::_internal_descriptor_path() const {
+  if (_internal_has_descriptor_path()) {
+    return _impl_.command_.descriptor_path_.Get();
+  }
+  return ::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited();
+}
+inline void LocalOutputCommand::_internal_set_descriptor_path(const std::string& value) {
+  if (!_internal_has_descriptor_path()) {
+    clear_command();
+    set_has_descriptor_path();
+    _impl_.command_.descriptor_path_.InitDefault();
+  }
+  _impl_.command_.descriptor_path_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalOutputCommand::_internal_mutable_descriptor_path() {
+  if (!_internal_has_descriptor_path()) {
+    clear_command();
+    set_has_descriptor_path();
+    _impl_.command_.descriptor_path_.InitDefault();
+  }
+  return _impl_.command_.descriptor_path_.Mutable(      GetArenaForAllocation());
+}
+inline std::string* LocalOutputCommand::release_descriptor_path() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalOutputCommand.descriptor_path)
+  if (_internal_has_descriptor_path()) {
+    clear_has_command();
+    return _impl_.command_.descriptor_path_.Release();
+  } else {
+    return nullptr;
+  }
+}
+inline void LocalOutputCommand::set_allocated_descriptor_path(std::string* descriptor_path) {
+  if (has_command()) {
+    clear_command();
+  }
+  if (descriptor_path != nullptr) {
+    set_has_descriptor_path();
+    _impl_.command_.descriptor_path_.InitAllocated(descriptor_path, GetArenaForAllocation());
+  }
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalOutputCommand.descriptor_path)
+}
+
+// .nai.v1.LocalPlaybackGrant grant = 2;
+inline bool LocalOutputCommand::_internal_has_grant() const {
+  return command_case() == kGrant;
+}
+inline bool LocalOutputCommand::has_grant() const {
+  return _internal_has_grant();
+}
+inline void LocalOutputCommand::set_has_grant() {
+  _impl_._oneof_case_[0] = kGrant;
+}
+inline void LocalOutputCommand::clear_grant() {
+  if (_internal_has_grant()) {
+    if (GetArenaForAllocation() == nullptr) {
+      delete _impl_.command_.grant_;
+    }
+    clear_has_command();
+  }
+}
+inline ::nai::v1::LocalPlaybackGrant* LocalOutputCommand::release_grant() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalOutputCommand.grant)
+  if (_internal_has_grant()) {
+    clear_has_command();
+    ::nai::v1::LocalPlaybackGrant* temp = _impl_.command_.grant_;
+    if (GetArenaForAllocation() != nullptr) {
+      temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+    }
+    _impl_.command_.grant_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline const ::nai::v1::LocalPlaybackGrant& LocalOutputCommand::_internal_grant() const {
+  return _internal_has_grant()
+      ? *_impl_.command_.grant_
+      : reinterpret_cast< ::nai::v1::LocalPlaybackGrant&>(::nai::v1::_LocalPlaybackGrant_default_instance_);
+}
+inline const ::nai::v1::LocalPlaybackGrant& LocalOutputCommand::grant() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalOutputCommand.grant)
+  return _internal_grant();
+}
+inline ::nai::v1::LocalPlaybackGrant* LocalOutputCommand::unsafe_arena_release_grant() {
+  // @@protoc_insertion_point(field_unsafe_arena_release:nai.v1.LocalOutputCommand.grant)
+  if (_internal_has_grant()) {
+    clear_has_command();
+    ::nai::v1::LocalPlaybackGrant* temp = _impl_.command_.grant_;
+    _impl_.command_.grant_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline void LocalOutputCommand::unsafe_arena_set_allocated_grant(::nai::v1::LocalPlaybackGrant* grant) {
+  clear_command();
+  if (grant) {
+    set_has_grant();
+    _impl_.command_.grant_ = grant;
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.v1.LocalOutputCommand.grant)
+}
+inline ::nai::v1::LocalPlaybackGrant* LocalOutputCommand::_internal_mutable_grant() {
+  if (!_internal_has_grant()) {
+    clear_command();
+    set_has_grant();
+    _impl_.command_.grant_ = CreateMaybeMessage< ::nai::v1::LocalPlaybackGrant >(GetArenaForAllocation());
+  }
+  return _impl_.command_.grant_;
+}
+inline ::nai::v1::LocalPlaybackGrant* LocalOutputCommand::mutable_grant() {
+  ::nai::v1::LocalPlaybackGrant* _msg = _internal_mutable_grant();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalOutputCommand.grant)
+  return _msg;
+}
+
+// bool shutdown = 3;
+inline bool LocalOutputCommand::_internal_has_shutdown() const {
+  return command_case() == kShutdown;
+}
+inline bool LocalOutputCommand::has_shutdown() const {
+  return _internal_has_shutdown();
+}
+inline void LocalOutputCommand::set_has_shutdown() {
+  _impl_._oneof_case_[0] = kShutdown;
+}
+inline void LocalOutputCommand::clear_shutdown() {
+  if (_internal_has_shutdown()) {
+    _impl_.command_.shutdown_ = false;
+    clear_has_command();
+  }
+}
+inline bool LocalOutputCommand::_internal_shutdown() const {
+  if (_internal_has_shutdown()) {
+    return _impl_.command_.shutdown_;
+  }
+  return false;
+}
+inline void LocalOutputCommand::_internal_set_shutdown(bool value) {
+  if (!_internal_has_shutdown()) {
+    clear_command();
+    set_has_shutdown();
+  }
+  _impl_.command_.shutdown_ = value;
+}
+inline bool LocalOutputCommand::shutdown() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalOutputCommand.shutdown)
+  return _internal_shutdown();
+}
+inline void LocalOutputCommand::set_shutdown(bool value) {
+  _internal_set_shutdown(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalOutputCommand.shutdown)
+}
+
+// bool cancel_cue = 4;
+inline bool LocalOutputCommand::_internal_has_cancel_cue() const {
+  return command_case() == kCancelCue;
+}
+inline bool LocalOutputCommand::has_cancel_cue() const {
+  return _internal_has_cancel_cue();
+}
+inline void LocalOutputCommand::set_has_cancel_cue() {
+  _impl_._oneof_case_[0] = kCancelCue;
+}
+inline void LocalOutputCommand::clear_cancel_cue() {
+  if (_internal_has_cancel_cue()) {
+    _impl_.command_.cancel_cue_ = false;
+    clear_has_command();
+  }
+}
+inline bool LocalOutputCommand::_internal_cancel_cue() const {
+  if (_internal_has_cancel_cue()) {
+    return _impl_.command_.cancel_cue_;
+  }
+  return false;
+}
+inline void LocalOutputCommand::_internal_set_cancel_cue(bool value) {
+  if (!_internal_has_cancel_cue()) {
+    clear_command();
+    set_has_cancel_cue();
+  }
+  _impl_.command_.cancel_cue_ = value;
+}
+inline bool LocalOutputCommand::cancel_cue() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalOutputCommand.cancel_cue)
+  return _internal_cancel_cue();
+}
+inline void LocalOutputCommand::set_cancel_cue(bool value) {
+  _internal_set_cancel_cue(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalOutputCommand.cancel_cue)
+}
+
+// .nai.v1.LocalOutputWarmup warmup = 5;
+inline bool LocalOutputCommand::_internal_has_warmup() const {
+  return command_case() == kWarmup;
+}
+inline bool LocalOutputCommand::has_warmup() const {
+  return _internal_has_warmup();
+}
+inline void LocalOutputCommand::set_has_warmup() {
+  _impl_._oneof_case_[0] = kWarmup;
+}
+inline void LocalOutputCommand::clear_warmup() {
+  if (_internal_has_warmup()) {
+    if (GetArenaForAllocation() == nullptr) {
+      delete _impl_.command_.warmup_;
+    }
+    clear_has_command();
+  }
+}
+inline ::nai::v1::LocalOutputWarmup* LocalOutputCommand::release_warmup() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalOutputCommand.warmup)
+  if (_internal_has_warmup()) {
+    clear_has_command();
+    ::nai::v1::LocalOutputWarmup* temp = _impl_.command_.warmup_;
+    if (GetArenaForAllocation() != nullptr) {
+      temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+    }
+    _impl_.command_.warmup_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline const ::nai::v1::LocalOutputWarmup& LocalOutputCommand::_internal_warmup() const {
+  return _internal_has_warmup()
+      ? *_impl_.command_.warmup_
+      : reinterpret_cast< ::nai::v1::LocalOutputWarmup&>(::nai::v1::_LocalOutputWarmup_default_instance_);
+}
+inline const ::nai::v1::LocalOutputWarmup& LocalOutputCommand::warmup() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalOutputCommand.warmup)
+  return _internal_warmup();
+}
+inline ::nai::v1::LocalOutputWarmup* LocalOutputCommand::unsafe_arena_release_warmup() {
+  // @@protoc_insertion_point(field_unsafe_arena_release:nai.v1.LocalOutputCommand.warmup)
+  if (_internal_has_warmup()) {
+    clear_has_command();
+    ::nai::v1::LocalOutputWarmup* temp = _impl_.command_.warmup_;
+    _impl_.command_.warmup_ = nullptr;
+    return temp;
+  } else {
+    return nullptr;
+  }
+}
+inline void LocalOutputCommand::unsafe_arena_set_allocated_warmup(::nai::v1::LocalOutputWarmup* warmup) {
+  clear_command();
+  if (warmup) {
+    set_has_warmup();
+    _impl_.command_.warmup_ = warmup;
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.v1.LocalOutputCommand.warmup)
+}
+inline ::nai::v1::LocalOutputWarmup* LocalOutputCommand::_internal_mutable_warmup() {
+  if (!_internal_has_warmup()) {
+    clear_command();
+    set_has_warmup();
+    _impl_.command_.warmup_ = CreateMaybeMessage< ::nai::v1::LocalOutputWarmup >(GetArenaForAllocation());
+  }
+  return _impl_.command_.warmup_;
+}
+inline ::nai::v1::LocalOutputWarmup* LocalOutputCommand::mutable_warmup() {
+  ::nai::v1::LocalOutputWarmup* _msg = _internal_mutable_warmup();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalOutputCommand.warmup)
+  return _msg;
+}
+
+inline bool LocalOutputCommand::has_command() const {
+  return command_case() != COMMAND_NOT_SET;
+}
+inline void LocalOutputCommand::clear_has_command() {
+  _impl_._oneof_case_[0] = COMMAND_NOT_SET;
+}
+inline LocalOutputCommand::CommandCase LocalOutputCommand::command_case() const {
+  return LocalOutputCommand::CommandCase(_impl_._oneof_case_[0]);
+}
+// -------------------------------------------------------------------
+
+// LocalStandbyMedia
+
+// uint32 version = 1;
+inline void LocalStandbyMedia::clear_version() {
+  _impl_.version_ = 0u;
+}
+inline uint32_t LocalStandbyMedia::_internal_version() const {
+  return _impl_.version_;
+}
+inline uint32_t LocalStandbyMedia::version() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalStandbyMedia.version)
+  return _internal_version();
+}
+inline void LocalStandbyMedia::_internal_set_version(uint32_t value) {
+  
+  _impl_.version_ = value;
+}
+inline void LocalStandbyMedia::set_version(uint32_t value) {
+  _internal_set_version(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalStandbyMedia.version)
+}
+
+// string session_id = 2;
+inline void LocalStandbyMedia::clear_session_id() {
+  _impl_.session_id_.ClearToEmpty();
+}
+inline const std::string& LocalStandbyMedia::session_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalStandbyMedia.session_id)
+  return _internal_session_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalStandbyMedia::set_session_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.session_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalStandbyMedia.session_id)
+}
+inline std::string* LocalStandbyMedia::mutable_session_id() {
+  std::string* _s = _internal_mutable_session_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalStandbyMedia.session_id)
+  return _s;
+}
+inline const std::string& LocalStandbyMedia::_internal_session_id() const {
+  return _impl_.session_id_.Get();
+}
+inline void LocalStandbyMedia::_internal_set_session_id(const std::string& value) {
+  
+  _impl_.session_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalStandbyMedia::_internal_mutable_session_id() {
+  
+  return _impl_.session_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalStandbyMedia::release_session_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalStandbyMedia.session_id)
+  return _impl_.session_id_.Release();
+}
+inline void LocalStandbyMedia::set_allocated_session_id(std::string* session_id) {
+  if (session_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.session_id_.SetAllocated(session_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.session_id_.IsDefault()) {
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalStandbyMedia.session_id)
+}
+
+// uint64 generation_epoch = 3;
+inline void LocalStandbyMedia::clear_generation_epoch() {
+  _impl_.generation_epoch_ = uint64_t{0u};
+}
+inline uint64_t LocalStandbyMedia::_internal_generation_epoch() const {
+  return _impl_.generation_epoch_;
+}
+inline uint64_t LocalStandbyMedia::generation_epoch() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalStandbyMedia.generation_epoch)
+  return _internal_generation_epoch();
+}
+inline void LocalStandbyMedia::_internal_set_generation_epoch(uint64_t value) {
+  
+  _impl_.generation_epoch_ = value;
+}
+inline void LocalStandbyMedia::set_generation_epoch(uint64_t value) {
+  _internal_set_generation_epoch(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalStandbyMedia.generation_epoch)
+}
+
+// uint32 width = 4;
+inline void LocalStandbyMedia::clear_width() {
+  _impl_.width_ = 0u;
+}
+inline uint32_t LocalStandbyMedia::_internal_width() const {
+  return _impl_.width_;
+}
+inline uint32_t LocalStandbyMedia::width() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalStandbyMedia.width)
+  return _internal_width();
+}
+inline void LocalStandbyMedia::_internal_set_width(uint32_t value) {
+  
+  _impl_.width_ = value;
+}
+inline void LocalStandbyMedia::set_width(uint32_t value) {
+  _internal_set_width(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalStandbyMedia.width)
+}
+
+// uint32 height = 5;
+inline void LocalStandbyMedia::clear_height() {
+  _impl_.height_ = 0u;
+}
+inline uint32_t LocalStandbyMedia::_internal_height() const {
+  return _impl_.height_;
+}
+inline uint32_t LocalStandbyMedia::height() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalStandbyMedia.height)
+  return _internal_height();
+}
+inline void LocalStandbyMedia::_internal_set_height(uint32_t value) {
+  
+  _impl_.height_ = value;
+}
+inline void LocalStandbyMedia::set_height(uint32_t value) {
+  _internal_set_height(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalStandbyMedia.height)
+}
+
+// string standby_sha256 = 6;
+inline void LocalStandbyMedia::clear_standby_sha256() {
+  _impl_.standby_sha256_.ClearToEmpty();
+}
+inline const std::string& LocalStandbyMedia::standby_sha256() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalStandbyMedia.standby_sha256)
+  return _internal_standby_sha256();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalStandbyMedia::set_standby_sha256(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.standby_sha256_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalStandbyMedia.standby_sha256)
+}
+inline std::string* LocalStandbyMedia::mutable_standby_sha256() {
+  std::string* _s = _internal_mutable_standby_sha256();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalStandbyMedia.standby_sha256)
+  return _s;
+}
+inline const std::string& LocalStandbyMedia::_internal_standby_sha256() const {
+  return _impl_.standby_sha256_.Get();
+}
+inline void LocalStandbyMedia::_internal_set_standby_sha256(const std::string& value) {
+  
+  _impl_.standby_sha256_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalStandbyMedia::_internal_mutable_standby_sha256() {
+  
+  return _impl_.standby_sha256_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalStandbyMedia::release_standby_sha256() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalStandbyMedia.standby_sha256)
+  return _impl_.standby_sha256_.Release();
+}
+inline void LocalStandbyMedia::set_allocated_standby_sha256(std::string* standby_sha256) {
+  if (standby_sha256 != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.standby_sha256_.SetAllocated(standby_sha256, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.standby_sha256_.IsDefault()) {
+    _impl_.standby_sha256_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalStandbyMedia.standby_sha256)
+}
+
+// -------------------------------------------------------------------
+
+// LocalOutputWarmup
+
+// string descriptor_path = 1;
+inline void LocalOutputWarmup::clear_descriptor_path() {
+  _impl_.descriptor_path_.ClearToEmpty();
+}
+inline const std::string& LocalOutputWarmup::descriptor_path() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalOutputWarmup.descriptor_path)
+  return _internal_descriptor_path();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalOutputWarmup::set_descriptor_path(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.descriptor_path_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalOutputWarmup.descriptor_path)
+}
+inline std::string* LocalOutputWarmup::mutable_descriptor_path() {
+  std::string* _s = _internal_mutable_descriptor_path();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalOutputWarmup.descriptor_path)
+  return _s;
+}
+inline const std::string& LocalOutputWarmup::_internal_descriptor_path() const {
+  return _impl_.descriptor_path_.Get();
+}
+inline void LocalOutputWarmup::_internal_set_descriptor_path(const std::string& value) {
+  
+  _impl_.descriptor_path_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalOutputWarmup::_internal_mutable_descriptor_path() {
+  
+  return _impl_.descriptor_path_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalOutputWarmup::release_descriptor_path() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalOutputWarmup.descriptor_path)
+  return _impl_.descriptor_path_.Release();
+}
+inline void LocalOutputWarmup::set_allocated_descriptor_path(std::string* descriptor_path) {
+  if (descriptor_path != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.descriptor_path_.SetAllocated(descriptor_path, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.descriptor_path_.IsDefault()) {
+    _impl_.descriptor_path_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalOutputWarmup.descriptor_path)
+}
+
+// string descriptor_sha256 = 2;
+inline void LocalOutputWarmup::clear_descriptor_sha256() {
+  _impl_.descriptor_sha256_.ClearToEmpty();
+}
+inline const std::string& LocalOutputWarmup::descriptor_sha256() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalOutputWarmup.descriptor_sha256)
+  return _internal_descriptor_sha256();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalOutputWarmup::set_descriptor_sha256(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.descriptor_sha256_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalOutputWarmup.descriptor_sha256)
+}
+inline std::string* LocalOutputWarmup::mutable_descriptor_sha256() {
+  std::string* _s = _internal_mutable_descriptor_sha256();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalOutputWarmup.descriptor_sha256)
+  return _s;
+}
+inline const std::string& LocalOutputWarmup::_internal_descriptor_sha256() const {
+  return _impl_.descriptor_sha256_.Get();
+}
+inline void LocalOutputWarmup::_internal_set_descriptor_sha256(const std::string& value) {
+  
+  _impl_.descriptor_sha256_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalOutputWarmup::_internal_mutable_descriptor_sha256() {
+  
+  return _impl_.descriptor_sha256_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalOutputWarmup::release_descriptor_sha256() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalOutputWarmup.descriptor_sha256)
+  return _impl_.descriptor_sha256_.Release();
+}
+inline void LocalOutputWarmup::set_allocated_descriptor_sha256(std::string* descriptor_sha256) {
+  if (descriptor_sha256 != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.descriptor_sha256_.SetAllocated(descriptor_sha256, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.descriptor_sha256_.IsDefault()) {
+    _impl_.descriptor_sha256_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalOutputWarmup.descriptor_sha256)
+}
+
+// string session_id = 3;
+inline void LocalOutputWarmup::clear_session_id() {
+  _impl_.session_id_.ClearToEmpty();
+}
+inline const std::string& LocalOutputWarmup::session_id() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalOutputWarmup.session_id)
+  return _internal_session_id();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void LocalOutputWarmup::set_session_id(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.session_id_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:nai.v1.LocalOutputWarmup.session_id)
+}
+inline std::string* LocalOutputWarmup::mutable_session_id() {
+  std::string* _s = _internal_mutable_session_id();
+  // @@protoc_insertion_point(field_mutable:nai.v1.LocalOutputWarmup.session_id)
+  return _s;
+}
+inline const std::string& LocalOutputWarmup::_internal_session_id() const {
+  return _impl_.session_id_.Get();
+}
+inline void LocalOutputWarmup::_internal_set_session_id(const std::string& value) {
+  
+  _impl_.session_id_.Set(value, GetArenaForAllocation());
+}
+inline std::string* LocalOutputWarmup::_internal_mutable_session_id() {
+  
+  return _impl_.session_id_.Mutable(GetArenaForAllocation());
+}
+inline std::string* LocalOutputWarmup::release_session_id() {
+  // @@protoc_insertion_point(field_release:nai.v1.LocalOutputWarmup.session_id)
+  return _impl_.session_id_.Release();
+}
+inline void LocalOutputWarmup::set_allocated_session_id(std::string* session_id) {
+  if (session_id != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.session_id_.SetAllocated(session_id, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.session_id_.IsDefault()) {
+    _impl_.session_id_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:nai.v1.LocalOutputWarmup.session_id)
+}
+
+// uint64 generation_epoch = 4;
+inline void LocalOutputWarmup::clear_generation_epoch() {
+  _impl_.generation_epoch_ = uint64_t{0u};
+}
+inline uint64_t LocalOutputWarmup::_internal_generation_epoch() const {
+  return _impl_.generation_epoch_;
+}
+inline uint64_t LocalOutputWarmup::generation_epoch() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalOutputWarmup.generation_epoch)
+  return _internal_generation_epoch();
+}
+inline void LocalOutputWarmup::_internal_set_generation_epoch(uint64_t value) {
+  
+  _impl_.generation_epoch_ = value;
+}
+inline void LocalOutputWarmup::set_generation_epoch(uint64_t value) {
+  _internal_set_generation_epoch(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalOutputWarmup.generation_epoch)
+}
+
+// uint32 remaining_budget_ms = 5;
+inline void LocalOutputWarmup::clear_remaining_budget_ms() {
+  _impl_.remaining_budget_ms_ = 0u;
+}
+inline uint32_t LocalOutputWarmup::_internal_remaining_budget_ms() const {
+  return _impl_.remaining_budget_ms_;
+}
+inline uint32_t LocalOutputWarmup::remaining_budget_ms() const {
+  // @@protoc_insertion_point(field_get:nai.v1.LocalOutputWarmup.remaining_budget_ms)
+  return _internal_remaining_budget_ms();
+}
+inline void LocalOutputWarmup::_internal_set_remaining_budget_ms(uint32_t value) {
+  
+  _impl_.remaining_budget_ms_ = value;
+}
+inline void LocalOutputWarmup::set_remaining_budget_ms(uint32_t value) {
+  _internal_set_remaining_budget_ms(value);
+  // @@protoc_insertion_point(field_set:nai.v1.LocalOutputWarmup.remaining_budget_ms)
+}
+
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------
@@ -11984,6 +20949,31 @@ inline FrameSlotEvent::EventCase FrameSlotEvent::event_case() const {
 
 }  // namespace v1
 }  // namespace nai
+
+PROTOBUF_NAMESPACE_OPEN
+
+template <> struct is_proto_enum< ::nai::v1::CharacterRendererKind> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::nai::v1::CharacterRendererKind>() {
+  return ::nai::v1::CharacterRendererKind_descriptor();
+}
+template <> struct is_proto_enum< ::nai::v1::CharacterLipSyncKind> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::nai::v1::CharacterLipSyncKind>() {
+  return ::nai::v1::CharacterLipSyncKind_descriptor();
+}
+template <> struct is_proto_enum< ::nai::v1::CharacterActionPhase> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::nai::v1::CharacterActionPhase>() {
+  return ::nai::v1::CharacterActionPhase_descriptor();
+}
+template <> struct is_proto_enum< ::nai::v1::CharacterRuntimeState> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::nai::v1::CharacterRuntimeState>() {
+  return ::nai::v1::CharacterRuntimeState_descriptor();
+}
+
+PROTOBUF_NAMESPACE_CLOSE
 
 // @@protoc_insertion_point(global_scope)
 

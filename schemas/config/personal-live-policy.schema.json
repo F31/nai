@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nai.dev/schemas/config/personal-live-policy-v1",
+  "title": "PersonalLivePolicy",
+  "description": "User preferences only; does not grant platform access or media execution.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "interaction_mode", "answer_trigger", "knowledge_scope", "sampling_percent"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "interaction_mode": {"enum": ["topic_only", "topic_and_platform"]},
+    "answer_trigger": {"enum": ["user_triggered", "automatic"]},
+    "knowledge_scope": {"enum": ["grounded_only", "allow_general"]},
+    "sampling_percent": {"type": "integer", "minimum": 0, "maximum": 100}
+  }
+}

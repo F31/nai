@@ -158,10 +158,73 @@ struct RuntimeObservationDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 RuntimeObservationDefaultTypeInternal _RuntimeObservation_default_instance_;
+PROTOBUF_CONSTEXPR LocalControlFrame::LocalControlFrame(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.request_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.method_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.path_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.body_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.bootstrap_token_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.seq_)*/uint64_t{0u}
+  , /*decltype(_impl_.version_)*/0u
+  , /*decltype(_impl_.kind_)*/0
+  , /*decltype(_impl_.status_)*/0u
+  , /*decltype(_impl_.ttl_ms_)*/0u
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct LocalControlFrameDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR LocalControlFrameDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~LocalControlFrameDefaultTypeInternal() {}
+  union {
+    LocalControlFrame _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 LocalControlFrameDefaultTypeInternal _LocalControlFrame_default_instance_;
+PROTOBUF_CONSTEXPR ProviderProbeReport::ProviderProbeReport(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.provider_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.capability_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.model_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.voice_ref_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.status_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.error_code_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.usage_)*/nullptr
+  , /*decltype(_impl_.version_)*/0u
+  , /*decltype(_impl_.sample_rate_)*/0u
+  , /*decltype(_impl_.elapsed_ms_)*/uint64_t{0u}
+  , /*decltype(_impl_.sample_count_)*/uint64_t{0u}
+  , /*decltype(_impl_.generated_at_utc_ms_)*/uint64_t{0u}
+  , /*decltype(_impl_.invoice_known_)*/false
+  , /*decltype(_impl_.playback_ack_)*/false} {}
+struct ProviderProbeReportDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR ProviderProbeReportDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~ProviderProbeReportDefaultTypeInternal() {}
+  union {
+    ProviderProbeReport _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 ProviderProbeReportDefaultTypeInternal _ProviderProbeReport_default_instance_;
+PROTOBUF_CONSTEXPR ProviderCredentialStatus::ProviderCredentialStatus(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_.saved_provider_ids_)*/{}
+  , /*decltype(_impl_.version_)*/0u
+  , /*decltype(_impl_._cached_size_)*/{}} {}
+struct ProviderCredentialStatusDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR ProviderCredentialStatusDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~ProviderCredentialStatusDefaultTypeInternal() {}
+  union {
+    ProviderCredentialStatus _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 ProviderCredentialStatusDefaultTypeInternal _ProviderCredentialStatus_default_instance_;
 }  // namespace v1
 }  // namespace nai
-static ::_pb::Metadata file_level_metadata_domain_2fcontrol_2eproto[8];
-static const ::_pb::EnumDescriptor* file_level_enum_descriptors_domain_2fcontrol_2eproto[1];
+static ::_pb::Metadata file_level_metadata_domain_2fcontrol_2eproto[11];
+static const ::_pb::EnumDescriptor* file_level_enum_descriptors_domain_2fcontrol_2eproto[2];
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_domain_2fcontrol_2eproto = nullptr;
 
 const uint32_t TableStruct_domain_2fcontrol_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
@@ -258,6 +321,64 @@ const uint32_t TableStruct_domain_2fcontrol_2eproto::offsets[] PROTOBUF_SECTION_
   PROTOBUF_FIELD_OFFSET(::nai::v1::RuntimeObservation, _impl_.usage_),
   PROTOBUF_FIELD_OFFSET(::nai::v1::RuntimeObservation, _impl_.bounded_metrics_),
   PROTOBUF_FIELD_OFFSET(::nai::v1::RuntimeObservation, _impl_.diagnostic_refs_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalControlFrame, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalControlFrame, _impl_.version_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalControlFrame, _impl_.seq_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalControlFrame, _impl_.kind_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalControlFrame, _impl_.request_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalControlFrame, _impl_.method_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalControlFrame, _impl_.path_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalControlFrame, _impl_.body_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalControlFrame, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalControlFrame, _impl_.bootstrap_token_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::LocalControlFrame, _impl_.ttl_ms_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.version_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.provider_id_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.capability_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.model_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.voice_ref_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.error_code_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.elapsed_ms_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.sample_rate_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.sample_count_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.generated_at_utc_ms_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.usage_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.invoice_known_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderProbeReport, _impl_.playback_ack_),
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  1,
+  0,
+  2,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderCredentialStatus, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderCredentialStatus, _impl_.version_),
+  PROTOBUF_FIELD_OFFSET(::nai::v1::ProviderCredentialStatus, _impl_.saved_provider_ids_),
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, -1, sizeof(::nai::v1::ControlCommand)},
@@ -268,6 +389,9 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 65, -1, -1, sizeof(::nai::v1::ObserveRequest)},
   { 73, 81, -1, sizeof(::nai::v1::RuntimeObservation_BoundedMetricsEntry_DoNotUse)},
   { 83, -1, -1, sizeof(::nai::v1::RuntimeObservation)},
+  { 93, -1, -1, sizeof(::nai::v1::LocalControlFrame)},
+  { 109, 129, -1, sizeof(::nai::v1::ProviderProbeReport)},
+  { 143, -1, -1, sizeof(::nai::v1::ProviderCredentialStatus)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -279,6 +403,9 @@ static const ::_pb::Message* const file_default_instances[] = {
   &::nai::v1::_ObserveRequest_default_instance_._instance,
   &::nai::v1::_RuntimeObservation_BoundedMetricsEntry_DoNotUse_default_instance_._instance,
   &::nai::v1::_RuntimeObservation_default_instance_._instance,
+  &::nai::v1::_LocalControlFrame_default_instance_._instance,
+  &::nai::v1::_ProviderProbeReport_default_instance_._instance,
+  &::nai::v1::_ProviderCredentialStatus_default_instance_._instance,
 };
 
 const char descriptor_table_protodef_domain_2fcontrol_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
@@ -318,11 +445,33 @@ const char descriptor_table_protodef_domain_2fcontrol_2eproto[] PROTOBUF_SECTION
   "\003(\0132..nai.v1.RuntimeObservation.BoundedM"
   "etricsEntry\022\027\n\017diagnostic_refs\030\004 \003(\t\0325\n\023"
   "BoundedMetricsEntry\022\013\n\003key\030\001 \001(\t\022\r\n\005valu"
-  "e\030\002 \001(\t:\0028\001*\214\001\n\rCommandAction\022\027\n\023COMMAND"
-  "_UNSPECIFIED\020\000\022\013\n\007PREPARE\020\001\022\t\n\005START\020\002\022\010"
-  "\n\004STOP\020\003\022\010\n\004MUTE\020\004\022\014\n\010TAKEOVER\020\005\022\017\n\013CHAN"
-  "GE_MODE\020\006\022\013\n\007APPROVE\020\007\022\n\n\006REJECT\020\010b\006prot"
-  "o3"
+  "e\030\002 \001(\t:\0028\001\"\322\001\n\021LocalControlFrame\022\017\n\007ver"
+  "sion\030\001 \001(\r\022\013\n\003seq\030\002 \001(\004\022&\n\004kind\030\003 \001(\0162\030."
+  "nai.v1.LocalControlKind\022\022\n\nrequest_id\030\004 "
+  "\001(\t\022\016\n\006method\030\005 \001(\t\022\014\n\004path\030\006 \001(\t\022\014\n\004bod"
+  "y\030\007 \001(\014\022\016\n\006status\030\010 \001(\r\022\027\n\017bootstrap_tok"
+  "en\030\t \001(\t\022\016\n\006ttl_ms\030\n \001(\r\"\206\003\n\023ProviderPro"
+  "beReport\022\017\n\007version\030\001 \001(\r\022\023\n\013provider_id"
+  "\030\002 \001(\t\022\022\n\ncapability\030\003 \001(\t\022\r\n\005model\030\004 \001("
+  "\t\022\021\n\tvoice_ref\030\005 \001(\t\022\016\n\006status\030\006 \001(\t\022\022\n\n"
+  "error_code\030\007 \001(\t\022\027\n\nelapsed_ms\030\010 \001(\004H\000\210\001"
+  "\001\022\030\n\013sample_rate\030\t \001(\rH\001\210\001\001\022\031\n\014sample_co"
+  "unt\030\n \001(\004H\002\210\001\001\022\033\n\023generated_at_utc_ms\030\013 "
+  "\001(\004\022\'\n\005usage\030\014 \001(\0132\030.nai.v1.UsageLedgerE"
+  "ntry\022\025\n\rinvoice_known\030\r \001(\010\022\024\n\014playback_"
+  "ack\030\016 \001(\010B\r\n\013_elapsed_msB\016\n\014_sample_rate"
+  "B\017\n\r_sample_count\"G\n\030ProviderCredentialS"
+  "tatus\022\017\n\007version\030\001 \001(\r\022\032\n\022saved_provider"
+  "_ids\030\002 \003(\t*\214\001\n\rCommandAction\022\027\n\023COMMAND_"
+  "UNSPECIFIED\020\000\022\013\n\007PREPARE\020\001\022\t\n\005START\020\002\022\010\n"
+  "\004STOP\020\003\022\010\n\004MUTE\020\004\022\014\n\010TAKEOVER\020\005\022\017\n\013CHANG"
+  "E_MODE\020\006\022\013\n\007APPROVE\020\007\022\n\n\006REJECT\020\010*\327\001\n\020Lo"
+  "calControlKind\022\035\n\031LOCAL_CONTROL_UNSPECIF"
+  "IED\020\000\022\033\n\027LOCAL_CONTROL_BOOTSTRAP\020\001\022\027\n\023LO"
+  "CAL_CONTROL_READY\020\002\022\031\n\025LOCAL_CONTROL_REQ"
+  "UEST\020\003\022\032\n\026LOCAL_CONTROL_RESPONSE\020\004\022\033\n\027LO"
+  "CAL_CONTROL_HEARTBEAT\020\005\022\032\n\026LOCAL_CONTROL"
+  "_SHUTDOWN\020\006b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_domain_2fcontrol_2eproto_deps[4] = {
   &::descriptor_table_core_2fbase_2eproto,
@@ -332,9 +481,9 @@ static const ::_pbi::DescriptorTable* const descriptor_table_domain_2fcontrol_2e
 };
 static ::_pbi::once_flag descriptor_table_domain_2fcontrol_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_domain_2fcontrol_2eproto = {
-    false, false, 1602, descriptor_table_protodef_domain_2fcontrol_2eproto,
+    false, false, 2499, descriptor_table_protodef_domain_2fcontrol_2eproto,
     "domain/control.proto",
-    &descriptor_table_domain_2fcontrol_2eproto_once, descriptor_table_domain_2fcontrol_2eproto_deps, 4, 8,
+    &descriptor_table_domain_2fcontrol_2eproto_once, descriptor_table_domain_2fcontrol_2eproto_deps, 4, 11,
     schemas, file_default_instances, TableStruct_domain_2fcontrol_2eproto::offsets,
     file_level_metadata_domain_2fcontrol_2eproto, file_level_enum_descriptors_domain_2fcontrol_2eproto,
     file_level_service_descriptors_domain_2fcontrol_2eproto,
@@ -362,6 +511,25 @@ bool CommandAction_IsValid(int value) {
     case 6:
     case 7:
     case 8:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* LocalControlKind_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_domain_2fcontrol_2eproto);
+  return file_level_enum_descriptors_domain_2fcontrol_2eproto[1];
+}
+bool LocalControlKind_IsValid(int value) {
+  switch (value) {
+    case 0:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
       return true;
     default:
       return false;
@@ -3162,6 +3330,1469 @@ void RuntimeObservation::InternalSwap(RuntimeObservation* other) {
       file_level_metadata_domain_2fcontrol_2eproto[7]);
 }
 
+// ===================================================================
+
+class LocalControlFrame::_Internal {
+ public:
+};
+
+LocalControlFrame::LocalControlFrame(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.LocalControlFrame)
+}
+LocalControlFrame::LocalControlFrame(const LocalControlFrame& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  LocalControlFrame* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.request_id_){}
+    , decltype(_impl_.method_){}
+    , decltype(_impl_.path_){}
+    , decltype(_impl_.body_){}
+    , decltype(_impl_.bootstrap_token_){}
+    , decltype(_impl_.seq_){}
+    , decltype(_impl_.version_){}
+    , decltype(_impl_.kind_){}
+    , decltype(_impl_.status_){}
+    , decltype(_impl_.ttl_ms_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.request_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.request_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_request_id().empty()) {
+    _this->_impl_.request_id_.Set(from._internal_request_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.method_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.method_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_method().empty()) {
+    _this->_impl_.method_.Set(from._internal_method(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.path_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.path_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_path().empty()) {
+    _this->_impl_.path_.Set(from._internal_path(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.body_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.body_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_body().empty()) {
+    _this->_impl_.body_.Set(from._internal_body(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.bootstrap_token_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.bootstrap_token_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_bootstrap_token().empty()) {
+    _this->_impl_.bootstrap_token_.Set(from._internal_bootstrap_token(), 
+      _this->GetArenaForAllocation());
+  }
+  ::memcpy(&_impl_.seq_, &from._impl_.seq_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.ttl_ms_) -
+    reinterpret_cast<char*>(&_impl_.seq_)) + sizeof(_impl_.ttl_ms_));
+  // @@protoc_insertion_point(copy_constructor:nai.v1.LocalControlFrame)
+}
+
+inline void LocalControlFrame::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.request_id_){}
+    , decltype(_impl_.method_){}
+    , decltype(_impl_.path_){}
+    , decltype(_impl_.body_){}
+    , decltype(_impl_.bootstrap_token_){}
+    , decltype(_impl_.seq_){uint64_t{0u}}
+    , decltype(_impl_.version_){0u}
+    , decltype(_impl_.kind_){0}
+    , decltype(_impl_.status_){0u}
+    , decltype(_impl_.ttl_ms_){0u}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+  _impl_.request_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.request_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.method_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.method_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.path_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.path_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.body_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.body_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.bootstrap_token_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.bootstrap_token_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+LocalControlFrame::~LocalControlFrame() {
+  // @@protoc_insertion_point(destructor:nai.v1.LocalControlFrame)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void LocalControlFrame::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.request_id_.Destroy();
+  _impl_.method_.Destroy();
+  _impl_.path_.Destroy();
+  _impl_.body_.Destroy();
+  _impl_.bootstrap_token_.Destroy();
+}
+
+void LocalControlFrame::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void LocalControlFrame::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.LocalControlFrame)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.request_id_.ClearToEmpty();
+  _impl_.method_.ClearToEmpty();
+  _impl_.path_.ClearToEmpty();
+  _impl_.body_.ClearToEmpty();
+  _impl_.bootstrap_token_.ClearToEmpty();
+  ::memset(&_impl_.seq_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.ttl_ms_) -
+      reinterpret_cast<char*>(&_impl_.seq_)) + sizeof(_impl_.ttl_ms_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* LocalControlFrame::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // uint32 version = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.version_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 seq = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 16)) {
+          _impl_.seq_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.LocalControlKind kind = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_kind(static_cast<::nai::v1::LocalControlKind>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // string request_id = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_request_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalControlFrame.request_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string method = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+          auto str = _internal_mutable_method();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalControlFrame.method"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string path = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
+          auto str = _internal_mutable_path();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalControlFrame.path"));
+        } else
+          goto handle_unusual;
+        continue;
+      // bytes body = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 58)) {
+          auto str = _internal_mutable_body();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 status = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
+          _impl_.status_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string bootstrap_token = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 74)) {
+          auto str = _internal_mutable_bootstrap_token();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.LocalControlFrame.bootstrap_token"));
+        } else
+          goto handle_unusual;
+        continue;
+      // uint32 ttl_ms = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 80)) {
+          _impl_.ttl_ms_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* LocalControlFrame::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.LocalControlFrame)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_version(), target);
+  }
+
+  // uint64 seq = 2;
+  if (this->_internal_seq() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(2, this->_internal_seq(), target);
+  }
+
+  // .nai.v1.LocalControlKind kind = 3;
+  if (this->_internal_kind() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      3, this->_internal_kind(), target);
+  }
+
+  // string request_id = 4;
+  if (!this->_internal_request_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_request_id().data(), static_cast<int>(this->_internal_request_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalControlFrame.request_id");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_request_id(), target);
+  }
+
+  // string method = 5;
+  if (!this->_internal_method().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_method().data(), static_cast<int>(this->_internal_method().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalControlFrame.method");
+    target = stream->WriteStringMaybeAliased(
+        5, this->_internal_method(), target);
+  }
+
+  // string path = 6;
+  if (!this->_internal_path().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_path().data(), static_cast<int>(this->_internal_path().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalControlFrame.path");
+    target = stream->WriteStringMaybeAliased(
+        6, this->_internal_path(), target);
+  }
+
+  // bytes body = 7;
+  if (!this->_internal_body().empty()) {
+    target = stream->WriteBytesMaybeAliased(
+        7, this->_internal_body(), target);
+  }
+
+  // uint32 status = 8;
+  if (this->_internal_status() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(8, this->_internal_status(), target);
+  }
+
+  // string bootstrap_token = 9;
+  if (!this->_internal_bootstrap_token().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_bootstrap_token().data(), static_cast<int>(this->_internal_bootstrap_token().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.LocalControlFrame.bootstrap_token");
+    target = stream->WriteStringMaybeAliased(
+        9, this->_internal_bootstrap_token(), target);
+  }
+
+  // uint32 ttl_ms = 10;
+  if (this->_internal_ttl_ms() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(10, this->_internal_ttl_ms(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.LocalControlFrame)
+  return target;
+}
+
+size_t LocalControlFrame::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.LocalControlFrame)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string request_id = 4;
+  if (!this->_internal_request_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_request_id());
+  }
+
+  // string method = 5;
+  if (!this->_internal_method().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_method());
+  }
+
+  // string path = 6;
+  if (!this->_internal_path().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_path());
+  }
+
+  // bytes body = 7;
+  if (!this->_internal_body().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::BytesSize(
+        this->_internal_body());
+  }
+
+  // string bootstrap_token = 9;
+  if (!this->_internal_bootstrap_token().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_bootstrap_token());
+  }
+
+  // uint64 seq = 2;
+  if (this->_internal_seq() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_seq());
+  }
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_version());
+  }
+
+  // .nai.v1.LocalControlKind kind = 3;
+  if (this->_internal_kind() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_kind());
+  }
+
+  // uint32 status = 8;
+  if (this->_internal_status() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_status());
+  }
+
+  // uint32 ttl_ms = 10;
+  if (this->_internal_ttl_ms() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_ttl_ms());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData LocalControlFrame::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    LocalControlFrame::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*LocalControlFrame::GetClassData() const { return &_class_data_; }
+
+
+void LocalControlFrame::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<LocalControlFrame*>(&to_msg);
+  auto& from = static_cast<const LocalControlFrame&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.LocalControlFrame)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_request_id().empty()) {
+    _this->_internal_set_request_id(from._internal_request_id());
+  }
+  if (!from._internal_method().empty()) {
+    _this->_internal_set_method(from._internal_method());
+  }
+  if (!from._internal_path().empty()) {
+    _this->_internal_set_path(from._internal_path());
+  }
+  if (!from._internal_body().empty()) {
+    _this->_internal_set_body(from._internal_body());
+  }
+  if (!from._internal_bootstrap_token().empty()) {
+    _this->_internal_set_bootstrap_token(from._internal_bootstrap_token());
+  }
+  if (from._internal_seq() != 0) {
+    _this->_internal_set_seq(from._internal_seq());
+  }
+  if (from._internal_version() != 0) {
+    _this->_internal_set_version(from._internal_version());
+  }
+  if (from._internal_kind() != 0) {
+    _this->_internal_set_kind(from._internal_kind());
+  }
+  if (from._internal_status() != 0) {
+    _this->_internal_set_status(from._internal_status());
+  }
+  if (from._internal_ttl_ms() != 0) {
+    _this->_internal_set_ttl_ms(from._internal_ttl_ms());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void LocalControlFrame::CopyFrom(const LocalControlFrame& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.LocalControlFrame)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool LocalControlFrame::IsInitialized() const {
+  return true;
+}
+
+void LocalControlFrame::InternalSwap(LocalControlFrame* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.request_id_, lhs_arena,
+      &other->_impl_.request_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.method_, lhs_arena,
+      &other->_impl_.method_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.path_, lhs_arena,
+      &other->_impl_.path_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.body_, lhs_arena,
+      &other->_impl_.body_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.bootstrap_token_, lhs_arena,
+      &other->_impl_.bootstrap_token_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(LocalControlFrame, _impl_.ttl_ms_)
+      + sizeof(LocalControlFrame::_impl_.ttl_ms_)
+      - PROTOBUF_FIELD_OFFSET(LocalControlFrame, _impl_.seq_)>(
+          reinterpret_cast<char*>(&_impl_.seq_),
+          reinterpret_cast<char*>(&other->_impl_.seq_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata LocalControlFrame::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fcontrol_2eproto_getter, &descriptor_table_domain_2fcontrol_2eproto_once,
+      file_level_metadata_domain_2fcontrol_2eproto[8]);
+}
+
+// ===================================================================
+
+class ProviderProbeReport::_Internal {
+ public:
+  using HasBits = decltype(std::declval<ProviderProbeReport>()._impl_._has_bits_);
+  static void set_has_elapsed_ms(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
+  static void set_has_sample_rate(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+  static void set_has_sample_count(HasBits* has_bits) {
+    (*has_bits)[0] |= 4u;
+  }
+  static const ::nai::v1::UsageLedgerEntry& usage(const ProviderProbeReport* msg);
+};
+
+const ::nai::v1::UsageLedgerEntry&
+ProviderProbeReport::_Internal::usage(const ProviderProbeReport* msg) {
+  return *msg->_impl_.usage_;
+}
+void ProviderProbeReport::clear_usage() {
+  if (GetArenaForAllocation() == nullptr && _impl_.usage_ != nullptr) {
+    delete _impl_.usage_;
+  }
+  _impl_.usage_ = nullptr;
+}
+ProviderProbeReport::ProviderProbeReport(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.ProviderProbeReport)
+}
+ProviderProbeReport::ProviderProbeReport(const ProviderProbeReport& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  ProviderProbeReport* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.provider_id_){}
+    , decltype(_impl_.capability_){}
+    , decltype(_impl_.model_){}
+    , decltype(_impl_.voice_ref_){}
+    , decltype(_impl_.status_){}
+    , decltype(_impl_.error_code_){}
+    , decltype(_impl_.usage_){nullptr}
+    , decltype(_impl_.version_){}
+    , decltype(_impl_.sample_rate_){}
+    , decltype(_impl_.elapsed_ms_){}
+    , decltype(_impl_.sample_count_){}
+    , decltype(_impl_.generated_at_utc_ms_){}
+    , decltype(_impl_.invoice_known_){}
+    , decltype(_impl_.playback_ack_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.provider_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.provider_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_provider_id().empty()) {
+    _this->_impl_.provider_id_.Set(from._internal_provider_id(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.capability_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.capability_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_capability().empty()) {
+    _this->_impl_.capability_.Set(from._internal_capability(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.model_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.model_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_model().empty()) {
+    _this->_impl_.model_.Set(from._internal_model(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.voice_ref_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.voice_ref_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_voice_ref().empty()) {
+    _this->_impl_.voice_ref_.Set(from._internal_voice_ref(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.status_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.status_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_status().empty()) {
+    _this->_impl_.status_.Set(from._internal_status(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.error_code_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_code_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (!from._internal_error_code().empty()) {
+    _this->_impl_.error_code_.Set(from._internal_error_code(), 
+      _this->GetArenaForAllocation());
+  }
+  if (from._internal_has_usage()) {
+    _this->_impl_.usage_ = new ::nai::v1::UsageLedgerEntry(*from._impl_.usage_);
+  }
+  ::memcpy(&_impl_.version_, &from._impl_.version_,
+    static_cast<size_t>(reinterpret_cast<char*>(&_impl_.playback_ack_) -
+    reinterpret_cast<char*>(&_impl_.version_)) + sizeof(_impl_.playback_ack_));
+  // @@protoc_insertion_point(copy_constructor:nai.v1.ProviderProbeReport)
+}
+
+inline void ProviderProbeReport::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.provider_id_){}
+    , decltype(_impl_.capability_){}
+    , decltype(_impl_.model_){}
+    , decltype(_impl_.voice_ref_){}
+    , decltype(_impl_.status_){}
+    , decltype(_impl_.error_code_){}
+    , decltype(_impl_.usage_){nullptr}
+    , decltype(_impl_.version_){0u}
+    , decltype(_impl_.sample_rate_){0u}
+    , decltype(_impl_.elapsed_ms_){uint64_t{0u}}
+    , decltype(_impl_.sample_count_){uint64_t{0u}}
+    , decltype(_impl_.generated_at_utc_ms_){uint64_t{0u}}
+    , decltype(_impl_.invoice_known_){false}
+    , decltype(_impl_.playback_ack_){false}
+  };
+  _impl_.provider_id_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.provider_id_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.capability_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.capability_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.model_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.model_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.voice_ref_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.voice_ref_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.status_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.status_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.error_code_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_code_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+ProviderProbeReport::~ProviderProbeReport() {
+  // @@protoc_insertion_point(destructor:nai.v1.ProviderProbeReport)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void ProviderProbeReport::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.provider_id_.Destroy();
+  _impl_.capability_.Destroy();
+  _impl_.model_.Destroy();
+  _impl_.voice_ref_.Destroy();
+  _impl_.status_.Destroy();
+  _impl_.error_code_.Destroy();
+  if (this != internal_default_instance()) delete _impl_.usage_;
+}
+
+void ProviderProbeReport::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void ProviderProbeReport::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.ProviderProbeReport)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.provider_id_.ClearToEmpty();
+  _impl_.capability_.ClearToEmpty();
+  _impl_.model_.ClearToEmpty();
+  _impl_.voice_ref_.ClearToEmpty();
+  _impl_.status_.ClearToEmpty();
+  _impl_.error_code_.ClearToEmpty();
+  if (GetArenaForAllocation() == nullptr && _impl_.usage_ != nullptr) {
+    delete _impl_.usage_;
+  }
+  _impl_.usage_ = nullptr;
+  _impl_.version_ = 0u;
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000007u) {
+    ::memset(&_impl_.sample_rate_, 0, static_cast<size_t>(
+        reinterpret_cast<char*>(&_impl_.sample_count_) -
+        reinterpret_cast<char*>(&_impl_.sample_rate_)) + sizeof(_impl_.sample_count_));
+  }
+  ::memset(&_impl_.generated_at_utc_ms_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&_impl_.playback_ack_) -
+      reinterpret_cast<char*>(&_impl_.generated_at_utc_ms_)) + sizeof(_impl_.playback_ack_));
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* ProviderProbeReport::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // uint32 version = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.version_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // string provider_id = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_provider_id();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.ProviderProbeReport.provider_id"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string capability = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_capability();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.ProviderProbeReport.capability"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string model = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 34)) {
+          auto str = _internal_mutable_model();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.ProviderProbeReport.model"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string voice_ref = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 42)) {
+          auto str = _internal_mutable_voice_ref();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.ProviderProbeReport.voice_ref"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string status = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 50)) {
+          auto str = _internal_mutable_status();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.ProviderProbeReport.status"));
+        } else
+          goto handle_unusual;
+        continue;
+      // string error_code = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 58)) {
+          auto str = _internal_mutable_error_code();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "nai.v1.ProviderProbeReport.error_code"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint64 elapsed_ms = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 64)) {
+          _Internal::set_has_elapsed_ms(&has_bits);
+          _impl_.elapsed_ms_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint32 sample_rate = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 72)) {
+          _Internal::set_has_sample_rate(&has_bits);
+          _impl_.sample_rate_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // optional uint64 sample_count = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 80)) {
+          _Internal::set_has_sample_count(&has_bits);
+          _impl_.sample_count_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // uint64 generated_at_utc_ms = 11;
+      case 11:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 88)) {
+          _impl_.generated_at_utc_ms_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // .nai.v1.UsageLedgerEntry usage = 12;
+      case 12:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 98)) {
+          ptr = ctx->ParseMessage(_internal_mutable_usage(), ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // bool invoice_known = 13;
+      case 13:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 104)) {
+          _impl_.invoice_known_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // bool playback_ack = 14;
+      case 14:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 112)) {
+          _impl_.playback_ack_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* ProviderProbeReport::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.ProviderProbeReport)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_version(), target);
+  }
+
+  // string provider_id = 2;
+  if (!this->_internal_provider_id().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_provider_id().data(), static_cast<int>(this->_internal_provider_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.ProviderProbeReport.provider_id");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_provider_id(), target);
+  }
+
+  // string capability = 3;
+  if (!this->_internal_capability().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_capability().data(), static_cast<int>(this->_internal_capability().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.ProviderProbeReport.capability");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_capability(), target);
+  }
+
+  // string model = 4;
+  if (!this->_internal_model().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_model().data(), static_cast<int>(this->_internal_model().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.ProviderProbeReport.model");
+    target = stream->WriteStringMaybeAliased(
+        4, this->_internal_model(), target);
+  }
+
+  // string voice_ref = 5;
+  if (!this->_internal_voice_ref().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_voice_ref().data(), static_cast<int>(this->_internal_voice_ref().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.ProviderProbeReport.voice_ref");
+    target = stream->WriteStringMaybeAliased(
+        5, this->_internal_voice_ref(), target);
+  }
+
+  // string status = 6;
+  if (!this->_internal_status().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_status().data(), static_cast<int>(this->_internal_status().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.ProviderProbeReport.status");
+    target = stream->WriteStringMaybeAliased(
+        6, this->_internal_status(), target);
+  }
+
+  // string error_code = 7;
+  if (!this->_internal_error_code().empty()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_error_code().data(), static_cast<int>(this->_internal_error_code().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.ProviderProbeReport.error_code");
+    target = stream->WriteStringMaybeAliased(
+        7, this->_internal_error_code(), target);
+  }
+
+  // optional uint64 elapsed_ms = 8;
+  if (_internal_has_elapsed_ms()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(8, this->_internal_elapsed_ms(), target);
+  }
+
+  // optional uint32 sample_rate = 9;
+  if (_internal_has_sample_rate()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(9, this->_internal_sample_rate(), target);
+  }
+
+  // optional uint64 sample_count = 10;
+  if (_internal_has_sample_count()) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(10, this->_internal_sample_count(), target);
+  }
+
+  // uint64 generated_at_utc_ms = 11;
+  if (this->_internal_generated_at_utc_ms() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt64ToArray(11, this->_internal_generated_at_utc_ms(), target);
+  }
+
+  // .nai.v1.UsageLedgerEntry usage = 12;
+  if (this->_internal_has_usage()) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(12, _Internal::usage(this),
+        _Internal::usage(this).GetCachedSize(), target, stream);
+  }
+
+  // bool invoice_known = 13;
+  if (this->_internal_invoice_known() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(13, this->_internal_invoice_known(), target);
+  }
+
+  // bool playback_ack = 14;
+  if (this->_internal_playback_ack() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteBoolToArray(14, this->_internal_playback_ack(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.ProviderProbeReport)
+  return target;
+}
+
+size_t ProviderProbeReport::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.ProviderProbeReport)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // string provider_id = 2;
+  if (!this->_internal_provider_id().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_provider_id());
+  }
+
+  // string capability = 3;
+  if (!this->_internal_capability().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_capability());
+  }
+
+  // string model = 4;
+  if (!this->_internal_model().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_model());
+  }
+
+  // string voice_ref = 5;
+  if (!this->_internal_voice_ref().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_voice_ref());
+  }
+
+  // string status = 6;
+  if (!this->_internal_status().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_status());
+  }
+
+  // string error_code = 7;
+  if (!this->_internal_error_code().empty()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_error_code());
+  }
+
+  // .nai.v1.UsageLedgerEntry usage = 12;
+  if (this->_internal_has_usage()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *_impl_.usage_);
+  }
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_version());
+  }
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000007u) {
+    // optional uint32 sample_rate = 9;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_sample_rate());
+    }
+
+    // optional uint64 elapsed_ms = 8;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_elapsed_ms());
+    }
+
+    // optional uint64 sample_count = 10;
+    if (cached_has_bits & 0x00000004u) {
+      total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_sample_count());
+    }
+
+  }
+  // uint64 generated_at_utc_ms = 11;
+  if (this->_internal_generated_at_utc_ms() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt64SizePlusOne(this->_internal_generated_at_utc_ms());
+  }
+
+  // bool invoice_known = 13;
+  if (this->_internal_invoice_known() != 0) {
+    total_size += 1 + 1;
+  }
+
+  // bool playback_ack = 14;
+  if (this->_internal_playback_ack() != 0) {
+    total_size += 1 + 1;
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData ProviderProbeReport::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    ProviderProbeReport::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*ProviderProbeReport::GetClassData() const { return &_class_data_; }
+
+
+void ProviderProbeReport::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<ProviderProbeReport*>(&to_msg);
+  auto& from = static_cast<const ProviderProbeReport&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.ProviderProbeReport)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (!from._internal_provider_id().empty()) {
+    _this->_internal_set_provider_id(from._internal_provider_id());
+  }
+  if (!from._internal_capability().empty()) {
+    _this->_internal_set_capability(from._internal_capability());
+  }
+  if (!from._internal_model().empty()) {
+    _this->_internal_set_model(from._internal_model());
+  }
+  if (!from._internal_voice_ref().empty()) {
+    _this->_internal_set_voice_ref(from._internal_voice_ref());
+  }
+  if (!from._internal_status().empty()) {
+    _this->_internal_set_status(from._internal_status());
+  }
+  if (!from._internal_error_code().empty()) {
+    _this->_internal_set_error_code(from._internal_error_code());
+  }
+  if (from._internal_has_usage()) {
+    _this->_internal_mutable_usage()->::nai::v1::UsageLedgerEntry::MergeFrom(
+        from._internal_usage());
+  }
+  if (from._internal_version() != 0) {
+    _this->_internal_set_version(from._internal_version());
+  }
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000007u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_impl_.sample_rate_ = from._impl_.sample_rate_;
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_impl_.elapsed_ms_ = from._impl_.elapsed_ms_;
+    }
+    if (cached_has_bits & 0x00000004u) {
+      _this->_impl_.sample_count_ = from._impl_.sample_count_;
+    }
+    _this->_impl_._has_bits_[0] |= cached_has_bits;
+  }
+  if (from._internal_generated_at_utc_ms() != 0) {
+    _this->_internal_set_generated_at_utc_ms(from._internal_generated_at_utc_ms());
+  }
+  if (from._internal_invoice_known() != 0) {
+    _this->_internal_set_invoice_known(from._internal_invoice_known());
+  }
+  if (from._internal_playback_ack() != 0) {
+    _this->_internal_set_playback_ack(from._internal_playback_ack());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void ProviderProbeReport::CopyFrom(const ProviderProbeReport& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.ProviderProbeReport)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool ProviderProbeReport::IsInitialized() const {
+  return true;
+}
+
+void ProviderProbeReport::InternalSwap(ProviderProbeReport* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.provider_id_, lhs_arena,
+      &other->_impl_.provider_id_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.capability_, lhs_arena,
+      &other->_impl_.capability_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.model_, lhs_arena,
+      &other->_impl_.model_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.voice_ref_, lhs_arena,
+      &other->_impl_.voice_ref_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.status_, lhs_arena,
+      &other->_impl_.status_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.error_code_, lhs_arena,
+      &other->_impl_.error_code_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(ProviderProbeReport, _impl_.playback_ack_)
+      + sizeof(ProviderProbeReport::_impl_.playback_ack_)
+      - PROTOBUF_FIELD_OFFSET(ProviderProbeReport, _impl_.usage_)>(
+          reinterpret_cast<char*>(&_impl_.usage_),
+          reinterpret_cast<char*>(&other->_impl_.usage_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata ProviderProbeReport::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fcontrol_2eproto_getter, &descriptor_table_domain_2fcontrol_2eproto_once,
+      file_level_metadata_domain_2fcontrol_2eproto[9]);
+}
+
+// ===================================================================
+
+class ProviderCredentialStatus::_Internal {
+ public:
+};
+
+ProviderCredentialStatus::ProviderCredentialStatus(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:nai.v1.ProviderCredentialStatus)
+}
+ProviderCredentialStatus::ProviderCredentialStatus(const ProviderCredentialStatus& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  ProviderCredentialStatus* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_.saved_provider_ids_){from._impl_.saved_provider_ids_}
+    , decltype(_impl_.version_){}
+    , /*decltype(_impl_._cached_size_)*/{}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _this->_impl_.version_ = from._impl_.version_;
+  // @@protoc_insertion_point(copy_constructor:nai.v1.ProviderCredentialStatus)
+}
+
+inline void ProviderCredentialStatus::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_.saved_provider_ids_){arena}
+    , decltype(_impl_.version_){0u}
+    , /*decltype(_impl_._cached_size_)*/{}
+  };
+}
+
+ProviderCredentialStatus::~ProviderCredentialStatus() {
+  // @@protoc_insertion_point(destructor:nai.v1.ProviderCredentialStatus)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void ProviderCredentialStatus::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.saved_provider_ids_.~RepeatedPtrField();
+}
+
+void ProviderCredentialStatus::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void ProviderCredentialStatus::Clear() {
+// @@protoc_insertion_point(message_clear_start:nai.v1.ProviderCredentialStatus)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  _impl_.saved_provider_ids_.Clear();
+  _impl_.version_ = 0u;
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* ProviderCredentialStatus::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // uint32 version = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          _impl_.version_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint32(&ptr);
+          CHK_(ptr);
+        } else
+          goto handle_unusual;
+        continue;
+      // repeated string saved_provider_ids = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            auto str = _internal_add_saved_provider_ids();
+            ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+            CHK_(ptr);
+            CHK_(::_pbi::VerifyUTF8(str, "nai.v1.ProviderCredentialStatus.saved_provider_ids"));
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<18>(ptr));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* ProviderCredentialStatus::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:nai.v1.ProviderCredentialStatus)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteUInt32ToArray(1, this->_internal_version(), target);
+  }
+
+  // repeated string saved_provider_ids = 2;
+  for (int i = 0, n = this->_internal_saved_provider_ids_size(); i < n; i++) {
+    const auto& s = this->_internal_saved_provider_ids(i);
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      s.data(), static_cast<int>(s.length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "nai.v1.ProviderCredentialStatus.saved_provider_ids");
+    target = stream->WriteString(2, s, target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:nai.v1.ProviderCredentialStatus)
+  return target;
+}
+
+size_t ProviderCredentialStatus::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:nai.v1.ProviderCredentialStatus)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // repeated string saved_provider_ids = 2;
+  total_size += 1 *
+      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(_impl_.saved_provider_ids_.size());
+  for (int i = 0, n = _impl_.saved_provider_ids_.size(); i < n; i++) {
+    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+      _impl_.saved_provider_ids_.Get(i));
+  }
+
+  // uint32 version = 1;
+  if (this->_internal_version() != 0) {
+    total_size += ::_pbi::WireFormatLite::UInt32SizePlusOne(this->_internal_version());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData ProviderCredentialStatus::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    ProviderCredentialStatus::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*ProviderCredentialStatus::GetClassData() const { return &_class_data_; }
+
+
+void ProviderCredentialStatus::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<ProviderCredentialStatus*>(&to_msg);
+  auto& from = static_cast<const ProviderCredentialStatus&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:nai.v1.ProviderCredentialStatus)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  _this->_impl_.saved_provider_ids_.MergeFrom(from._impl_.saved_provider_ids_);
+  if (from._internal_version() != 0) {
+    _this->_internal_set_version(from._internal_version());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void ProviderCredentialStatus::CopyFrom(const ProviderCredentialStatus& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:nai.v1.ProviderCredentialStatus)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool ProviderCredentialStatus::IsInitialized() const {
+  return true;
+}
+
+void ProviderCredentialStatus::InternalSwap(ProviderCredentialStatus* other) {
+  using std::swap;
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  _impl_.saved_provider_ids_.InternalSwap(&other->_impl_.saved_provider_ids_);
+  swap(_impl_.version_, other->_impl_.version_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata ProviderCredentialStatus::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_domain_2fcontrol_2eproto_getter, &descriptor_table_domain_2fcontrol_2eproto_once,
+      file_level_metadata_domain_2fcontrol_2eproto[10]);
+}
+
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace v1
 }  // namespace nai
@@ -3197,6 +4828,18 @@ Arena::CreateMaybeMessage< ::nai::v1::RuntimeObservation_BoundedMetricsEntry_DoN
 template<> PROTOBUF_NOINLINE ::nai::v1::RuntimeObservation*
 Arena::CreateMaybeMessage< ::nai::v1::RuntimeObservation >(Arena* arena) {
   return Arena::CreateMessageInternal< ::nai::v1::RuntimeObservation >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::LocalControlFrame*
+Arena::CreateMaybeMessage< ::nai::v1::LocalControlFrame >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::LocalControlFrame >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::ProviderProbeReport*
+Arena::CreateMaybeMessage< ::nai::v1::ProviderProbeReport >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::ProviderProbeReport >(arena);
+}
+template<> PROTOBUF_NOINLINE ::nai::v1::ProviderCredentialStatus*
+Arena::CreateMaybeMessage< ::nai::v1::ProviderCredentialStatus >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::nai::v1::ProviderCredentialStatus >(arena);
 }
 PROTOBUF_NAMESPACE_CLOSE
 

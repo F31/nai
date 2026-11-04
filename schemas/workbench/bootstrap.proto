@@ -1,0 +1,27 @@
+syntax = "proto3";
+package nai.workbench.v1;
+enum WorkbenchProtocolMajor { WORKBENCH_PROTOCOL_MAJOR_UNSPECIFIED=0; WORKBENCH_PROTOCOL_MAJOR_CURRENT=2; }
+enum WorkbenchLimit { WORKBENCH_LIMIT_UNSPECIFIED=0; WORKBENCH_LIMIT_FRAME_BYTES=65536; WORKBENCH_LIMIT_TTL_MS=4000; }
+enum WorkbenchImplementation { WORKBENCH_IMPLEMENTATION_UNSPECIFIED=0; WORKBENCH_IMPLEMENTATION_NOT_STARTED=1; WORKBENCH_IMPLEMENTATION_IMPLEMENTED=2; }
+enum WorkbenchReadiness { WORKBENCH_READINESS_UNSPECIFIED=0; WORKBENCH_READINESS_NOT_READY=1; WORKBENCH_READINESS_CONTROL_AVAILABLE=2; }
+enum WorkbenchError { WORKBENCH_ERROR_UNSPECIFIED=0; WORKBENCH_ERROR_PROTOCOL_INCOMPATIBLE=1; WORKBENCH_ERROR_AUTHENTICATION_FAILED=2; WORKBENCH_ERROR_INVALID_ARGUMENT=3; WORKBENCH_ERROR_FRAME_LIMIT=4; WORKBENCH_ERROR_TRUNCATED=5; WORKBENCH_ERROR_DEADLINE_EXCEEDED=6; WORKBENCH_ERROR_RESOURCE_EXHAUSTED=7; WORKBENCH_ERROR_CAPABILITY_UNAVAILABLE=8; WORKBENCH_ERROR_DATA_ROOT_REJECTED=9; WORKBENCH_ERROR_IO_FAILED=10; WORKBENCH_ERROR_PROTOCOL_ERROR=11; WORKBENCH_ERROR_BUSY=12; WORKBENCH_ERROR_CANCELLED=13; WORKBENCH_ERROR_REVISION_CONFLICT=14; WORKBENCH_ERROR_ALREADY_EXISTS=15; WORKBENCH_ERROR_OUTCOME_UNKNOWN=16; WORKBENCH_ERROR_PERMISSION_DENIED=17; WORKBENCH_ERROR_NOT_FOUND=18; WORKBENCH_ERROR_INTEGRITY_FAILED=19; WORKBENCH_ERROR_OWNER_BUSY=20; }
+
+enum Edition { EDITION_UNSPECIFIED=0; EDITION_LITE=1; EDITION_STANDARD=2; EDITION_PRO=3; }
+enum Deployment { DEPLOYMENT_UNSPECIFIED=0; DEPLOYMENT_LOCAL=1; DEPLOYMENT_HYBRID=2; DEPLOYMENT_DISTRIBUTED=3; }
+enum Presentation { PRESENTATION_UNSPECIFIED=0; PRESENTATION_CONTENT_ONLY=1; PRESENTATION_VOICE=2; PRESENTATION_AVATAR=3; PRESENTATION_HUMAN_ASSIST=4; }
+enum Behavior { BEHAVIOR_UNSPECIFIED=0; BEHAVIOR_REHEARSAL=1; BEHAVIOR_ASSISTED=2; BEHAVIOR_AUTO_SUPERVISED=3; }
+enum DeliveryScope { DELIVERY_SCOPE_UNSPECIFIED=0; DELIVERY_SCOPE_PRIVATE=1; DELIVERY_SCOPE_PUBLIC=2; }
+enum EvidenceKind { EVIDENCE_KIND_UNSPECIFIED=0; EVIDENCE_KIND_SUBMITTED=1; EVIDENCE_KIND_LOCAL_AUDIO=2; EVIDENCE_KIND_LOCAL_VISUAL=3; EVIDENCE_KIND_CAPTURE_VERIFIED=4; EVIDENCE_KIND_TRANSPORT_ACK=5; EVIDENCE_KIND_HUMAN_CONFIRMATION=6; EVIDENCE_KIND_FRONTEND_PRESENTED=7; }
+enum DeliveryState { DELIVERY_STATE_UNSPECIFIED=0; DELIVERY_STATE_SELECTED=1; DELIVERY_STATE_PREPARING=2; DELIVERY_STATE_GUARDED=3; DELIVERY_STATE_AWAITING_APPROVAL=4; DELIVERY_STATE_APPROVED=5; DELIVERY_STATE_READY=6; DELIVERY_STATE_COMMITTED=7; DELIVERY_STATE_DELIVERING=8; DELIVERY_STATE_COMPLETED=9; DELIVERY_STATE_CANCELLED=10; DELIVERY_STATE_EXPIRED=11; DELIVERY_STATE_BLOCKED=12; DELIVERY_STATE_FAILED=13; DELIVERY_STATE_OUTCOME_UNKNOWN=14; }
+message WorkbenchConfig { Edition edition=1; Deployment deployment=2; Presentation presentation=3; Behavior behavior=4; DeliveryScope delivery_scope=5; uint32 queue_limit=6; uint32 task_deadline_ms=7; bool shadow=8; }
+message WorkbenchInspect { WorkbenchConfig config=1; }
+message WorkbenchPrepare { WorkbenchConfig config=1; }
+// Token is inherited from the trusted parent, never accepted as a UI field or returned.
+message WorkbenchRequest { uint32 protocol_major=1; bytes authorization=2; string request_id=3; uint64 seq=4; uint32 ttl_ms=5; oneof operation { WorkbenchInspect inspect=10; WorkbenchPrepare prepare=11; } }
+message WorkbenchProblem { WorkbenchError code=1; string safe_message=2; bool retryable=3; string request_id=4; repeated string field_errors=5; }
+message WorkbenchCapabilityView { string capability_id=1; WorkbenchImplementation implementation=2; bool available=3; string reason_code=4; }
+message WorkbenchCapabilities { WorkbenchConfig config=1; repeated WorkbenchCapabilityView capabilities=2; repeated string required_capabilities=3; bool business_ready=4; WorkbenchReadiness status=5; uint32 started_media_processes=6; uint32 provider_calls=7; }
+message WorkbenchHandshake { uint32 protocol_major=1; uint32 max_frame_bytes=2; string build=3; string clock=4; uint32 lease_ms=5; }
+message WorkbenchResponse { string request_id=1; uint64 seq=2; WorkbenchHandshake handshake=3; oneof outcome { WorkbenchCapabilities capabilities=10; WorkbenchProblem problem=11; } }
+// Contract only in RF01: no command can approve or execute this object yet.
+message WorkbenchDeliveryUnit { string delivery_id=1; string workspace_id=2; string session_id=3; uint64 epoch=4; string snapshot_ref=5; string target_id=6; DeliveryScope scope=7; string bundle_sha256=8; uint64 revision=9; uint32 ttl_ms=10; DeliveryState state=11; EvidenceKind evidence=12; }

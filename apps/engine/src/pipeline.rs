@@ -402,9 +402,17 @@ pub fn load_script(path: &Path) -> Result<Script, String> {
 /// script's own directory. Nothing is defaulted: an incomplete closure is
 /// refused before any session state is driven.
 fn resolve_render(script: &mut Script) -> Result<(), String> {
+    let base = script.base_dir.clone();
     let Some(render) = script.render.as_mut() else {
         return Ok(());
     };
+    resolve_render_setup(render, &base)
+}
+
+/// Validates and resolves one render declaration. Shared by the rehearsal
+/// script loader and the operator preview so both open only paths the trusted
+/// owner wrote down.
+pub(crate) fn resolve_render_setup(render: &mut RenderSetup, base: &Path) -> Result<(), String> {
     if render.manifest.is_empty() || render.config.is_empty() {
         return Err("render closure needs a manifest and a config path".into());
     }
@@ -430,7 +438,6 @@ fn resolve_render(script: &mut Script) -> Result<(), String> {
         return Err("render closure needs an output identity".into());
     }
     RehearsalSink::parse(&render.playback)?;
-    let base = script.base_dir.clone();
     let resolve = |value: &str| -> String {
         let path = Path::new(value);
         if path.is_absolute() {
@@ -953,15 +960,15 @@ fn composition_scope(shared: &Arc<Mutex<Composition>>) -> Result<(String, String
 /// the per-event loop needs. It is admitted once per run so the one-time schema
 /// and closure cost is never paid inside an event, exactly as the render-worker
 /// pays it before its slot window opens.
-struct RenderLane {
-    avatar: Arc<Avatar>,
-    grants: LicenseGrants,
-    voice_ref: String,
-    output_id: String,
-    playback: RehearsalSink,
-    sample_rate: u32,
-    fps_num: u32,
-    fps_den: u32,
+pub(crate) struct RenderLane {
+    pub(crate) avatar: Arc<Avatar>,
+    pub(crate) grants: LicenseGrants,
+    pub(crate) voice_ref: String,
+    pub(crate) output_id: String,
+    pub(crate) playback: RehearsalSink,
+    pub(crate) sample_rate: u32,
+    pub(crate) fps_num: u32,
+    pub(crate) fps_den: u32,
 }
 
 fn read_render_json(path: &str, what: &str) -> Result<Value, String> {
@@ -972,8 +979,8 @@ fn read_render_json(path: &str, what: &str) -> Result<Value, String> {
 /// Admits the render closure the script declared. A missing, unreadable or
 /// unlicensed input is a hard failure: the engine never substitutes a default
 /// asset, voice or output identity.
-fn render_lane(script: &Script) -> Result<Option<RenderLane>, String> {
-    let Some(render) = script.render.as_ref() else {
+pub(crate) fn render_lane(render: Option<&RenderSetup>) -> Result<Option<RenderLane>, String> {
+    let Some(render) = render else {
         return Ok(None);
     };
     let manifest = read_render_json(&render.manifest, "avatar manifest")?;
@@ -1036,6 +1043,166 @@ fn render_lane(script: &Script) -> Result<Option<RenderLane>, String> {
         fps_den: frame_geometry(&manifest, "fps_den")?,
     };
     Ok(Some(lane))
+}
+
+/// One rendered utterance: the committed playback lane and the frame count.
+pub(crate) struct RenderedAudio {
+    pub(crate) lane: PlaybackLane,
+    pub(crate) frames: u32,
+    pub(crate) frame_hashes: Vec<String>,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
+}
+
+impl RenderLane {
+    pub(crate) fn standby(
+        &self,
+        session: &str,
+        epoch: u64,
+    ) -> Result<nai_avatar_2d::StandbyFrame, String> {
+        let ctx = PluginContext::new(
+            "nai-avatar-2d",
+            session,
+            epoch,
+            TASK_BUDGET_MS,
+            json!({}),
+            Vec::new(),
+            Instant::now() + Duration::from_millis(u64::from(TASK_BUDGET_MS)),
+            Arc::new(AtomicBool::new(false)),
+            utc_ms(),
+        );
+        self.avatar
+            .standby(&ctx, &self.grants)
+            .map_err(contract_detail)
+    }
+
+    /// Cuts the PCM into frame-boundary audio blocks, drives the admitted 2D
+    /// renderer, and commits the playback lane on its water levels. Frames stay
+    /// in memory; this method never writes a slot or involves a device.
+    pub(crate) fn render_audio(
+        &self,
+        session: &str,
+        cue: &PerformanceCue,
+        pcm: &[f32],
+        epoch: u64,
+        now_ms: u64,
+        frame_ref: &str,
+    ) -> Result<RenderedAudio, String> {
+        self.render_audio_to(session, cue, pcm, epoch, now_ms, frame_ref, &mut |_| Ok(()))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn render_audio_to(
+        &self,
+        session: &str,
+        cue: &PerformanceCue,
+        pcm: &[f32],
+        epoch: u64,
+        now_ms: u64,
+        frame_ref: &str,
+        sink: &mut dyn FnMut(&[u8]) -> Result<(), String>,
+    ) -> Result<RenderedAudio, String> {
+        let total = pcm.len() as u64;
+        let expected_frames = frame_count(total, self.sample_rate, self.fps_num, self.fps_den);
+        if expected_frames == 0 || expected_frames > MAX_FRAMES {
+            return Err("synthesized audio has no bounded frame span".into());
+        }
+        let ctx = PluginContext::new(
+            "nai-avatar-2d",
+            session,
+            epoch,
+            TASK_BUDGET_MS,
+            json!({}),
+            Vec::new(),
+            Instant::now() + Duration::from_millis(u64::from(TASK_BUDGET_MS)),
+            Arc::new(AtomicBool::new(false)),
+            now_ms,
+        );
+        let mut lane = PlaybackLane::new(&LaneSpec {
+            output_id: &self.output_id,
+            utterance_id: &cue.utterance_id,
+            sample_rate: self.sample_rate,
+            audio_water_ms: AUDIO_WATER_MS,
+            expected_samples: total,
+            expected_frames,
+        })
+        .map_err(|error| format!("playback lane rejected the utterance: {error:?}"))?;
+        let mut stream = self.avatar.stream(&ctx, cue).map_err(contract_detail)?;
+        let mut consumed = 0u64;
+        let mut seq = 0u32;
+        let mut frames = 0u32;
+        let mut frame_hashes = Vec::new();
+        let mut width = 0u32;
+        let mut height = 0u32;
+        while consumed < total {
+            let end = frame_boundary(seq + 1, self.sample_rate, self.fps_num, self.fps_den);
+            if end <= consumed {
+                return Err("frame boundary did not advance".into());
+            }
+            let take = (end - consumed).min(total - consumed);
+            let eos = consumed + take >= total;
+            let block = AudioBlock {
+                session_id: session.into(),
+                utterance_id: cue.utterance_id.clone(),
+                generation_epoch: epoch,
+                seq,
+                sample_rate: self.sample_rate,
+                channels: 1,
+                format: SampleFormat::F32,
+                sample_start: consumed,
+                sample_count: take as u32,
+                end_of_stream: eos,
+            };
+            let slice = &pcm[consumed as usize..(consumed + take) as usize];
+            stream
+                .push(&ctx, &self.grants, block.clone(), slice)
+                .map_err(contract_detail)?;
+            lane.push_audio(&block)
+                .map_err(|error| format!("playback lane rejected the audio block: {error:?}"))?;
+            if let Some(frame) = stream
+                .next_frame(&ctx, &self.grants, frame_ref)
+                .map_err(contract_detail)?
+            {
+                if frame.metadata.frame_seq != u64::from(frames) {
+                    return Err(format!(
+                        "renderer frame sequence {} is not contiguous at {frames}",
+                        frame.metadata.frame_seq
+                    ));
+                }
+                frames += 1;
+                width = frame.metadata.width;
+                height = frame.metadata.height;
+                frame_hashes.push(hex_digest(&frame.rgba));
+                sink(&frame.rgba)?;
+                lane.push_frame(frames)
+                    .map_err(|error| format!("playback lane rejected frame {frames}: {error:?}"))?;
+            }
+            consumed += take;
+            seq += 1;
+        }
+        if frames != expected_frames {
+            return Err(format!(
+                "declared {expected_frames} frames but the renderer produced {frames}"
+            ));
+        }
+        lane.commit(now_ms, now_ms)
+            .map_err(|error| format!("playback lane commit rejected: {error:?}"))?;
+        Ok(RenderedAudio {
+            lane,
+            frames,
+            frame_hashes,
+            width,
+            height,
+        })
+    }
+}
+
+fn hex_digest(bytes: &[u8]) -> String {
+    use sha2::Digest;
+    sha2::Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 /// Everything the per-event evaluation needs. Pure inputs only, so two passes
@@ -1319,89 +1486,16 @@ fn render_and_play(
     render: &RenderLane,
     speech: &SpeechResponse,
 ) -> Result<PlaybackOutcome, String> {
-    let total = speech.pcm.len() as u64;
-    let expected_frames = frame_count(total, render.sample_rate, render.fps_num, render.fps_den);
-    if expected_frames == 0 || expected_frames > MAX_FRAMES {
-        return Err("synthesized audio has no bounded frame span".into());
-    }
-    let ctx = PluginContext::new(
-        "nai-avatar-2d",
+    let rendered = render.render_audio(
         &rehearsal.gate.session,
+        cue,
+        &speech.pcm,
         event.generation_epoch,
-        TASK_BUDGET_MS,
-        json!({}),
-        Vec::new(),
-        Instant::now() + Duration::from_millis(u64::from(TASK_BUDGET_MS)),
-        Arc::new(AtomicBool::new(false)),
         rehearsal.now_ms,
-    );
-    let mut lane = PlaybackLane::new(&LaneSpec {
-        output_id: &render.output_id,
-        utterance_id: &event.utterance_id,
-        sample_rate: render.sample_rate,
-        audio_water_ms: AUDIO_WATER_MS,
-        expected_samples: total,
-        expected_frames,
-    })
-    .map_err(|error| format!("playback lane rejected the utterance: {error:?}"))?;
-    let mut stream = render.avatar.stream(&ctx, cue).map_err(contract_detail)?;
-    let frame_ref = format!("engine-rehearsal:{}", event.event_id);
-    let mut consumed = 0u64;
-    let mut seq = 0u32;
-    let mut frames = 0u32;
-    while consumed < total {
-        let end = frame_boundary(seq + 1, render.sample_rate, render.fps_num, render.fps_den);
-        if end <= consumed {
-            return Err("frame boundary did not advance".into());
-        }
-        let take = (end - consumed).min(total - consumed);
-        let eos = consumed + take >= total;
-        let block = AudioBlock {
-            session_id: rehearsal.gate.session.clone(),
-            utterance_id: event.utterance_id.clone(),
-            generation_epoch: event.generation_epoch,
-            seq,
-            sample_rate: render.sample_rate,
-            channels: 1,
-            format: SampleFormat::F32,
-            sample_start: consumed,
-            sample_count: take as u32,
-            end_of_stream: eos,
-        };
-        let slice = &speech.pcm[consumed as usize..(consumed + take) as usize];
-        stream
-            .push(&ctx, &render.grants, block.clone(), slice)
-            .map_err(contract_detail)?;
-        lane.push_audio(&block)
-            .map_err(|error| format!("playback lane rejected the audio block: {error:?}"))?;
-        if let Some(frame) = stream
-            .next_frame(&ctx, &render.grants, &frame_ref)
-            .map_err(contract_detail)?
-        {
-            // The renderer numbers frames from zero; the lane numbers them from
-            // one. The conversion is checked rather than assumed: a stream that
-            // skipped, repeated or reordered a frame must fail the run instead
-            // of silently advancing the video water level.
-            if frame.metadata.frame_seq != u64::from(frames) {
-                return Err(format!(
-                    "renderer frame sequence {} is not contiguous at {frames}",
-                    frame.metadata.frame_seq
-                ));
-            }
-            frames += 1;
-            lane.push_frame(frames)
-                .map_err(|error| format!("playback lane rejected frame {frames}: {error:?}"))?;
-        }
-        consumed += take;
-        seq += 1;
-    }
-    if frames != expected_frames {
-        return Err(format!(
-            "declared {expected_frames} frames but the renderer produced {frames}"
-        ));
-    }
-    lane.commit(rehearsal.now_ms, rehearsal.now_ms)
-        .map_err(|error| format!("playback lane commit rejected: {error:?}"))?;
+        &format!("engine-rehearsal:{}", event.event_id),
+    )?;
+    let mut lane = rendered.lane;
+    let frames = rendered.frames;
     if !lane.committed() {
         return Ok(PlaybackOutcome {
             frames,
@@ -1636,7 +1730,7 @@ pub fn run(shared: &Arc<Mutex<Composition>>, config: &PipelineConfig) -> Result<
     let index = index_build(&script.knowledge)?;
     // The render lane is admitted once, before any session state is driven: an
     // unlicensed or corrupt avatar closure must fail the run, not an event.
-    let render = render_lane(&script)?;
+    let render = render_lane(script.render.as_ref())?;
     // An injection that could never fire is refused rather than silently
     // ignored: the drill must always be able to prove what it claims.
     if config.injection == Injection::Speech && script.render.is_none() {

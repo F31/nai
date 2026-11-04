@@ -1,0 +1,9 @@
+{
+  "schema_version":1,
+  "kind":"product_draft",
+  "name":"便携水杯",
+  "facts":[{"id":"capacity","label":"容量","value_type":"decimal","value":"500","unit":"毫升","source":"产品包装规格页，人工核对","authority":"owner_confirmed","conditions":"标准款","valid_from_ms":null,"valid_until_ms":null}],
+  "faq":[{"id":"capacity_question","question":"容量多大？","text":"标准款容量为500毫升。","fact_ids":["capacity"]}],
+  "talk_tracks":[{"id":"opening","text":"这是一款便携水杯，标准款容量为500毫升。","fact_ids":["capacity"]}],
+  "prohibitions":["不得宣称具有治疗效果"]
+}

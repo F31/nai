@@ -1,5 +1,7 @@
 # UI 层（`tests/ui`）
 
+2026-10-20 工作台导航：日常操作留在主页，右上设置分七类；LLM/TTS/路由共用一份编辑状态，保存按钮整体保存两组配置。关闭与菜单切换不丢输入。浏览器测试覆盖真实dist导航、焦点与编辑保留；详见 [本轮报告](reports/2026-10-20-r1-workbench-navigation.md)。下述W38内容为历史逻辑层证据，不代表目前仍无DOM渲染。
+
 设计 §30.1 为 UI 层指定了 `tests/ui` 与四条断言。本轮（W38）首次建立该目录，并把**能脱离渲染被断言**的部分落成可执行检查。
 它测的是**界面行为逻辑**，不是像素与浏览器渲染。
 
@@ -130,8 +132,40 @@ pnpm typecheck
 sidecar 逻辑名**不带**目标三元组且对应真实二进制包、后台生命周期不绑界面、桌面／macOS／移动端三形态共用边界、
 前端源码不 import `@tauri-apps/*`。每条检查都配**非空洞守卫**（注入违反样本必须被抓到）。
 
-**它不是壳体验收**：本目录不引入 `tauri` crate、不建 Rust 壳主体、不打包（ADR 0046 D3）。校验读的是**配置的形状**，
-**不能**证明配置被某个 Tauri 版本接受，`tests/registry.yaml` 的 A12 因此保持 `pending`。
-同理，`tests/ui` 通过仍**不构成**浏览器渲染或人工 UI 验收。
+**它不是壳体验收**：形状校验读的是**配置的形状**，**不能**证明配置被某个 Tauri 版本接受；
+`tests/registry.yaml` 的 A12 因此保持 `pending`。同理，`tests/ui` 通过仍**不构成**浏览器渲染或人工 UI 验收。
 
-相关：[控制面指南](control.md)、[本轮报告](reports/2026-10-10-w38-desktop-approval-surface.md)。
+## 原生控制适配（`r1-native-engine-ipc`）
+
+原生壳的真实构建见 [ADR 0129](adr/0129-native-shell-build-isolation.md)，控制通道见
+[ADR 0130](adr/0130-native-control-inherited-pipe.md)。桌面前端新增 `native.ts`：它只把
+`ControlClient` 的请求编码成有界 `LocalControlFrame`，调用唯一命令 `control_exchange`，并校验
+响应身份（request id、kind、状态码、字节上限）；**没有**地址、令牌、HTTP 回退或重试。
+浏览器路径仍用显式 127.0.0.1 的测试适配。
+
+`native-ipc.test.mjs`（6 项）覆盖：帧字段与不携带凭据、POST JSON 体、错配 request id 拒绝、
+错误状态只报一次、超限/非字节拒绝、缺少原生入口时失败关闭。它不驱动 WebView，也不验证渲染。
+测试前置：`packages/contracts-ts` 需先构建（`frontend-gate` 已在 `test:ui` 前完成）。
+
+## 首次设置面板（`r1-first-run-setup`）
+
+原生壳在连接前显示设置面板：数据根只读、工作区/身份/profile/场景/runtime profile 可编辑、
+“首次使用，初始化工作区”复选框、仅本次会话的 API 密钥。`setup.ts` 只做校验与文案，
+提交由 `apply_host_setup` 完成；成功后立即清空密钥状态。浏览器路径不显示该面板。
+
+`setup.test.mjs`（5 项）覆盖预填、标识符/绝对路径/密钥校验、保存载荷不含密钥、状态文案，
+以及预检摘要按引擎的 `all_passed`/逐轴结果显示 `not_ready`。设置面板还提供“运行预检”，
+结果逐轴展示；不勾选连通测试时整体不会显示通过。
+
+相关：[控制面指南](control.md)、[W38 报告](reports/2026-10-10-w38-desktop-approval-surface.md)、
+[原生控制报告](reports/2026-10-19-r1-native-engine-ipc.md)、[首次设置报告](reports/2026-10-19-r1-first-run-setup.md)。
+
+## R1 本机试听（2026-10-20）
+
+已批准候选增加显式本机播放动作，文件预览保留；批准期30秒且受候选自身期限限制。界面区分渲染、播放中和设备提交，忙碌时静音仍可用。真实付费API、硬件完成ACK与正式签名尚未验收，参见 [local-playback.md](local-playback.md)。
+
+## 独立LLM/TTS主备配置（2026-10-20）
+
+原生桌面新增独立能力配置、一主最多四备及主优先/实测延迟路由，密钥分开且仅本次会话使用；运行中先停止再修改，保存后重启生效。
+模型、音色、预算身份按本次实际选择固定；已派发失败不会自动跨供应商重发，下一新请求按熔断健康状态选备。
+操作和限制见 [provider-routing.md](provider-routing.md)，真实付费认证仍未完成。

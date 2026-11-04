@@ -13,3 +13,51 @@ message StorageRequest { RequestContext context = 1; string operation = 2; strin
 message StorageResult { string resource_id = 1; string revision = 2; bytes value = 3; string snapshot_ref = 4; }
 message ObserveRequest { RequestContext context = 1; repeated string topics = 2; }
 message RuntimeObservation { string revision = 1; repeated Usage usage = 2; map<string, string> bounded_metrics = 3; repeated string diagnostic_refs = 4; }
+
+// Private spawn-inherited control transport, not a public network protocol.
+// JSON body bytes use the existing control OpenAPI DTOs; no PCM or video here.
+enum LocalControlKind {
+  LOCAL_CONTROL_UNSPECIFIED = 0;
+  LOCAL_CONTROL_BOOTSTRAP = 1;
+  LOCAL_CONTROL_READY = 2;
+  LOCAL_CONTROL_REQUEST = 3;
+  LOCAL_CONTROL_RESPONSE = 4;
+  LOCAL_CONTROL_HEARTBEAT = 5;
+  LOCAL_CONTROL_SHUTDOWN = 6;
+}
+message LocalControlFrame {
+  uint32 version = 1;
+  uint64 seq = 2;
+  LocalControlKind kind = 3;
+  string request_id = 4;
+  string method = 5;
+  string path = 6;
+  bytes body = 7;
+  uint32 status = 8;
+  string bootstrap_token = 9;
+  uint32 ttl_ms = 10;
+}
+
+// Explicit connectivity probe; never carries generated text, PCM or keys.
+message ProviderProbeReport {
+  uint32 version = 1;
+  string provider_id = 2;
+  string capability = 3;
+  string model = 4;
+  string voice_ref = 5;
+  string status = 6;
+  string error_code = 7;
+  optional uint64 elapsed_ms = 8;
+  optional uint32 sample_rate = 9;
+  optional uint64 sample_count = 10;
+  uint64 generated_at_utc_ms = 11;
+  UsageLedgerEntry usage = 12;
+  bool invoice_known = 13;
+  bool playback_ack = 14;
+}
+
+// Only presence is visible to the UI. Secret material stays in the native host.
+message ProviderCredentialStatus {
+  uint32 version = 1;
+  repeated string saved_provider_ids = 2;
+}

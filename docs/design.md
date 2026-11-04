@@ -1,26 +1,22 @@
 # nai 设计入口
 
-唯一实现基线为 [直播数字人 + 智能体系统技术方案 V3.11.md](直播数字人%20%2B%20智能体系统技术方案%20V3.11.md)
-（V3.11，经 ADR 0065 裁决；V3.10、V3.9、V3.8、V3.7、V3.6 与 V3.5 降为历史参考，不再作为实现基线）。
+## 新版规划目标（2026-10-23）
 
-该文档完整覆盖产品、架构、契约、存储、媒体、平台、升级及验收，使用时无需拼接历史版本。
-本文件仅作为稳定入口，不复制原文，避免出现两份相互漂移的规范。
+已审视[V4.8完整方案](digital-host-agent-design-V4.8.md)，后续任务见[V4.8开发计划](v48-development-plan.md)及[ADR0151采纳提案](adr/0151-v48-adoption-plan.md)。V48-01已完成实际基线切换：当前执行V4.8注册表164ACC/62INV，全部pending；旧通过状态不自动沿用。默认边界见[架构裁决](architecture/v48-boundaries-and-command-inventory.md)。
 
-项目名称以用户确定的 **nai** 为准；V3.11 方案中的 `digital-host-agent`/`dh-*` 是建议命名，
-仓库、crates、packages、二进制与契约前缀一律保持 **nai-***（ADR 0015 决策 3）。
-具体工程标识映射见 [ADR 0001](adr/0001-project-name-and-design-baseline.md)。
+## V4.3历史重构目标
 
-## 实施导航
+此前重构产品/技术目标为 [digital-host-agent-design-V4.3.md](digital-host-agent-design-V4.3.md)，由 [ADR0147](adr/0147-v43-product-reconstruction-baseline.md) 记录采纳范围与仓库裁决。以真人主导的“备播—预演—协同直播—复盘—下场复用”为主线，不承担旧代码/ABI/场景配置兼容；工程标识仍为nai-*。
 
-- 第 1–4 章：目标、不变量、架构与契约体系。
-- 第 5–9 章：智能体、知识、Provider、媒体与平台。
-- 第 10–15 章：控制面、安全、可靠性、合规、部署与易用性。
-- 第 16–17 章：验收注册表与切片路线。
-- 第 19–31 章：实施规范总则与开发任务。
-- 第 32 章：V3.5 审阅发现；第 33–38 章：开放平台（数据源与设备接入、技能规范、技能市场、场景与路线）；
-  第 39 章：V3.7 版本说明与汇总索引（历史记录，原文不改写）；
-- 第 40–48 章：第四部分「智能体 Harness 与开放互操作」；第 48 章：V3.8 版本说明与汇总索引；
-  第 49–59 章：第五部分「范围重排与能力包」；第 57 章：V3.9 版本说明与汇总索引；第 58 章：V3.10 版本说明与订正索引；第 59 章：V3.11 版本说明与订正索引。
+- [仓库重构设计](architecture/v43-product-reconstruction.md)：领域、进程、存储/契约、UI、回执与数据保护。
+- [后续任务与第一张工程卡](v43-reconstruction-plan.md)：V43-RF01–12、依赖与里程碑。
+- [V4.3全部ACC目标映射](acceptance/v43-target-matrix.md)：仅目标索引，不是通过记录。
+- [本轮审视报告](reports/2026-10-22-v43-product-reconstruction-review.md)。
 
-验收唯一来源为 [tests/registry.yaml](../tests/registry.yaml)（V3.11 S/R/A/B/O/P/M/H/X + release_line（新增 capability_pack），ADR 0015 勘误落实），
-实施进度见 [开发任务跟踪](development-plan.md)，实测证据保存在 `docs/reports/`。
+## 当前实现和证据边界
+
+现有安装仍为V3.11演进的Engineering实现，未被新线替换；当前可操作能力与限制见[开发计划](development-plan.md)。RF01最小装配与RF02存储/私有交付基础已实现，用户备播/直播等完整业务目标尚未实现，不能把设计章节、历史测试数、单项设备或Provider证据当成新产品完成。
+
+[tests/registry.yaml](../tests/registry.yaml)为V4.3唯一实际验收注册表，RF01已切换Schema/检查器和消费者，原表归档至tests/legacy/v311。90项ACC仍pending；[RF01报告](reports/2026-10-22-v43-rf01-contracts-and-bootstrap.md)中的前置证据不授予整项通过。
+
+V3.11及此前方案、ADR和OpenSpec用于历史追溯，不自行拼接旧条款覆盖V4.3。现有库/Key/素材/许可保留，新数据根与凭据隔离；是否需要旧资产导入另按映射、预览、备份与授权执行。

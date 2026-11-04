@@ -1,0 +1,4 @@
+[[permission]]
+identifier="allow-private-audio-control"
+description="Stop the fixed local private audio worker and read its stop nonce. Accepts no page-supplied path, actor or credential."
+commands.allow=["workbench_stop_audition","workbench_audition_nonce"]

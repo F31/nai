@@ -27,11 +27,18 @@ nai-budget-core.workspace = true
 nai-storage.workspace = true
 nai-runtime.workspace = true
 nai-control-api.workspace = true
+nai-control-ipc.workspace = true
+bytes = "=1.12.1"
+http-body-util = "=0.1.5"
+hyper = { version = "=1.12.0", features = ["http1", "server"] }
 nai-plugin-sdk.workspace = true
 nai-avatar-2d = { path = "../../plugins/avatar-2d" }
+ nai-security.workspace = true
+jsonschema.workspace = true
 prost.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 tokio = { version = "=1.53.2", features = ["macros", "rt-multi-thread", "net", "time", "sync"] }
 tempfile.workspace = true
 

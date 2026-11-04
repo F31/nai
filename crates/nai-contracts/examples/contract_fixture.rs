@@ -283,8 +283,190 @@ fn main() {
         },
         write,
     );
+    transfer(
+        dir,
+        "device_smoke",
+        NativeDeviceSmokeReport {
+            schema_version: 1,
+            scope: "native-device-smoke".into(),
+            scenario: "stall".into(),
+            backend: "wasapi/minifb".into(),
+            audio_opened: true,
+            window_opened: true,
+            callbacks: EPOCH,
+            copied_interleaved_samples: u64::MAX,
+            max_callback_frames: 1056,
+            error_code: "DEVICE_TIMING_UNAVAILABLE".into(),
+            success: false,
+            actual_local_playback_completed: false,
+            ..Default::default()
+        },
+        write,
+    );
+    transfer(
+        dir,
+        "local_media",
+        LocalPlaybackMedia {
+            version: 1,
+            session_id: "fixture-session".into(),
+            generation_epoch: EPOCH,
+            candidate_hash: "a".repeat(64),
+            sample_count: u64::MAX,
+            sample_rate: 8000,
+            width: 2,
+            height: 1,
+            frame_count: 13,
+            fps_num: 25,
+            fps_den: 1,
+            audio_sha256: "b".repeat(64),
+            frames_sha256: "c".repeat(64),
+            frame_sha256: vec!["e".repeat(64), "f".repeat(64)],
+            standby_sha256: "a".repeat(64),
+        },
+        write,
+    );
+    transfer(
+        dir,
+        "local_grant",
+        LocalPlaybackGrant {
+            version: 1,
+            seq: u64::MAX,
+            media_sha256: "d".repeat(64),
+            cue: Some(PerformanceCue {
+                generation_epoch: EPOCH,
+                ..Default::default()
+            }),
+            approval: Some(Approval {
+                actor_id: "已持久化审批者".into(),
+                generation_epoch: EPOCH,
+                ..Default::default()
+            }),
+            lease: Some(PlaybackLease {
+                generation_epoch: EPOCH,
+                ..Default::default()
+            }),
+        },
+        write,
+    );
+    transfer(
+        dir,
+        "local_status",
+        LocalPlaybackStatus {
+            version: 1,
+            state: "failed".into(),
+            copied_samples: None,
+            window_updates: Some(0),
+            error_code: "DEVICE_TIMING_UNAVAILABLE".into(),
+            actual_local_playback_completed: false,
+            audio_stream_open_count: 1,
+            standby_sha256: "a".repeat(64),
+            media_sha256: "b".repeat(64),
+            audio_backend: "wasapi-iaudioclock".into(),
+            video_frame_index: Some(0),
+            video_device_samples: Some(u64::MAX),
+            video_tail_submitted: false,
+            ..Default::default()
+        },
+        write,
+    );
+    transfer(
+        dir,
+        "provider_probe",
+        ProviderProbeReport {
+            version: 1,
+            provider_id: "speech-backup".into(),
+            capability: "tts".into(),
+            model: "model".into(),
+            voice_ref: "音色".into(),
+            status: "failed".into(),
+            error_code: "DEADLINE_EXCEEDED".into(),
+            elapsed_ms: Some(EPOCH),
+            sample_count: None,
+            generated_at_utc_ms: EPOCH,
+            usage: Some(UsageLedgerEntry {
+                provider_ref: "speech-backup".into(),
+                state: BillingState::NeedsReconciliation as i32,
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        write,
+    );
+    transfer(
+        dir,
+        "provider_credentials",
+        ProviderCredentialStatus {
+            version: 1,
+            saved_provider_ids: vec!["agnes-primary".into(), "siliconflow-primary".into()],
+        },
+        write,
+    );
+    let warmup = LocalOutputWarmup {
+        descriptor_path: "C:/测试/standby.pb".into(),
+        descriptor_sha256: "d".repeat(64),
+        session_id: "静默会话".into(),
+        generation_epoch: EPOCH,
+        remaining_budget_ms: 4000,
+    };
+    transfer(
+        dir,
+        "standby_media",
+        LocalStandbyMedia {
+            version: 1,
+            session_id: "静默会话".into(),
+            generation_epoch: EPOCH,
+            width: 640,
+            height: 360,
+            standby_sha256: "a".repeat(64),
+        },
+        write,
+    );
+    transfer(
+        dir,
+        "output_warmup",
+        LocalOutputCommand {
+            command: Some(local_output_command::Command::Warmup(warmup)),
+        },
+        write,
+    );
+    for (name, command) in [
+        (
+            "output_descriptor",
+            local_output_command::Command::DescriptorPath("C:/测试/media.pb".into()),
+        ),
+        (
+            "output_grant",
+            local_output_command::Command::Grant(Box::new(LocalPlaybackGrant {
+                version: 1,
+                seq: u64::MAX,
+                lease: Some(PlaybackLease {
+                    generation_epoch: EPOCH,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            })),
+        ),
+        (
+            "output_cancel",
+            local_output_command::Command::CancelCue(true),
+        ),
+        // Preserve false oneof presence, even though the executable rejects it.
+        (
+            "output_shutdown_false",
+            local_output_command::Command::Shutdown(false),
+        ),
+    ] {
+        transfer(
+            dir,
+            name,
+            LocalOutputCommand {
+                command: Some(command),
+            },
+            write,
+        );
+    }
     println!(
-        "Rust cross-language fixture {} passed (13 message types)",
+        "Rust cross-language fixture {} passed (25 fixtures / 22 message types)",
         args[1]
     );
 }

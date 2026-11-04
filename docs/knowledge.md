@@ -40,7 +40,7 @@ publish 同事务核对 manifest、workspace 当前事实 fingerprint、权限�
 
 - `retrieve_local`：只读该 workspace/kb_scope 当前已发布快照；没有活动版本为 unavailable。
 - `bind_session_knowledge`：一次绑定当前活动已发布版本，返回已有 SessionSnapshot.knowledge_snapshot_ref。
-- `retrieve_session_knowledge`：只读冻结 ID；新的发布不重写绑定，失效证据也不偷偷换成新版本。
+- `retrieve_session_knowledge`：只读冻结 ID；普通发布不重写绑定，失效证据也不偷偷换成新版本。显式热发布仅在先静音、持久化推进epoch并撤销旧审批后，通过prepare/持久化确认/activate切换绑定（[ADR0136](adr/0136-controlled-knowledge-hot-publication.md)）；不改旧快照或Provider绑定。
 - `record_candidate`：校验引用来自冻结快照，记录 doc_revision；不能把最新 facts 塞入旧绑定。
 - `approve` / `approval_valid`：复检文档期限、tombstone、session/epoch/hash、事实与审批权限。
 

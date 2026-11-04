@@ -1,7 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["plugins/avatar-2d", "plugins/platform-unavailable", "apps/engine", "apps/output-keeper", "apps/render-worker", "crates/nai-control-api", "crates/nai-knowledge-core", "crates/nai-contracts", "crates/nai-kernel", "crates/nai-runtime", "crates/nai-plugin-sdk", "crates/nai-plugin-hosts", "crates/nai-storage", "crates/nai-security", "crates/nai-upgrade-core", "crates/nai-media-core", "crates/nai-budget-core", "crates/nai-provider-core", "xtask"]
-default-members = ["plugins/avatar-2d", "plugins/platform-unavailable", "apps/engine", "apps/output-keeper", "apps/render-worker", "crates/nai-control-api", "crates/nai-knowledge-core", "crates/nai-contracts", "crates/nai-kernel", "crates/nai-runtime", "crates/nai-plugin-sdk", "crates/nai-plugin-hosts", "crates/nai-storage", "crates/nai-security", "crates/nai-upgrade-core", "crates/nai-media-core", "crates/nai-budget-core", "crates/nai-provider-core", "xtask"]
+exclude = ["apps/workbench-desktop", "apps/engine"]
+members = ["crates/nai-avatar-files", "crates/nai-live", "apps/human-mic-worker", "adapters/audio-cpal", "apps/public-output-keeper", "apps/audition-worker", "adapters/llm-openai", "adapters/storage-sqlite", "crates/nai-workbench-host", "apps/workbench-engine", "crates/nai-runtime-core", "plugins/avatar-2d", "apps/output-keeper", "crates/nai-control-ipc", "crates/nai-control-api", "crates/nai-knowledge-core", "crates/nai-contracts", "crates/nai-kernel", "crates/nai-plugin-sdk", "crates/nai-storage", "crates/nai-security", "crates/nai-upgrade-core", "crates/nai-media-core", "crates/nai-budget-core", "crates/nai-provider-core", "xtask"]
+default-members = ["plugins/avatar-2d", "apps/workbench-engine", "apps/public-output-keeper", "apps/output-keeper", "apps/audition-worker", "apps/human-mic-worker", "adapters/storage-sqlite", "adapters/llm-openai", "adapters/audio-cpal", "crates/nai-contracts", "crates/nai-runtime-core", "crates/nai-media-core", "crates/nai-avatar-files", "crates/nai-workbench-host", "crates/nai-live", "crates/nai-kernel", "crates/nai-plugin-sdk", "xtask"]
 
 [workspace.package]
 version = "0.1.0"
@@ -29,12 +30,11 @@ nai-contracts = { path = "crates/nai-contracts" }
 nai-security = { path = "crates/nai-security" }
 nai-upgrade-core = { path = "crates/nai-upgrade-core" }
 nai-plugin-sdk = { path = "crates/nai-plugin-sdk" }
-nai-plugin-hosts = { path = "crates/nai-plugin-hosts" }
 nai-budget-core = { path = "crates/nai-budget-core" }
 nai-provider-core = { path = "crates/nai-provider-core" }
 nai-knowledge-core = { path = "crates/nai-knowledge-core" }
-nai-runtime = { path = "crates/nai-runtime" }
 nai-control-api = { path = "crates/nai-control-api" }
+nai-control-ipc = { path = "crates/nai-control-ipc" }
 nai-storage = { path = "crates/nai-storage" }
 nai-media-core = { path = "crates/nai-media-core" }
 nai-kernel = { path = "crates/nai-kernel" }
@@ -44,3 +44,30 @@ unsafe_code = "forbid"
 
 [workspace.lints.clippy]
 all = "warn"
+
+# The Windows development build executes real-time pixel blending/hash checks.
+# Keep cancellation/overflow/debug checks while optimizing only the media algorithms.
+[profile.dev.package.nai-media-core]
+opt-level = 2
+
+[profile.dev.package.sha2]
+opt-level = 2
+
+
+
+[profile.dev.package.fontdue]
+opt-level = 2
+
+# Public execution rechecks source/schema/approval inside the fixed 250ms observation window.
+# Debug assertions and overflow checks remain enabled; deadlines are never widened.
+[profile.dev.package.nai-runtime-core]
+opt-level = 2
+
+[profile.dev.package.nai-foundation-sqlite]
+opt-level = 2
+
+[profile.dev.package.jsonschema]
+opt-level = 2
+
+[profile.dev.package.serde_json]
+opt-level = 2

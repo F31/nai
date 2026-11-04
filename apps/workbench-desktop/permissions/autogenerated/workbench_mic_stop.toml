@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workbench-mic-stop"
+description = "Enables the workbench_mic_stop command without any pre-configured scope."
+commands.allow = ["workbench_mic_stop"]
+
+[[permission]]
+identifier = "deny-workbench-mic-stop"
+description = "Denies the workbench_mic_stop command without any pre-configured scope."
+commands.deny = ["workbench_mic_stop"]

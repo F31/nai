@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workbench-human-start"
+description = "Enables the workbench_human_start command without any pre-configured scope."
+commands.allow = ["workbench_human_start"]
+
+[[permission]]
+identifier = "deny-workbench-human-start"
+description = "Denies the workbench_human_start command without any pre-configured scope."
+commands.deny = ["workbench_human_start"]

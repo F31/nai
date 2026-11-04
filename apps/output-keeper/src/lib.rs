@@ -1,5 +1,6 @@
-//! Explicit headless watchdog drill. No device, PCM/frame consumer, Ready or
-//! PlaybackAck producer. Parent-owned binary stdio is not production IPC auth.
+//! Headless watchdog drill plus an explicit Windows device-smoke entry.
+//! Neither produces Ready or hardware PlaybackAck. Parent-owned binary stdio
+//! is not production IPC auth.
 use nai_contracts::v1::{
     ContractError, ErrorCode, FrameSlotEvent, OutputWatchdogCommand, OutputWatchdogStatus,
     SessionMode, output_watchdog_command::Action,
@@ -531,5 +532,12 @@ fn run_with_frames<R: Read + Send + 'static, W: Write + Send + 'static>(
     ))
 }
 
+pub mod device_smoke;
+pub mod local_playback;
+#[cfg(target_os = "windows")]
+mod local_wasapi;
 #[cfg(test)]
 mod tests;
+
+#[cfg(any(test, target_os = "windows"))]
+mod local_audio;

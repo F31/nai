@@ -1,0 +1,17 @@
+[package]
+name="nai-runtime-core"
+version.workspace=true
+edition.workspace=true
+rust-version.workspace=true
+license.workspace=true
+[package.metadata.nai]
+layer="core"
+[dependencies]
+nai-contracts.workspace=true
+serde_json.workspace=true
+serde.workspace=true
+jsonschema.workspace=true
+sha2.workspace=true
+zeroize.workspace=true
+[lints]
+workspace=true

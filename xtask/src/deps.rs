@@ -18,20 +18,31 @@ fn expected_layer(path: &str) -> Option<&'static str> {
     match path {
         "xtask" => Some("tool"),
         "crates/nai-contracts" => Some("contracts"),
+        "crates/nai-runtime-core" => Some("core"),
+        "crates/nai-live" => Some("core"),
+        path if path.starts_with("adapters/") => Some("adapter"),
         "crates/nai-kernel" => Some("kernel"),
         "crates/nai-plugin-sdk" => Some("sdk"),
         "crates/nai-runtime" => Some("runtime"),
+        "crates/nai-workbench-host" => Some("hosts"),
         "crates/nai-plugin-hosts" => Some("hosts"),
         "crates/nai-media-core" => Some("media"),
         "crates/nai-provider-core" => Some("provider"),
-        "crates/nai-storage"
+        "crates/nai-avatar-files"
+        | "crates/nai-storage"
         | "crates/nai-budget-core"
         | "crates/nai-security"
         | "crates/nai-knowledge-core"
         | "crates/nai-control-api"
+        | "crates/nai-control-ipc"
         | "crates/nai-upgrade-core"
         | "crates/nai-conformance" => Some("shared"),
-        "apps/media-worker" | "apps/output-keeper" | "apps/render-worker" => Some("media"),
+        "apps/audition-worker"
+        | "apps/human-mic-worker"
+        | "apps/media-worker"
+        | "apps/public-output-keeper"
+        | "apps/output-keeper"
+        | "apps/render-worker" => Some("media"),
         path if path.starts_with("plugins/") => Some("plugin"),
         path if path.starts_with("apps/") => Some("app"),
         _ => None,
@@ -70,6 +81,11 @@ fn validate(packages: &[Package]) -> Vec<String> {
         for target in reachable(source, &by_name) {
             let forbidden = match source.layer.as_str() {
                 "contracts" => true,
+                "core" => !matches!(
+                    target.layer.as_str(),
+                    "contracts" | "core" | "port" | "algorithm"
+                ),
+                "adapter" => matches!(target.layer.as_str(), "adapter" | "plugin" | "app" | "tool"),
                 "kernel" | "sdk" => target.layer != "contracts",
                 "shared" | "provider" => {
                     matches!(target.layer.as_str(), "plugin" | "runtime" | "app" | "tool")
@@ -111,8 +127,8 @@ fn validate(packages: &[Package]) -> Vec<String> {
                     || dependency == "ort"
                     || dependency.starts_with("cuda");
                 let http = matches!(dependency.as_str(), "reqwest" | "hyper" | "ureq");
-                if (matches!(source.layer.as_str(), "contracts" | "kernel") && native)
-                    || (source.layer == "media" && http)
+                if (matches!(source.layer.as_str(), "contracts" | "kernel" | "core") && native)
+                    || (matches!(source.layer.as_str(), "media" | "core") && http)
                 {
                     errors.push(format!(
                         "{} ({}) must not access dependency {} via {}",
@@ -243,6 +259,46 @@ mod tests {
     }
 
     #[test]
+    fn v43_core_cannot_reach_adapters_even_through_shared_helpers() {
+        let packages = vec![
+            package(
+                "nai-runtime-core",
+                "crates/nai-runtime-core",
+                "core",
+                &["helper"],
+            ),
+            package("helper", "crates/nai-security", "shared", &["vendor"]),
+            package("vendor", "adapters/providers/vendor", "adapter", &[]),
+        ];
+        assert!(
+            validate(&packages)
+                .iter()
+                .any(|e| e.contains("nai-runtime-core") && e.contains("vendor"))
+        );
+        let valid = vec![
+            package("nai-contracts", "crates/nai-contracts", "contracts", &[]),
+            package(
+                "nai-runtime-core",
+                "crates/nai-runtime-core",
+                "core",
+                &["nai-contracts"],
+            ),
+            package(
+                "vendor",
+                "adapters/providers/vendor",
+                "adapter",
+                &["nai-runtime-core"],
+            ),
+            package(
+                "root",
+                "apps/workbench-engine",
+                "app",
+                &["vendor", "nai-runtime-core"],
+            ),
+        ];
+        assert!(validate(&valid).is_empty());
+    }
+    #[test]
     fn real_metadata_catches_aliases_all_dependency_kinds_and_inactive_targets() {
         for section in [
             "dependencies",
@@ -295,7 +351,11 @@ mod tests {
 
     #[test]
     fn keeper_and_worker_cannot_disguise_media_layer_or_import_provider() {
-        for path in ["apps/output-keeper", "apps/render-worker"] {
+        for path in [
+            "apps/output-keeper",
+            "apps/render-worker",
+            "apps/human-mic-worker",
+        ] {
             let provider = package(
                 "nai-provider-core",
                 "crates/nai-provider-core",

@@ -1,4 +1,114 @@
 use super::*;
+use prost::Message;
+
+#[test]
+fn playback_reads_persisted_actor_and_facts_and_rechecks_permission() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut storage = store(dir.path());
+    setup(&mut storage);
+    storage
+        .create_session(&op(), "test-workspace", "operator", "session-test")
+        .unwrap();
+    storage
+        .publish_fact(&op(), "operator", &fact(), None)
+        .unwrap();
+    let cue = candidate();
+    let hash = setup_approval(&mut storage, &cue);
+    assert!(
+        storage
+            .read_approval_proof(
+                &op(),
+                "test-workspace",
+                "operator",
+                "session-test",
+                0,
+                &hash
+            )
+            .is_err()
+    );
+    let approval = Approval {
+        approval_id: "playback-proof".into(),
+        session_id: "session-test".into(),
+        candidate_hash: hash.clone(),
+        actor_id: "spoofed-input-actor".into(),
+        action_scope: "speak".into(),
+        hash_algorithm: "sha256-canonical-v1".into(),
+        expires_at_utc_ms: cue.expires_at_utc_ms,
+        ..Default::default()
+    };
+    storage
+        .approve(&op(), "test-workspace", "operator", &approval)
+        .unwrap();
+    let proof = storage
+        .read_approval_proof(
+            &op(),
+            "test-workspace",
+            "operator",
+            "session-test",
+            0,
+            &hash,
+        )
+        .unwrap();
+    assert_eq!(proof.actor_id, "operator");
+    let mut corrupted = proof.clone();
+    corrupted.actor_id = "shadow-actor".into();
+    storage
+        .conn
+        .execute(
+            "UPDATE approvals SET approval_proto=?1 WHERE approval_id='playback-proof'",
+            [corrupted.encode_to_vec()],
+        )
+        .unwrap();
+    assert!(
+        storage
+            .read_approval_proof(
+                &op(),
+                "test-workspace",
+                "operator",
+                "session-test",
+                0,
+                &hash
+            )
+            .is_err()
+    );
+    storage
+        .conn
+        .execute(
+            "UPDATE approvals SET approval_proto=?1 WHERE approval_id='playback-proof'",
+            [proof.encode_to_vec()],
+        )
+        .unwrap();
+    assert_eq!(
+        proof
+            .fact_versions
+            .iter()
+            .map(|f| (f.object_id.clone(), f.revision.clone()))
+            .collect::<std::collections::BTreeMap<_, _>>(),
+        cue.fact_versions
+    );
+    storage
+        .set_permission(
+            &op(),
+            "test-workspace",
+            "operator",
+            "approval.write",
+            "*",
+            false,
+        )
+        .unwrap();
+    assert!(
+        storage
+            .read_approval_proof(
+                &op(),
+                "test-workspace",
+                "operator",
+                "session-test",
+                0,
+                &hash
+            )
+            .is_err()
+    );
+}
 
 #[test]
 fn decision_failure_rolls_back_approval_and_reject_state() {

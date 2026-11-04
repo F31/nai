@@ -1,0 +1,4 @@
+[[permission]]
+identifier="allow-bootstrap-inspection"
+description="Inspect a fixed authenticated RF01 child and acknowledge validated UI mount; no paths, keys or business commands."
+commands.allow=["workbench_inspect","frontend_ready"]

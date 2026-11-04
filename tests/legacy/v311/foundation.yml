@@ -1,0 +1,112 @@
+name: Engineering foundation
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  foundation:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    # 20 分钟已从「有余量」变成「不够用」：W130 实测 windows 全跑完 15m43s（15m55s 那次逼近上限），
+    # 而本轮给门控限并发（RUST_TEST_THREADS=4，见下方门控步的注释）之后 windows 在 **1210s** 被
+    # **cancelled**——不是失败，是**跑不完**（门控步本身已 success，后续各 suite 没跑完就被砍）。
+    # ⇒ 提到 35，给限并发后的 windows 留出余量。
+    timeout-minutes: 35
+    env:
+      OPENSPEC_TELEMETRY: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.0
+      - name: Install pinned Rust
+        run: rustup toolchain install 1.96.0 --profile minimal --component clippy,rustfmt
+      - name: Install frontend and OpenSpec dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install protoc (upstream v21.12 is libprotoc 3.21.12)
+        uses: arduino/setup-protoc@v3
+        with:
+          version: '21.12'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Linux C++ protobuf runtime
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libprotobuf-dev
+      - name: Check generated contracts without modifying consumers
+        run: cargo xtask schema --check
+      # 完整工程 profile：portable 的全部步骤 + 前端 workspace（两包 typecheck/build、桌面包单测、tests/ui）。
+      # 两个平台跑同一命令是有意的——在没有设备/SDK 认证的 CI 上，full 相对 windows-local 是严格超集
+      # （同一套 engineering_checks，另加前端步骤），平台要求已由 runs-on 满足。前端命令只在各包
+      # package.json 的 scripts 里定义，此处不重复一份，避免与门控漂移。结果不构成任何认证验收。
+      #
+      # shell: bash 让 Linux 与 Windows 用同一条命令（Windows runner 自带 Git Bash）。
+      # set -o pipefail 是**关键**：tee 会吞掉被管道的退出码，没有它这条命令永远成功，
+      # CI 也就永远不会红——「看起来接了诊断，实际把门控废掉了」。
+      # 诊断产物落在**仓库内的约定目录** `.nai-diagnostics/`（已被 .gitignore 排除），
+      # 由凭据扫描器按登记表 `.nai-diagnostics` 遍历——产物必须住在扫描器看得见的地方，
+      # 否则「日志里没有明文密钥」只能靠人看。
+      # RUST_TEST_THREADS=4 是**环境适配，不是放宽判据**：仓库里有一批期限敏感的用例
+      # （`Operation` 的 5s 期限，见 W84），在默认并行度（= runner 核数）下会因 CPU 争抢
+      # 随机超时——本机实测 `cargo test -p nai-storage --lib`：默认并行度 3 次里 2 次红且
+      # 每次红的用例都不同（`decision_log` / `approval_workflow` / 备份体积上限各出现过），
+      # 摘掉本轮新增的 8 条用例后**仍然 3 次全红** ⇒ 与本轮改动**无关**，是既有基线；
+      # 限到 4 后 3 次全绿且总时长只增约 10s。⚠️ 根因（期限敏感断言在负载下会误报）**未修**，
+      # 具名登记在 reports/2026-10-17-w131-local-only-egress.md §7.3。
+      # 本机门控此前是手工带 RUST_TEST_THREADS=1 跑的，CI 用默认值 ⇒ 两者不一致，这是
+      # 「本机门控绿而 CI 红」的机制性原因。
+      - name: Complete engineering foundation (portable steps + frontend workspace)
+        shell: bash
+        env:
+          RUST_TEST_THREADS: "4"
+        run: |
+          set -o pipefail
+          mkdir -p .nai-diagnostics
+          cargo xtask check --profile full 2>&1 | tee ".nai-diagnostics/nai-gate.log"
+      # 诊断通道：把门控日志的失败摘要转成 check-run annotation。
+      # 动机：CI 的执行日志只能经 GET /actions/jobs/{id}/logs 读取，而该端点要求仓库 admin 权限，
+      # 无凭据的读者只能看到「Process completed with exit code 1.」；annotation 则匿名可读。
+      # continue-on-error 保证诊断自身的问题不会掩盖或替换原始失败的结论。
+      - name: Publish the gate failure summary as annotations
+        if: failure()
+        shell: bash
+        run: node scripts/ci-diagnose.mjs ".nai-diagnostics/nai-gate.log"
+        continue-on-error: true
+      # 诊断产物的**凭据扫描**（S07 的日志/诊断包/崩溃转储那一面）：仓库域的扫描只认 UTF-8，
+      # 而崩溃转储是二进制。条件 `always()` 是**必须**的——门控失败会让后续步默认被跳过，
+      # 而失败的那次门控日志恰恰是最该扫的那一份（失败时 libtest 会转储失败测试的 stdout）。
+      - name: Scan the diagnostic artifacts for credential material (W130)
+        if: always()
+        run: cargo xtask check --secrets
+      # ⚠️ W134：这里原本还有 7 条分套件步（`test --suite …`：storage / kernel / hosts /
+      # session / scheduler / provider / knowledge）。它们的包集**全部**包含在上面那条
+      # `check --profile full` 里（`engineering_checks` 跑
+      # `cargo test --workspace --exclude <harness>`，即整个 workspace 的全部测试）
+      # ⇒ 同一批测试在**每个平台腿上各被执行了第二遍**。本机暖缓存实测这 7 条合计 **517 秒**
+      # （storage 125 / kernel 108 / scheduler 89 / session 77 / hosts 43 / knowledge 40 / provider 35），
+      # 而它们跑的东西门控刚刚跑完。
+      #
+      # 删掉它们**不损失任何判定**：覆盖集合仍由门控步提供，而这一点现在由
+      # `tests/contracts/step-overlap.test.mjs`（W134）**判**着——任何两条判定步的测试覆盖
+      # 一旦互相包含就变红，MUST NOT 靠「记得别加回来」。
+      # 归因（哪套件红了）不受影响：门控日志经 `.nai-diagnostics/` 由 `ci-diagnose.mjs`
+      # 转成匿名可读的 annotation。
+      #
+      # ⚠️ 注释也被 `gate-coverage.mjs` 的 `ciXtaskCommands` 扫描（它不剥 YAML 注释）
+      # ⇒ 上面几行**刻意不写** `cargo` + `xtask` 连写，否则一段散文会变成一条「CI 调了
+      # 却不存在的命令」。
+      - name: Validate schemas and API contract
+        run: node --test tests/contracts/schema.test.mjs tests/contracts/descriptor.test.mjs
+      - name: Full three-language contract suite (Linux C++ toolchain)
+        if: runner.os == 'Linux'
+        run: cargo xtask test --suite contracts
+      - run: pnpm spec:validate
+      - run: pnpm exec openspec validate --archived --no-interactive

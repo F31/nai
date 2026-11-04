@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "4e092c50-0020-43cd-ab72-c7fca07bbf99",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "E:\\projects\\nai\\.archify\\architecture-v48-performance-20261023-180435\\candidate.json",
+  "output": "E:\\projects\\nai\\docs\\whitepaper\\diagrams\\04-performance-tracks.html",
+  "specification": {
+    "sha256": "c3e37633dd28f4fb6551762036336e0fb6bf47585b619fc15ad9f45865e1322b",
+    "bytes": 4116
+  },
+  "artifact": {
+    "sha256": "7df55a58d3a3b0a62f0052010207b770ee936f39e30919861e59a98a3d15ef96",
+    "bytes": 825296
+  }
+}

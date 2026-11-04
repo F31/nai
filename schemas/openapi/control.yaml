@@ -71,7 +71,7 @@ paths:
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ModeCommand'}}}}
   /sessions/{id}/events:
     parameters: *idParameters
-    get: {x-required-permission: session.read, responses: *readResponses}
+    get: {x-required-permission: session.read, responses: *readResponses, x-implementation-status: implemented-loopback}
   /sessions/{id}/queue:
     parameters: *idParameters
     get: {x-required-permission: session.read, responses: *readResponses}
@@ -80,7 +80,54 @@ paths:
     post:
       responses: *ackResponses
       x-required-permission: event.manual.write
+      x-implementation-status: implemented-loopback
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ManualEventCommand'}}}}
+  /sessions/{id}/program:
+    parameters: *idParameters
+    get:
+      x-required-permission: session.read
+      x-implementation-status: implemented-loopback
+      responses:
+        '200': {description: 'Volatile finite assisted program with optional durable recent human confirmation; history grants no recovery or hardware completion.', content: {application/json: {schema: {$ref: '#/components/schemas/ProgramView'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+    post:
+      responses: *ackResponses
+      x-required-permission: event.manual.write
+      x-implementation-status: implemented-loopback
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ProgramCommand'}}}}
+  /sessions/{id}/knowledge:
+    parameters: *idParameters
+    post:
+      responses: *ackResponses
+      x-required-permission: knowledge.publish
+      x-implementation-status: implemented-loopback
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/KnowledgePublishCommand'}}}}
+  /sessions/{id}/previews:
+    parameters: *idParameters
+    get:
+      x-required-permission: session.read
+      responses: *readResponses
+      x-implementation-status: implemented-loopback
+    post:
+      responses: *ackResponses
+      x-required-permission: approval.write
+      x-implementation-status: implemented-loopback
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/PreviewCommand'}}}}
+  /sessions/{id}/preflight:
+    parameters: *idParameters
+    get:
+      x-required-permission: session.read
+      responses: *readResponses
+      x-implementation-status: implemented-loopback
+  /sessions/{id}/output-prewarm:
+    parameters: *idParameters
+    post:
+      responses: *ackResponses
+      x-required-permission: media.prepare
+      x-implementation-status: implemented-loopback
+      description: Silent neutral output preparation only; poll events for output_ready. No Provider call, speech authority or hardware completion ACK.
+      requestBody: *sessionBody
   /approvals:
     get: {x-required-permission: approval.read, responses: *readResponses, x-implementation-status: implemented-loopback}
   /approvals/{id}/approve:
@@ -274,6 +321,12 @@ components:
           properties:
             candidate_hash: {type: string, pattern: '^[a-f0-9]{64}$'}
             hash_algorithm: {type: string, enum: [sha256-canonical-v1]}
+    PreviewCommand:
+      allOf:
+        - {$ref: '#/components/schemas/ApprovalCommand'}
+        - type: object
+          properties:
+            local_playback: {type: boolean, default: false, description: 'Explicit local default-device playback, up to 20 seconds with a resident capture window at 15 percent gain. Device submission is not a hardware completion ACK.'}
     ManualEventCommand:
       allOf:
         - {$ref: '#/components/schemas/SessionCommand'}
@@ -282,6 +335,62 @@ components:
           properties:
             source: {type: string, enum: [manual]}
             text: {type: string, minLength: 1, maxLength: 4096}
+    ProgramCommand:
+      allOf:
+        - {$ref: '#/components/schemas/SessionCommand'}
+        - type: object
+          required: [action, program_id, snapshot]
+          properties:
+            action: {type: string, enum: [start, next, confirm]}
+            program_id: {type: string, pattern: '^[A-Za-z0-9_-]{1,64}$'}
+            snapshot: {type: string, minLength: 1, maxLength: 128}
+            prompts: {type: array, minItems: 4, maxItems: 4, items: {type: string, minLength: 1, maxLength: 512}, description: 'Required on start, fixed positional order selling/spec/scenario/after_sales. No facts or authorisation implied.'}
+            candidate_hash: {type: string, pattern: '^[a-f0-9]{64}$', description: 'Required for human confirmation after matching local device submission.'}
+    ProgramView:
+      type: object
+      additionalProperties: false
+      required: [program_id, snapshot, generation_epoch, phase, entered, confirmed, max_attempts, request_id, candidate_hash, playback_ack]
+      properties:
+        program_id: {type: string}
+        snapshot: {type: string}
+        generation_epoch: {$ref: '#/components/schemas/U64'}
+        phase: {type: string, enum: [absent, ready, generating, candidate, failed, paused, done]}
+        entered: {type: integer, minimum: 0, maximum: 4}
+        confirmed: {type: integer, minimum: 0, maximum: 4}
+        max_attempts: {type: integer, enum: [4]}
+        request_id: {type: string}
+        candidate_hash: {type: string}
+        playback_ack: {type: boolean, enum: [false]}
+        last_confirmation: {$ref: '#/components/schemas/ProgramConfirmation'}
+    ProgramConfirmation:
+      type: object
+      additionalProperties: false
+      required: [event, program_id, session_id, generation_epoch, snapshot, segment_number, candidate_hash, operator_id, device_played_samples, report_sha256, media_sha256, window_updates, confirmed_at_utc_ms, human_confirmed, playback_ack]
+      properties:
+        event: {type: string, enum: [program_human_confirmation]}
+        program_id: {type: string, pattern: '^[A-Za-z0-9_-]{1,64}$'}
+        session_id: {type: string, minLength: 1, maxLength: 128}
+        generation_epoch: {$ref: '#/components/schemas/U64'}
+        snapshot: {type: string, minLength: 1, maxLength: 256}
+        segment_number: {type: integer, minimum: 1, maximum: 4}
+        candidate_hash: {type: string, pattern: '^[a-f0-9]{64}$'}
+        operator_id: {type: string, minLength: 1, maxLength: 128}
+        device_played_samples: {$ref: '#/components/schemas/U64'}
+        report_sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+        media_sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+        window_updates: {$ref: '#/components/schemas/U64'}
+        confirmed_at_utc_ms: {$ref: '#/components/schemas/U64'}
+        human_confirmed: {type: boolean, enum: [true]}
+        playback_ack: {type: boolean, enum: [false]}
+        confirmation_ref: {type: string, pattern: '^[a-f0-9]{64}$'}
+    KnowledgePublishCommand:
+      allOf:
+        - {$ref: '#/components/schemas/SessionCommand'}
+        - type: object
+          required: [phase, resource_ref]
+          properties:
+            phase: {type: string, enum: [prepare, activate]}
+            resource_ref: {type: string, pattern: '^product-publish-[A-Za-z0-9_-]{1,48}$'}
     ResourceCommand:
       allOf:
         - {$ref: '#/components/schemas/Command'}
@@ -426,6 +535,10 @@ components:
         expires_at_utc_ms: {$ref: '#/components/schemas/U64'}
         evidence_count: {$ref: '#/components/schemas/U64'}
         display_text: {type: string, description: 'Display-only candidate text for operator review; the item identity remains id and the approval binds to the candidate hash; absent when a row predates the field.'}
+        sample_count: {$ref: '#/components/schemas/U64'}
+        frame_count: {$ref: '#/components/schemas/U64'}
+        audio_sha256: {type: string, pattern: '^[a-f0-9]{64}$', description: 'Preview audio digest; not a playback acknowledgement.'}
+
     KnowledgeQuery:
       type: object
       additionalProperties: false

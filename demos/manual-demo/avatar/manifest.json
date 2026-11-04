@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "avatar_id": "manual-demo-2d",
+  "version": "1",
+  "kind": "2d",
+  "license_ref": "nai-demo-license",
+  "assets": [
+    {
+      "id": "base",
+      "path": "base.rgba",
+      "sha256": "bf102ead34db83f44394f8e1db1a30e7e1a17573f33d1dd0cfba80518d83bd6d",
+      "license_ref": "nai-demo-license"
+    },
+    {
+      "id": "closed",
+      "path": "closed.rgba",
+      "sha256": "e3820096cb82366b860b8a4e668453a7aaaf423af03bdf289fa308ea03a79332",
+      "license_ref": "nai-demo-license"
+    },
+    {
+      "id": "open",
+      "path": "open.rgba",
+      "sha256": "34aaa746c25a0f105c4316bbb1f009aa359f49582656ee97d73c58132d563423",
+      "license_ref": "nai-demo-license"
+    }
+  ],
+  "model_binding": "software-rgba8-v1",
+  "resource_profile_ref": "demo-software",
+  "supported_actions": [
+    "idle",
+    "speak"
+  ],
+  "supported_emotions": [
+    "neutral"
+  ],
+  "voice_binding": "demo-voice",
+  "native_width": 2,
+  "native_height": 1,
+  "output_width": 2,
+  "output_height": 1,
+  "fps_num": 25,
+  "fps_den": 1,
+  "base_duration_samples": "0",
+  "switch_points": [],
+  "personalization_refs": {}
+}

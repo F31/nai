@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "4d10df16-c2cc-48eb-b99f-474eeff1701f",
+  "status": "current",
+  "command": "deliver",
+  "type": "dataflow",
+  "input": "E:\\projects\\nai\\.archify\\dataflow-v48-impact-20261023-180435\\candidate.json",
+  "output": "E:\\projects\\nai\\docs\\whitepaper\\diagrams\\05-publication-impact.html",
+  "specification": {
+    "sha256": "bee5075a89b00c76b32bc13d1e2de33269da4385a1dcde7ff41f1018f8765d4f",
+    "bytes": 5145
+  },
+  "artifact": {
+    "sha256": "d9951342d0b333bc58cd163e5ef23b6a521776e4104a43b0ac0092e56e1cb91a",
+    "bytes": 820001
+  }
+}

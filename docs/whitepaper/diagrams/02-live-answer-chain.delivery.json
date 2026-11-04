@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "c179d1f0-a491-4ead-8b42-86511959f1ef",
+  "status": "current",
+  "command": "deliver",
+  "type": "workflow",
+  "input": "E:\\projects\\nai\\.archify\\workflow-v48-answer-chain-20261023-180435\\candidate.json",
+  "output": "E:\\projects\\nai\\docs\\whitepaper\\diagrams\\02-live-answer-chain.html",
+  "specification": {
+    "sha256": "5bd63d461f2e8effdc205f98509d31649c5cdcae2c2855871953129e7fcb0702",
+    "bytes": 4207
+  },
+  "artifact": {
+    "sha256": "d0b0e6354dfe27f0c9c662663004c931a9e112418054ec4164b40141fd3fb87c",
+    "bytes": 824616
+  }
+}

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workbench-mic-poll"
+description = "Enables the workbench_mic_poll command without any pre-configured scope."
+commands.allow = ["workbench_mic_poll"]
+
+[[permission]]
+identifier = "deny-workbench-mic-poll"
+description = "Denies the workbench_mic_poll command without any pre-configured scope."
+commands.deny = ["workbench_mic_poll"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workbench-character-generate"
+description = "Enables the workbench_character_generate command without any pre-configured scope."
+commands.allow = ["workbench_character_generate"]
+
+[[permission]]
+identifier = "deny-workbench-character-generate"
+description = "Denies the workbench_character_generate command without any pre-configured scope."
+commands.deny = ["workbench_character_generate"]

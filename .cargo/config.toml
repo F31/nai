@@ -1,2 +1,6 @@
 [alias]
 xtask = "run --locked --package nai-xtask --"
+
+[build]
+target-dir = "target-windows/build"
+

@@ -13,11 +13,13 @@ layer = "media"
 nai-contracts.workspace = true
 prost.workspace = true
 sha2.workspace = true
+zeroize.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 tempfile.workspace = true
 
 [dev-dependencies]
+tempfile.workspace=true
 nai-kernel = { path = "../nai-kernel" }
 
 [lints]

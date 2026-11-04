@@ -178,19 +178,13 @@ fn catalog_types(
         }
     }
     for name in [
-        "Handshake",
-        "HandshakeAck",
-        "CancelRequest",
-        "CancelAck",
-        "CapabilityInvocation",
-        "CapabilityResult",
-        "ContractError",
-        "HealthRequest",
-        "HealthResponse",
+        "WorkbenchRequest",
+        "WorkbenchResponse",
+        "WorkbenchDeliveryUnit",
     ] {
-        let name = format!("nai.v1.{name}");
+        let name = format!("nai.workbench.v1.{name}");
         if !messages.contains(&name) {
-            return Err(format!("missing core message {name}"));
+            return Err(format!("missing workbench message {name}"));
         }
         types.insert(name);
     }
@@ -241,6 +235,23 @@ pub fn generate(root: &Path, check: bool) -> Result<(), String> {
         // Slot commit embeds ticket+frame metadata; box the oneof variant
         // without changing the protobuf wire representation or editing Rust.
         .boxed(".nai.v1.FrameSlotEvent.event.committed")
+        .boxed(".nai.v1.LocalOutputCommand.command.grant")
+        // Nested public evidence is heap-owned at IPC boundaries, bounded by wire size.
+        .boxed(".nai.workbench.v1.FoundationResult.public_candidate_check")
+        .boxed(".nai.workbench.v1.FoundationResult.public_approval")
+        .boxed(".nai.workbench.v1.PublicCandidateCheck.approval_draft")
+        .boxed(".nai.workbench.v1.FoundationResult.private_window_preparation")
+        .boxed(".nai.workbench.v1.FoundationResult.public_window_prepared")
+        .boxed(".nai.workbench.v1.PublicOutputLease.prepare")
+        .boxed(".nai.workbench.v1.PublicOutputLease.execution")
+        .boxed(".nai.workbench.v1.PublicOutputStatus.presentation")
+        .boxed(".nai.workbench.v1.FoundationResult.private_execution_lease")
+        .boxed(".nai.workbench.v1.PublicOutputStatus.window_prepared")
+        // Wire DTO, consumed by value at the bounded IPC boundary; keep the schema-generated API.
+        .type_attribute(
+            ".nai.workbench.v1.FoundationResponse.outcome",
+            "#[allow(clippy::large_enum_variant)]",
+        )
         .file_descriptor_set_path(&descriptor);
     config
         .compile_protos(&protos, &[root.join("schemas")])
@@ -360,7 +371,28 @@ fn program(root: &Path, executable: &str, args: &[&str]) -> Result<(), String> {
 
 pub fn contracts(root: &Path) -> Result<(), String> {
     generate(root, true)?;
-    super::run(root, &["test", "--package", "nai-contracts", "--locked"])?;
+    super::run(
+        root,
+        &[
+            "test",
+            "-p",
+            super::HARNESS,
+            "--lib",
+            "schema::tests",
+            "--locked",
+        ],
+    )?;
+    super::run(
+        root,
+        &[
+            "test",
+            "-p",
+            "nai-contracts",
+            "--lib",
+            "workbench_wire",
+            "--locked",
+        ],
+    )?;
     node(
         root,
         &[
@@ -373,106 +405,94 @@ pub fn contracts(root: &Path) -> Result<(), String> {
         root,
         &[
             "--test",
-            "tests/contracts/schema.test.mjs",
-            "tests/contracts/descriptor.test.mjs",
+            "tests/contracts/workbench-source.test.mjs",
+            "tests/registry.test.mjs",
         ],
     )?;
     program(
         root,
         "cmake",
-        &["-S", "tests/contracts/cpp", "-B", "target/contracts/cpp"],
+        &[
+            "-S",
+            "tests/contracts/workbench-cpp",
+            "-B",
+            "target/contracts/workbench-cpp",
+        ],
     )?;
     program(
         root,
         "cmake",
         &[
             "--build",
-            "target/contracts/cpp",
+            "target/contracts/workbench-cpp",
             "--config",
             "Release",
             "--parallel",
             "2",
         ],
     )?;
-    let executable = if cfg!(target_os = "windows") {
-        "target/contracts/cpp/Release/contract-roundtrip.exe"
-    } else {
-        "target/contracts/cpp/contract-roundtrip"
-    };
-    for directory in ["rust", "ts", "cpp-output", "cpp-future", "ts-future"] {
-        fs::create_dir_all(root.join("target/contracts").join(directory))
+    for dir in ["rust", "ts", "cpp", "cpp-first", "ts-second"] {
+        fs::create_dir_all(root.join("target/contracts/workbench").join(dir))
             .map_err(|e| e.to_string())?;
     }
-    super::run(
+    let fixture = |mode: &str, dir: &str| {
+        super::run(
+            root,
+            &[
+                "run",
+                "-p",
+                "nai-contracts",
+                "--example",
+                "workbench_fixture",
+                "--locked",
+                "--",
+                mode,
+                dir,
+            ],
+        )
+    };
+    fixture("write", "target/contracts/workbench/rust")?;
+    let exe = if cfg!(windows) {
+        "target/contracts/workbench-cpp/Release/workbench-roundtrip.exe"
+    } else {
+        "target/contracts/workbench-cpp/workbench-roundtrip"
+    };
+    node(
         root,
         &[
-            "run",
-            "--locked",
-            "--package",
-            "nai-contracts",
-            "--example",
-            "contract_fixture",
-            "--",
-            "write",
-            "target/contracts/rust",
+            "tests/contracts/workbench-interop.mjs",
+            "target/contracts/workbench/rust",
+            "target/contracts/workbench/ts",
+        ],
+    )?;
+    program(
+        root,
+        exe,
+        &[
+            "target/contracts/workbench/ts",
+            "target/contracts/workbench/cpp",
+        ],
+    )?;
+    fixture("verify", "target/contracts/workbench/cpp")?;
+    program(
+        root,
+        exe,
+        &[
+            "target/contracts/workbench/rust",
+            "target/contracts/workbench/cpp-first",
         ],
     )?;
     node(
         root,
         &[
-            "tests/contracts/interop.mjs",
-            "target/contracts/rust",
-            "target/contracts/ts",
+            "tests/contracts/workbench-interop.mjs",
+            "target/contracts/workbench/cpp-first",
+            "target/contracts/workbench/ts-second",
         ],
     )?;
-    program(
-        root,
-        executable,
-        &["target/contracts/ts", "target/contracts/cpp-output"],
-    )?;
-    super::run(
-        root,
-        &[
-            "run",
-            "--locked",
-            "--package",
-            "nai-contracts",
-            "--example",
-            "contract_fixture",
-            "--",
-            "verify",
-            "target/contracts/cpp-output",
-        ],
-    )?;
-    program(
-        root,
-        executable,
-        &["target/contracts/rust", "target/contracts/cpp-future"],
-    )?;
-    node(
-        root,
-        &[
-            "tests/contracts/interop.mjs",
-            "target/contracts/cpp-future",
-            "target/contracts/ts-future",
-        ],
-    )?;
-    super::run(
-        root,
-        &[
-            "run",
-            "--locked",
-            "--package",
-            "nai-contracts",
-            "--example",
-            "contract_fixture",
-            "--",
-            "verify",
-            "target/contracts/ts-future",
-        ],
-    )?;
+    fixture("verify", "target/contracts/workbench/ts-second")?;
     println!(
-        "contracts suite passed: Rust/TS/C++ compilation, schema/API validation and both cross-language paths"
+        "V4.8 contracts passed: three-language compilation and both fixture paths; not device/platform certification"
     );
     Ok(())
 }
@@ -514,24 +534,17 @@ mod tests {
     #[test]
     fn catalog_rejects_duplicate_unresolved_and_half_declared_entries() {
         let catalog = serde_json::json!({"capabilities":[
-            {"id":"test.invoke@1","stage":"frozen","request":"nai.v1.Handshake","response":"nai.v1.HandshakeAck"},
+            {"id":"test.invoke@1","stage":"frozen","request":"nai.workbench.v1.WorkbenchRequest","response":"nai.workbench.v1.WorkbenchResponse"},
             {"id":"test.draft@1","stage":"draft"}
         ],"adapters_required":[]});
-        let names = [
-            "Handshake",
-            "HandshakeAck",
-            "CancelRequest",
-            "CancelAck",
-            "CapabilityInvocation",
-            "CapabilityResult",
-            "ContractError",
-            "HealthRequest",
-            "HealthResponse",
-        ];
-        let mut messages: BTreeSet<_> = names
-            .map(|name| format!("nai.v1.{name}"))
-            .into_iter()
-            .collect();
+        let mut messages: BTreeSet<_> = [
+            "WorkbenchRequest",
+            "WorkbenchResponse",
+            "WorkbenchDeliveryUnit",
+        ]
+        .map(|n| format!("nai.workbench.v1.{n}"))
+        .into_iter()
+        .collect();
         assert!(catalog_types(&catalog, &messages).is_ok());
         let mut duplicated = catalog.clone();
         duplicated["capabilities"]
@@ -543,18 +556,18 @@ mod tests {
                 .unwrap_err()
                 .contains("duplicate")
         );
-        messages.remove("nai.v1.HandshakeAck");
+        messages.remove("nai.workbench.v1.WorkbenchResponse");
         assert!(
             catalog_types(&catalog, &messages)
                 .unwrap_err()
                 .contains("absent message")
         );
-        messages.insert("nai.v1.HandshakeAck".into());
+        messages.insert("nai.workbench.v1.WorkbenchResponse".into());
         // A draft that declares any consumer field is an error rather than a
         // warning: half-declaring makes the stage field unreadable, and the
         // whole point of the field is that it decides the generated surface.
         let mut half = catalog.clone();
-        half["capabilities"][1]["request"] = serde_json::json!("nai.v1.Handshake");
+        half["capabilities"][1]["request"] = serde_json::json!("nai.workbench.v1.WorkbenchRequest");
         assert!(
             catalog_types(&half, &messages)
                 .unwrap_err()

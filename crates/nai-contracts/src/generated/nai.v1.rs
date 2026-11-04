@@ -1853,6 +1853,69 @@ pub struct RuntimeObservation {
     #[prost(string, repeated, tag = "4")]
     pub diagnostic_refs: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct LocalControlFrame {
+    #[prost(uint32, tag = "1")]
+    pub version: u32,
+    #[prost(uint64, tag = "2")]
+    pub seq: u64,
+    #[prost(enumeration = "LocalControlKind", tag = "3")]
+    pub kind: i32,
+    #[prost(string, tag = "4")]
+    pub request_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub method: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub path: ::prost::alloc::string::String,
+    #[prost(bytes = "vec", tag = "7")]
+    pub body: ::prost::alloc::vec::Vec<u8>,
+    #[prost(uint32, tag = "8")]
+    pub status: u32,
+    #[prost(string, tag = "9")]
+    pub bootstrap_token: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "10")]
+    pub ttl_ms: u32,
+}
+/// Explicit connectivity probe; never carries generated text, PCM or keys.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ProviderProbeReport {
+    #[prost(uint32, tag = "1")]
+    pub version: u32,
+    #[prost(string, tag = "2")]
+    pub provider_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub capability: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub model: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub voice_ref: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub status: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub error_code: ::prost::alloc::string::String,
+    #[prost(uint64, optional, tag = "8")]
+    pub elapsed_ms: ::core::option::Option<u64>,
+    #[prost(uint32, optional, tag = "9")]
+    pub sample_rate: ::core::option::Option<u32>,
+    #[prost(uint64, optional, tag = "10")]
+    pub sample_count: ::core::option::Option<u64>,
+    #[prost(uint64, tag = "11")]
+    pub generated_at_utc_ms: u64,
+    #[prost(message, optional, tag = "12")]
+    pub usage: ::core::option::Option<UsageLedgerEntry>,
+    #[prost(bool, tag = "13")]
+    pub invoice_known: bool,
+    #[prost(bool, tag = "14")]
+    pub playback_ack: bool,
+}
+/// Only presence is visible to the UI. Secret material stays in the native host.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ProviderCredentialStatus {
+    #[prost(uint32, tag = "1")]
+    pub version: u32,
+    #[prost(string, repeated, tag = "2")]
+    pub saved_provider_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum CommandAction {
@@ -1896,6 +1959,49 @@ impl CommandAction {
             "CHANGE_MODE" => Some(Self::ChangeMode),
             "APPROVE" => Some(Self::Approve),
             "REJECT" => Some(Self::Reject),
+            _ => None,
+        }
+    }
+}
+/// Private spawn-inherited control transport, not a public network protocol.
+/// JSON body bytes use the existing control OpenAPI DTOs; no PCM or video here.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum LocalControlKind {
+    LocalControlUnspecified = 0,
+    LocalControlBootstrap = 1,
+    LocalControlReady = 2,
+    LocalControlRequest = 3,
+    LocalControlResponse = 4,
+    LocalControlHeartbeat = 5,
+    LocalControlShutdown = 6,
+}
+impl LocalControlKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::LocalControlUnspecified => "LOCAL_CONTROL_UNSPECIFIED",
+            Self::LocalControlBootstrap => "LOCAL_CONTROL_BOOTSTRAP",
+            Self::LocalControlReady => "LOCAL_CONTROL_READY",
+            Self::LocalControlRequest => "LOCAL_CONTROL_REQUEST",
+            Self::LocalControlResponse => "LOCAL_CONTROL_RESPONSE",
+            Self::LocalControlHeartbeat => "LOCAL_CONTROL_HEARTBEAT",
+            Self::LocalControlShutdown => "LOCAL_CONTROL_SHUTDOWN",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "LOCAL_CONTROL_UNSPECIFIED" => Some(Self::LocalControlUnspecified),
+            "LOCAL_CONTROL_BOOTSTRAP" => Some(Self::LocalControlBootstrap),
+            "LOCAL_CONTROL_READY" => Some(Self::LocalControlReady),
+            "LOCAL_CONTROL_REQUEST" => Some(Self::LocalControlRequest),
+            "LOCAL_CONTROL_RESPONSE" => Some(Self::LocalControlResponse),
+            "LOCAL_CONTROL_HEARTBEAT" => Some(Self::LocalControlHeartbeat),
+            "LOCAL_CONTROL_SHUTDOWN" => Some(Self::LocalControlShutdown),
             _ => None,
         }
     }
@@ -2217,6 +2323,138 @@ pub struct AvatarProfile {
         ::prost::alloc::string::String,
     >,
 }
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CharacterIdentity {
+    #[prost(string, tag = "1")]
+    pub workspace_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub character_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub version: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub package_sha256: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub rights_sha256: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CharacterCapability {
+    #[prost(enumeration = "CharacterRendererKind", tag = "1")]
+    pub renderer: i32,
+    #[prost(enumeration = "CharacterLipSyncKind", repeated, tag = "2")]
+    pub lip_sync: ::prost::alloc::vec::Vec<i32>,
+    /// Only actions available in the admitted package.
+    #[prost(string, repeated, tag = "3")]
+    pub supported_action_ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CharacterProfile {
+    #[prost(uint32, tag = "1")]
+    pub schema_version: u32,
+    #[prost(message, optional, tag = "2")]
+    pub identity: ::core::option::Option<CharacterIdentity>,
+    #[prost(message, optional, tag = "3")]
+    pub capability: ::core::option::Option<CharacterCapability>,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CharacterActionRequest {
+    #[prost(string, tag = "1")]
+    pub request_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub character: ::core::option::Option<CharacterIdentity>,
+    #[prost(string, tag = "3")]
+    pub session_id: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "4")]
+    pub generation_epoch: u64,
+    #[prost(string, tag = "5")]
+    pub output_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub approval_ref: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub lease_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "8")]
+    pub action_id: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "9")]
+    pub priority: u32,
+    /// Advisory; receiver uses its own monotonic deadline.
+    #[prost(uint32, tag = "10")]
+    pub remaining_budget_ms: u32,
+    #[prost(uint64, tag = "11")]
+    pub sequence: u64,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CharacterActionState {
+    #[prost(string, tag = "1")]
+    pub request_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub character: ::core::option::Option<CharacterIdentity>,
+    #[prost(string, tag = "3")]
+    pub session_id: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "4")]
+    pub generation_epoch: u64,
+    #[prost(string, tag = "5")]
+    pub output_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub action_id: ::prost::alloc::string::String,
+    /// Observed execution, not a media completion ACK.
+    #[prost(enumeration = "CharacterActionPhase", tag = "7")]
+    pub phase: i32,
+    #[prost(string, tag = "8")]
+    pub reason_code: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "9")]
+    pub sequence: u64,
+    #[prost(uint64, optional, tag = "10")]
+    pub source_sample_position: ::core::option::Option<u64>,
+    #[prost(uint64, optional, tag = "11")]
+    pub frame_sequence: ::core::option::Option<u64>,
+}
+/// Metadata only. PCM and pixels use a separate owned transport.
+/// None of these fields grant output authority.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CharacterBoundedMedia {
+    #[prost(message, optional, tag = "1")]
+    pub identity: ::core::option::Option<CharacterIdentity>,
+    #[prost(string, tag = "2")]
+    pub session_id: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "3")]
+    pub epoch: u64,
+    #[prost(string, tag = "4")]
+    pub action_id: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "5")]
+    pub width: u32,
+    #[prost(uint32, tag = "6")]
+    pub height: u32,
+    #[prost(uint32, tag = "7")]
+    pub sample_rate: u32,
+    #[prost(uint32, tag = "8")]
+    pub channels: u32,
+    #[prost(uint64, tag = "9")]
+    pub max_frames: u64,
+    #[prost(uint64, tag = "10")]
+    pub max_samples: u64,
+    #[prost(uint32, tag = "11")]
+    pub samples_per_frame: u32,
+    #[prost(string, tag = "12")]
+    pub pixel_format: ::prost::alloc::string::String,
+    #[prost(string, tag = "13")]
+    pub pcm_format: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CharacterRuntimeView {
+    #[prost(message, optional, tag = "1")]
+    pub identity: ::core::option::Option<CharacterIdentity>,
+    #[prost(enumeration = "CharacterRuntimeState", tag = "2")]
+    pub state: i32,
+    #[prost(string, tag = "3")]
+    pub session_id: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "4")]
+    pub epoch: u64,
+    #[prost(string, tag = "5")]
+    pub action_id: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "6")]
+    pub media: ::core::option::Option<CharacterBoundedMedia>,
+    #[prost(string, tag = "7")]
+    pub reason_code: ::prost::alloc::string::String,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AvatarRenderRequest {
     #[prost(message, optional, tag = "1")]
@@ -2367,6 +2605,158 @@ pub struct PreviewDescriptor {
     #[prost(bool, tag = "4")]
     pub active: bool,
 }
+/// Private spawn-inherited local output protocol. Raw media stays in separate
+/// fixed-name files, never in this control channel. No hardware completion ACK.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct LocalPlaybackMedia {
+    #[prost(uint32, tag = "1")]
+    pub version: u32,
+    #[prost(string, tag = "2")]
+    pub session_id: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "3")]
+    pub generation_epoch: u64,
+    #[prost(string, tag = "4")]
+    pub candidate_hash: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "5")]
+    pub sample_rate: u32,
+    #[prost(uint64, tag = "6")]
+    pub sample_count: u64,
+    #[prost(uint32, tag = "7")]
+    pub width: u32,
+    #[prost(uint32, tag = "8")]
+    pub height: u32,
+    #[prost(uint32, tag = "9")]
+    pub frame_count: u32,
+    #[prost(uint32, tag = "10")]
+    pub fps_num: u32,
+    #[prost(uint32, tag = "11")]
+    pub fps_den: u32,
+    #[prost(string, tag = "12")]
+    pub audio_sha256: ::prost::alloc::string::String,
+    #[prost(string, tag = "13")]
+    pub frames_sha256: ::prost::alloc::string::String,
+    /// v2: one bound digest per frame; seek/read/recheck.
+    #[prost(string, repeated, tag = "14")]
+    pub frame_sha256: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// v2: admitted neutral image in standby.rgba, no speech/text.
+    #[prost(string, tag = "15")]
+    pub standby_sha256: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LocalPlaybackGrant {
+    #[prost(uint32, tag = "1")]
+    pub version: u32,
+    #[prost(uint64, tag = "2")]
+    pub seq: u64,
+    #[prost(message, optional, tag = "3")]
+    pub cue: ::core::option::Option<PerformanceCue>,
+    #[prost(message, optional, tag = "4")]
+    pub approval: ::core::option::Option<Approval>,
+    #[prost(message, optional, tag = "5")]
+    pub lease: ::core::option::Option<PlaybackLease>,
+    /// Binds the exact descriptor bytes to the private grant.
+    #[prost(string, tag = "6")]
+    pub media_sha256: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct LocalPlaybackStatus {
+    #[prost(uint32, tag = "1")]
+    pub version: u32,
+    /// ready/submitted/cancelled/failed, never hardware completed
+    #[prost(string, tag = "2")]
+    pub state: ::prost::alloc::string::String,
+    /// Missing on failure means unknown, not zero.
+    #[prost(uint64, optional, tag = "3")]
+    pub copied_samples: ::core::option::Option<u64>,
+    #[prost(uint64, optional, tag = "4")]
+    pub window_updates: ::core::option::Option<u64>,
+    #[prost(string, tag = "5")]
+    pub error_code: ::prost::alloc::string::String,
+    /// Always false.
+    #[prost(bool, tag = "6")]
+    pub actual_local_playback_completed: bool,
+    /// Diagnostic; one per resident process.
+    #[prost(uint32, tag = "7")]
+    pub audio_stream_open_count: u32,
+    /// Empty means no admitted standby image.
+    #[prost(string, tag = "8")]
+    pub standby_sha256: ::prost::alloc::string::String,
+    /// Exact current cue descriptor; absent for neutral-only standby.
+    #[prost(string, tag = "9")]
+    pub media_sha256: ::prost::alloc::string::String,
+    /// Frames whose predicted tail was crossed by a later callback. Not hardware ACK.
+    #[prost(uint64, optional, tag = "10")]
+    pub callback_drained_samples: ::core::option::Option<u64>,
+    /// Full cue observation only; never actual_local_playback_completed.
+    #[prost(bool, tag = "11")]
+    pub callback_drain_observed: bool,
+    /// Cue frames covered by actual IAudioClock position, not QPC.
+    #[prost(uint64, optional, tag = "12")]
+    pub device_played_samples: ::core::option::Option<u64>,
+    /// Full audio cue only; not complete A/V acknowledgement.
+    #[prost(bool, tag = "13")]
+    pub device_position_observed: bool,
+    /// Exact known position source, currently wasapi-iaudioclock.
+    #[prost(string, tag = "14")]
+    pub audio_backend: ::prost::alloc::string::String,
+    /// Zero-based frame successfully submitted to the window.
+    #[prost(uint32, optional, tag = "15")]
+    pub video_frame_index: ::core::option::Option<u32>,
+    /// Actual cue device position used to select that frame.
+    #[prost(uint64, optional, tag = "16")]
+    pub video_device_samples: ::core::option::Option<u64>,
+    /// Final frame submitted at full audio position; not display/OBS completion.
+    #[prost(bool, tag = "17")]
+    pub video_tail_submitted: bool,
+}
+/// Explicit local native-device smoke only. Callback copies and presentation
+/// calls are diagnostics, never hardware completion or production output grants.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct NativeDeviceSmokeReport {
+    #[prost(uint32, tag = "1")]
+    pub schema_version: u32,
+    #[prost(string, tag = "2")]
+    pub scope: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub scenario: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub backend: ::prost::alloc::string::String,
+    #[prost(bool, tag = "5")]
+    pub audio_opened: bool,
+    #[prost(bool, tag = "6")]
+    pub window_opened: bool,
+    #[prost(uint32, tag = "7")]
+    pub sample_rate: u32,
+    #[prost(uint32, tag = "8")]
+    pub channels: u32,
+    #[prost(uint64, tag = "9")]
+    pub callbacks: u64,
+    #[prost(uint64, tag = "10")]
+    pub copied_interleaved_samples: u64,
+    #[prost(uint64, tag = "11")]
+    pub silent_callbacks_after_stop: u64,
+    #[prost(uint64, tag = "12")]
+    pub nonzero_callbacks_after_stop: u64,
+    #[prost(uint64, tag = "13")]
+    pub window_updates: u64,
+    #[prost(uint64, tag = "14")]
+    pub max_predicted_latency_us: u64,
+    #[prost(uint64, tag = "15")]
+    pub last_nonzero_at_us: u64,
+    #[prost(uint64, tag = "16")]
+    pub stop_at_us: u64,
+    #[prost(uint64, tag = "17")]
+    pub elapsed_ms: u64,
+    #[prost(string, tag = "18")]
+    pub error_code: ::prost::alloc::string::String,
+    #[prost(bool, tag = "19")]
+    pub success: bool,
+    /// Always false: no device ACK.
+    #[prost(bool, tag = "20")]
+    pub actual_local_playback_completed: bool,
+    #[prost(uint64, tag = "21")]
+    pub max_callback_frames: u64,
+}
 /// Provisional engineering drill only (ADR 0016); NOT output.deliver readiness.
 /// Private inherited stdio. No PCM/frames and no hardware playback ACK.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -2490,5 +2880,205 @@ pub mod frame_slot_event {
         Committed(::prost::alloc::boxed::Box<super::FrameSlotCommit>),
         #[prost(message, tag = "3")]
         Error(super::ContractError),
+    }
+}
+/// Session resident output commands. Media bytes remain outside the control pipe.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LocalOutputCommand {
+    #[prost(oneof = "local_output_command::Command", tags = "1, 2, 3, 4, 5")]
+    pub command: ::core::option::Option<local_output_command::Command>,
+}
+/// Nested message and enum types in `LocalOutputCommand`.
+pub mod local_output_command {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Command {
+        #[prost(string, tag = "1")]
+        DescriptorPath(::prost::alloc::string::String),
+        #[prost(message, tag = "2")]
+        Grant(::prost::alloc::boxed::Box<super::LocalPlaybackGrant>),
+        #[prost(bool, tag = "3")]
+        Shutdown(bool),
+        /// Revoke current cue and keep a silent standby window.
+        #[prost(bool, tag = "4")]
+        CancelCue(bool),
+        /// Silent neutral image only; never grants speech.
+        #[prost(message, tag = "5")]
+        Warmup(super::LocalOutputWarmup),
+    }
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct LocalStandbyMedia {
+    #[prost(uint32, tag = "1")]
+    pub version: u32,
+    #[prost(string, tag = "2")]
+    pub session_id: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "3")]
+    pub generation_epoch: u64,
+    #[prost(uint32, tag = "4")]
+    pub width: u32,
+    #[prost(uint32, tag = "5")]
+    pub height: u32,
+    #[prost(string, tag = "6")]
+    pub standby_sha256: ::prost::alloc::string::String,
+}
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct LocalOutputWarmup {
+    #[prost(string, tag = "1")]
+    pub descriptor_path: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub descriptor_sha256: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub session_id: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "4")]
+    pub generation_epoch: u64,
+    #[prost(uint32, tag = "5")]
+    pub remaining_budget_ms: u32,
+}
+/// Realtime character metadata only. None of these fields grant output authority;
+/// the trusted composition root must resolve and recheck every identity and lease.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum CharacterRendererKind {
+    CharacterRendererUnspecified = 0,
+    CharacterRenderer2d = 1,
+    /// Reserved extension point, not an implemented renderer.
+    CharacterRenderer3d = 2,
+}
+impl CharacterRendererKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::CharacterRendererUnspecified => "CHARACTER_RENDERER_UNSPECIFIED",
+            Self::CharacterRenderer2d => "CHARACTER_RENDERER_2D",
+            Self::CharacterRenderer3d => "CHARACTER_RENDERER_3D",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "CHARACTER_RENDERER_UNSPECIFIED" => Some(Self::CharacterRendererUnspecified),
+            "CHARACTER_RENDERER_2D" => Some(Self::CharacterRenderer2d),
+            "CHARACTER_RENDERER_3D" => Some(Self::CharacterRenderer3d),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum CharacterLipSyncKind {
+    CharacterLipSyncUnspecified = 0,
+    CharacterLipSyncAmplitude = 1,
+    CharacterLipSyncPhoneme = 2,
+    CharacterLipSyncAudioDriven = 3,
+}
+impl CharacterLipSyncKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::CharacterLipSyncUnspecified => "CHARACTER_LIP_SYNC_UNSPECIFIED",
+            Self::CharacterLipSyncAmplitude => "CHARACTER_LIP_SYNC_AMPLITUDE",
+            Self::CharacterLipSyncPhoneme => "CHARACTER_LIP_SYNC_PHONEME",
+            Self::CharacterLipSyncAudioDriven => "CHARACTER_LIP_SYNC_AUDIO_DRIVEN",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "CHARACTER_LIP_SYNC_UNSPECIFIED" => Some(Self::CharacterLipSyncUnspecified),
+            "CHARACTER_LIP_SYNC_AMPLITUDE" => Some(Self::CharacterLipSyncAmplitude),
+            "CHARACTER_LIP_SYNC_PHONEME" => Some(Self::CharacterLipSyncPhoneme),
+            "CHARACTER_LIP_SYNC_AUDIO_DRIVEN" => Some(Self::CharacterLipSyncAudioDriven),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum CharacterActionPhase {
+    Unspecified = 0,
+    Accepted = 1,
+    Executing = 2,
+    Completed = 3,
+    Cancelled = 4,
+    Failed = 5,
+    Rejected = 6,
+}
+impl CharacterActionPhase {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "CHARACTER_ACTION_PHASE_UNSPECIFIED",
+            Self::Accepted => "CHARACTER_ACTION_PHASE_ACCEPTED",
+            Self::Executing => "CHARACTER_ACTION_PHASE_EXECUTING",
+            Self::Completed => "CHARACTER_ACTION_PHASE_COMPLETED",
+            Self::Cancelled => "CHARACTER_ACTION_PHASE_CANCELLED",
+            Self::Failed => "CHARACTER_ACTION_PHASE_FAILED",
+            Self::Rejected => "CHARACTER_ACTION_PHASE_REJECTED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "CHARACTER_ACTION_PHASE_UNSPECIFIED" => Some(Self::Unspecified),
+            "CHARACTER_ACTION_PHASE_ACCEPTED" => Some(Self::Accepted),
+            "CHARACTER_ACTION_PHASE_EXECUTING" => Some(Self::Executing),
+            "CHARACTER_ACTION_PHASE_COMPLETED" => Some(Self::Completed),
+            "CHARACTER_ACTION_PHASE_CANCELLED" => Some(Self::Cancelled),
+            "CHARACTER_ACTION_PHASE_FAILED" => Some(Self::Failed),
+            "CHARACTER_ACTION_PHASE_REJECTED" => Some(Self::Rejected),
+            _ => None,
+        }
+    }
+}
+/// Host observation, never a playback permit. Revoked, lost, or unavailable
+/// MUST NOT be represented as public-active.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum CharacterRuntimeState {
+    Unspecified = 0,
+    Unavailable = 1,
+    Preview = 2,
+    PublicStandby = 3,
+    PublicActive = 4,
+    Lost = 5,
+    Revoked = 6,
+}
+impl CharacterRuntimeState {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "CHARACTER_RUNTIME_STATE_UNSPECIFIED",
+            Self::Unavailable => "CHARACTER_RUNTIME_STATE_UNAVAILABLE",
+            Self::Preview => "CHARACTER_RUNTIME_STATE_PREVIEW",
+            Self::PublicStandby => "CHARACTER_RUNTIME_STATE_PUBLIC_STANDBY",
+            Self::PublicActive => "CHARACTER_RUNTIME_STATE_PUBLIC_ACTIVE",
+            Self::Lost => "CHARACTER_RUNTIME_STATE_LOST",
+            Self::Revoked => "CHARACTER_RUNTIME_STATE_REVOKED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "CHARACTER_RUNTIME_STATE_UNSPECIFIED" => Some(Self::Unspecified),
+            "CHARACTER_RUNTIME_STATE_UNAVAILABLE" => Some(Self::Unavailable),
+            "CHARACTER_RUNTIME_STATE_PREVIEW" => Some(Self::Preview),
+            "CHARACTER_RUNTIME_STATE_PUBLIC_STANDBY" => Some(Self::PublicStandby),
+            "CHARACTER_RUNTIME_STATE_PUBLIC_ACTIVE" => Some(Self::PublicActive),
+            "CHARACTER_RUNTIME_STATE_LOST" => Some(Self::Lost),
+            "CHARACTER_RUNTIME_STATE_REVOKED" => Some(Self::Revoked),
+            _ => None,
+        }
     }
 }

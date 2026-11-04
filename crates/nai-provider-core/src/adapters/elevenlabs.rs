@@ -67,6 +67,50 @@ impl<'a> ElevenLabsAdapter<'a> {
         entry: nai_contracts::v1::UsageLedgerEntry,
         sink: &mut dyn FnMut(TtsChunk),
     ) -> Result<u64, ProviderError> {
+        self.tts_core(op, req, gateway, entry, &mut |chunk, _bytes| sink(chunk))
+            .await
+    }
+
+    /// The same metered request, returning the raw PCM body and the format the
+    /// binding asked the provider for. The caller must not guess a rate.
+    pub async fn tts_pcm(
+        &self,
+        op: &Operation,
+        req: &TtsRequest,
+        gateway: &mut dyn UsageGateway,
+        entry: nai_contracts::v1::UsageLedgerEntry,
+    ) -> Result<(Vec<u8>, AudioFormat), ProviderError> {
+        let mut bytes = Vec::new();
+        let total = self
+            .tts_core(op, req, gateway, entry, &mut |_chunk, block| {
+                bytes.extend_from_slice(block);
+            })
+            .await?;
+        if bytes.len() as u64 != total {
+            return Err(invalid("tts byte total disagrees with the body"));
+        }
+        Ok((
+            bytes,
+            AudioFormat {
+                codec: "pcm".into(),
+                sample_rate: req.format.as_ref().map(|f| f.sample_rate).unwrap_or(24_000),
+                channels: 1,
+                sample_format: "s16".into(),
+            },
+        ))
+    }
+
+    async fn tts_core<E>(
+        &self,
+        op: &Operation,
+        req: &TtsRequest,
+        gateway: &mut dyn UsageGateway,
+        entry: nai_contracts::v1::UsageLedgerEntry,
+        emit: &mut E,
+    ) -> Result<u64, ProviderError>
+    where
+        E: FnMut(TtsChunk, &[u8]),
+    {
         let budget = CallBudget::start(gateway, entry)?;
         if !budget.dispatched() {
             return Err(ProviderError::new(
@@ -133,12 +177,15 @@ impl<'a> ElevenLabsAdapter<'a> {
                     ProviderError::unavailable(format!("provider audio stream: {error}"))
                 })?,
                 None => {
-                    sink(TtsChunk {
-                        seq,
-                        end: StreamEnd::StreamComplete as i32,
-                        format: Some(audio_format.clone()),
-                        ..Default::default()
-                    });
+                    emit(
+                        TtsChunk {
+                            seq,
+                            end: StreamEnd::StreamComplete as i32,
+                            format: Some(audio_format.clone()),
+                            ..Default::default()
+                        },
+                        &[],
+                    );
                     break;
                 }
             };
@@ -148,15 +195,18 @@ impl<'a> ElevenLabsAdapter<'a> {
                 return Err(invalid("tts stream exceeds bound"));
             }
             if !block.is_empty() {
-                sink(TtsChunk {
-                    seq,
-                    end: StreamEnd::StreamData as i32,
-                    audio_buffer_ref: format!("provider://audio/{seq}"),
-                    format: Some(audio_format.clone()),
-                    sample_start: 0,
-                    sample_count: 0,
-                    ..Default::default()
-                });
+                emit(
+                    TtsChunk {
+                        seq,
+                        end: StreamEnd::StreamData as i32,
+                        audio_buffer_ref: format!("provider://audio/{seq}"),
+                        format: Some(audio_format.clone()),
+                        sample_start: 0,
+                        sample_count: 0,
+                        ..Default::default()
+                    },
+                    &block,
+                );
                 seq += 1;
             }
         }

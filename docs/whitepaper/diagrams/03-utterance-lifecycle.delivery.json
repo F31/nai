@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "ba2fe8bc-0659-4b4b-8217-931f7b1320a9",
+  "status": "current",
+  "command": "deliver",
+  "type": "lifecycle",
+  "input": "E:\\projects\\nai\\.archify\\lifecycle-v48-utterance-20261023-180435\\candidate.json",
+  "output": "E:\\projects\\nai\\docs\\whitepaper\\diagrams\\03-utterance-lifecycle.html",
+  "specification": {
+    "sha256": "7b0b81737a9893b7b1f9d379aa6875511716632193b59b6c3d291e0016f30b7c",
+    "bytes": 3921
+  },
+  "artifact": {
+    "sha256": "8f36f10732df9ddfa886a07a3012dbfc398903ce4a64056e282e2ddb3a67f10b",
+    "bytes": 823541
+  }
+}

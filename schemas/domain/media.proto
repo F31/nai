@@ -10,6 +10,109 @@ message FrameMetadata { string session_id = 1; string utterance_id = 2; uint64 g
 message PlaybackLease { string lease_id = 1; string session_id = 2; uint64 generation_epoch = 3; repeated string allowed_utterance_ids = 4; SessionMode mode = 5; repeated string approval_refs = 6; uint64 expires_at_utc_ms = 7; repeated RevisionRef fact_versions = 8; map<string, string> candidate_hashes = 9; string policy_revision = 10; }
 message AvatarProfileRequest { RequestContext context = 1; string avatar_id = 2; }
 message AvatarProfile { string avatar_id = 1; string revision = 2; AudioFormat input_audio = 3; string model_profile_ref = 4; string resource_profile_ref = 5; repeated string supported_actions = 6; repeated string emotions = 7; repeated string gazes = 8; float max_intensity = 9; bool requires_phoneme_timing = 10; uint32 native_width = 11; uint32 native_height = 12; uint32 output_width = 13; uint32 output_height = 14; uint32 fps_num = 15; uint32 fps_den = 16; uint32 lookahead_samples = 17; repeated uint64 switch_points = 18; repeated string certified_fallback_refs = 19; }
+
+// Realtime character metadata only. None of these fields grant output authority;
+// the trusted composition root must resolve and recheck every identity and lease.
+enum CharacterRendererKind {
+  CHARACTER_RENDERER_UNSPECIFIED = 0;
+  CHARACTER_RENDERER_2D = 1;
+  CHARACTER_RENDERER_3D = 2; // Reserved extension point, not an implemented renderer.
+}
+enum CharacterLipSyncKind {
+  CHARACTER_LIP_SYNC_UNSPECIFIED = 0;
+  CHARACTER_LIP_SYNC_AMPLITUDE = 1;
+  CHARACTER_LIP_SYNC_PHONEME = 2;
+  CHARACTER_LIP_SYNC_AUDIO_DRIVEN = 3;
+}
+message CharacterIdentity {
+  string workspace_id = 1;
+  string character_id = 2;
+  string version = 3;
+  string package_sha256 = 4;
+  string rights_sha256 = 5;
+}
+message CharacterCapability {
+  CharacterRendererKind renderer = 1;
+  repeated CharacterLipSyncKind lip_sync = 2;
+  repeated string supported_action_ids = 3; // Only actions available in the admitted package.
+}
+message CharacterProfile {
+  uint32 schema_version = 1;
+  CharacterIdentity identity = 2;
+  CharacterCapability capability = 3;
+}
+message CharacterActionRequest {
+  string request_id = 1;
+  CharacterIdentity character = 2;
+  string session_id = 3;
+  uint64 generation_epoch = 4;
+  string output_id = 5;
+  string approval_ref = 6;
+  string lease_id = 7;
+  string action_id = 8;
+  uint32 priority = 9;
+  uint32 remaining_budget_ms = 10; // Advisory; receiver uses its own monotonic deadline.
+  uint64 sequence = 11;
+}
+enum CharacterActionPhase {
+  CHARACTER_ACTION_PHASE_UNSPECIFIED = 0;
+  CHARACTER_ACTION_PHASE_ACCEPTED = 1;
+  CHARACTER_ACTION_PHASE_EXECUTING = 2;
+  CHARACTER_ACTION_PHASE_COMPLETED = 3;
+  CHARACTER_ACTION_PHASE_CANCELLED = 4;
+  CHARACTER_ACTION_PHASE_FAILED = 5;
+  CHARACTER_ACTION_PHASE_REJECTED = 6;
+}
+message CharacterActionState {
+  string request_id = 1;
+  CharacterIdentity character = 2;
+  string session_id = 3;
+  uint64 generation_epoch = 4;
+  string output_id = 5;
+  string action_id = 6;
+  CharacterActionPhase phase = 7; // Observed execution, not a media completion ACK.
+  string reason_code = 8;
+  uint64 sequence = 9;
+  optional uint64 source_sample_position = 10;
+  optional uint64 frame_sequence = 11;
+}
+// Host observation, never a playback permit. Revoked, lost, or unavailable
+// MUST NOT be represented as public-active.
+enum CharacterRuntimeState {
+  CHARACTER_RUNTIME_STATE_UNSPECIFIED = 0;
+  CHARACTER_RUNTIME_STATE_UNAVAILABLE = 1;
+  CHARACTER_RUNTIME_STATE_PREVIEW = 2;
+  CHARACTER_RUNTIME_STATE_PUBLIC_STANDBY = 3;
+  CHARACTER_RUNTIME_STATE_PUBLIC_ACTIVE = 4;
+  CHARACTER_RUNTIME_STATE_LOST = 5;
+  CHARACTER_RUNTIME_STATE_REVOKED = 6;
+}
+// Metadata only. PCM and pixels use a separate owned transport.
+// None of these fields grant output authority.
+message CharacterBoundedMedia {
+  CharacterIdentity identity = 1;
+  string session_id = 2;
+  uint64 epoch = 3;
+  string action_id = 4;
+  uint32 width = 5;
+  uint32 height = 6;
+  uint32 sample_rate = 7;
+  uint32 channels = 8;
+  uint64 max_frames = 9;
+  uint64 max_samples = 10;
+  uint32 samples_per_frame = 11;
+  string pixel_format = 12;
+  string pcm_format = 13;
+}
+message CharacterRuntimeView {
+  CharacterIdentity identity = 1;
+  CharacterRuntimeState state = 2;
+  string session_id = 3;
+  uint64 epoch = 4;
+  string action_id = 5;
+  CharacterBoundedMedia media = 6;
+  string reason_code = 7;
+}
 message AvatarRenderRequest { RequestContext context = 1; PerformanceCue cue = 2; AudioBlockMetadata audio = 3; string avatar_profile_revision = 4; }
 message AvatarRenderResult { repeated FrameMetadata frames = 1; StreamEnd end = 2; }
 message OutputRequest { RequestContext context = 1; string output_id = 2; string utterance_id = 3; PlaybackLease lease = 4; AudioBlockMetadata audio = 5; FrameMetadata frame = 6; }
@@ -22,6 +125,79 @@ message TimelineRequest { RequestContext context = 1; string utterance_id = 2; }
 message AudioTimeline { string utterance_id = 1; string clock_id = 2; uint64 output_sample_start = 3; uint32 output_sample_rate = 4; uint64 model_sample_start = 5; uint32 model_sample_rate = 6; uint64 speech_samples = 7; uint32 lookahead_samples = 8; }
 message PreviewRequest { RequestContext context = 1; string output_id = 2; bool enabled = 3; uint32 max_bitrate = 4; }
 message PreviewDescriptor { string preview_id = 1; string encoded_stream_ref = 2; string codec = 3; bool active = 4; }
+
+// Private spawn-inherited local output protocol. Raw media stays in separate
+// fixed-name files, never in this control channel. No hardware completion ACK.
+message LocalPlaybackMedia {
+  uint32 version = 1;
+  string session_id = 2;
+  uint64 generation_epoch = 3;
+  string candidate_hash = 4;
+  uint32 sample_rate = 5;
+  uint64 sample_count = 6;
+  uint32 width = 7;
+  uint32 height = 8;
+  uint32 frame_count = 9;
+  uint32 fps_num = 10;
+  uint32 fps_den = 11;
+  string audio_sha256 = 12;
+  string frames_sha256 = 13;
+  repeated string frame_sha256 = 14; // v2: one bound digest per frame; seek/read/recheck.
+  string standby_sha256 = 15; // v2: admitted neutral image in standby.rgba, no speech/text.
+}
+message LocalPlaybackGrant {
+  uint32 version = 1;
+  uint64 seq = 2;
+  PerformanceCue cue = 3;
+  Approval approval = 4;
+  PlaybackLease lease = 5;
+  string media_sha256 = 6; // Binds the exact descriptor bytes to the private grant.
+}
+message LocalPlaybackStatus {
+  uint32 version = 1;
+  string state = 2; // ready/submitted/cancelled/failed, never hardware completed
+  optional uint64 copied_samples = 3; // Missing on failure means unknown, not zero.
+  optional uint64 window_updates = 4;
+  string error_code = 5;
+  bool actual_local_playback_completed = 6; // Always false.
+  uint32 audio_stream_open_count = 7; // Diagnostic; one per resident process.
+  string standby_sha256 = 8; // Empty means no admitted standby image.
+  string media_sha256 = 9; // Exact current cue descriptor; absent for neutral-only standby.
+  optional uint64 callback_drained_samples = 10; // Frames whose predicted tail was crossed by a later callback. Not hardware ACK.
+  bool callback_drain_observed = 11; // Full cue observation only; never actual_local_playback_completed.
+  optional uint64 device_played_samples = 12; // Cue frames covered by actual IAudioClock position, not QPC.
+  bool device_position_observed = 13; // Full audio cue only; not complete A/V acknowledgement.
+  string audio_backend = 14; // Exact known position source, currently wasapi-iaudioclock.
+  optional uint32 video_frame_index = 15; // Zero-based frame successfully submitted to the window.
+  optional uint64 video_device_samples = 16; // Actual cue device position used to select that frame.
+  bool video_tail_submitted = 17; // Final frame submitted at full audio position; not display/OBS completion.
+}
+
+// Explicit local native-device smoke only. Callback copies and presentation
+// calls are diagnostics, never hardware completion or production output grants.
+message NativeDeviceSmokeReport {
+  uint32 schema_version = 1;
+  string scope = 2;
+  string scenario = 3;
+  string backend = 4;
+  bool audio_opened = 5;
+  bool window_opened = 6;
+  uint32 sample_rate = 7;
+  uint32 channels = 8;
+  uint64 callbacks = 9;
+  uint64 copied_interleaved_samples = 10;
+  uint64 silent_callbacks_after_stop = 11;
+  uint64 nonzero_callbacks_after_stop = 12;
+  uint64 window_updates = 13;
+  uint64 max_predicted_latency_us = 14;
+  uint64 last_nonzero_at_us = 15;
+  uint64 stop_at_us = 16;
+  uint64 elapsed_ms = 17;
+  string error_code = 18;
+  bool success = 19;
+  bool actual_local_playback_completed = 20; // Always false: no device ACK.
+  uint64 max_callback_frames = 21;
+}
 
 // Provisional engineering drill only (ADR 0016); NOT output.deliver readiness.
 // Private inherited stdio. No PCM/frames and no hardware playback ACK.
@@ -82,4 +258,29 @@ message FrameSlotEvent {
     FrameSlotCommit committed = 2;
     ContractError error = 3;
   }
+}
+// Session resident output commands. Media bytes remain outside the control pipe.
+message LocalOutputCommand {
+  oneof command {
+    string descriptor_path = 1;
+    LocalPlaybackGrant grant = 2;
+    bool shutdown = 3;
+    bool cancel_cue = 4; // Revoke current cue and keep a silent standby window.
+    LocalOutputWarmup warmup = 5; // Silent neutral image only; never grants speech.
+  }
+}
+message LocalStandbyMedia {
+  uint32 version = 1;
+  string session_id = 2;
+  uint64 generation_epoch = 3;
+  uint32 width = 4;
+  uint32 height = 5;
+  string standby_sha256 = 6;
+}
+message LocalOutputWarmup {
+  string descriptor_path = 1;
+  string descriptor_sha256 = 2;
+  string session_id = 3;
+  uint64 generation_epoch = 4;
+  uint32 remaining_budget_ms = 5;
 }

@@ -662,6 +662,290 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sessions/{id}/program": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Volatile finite assisted program with optional durable recent human confirmation; history grants no recovery or hardware completion. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProgramView"];
+                    };
+                };
+                403: components["responses"]["Forbidden"];
+                409: components["responses"]["Conflict"];
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProgramCommand"];
+                };
+            };
+            responses: {
+                /** @description Actual execution ACK; replay returns the original result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommandAck"];
+                    };
+                };
+                400: components["responses"]["BadRequest"];
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                409: components["responses"]["Conflict"];
+                413: components["responses"]["PayloadTooLarge"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{id}/knowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["KnowledgePublishCommand"];
+                };
+            };
+            responses: {
+                /** @description Actual execution ACK; replay returns the original result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommandAck"];
+                    };
+                };
+                400: components["responses"]["BadRequest"];
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                409: components["responses"]["Conflict"];
+                413: components["responses"]["PayloadTooLarge"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{id}/previews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Authenticated resource status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ResourceView"];
+                    };
+                };
+                400: components["responses"]["BadRequest"];
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                409: components["responses"]["Conflict"];
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PreviewCommand"];
+                };
+            };
+            responses: {
+                /** @description Actual execution ACK; replay returns the original result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommandAck"];
+                    };
+                };
+                400: components["responses"]["BadRequest"];
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                409: components["responses"]["Conflict"];
+                413: components["responses"]["PayloadTooLarge"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{id}/preflight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Authenticated resource status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ResourceView"];
+                    };
+                };
+                400: components["responses"]["BadRequest"];
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                409: components["responses"]["Conflict"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{id}/output-prewarm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Silent neutral output preparation only; poll events for output_ready. No Provider call, speech authority or hardware completion ACK. */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SessionCommand"];
+                };
+            };
+            responses: {
+                /** @description Actual execution ACK; replay returns the original result */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommandAck"];
+                    };
+                };
+                400: components["responses"]["BadRequest"];
+                401: components["responses"]["Unauthorized"];
+                403: components["responses"]["Forbidden"];
+                409: components["responses"]["Conflict"];
+                413: components["responses"]["PayloadTooLarge"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/approvals": {
         parameters: {
             query?: never;
@@ -1831,10 +2115,69 @@ export interface components {
             /** @enum {string} */
             hash_algorithm: "sha256-canonical-v1";
         };
+        PreviewCommand: components["schemas"]["ApprovalCommand"] & {
+            /**
+             * @description Explicit local default-device playback, up to 20 seconds with a resident capture window at 15 percent gain. Device submission is not a hardware completion ACK.
+             * @default false
+             */
+            local_playback: boolean;
+        };
         ManualEventCommand: components["schemas"]["SessionCommand"] & {
             /** @enum {string} */
             source: "manual";
             text: string;
+        };
+        ProgramCommand: components["schemas"]["SessionCommand"] & {
+            /** @enum {string} */
+            action: "start" | "next" | "confirm";
+            program_id: string;
+            snapshot: string;
+            /** @description Required on start, fixed positional order selling/spec/scenario/after_sales. No facts or authorisation implied. */
+            prompts?: string[];
+            /** @description Required for human confirmation after matching local device submission. */
+            candidate_hash?: string;
+        };
+        ProgramView: {
+            program_id: string;
+            snapshot: string;
+            generation_epoch: components["schemas"]["U64"];
+            /** @enum {string} */
+            phase: "absent" | "ready" | "generating" | "candidate" | "failed" | "paused" | "done";
+            entered: number;
+            confirmed: number;
+            /** @enum {integer} */
+            max_attempts: 4;
+            request_id: string;
+            candidate_hash: string;
+            /** @enum {boolean} */
+            playback_ack: false;
+            last_confirmation?: components["schemas"]["ProgramConfirmation"];
+        };
+        ProgramConfirmation: {
+            /** @enum {string} */
+            event: "program_human_confirmation";
+            program_id: string;
+            session_id: string;
+            generation_epoch: components["schemas"]["U64"];
+            snapshot: string;
+            segment_number: number;
+            candidate_hash: string;
+            operator_id: string;
+            device_played_samples: components["schemas"]["U64"];
+            report_sha256: string;
+            media_sha256: string;
+            window_updates: components["schemas"]["U64"];
+            confirmed_at_utc_ms: components["schemas"]["U64"];
+            /** @enum {boolean} */
+            human_confirmed: true;
+            /** @enum {boolean} */
+            playback_ack: false;
+            confirmation_ref?: string;
+        };
+        KnowledgePublishCommand: components["schemas"]["SessionCommand"] & {
+            /** @enum {string} */
+            phase: "prepare" | "activate";
+            resource_ref: string;
         };
         ResourceCommand: components["schemas"]["Command"] & {
             /** @description Server-controlled resource/config/upload reference; no arbitrary URL, SQL, file path or secret. */
@@ -1944,6 +2287,10 @@ export interface components {
             evidence_count?: components["schemas"]["U64"];
             /** @description Display-only candidate text for operator review; the item identity remains id and the approval binds to the candidate hash; absent when a row predates the field. */
             display_text?: string;
+            sample_count?: components["schemas"]["U64"];
+            frame_count?: components["schemas"]["U64"];
+            /** @description Preview audio digest; not a playback acknowledgement. */
+            audio_sha256?: string;
         };
         KnowledgeQuery: {
             request_id: string;

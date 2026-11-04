@@ -1,0 +1,4 @@
+[[permission]]
+identifier="allow-preparation-workbench"
+description="Use the fixed authenticated local preparation owner. No paths, actors, tokens, generic dispatch, providers or media are accepted from the page."
+commands.allow=["workbench_open","foundation_command","workbench_close"]

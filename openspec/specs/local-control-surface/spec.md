@@ -79,20 +79,19 @@ MUST 报出具名理由，并 MUST 要求重新列出而非沿用旧快照。界
 - **THEN** 不发出请求，报出「候选已不在队列」
 
 ### Requirement: High-risk approval needs a second confirmation and declares what it cannot show
-
-批准（高危方向）MUST 需要第二次显式确认：单次点击 MUST NOT 发出请求。确认面 MUST 声明本载荷
-**不提供候选的最终文本**、身份为候选哈希，并 MUST 指向该缺口对应的验收项；界面 MUST NOT 使操作员
-误以为已经看到将要播报的文本。拒绝（安全方向）不要求二次确认。
+批准 MUST 需要第二次显式确认，单次点击 MUST NOT 发出请求。审批列表与确认面 SHALL 展示载荷中的最终文本；文本缺失时 MUST 展示具名缺口，不得用哈希冒充文本。身份始终为候选哈希。拒绝不要求二次确认。
 
 #### Scenario: A single click does not approve
-
 - **WHEN** 操作员点击一次批准
-- **THEN** 不发出请求，界面进入待确认态；再次点击同一候选才提交
+- **THEN** 不发出请求；再次点击同一候选才提交
+
+#### Scenario: Final text is available
+- **WHEN** 候选包含非空 display_text
+- **THEN** 审批列表与确认面展示该文本，同时保留候选哈希身份
 
 #### Scenario: The unavailable final text is declared
-
-- **WHEN** 确认面呈现一个候选
-- **THEN** 明确声明其最终文本不在本载荷内、身份是候选哈希，并给出该缺口对应的验收项
+- **WHEN** 候选没有可展示文本
+- **THEN** 展示 FINAL_TEXT_GAP，不以哈希冒充文本
 
 ### Requirement: The desktop UI layer declares each assertion's implementation status
 
@@ -580,3 +579,201 @@ MUST 具名失败。
 - **WHEN** 真实仓库此刻 0 条 `kind` 作业面、0 个生产安装器
 - **THEN** 该规则不如实改变任何结论，其判别力 MUST 由合成世界的两个反例证明；
   MUST NOT 记作「已由真实仓库验证」
+
+### Requirement: Operators can query upgrade costs and durable job status from the desktop
+桌面 SHALL 提供包清单成本查询和显式作业 id 状态查询，调用现有 ControlClient.planUpgrade/fetchJob。成本 SHALL 复用既有逐项与未知呈现并显示未验签声明；作业 SHALL 复用既有状态说明。查询前清理旧结果，失败显式呈现；切换连接或断开清理全部结果，迟到响应 MUST NOT 恢复旧结果。缺安装器时 MUST 明示执行与回滚不可用。
+
+#### Scenario: Operator queries a manifest
+- **WHEN** 操作员提交合法 JSON 清单
+- **THEN** 页面展示服务端返回的四类成本和总额口径，不创建作业 id
+
+#### Scenario: Operator queries a job
+- **WHEN** 操作员提交作业 id
+- **THEN** 页面展示真实响应，或具名不可用/不存在错误，不伪造事务进展
+
+#### Scenario: Failed or obsolete query
+- **WHEN** 查询失败，或响应前连接代次已变
+- **THEN** 不展示该次查询的成功结果，旧成本或状态也不冒充当前结果
+
+### Requirement: Manual questions produce guarded approval candidates through the configured API
+引擎 SHALL 通过已有手工事件命令接受操作者问题，在有界任务内实际检索已发布知识、装配上下文并调用配置的 API，将守门通过的最终文本保存为同一会话的待审批候选。凭据 MUST 仅由可信本机引用解析，预算 SHALL 使用持久化 reserve/dispatch/finish。事件状态与桌面 SHALL 区分准入、生成完成、拒绝与故障；准入 ACK 不代表生成、批准或播放。缺配置、无证据、外发禁止、取消、过期或换代 MUST NOT 使用桩替代或留下可批准旧候选。
+
+#### Scenario: Operator generates and approves a question
+- **WHEN** 操作者在桌面输入问题且配置、知识与 API 可用
+- **THEN** 真实检索结果进入实际 API 请求，最终文本与候选哈希出现在现有审批列表，批准或拒绝作用于同一候选，未播放
+
+#### Scenario: Repeated or overloaded requests
+- **WHEN** 同一命令重试或已有生成任务占用容量
+- **THEN** 重试不重复发起 API，超容量具名拒绝，状态历史保持有界
+
+#### Scenario: Revocation or expiry while generating
+- **WHEN** 网络返回前会话被静音/接管、epoch 改变或命令 TTL 到期
+- **THEN** 响应不得写成有效待审批候选，事件状态给出具名失效原因
+
+#### Scenario: Evidence must not leave the machine
+- **WHEN** 检索缺失或命中文档被标为 local-only
+- **THEN** 不向 Provider 发送问题与证据，也不生成候选或伪造答案
+
+### Requirement: Approved candidates produce a local speech-and-frame preview
+引擎 SHALL 允许操作者对仍有效的已批准候选发起一次有界预览：读取该候选的最终文本，经配置的 API 合成语音，解码为有界 PCM，产生真实 RGBA 帧并双水位提交，把可试听音频与帧摘要写入本机数据根。预览 MUST 绑定候选哈希与当前 epoch，MUST 在任何 Provider 调用前复核审批、证据、TTL 与权限；失败、取消、过期或换代 MUST 不产生预览产物，也不得使用请求方提供的替代文本。预览成功 MUST NOT 被报告为设备播放完成或 PlaybackAck。
+#### Scenario: Approved candidate preview
+- **WHEN** 候选仍有效且操作者发起预览
+- **THEN** TTS 请求使用该候选最终文本与哈希，产物记录真实样本数、帧数与帧哈希，界面明确标注未播放
+#### Scenario: Unapproved, expired or stale candidate
+- **WHEN** 候选未批准、审批过期、证据失效或会话已换代
+- **THEN** 不发起 TTS/渲染，返回具名拒绝且不写产物
+#### Scenario: Revocation during synthesis
+- **WHEN** 合成或渲染期间发生静音/接管或停机
+- **THEN** 在途任务以具名失效结束，不提交帧、不写预览产物
+#### Scenario: Repeated preview command
+- **WHEN** 同一命令重试
+- **THEN** 返回原 ACK，不重复调用 TTS 或重复计费
+
+### Requirement: A control route exposes the latest preflight report
+
+`GET /api/v1/sessions/{id}/preflight`（`session.read`）SHALL 返回最近一次 `--preflight` 写出的
+报告（逐轴状态、退出结论、运行时间）；尚未跑过预检或读取不到报告 MUST 返回 `CAPABILITY_NOT_READY`
+并说明原因，MUST NOT 伪造一份空报告冒充已检查。报告载荷 MUST NOT 声称已播放、已接设备或
+PlaybackAck。
+
+#### Scenario: The client reads the latest preflight report
+
+- **WHEN** 桌面在 engine 运行后请求预检路由
+- **THEN** 返回最近预检的逐轴状态与整体结论，界面明确标注未播放、未接设备
+
+#### Scenario: No preflight has run
+
+- **WHEN** 数据根下没有预检报告
+- **THEN** 返回 `CAPABILITY_NOT_READY` 并说明「预检尚未运行」，不提供空报告
+
+### Requirement: The desktop shows preflight status honestly
+
+桌面 SHALL 提供「预检」呈现：无报告时写明「尚未预检」而非绿灯；每轴状态与原因原样呈现；任何
+成功状态 MUST 带有「未播放、未接设备」字样，MUST NOT 把预检通过读作播出或设备验收。
+
+#### Scenario: Desktop shows a preflight result
+
+- **WHEN** 桌面收到预检报告
+- **THEN** 逐轴显示状态与原因，整体结论旁的说明字段含未播放/未接设备标注
+#### Scenario: Desktop shows no preflight
+
+- **WHEN** 路由返回 `CAPABILITY_NOT_READY`
+- **THEN** 界面显示「预检尚未运行此命令」，不显示模拟通过状态
+
+### Requirement: Native and HTTP adaptations share one control judgement
+
+原生继承管道与 loopback HTTP SHALL 调用同一个 ControlApi 路由与业务处理器，MUST NOT 在壳内复制权限、审批、epoch 或幂等规则。原生客户端 SHALL 复用现有响应解析与控制 ACK 判据。未配置、启动失败和 engine 退出 MUST 显示具名不可用状态，不得回退到测试 HTTP 或假数据。
+
+#### Scenario: Native command uses the existing approval and session guards
+
+- **WHEN** 原生请求缺权限、会话代次过期或审批对象不符
+- **THEN** 同一业务处理器给出与 HTTP 一致的拒绝，控制 ACK 不被读成硬件 ACK
+
+#### Scenario: Native engine cannot start
+
+- **WHEN** 缺失场景、数据根不可用或固定侧车不能启动
+- **THEN** 原生界面显示实际失败，不监听 HTTP、不合成成功响应
+
+### Requirement: Setup is host configuration, not a second business surface
+
+首次设置 SHALL 只保存主机配置、运行 engine 的 provision 与启动；会话、审批、知识、守门与媒体判定 MUST 仍由同一个 ControlApi 与 engine 执行。设置界面 SHALL 在配置失败或引擎未运行时如实显示，MUST NOT 回退到 HTTP 测试适配或伪造连接状态。
+
+#### Scenario: Setup succeeds but the engine is not running
+
+- **WHEN** 设置已保存而 engine 启动失败
+- **THEN** 界面显示具名启动错误，控制功能保持不可用；不伪造在线状态
+
+### Requirement: Explicit approved local playback
+系统 SHALL 保留不播放的文件预览，并允许操作者显式播放同一已批准候选；缺设备后端、陈旧代次、过期/未批准或事实变化 SHALL 拒绝，不自动重复付费合成。
+
+#### Scenario: Approved candidate reaches local device
+- **WHEN** 操作者在Windows选择本机播放已批准候选
+- **THEN** 同一批准文本经TTS与真实2D输出交给keeper，界面只报告设备提交，不冒充硬件完成
+
+#### Scenario: Revoke or unsupported target
+- **WHEN** 静音、审批失效、事实变化或平台不支持
+- **THEN** 拒绝或有界停止本机输出，重复命令不重新合成
+
+### Requirement: Independent provider configuration UI
+系统 SHALL 允许分别编辑LLM/TTS一主多备、协议/地址/模型/音色及路由策略，保存数据库配置与加密凭据；明文密钥仅在本次子进程环境使用，不回读界面。
+#### Scenario: Save and launch configured routes
+- **WHEN** 操作者保存两组合法配置并启动
+- **THEN** 引擎使用保存的独立能力配置且JSON导出不含密钥，数据库只存密文，素材路径保持有效
+#### Scenario: Change active configuration
+- **WHEN** 引擎已运行且操作者修改配置
+- **THEN** 拒绝覆盖运行配置，允许显式停止撤权后保存并重新启动
+
+### Requirement: Per provider test action and current result
+配置界面 SHALL 提供已保存条目的显式付费测试动作，测试后清空该项Key输入、保留已保存密文，只显示身份匹配且本次产生的报告。
+#### Scenario: Probe completes
+- **WHEN** 操作者点击一个条目的测试按钮
+- **THEN** 显示该项状态/耗时/错误码，清空该Key输入且不删除已保存凭据，不把成功描述为设备或整组认证
+#### Scenario: Stale report or process failure
+- **WHEN** 探针超时、进程失败或报告身份/版本不符
+- **THEN** 拒绝显示旧成功，具名宿主错误与供应商失败分开
+
+### Requirement: Durable provider configuration and encrypted credentials
+宿主 SHALL 将供应商配置和加密凭据持久化至数据库，界面可修改主备、路由、端点、模型、音色并更换/删除Key；不得向界面回读明文Key。
+#### Scenario: Restart after save
+- **WHEN** 用户保存配置和Key后重启宿主
+- **THEN** 配置和已保存凭据状态可读，启动与显式测试可使用保存凭据，无需重新输入
+#### Scenario: Credential isolation and storage failure
+- **WHEN** 端点变更、密文被篡改或系统密钥不可用
+- **THEN** 不向新身份泄露旧Key，不返回伪成功或明文降级，失败事务保留旧数据
+
+### Requirement: Task oriented workbench and categorized settings
+桌面 SHALL 默认展示日常工作台、大图标常用动作与右上角设置入口，配置 SHALL 按菜单分区而非平铺。导航不得自动保存、丢弃修改或触发付费请求。
+#### Scenario: Switch between LLM and TTS settings
+- **WHEN** 操作者修改LLM表单后切换TTS再返回
+- **THEN** 保留原输入和未保存提示，只有显式保存才持久化
+#### Scenario: Workbench emergency and approved playback
+- **WHEN** 工作台忙碌或存在未批准候选
+- **THEN** 已连接时紧急静音仍可操作；未批准不得播放，审批仍需两次确认
+#### Scenario: Keyboard settings navigation
+- **WHEN** 操作者打开设置或按Escape关闭
+- **THEN** 焦点保持在设置内并在关闭后返回入口，背景不可误操作
+
+### Requirement: Header connection toggle
+桌面 SHALL 在右上角连接状态左侧提供唯一连接开关，未连接显示连接，已连接显示断开；移除原大图标连接与摘要区断开入口。
+#### Scenario: Connection lifecycle
+- **WHEN** 操作者连接、等待状态或断开界面
+- **THEN** 按钮按真实状态切换文字，连接中不可重复提交，断开不停止后台引擎
+
+### Requirement: Full width question and batch candidate review
+桌面 SHALL 将提问与候选列表各占整行，发送按钮位于输入右侧；主操作仅播放/静音/接管；候选支持悬浮全文及列表右上集中批量审批。
+#### Scenario: Batch approval confirmation
+- **WHEN** 操作者选中候选并点击审批
+- **THEN** 展示固定候选全文集合，经显式确认后逐条复检并提交，失败停止且如实显示部分成功，不自动播放或重试
+#### Scenario: Cancel or stale candidate during batch
+- **WHEN** 会话换代、候选过期/变化、断开或静音撤销当前操作
+- **THEN** 不发送后续审批；已提交项不得被描述为回滚
+#### Scenario: Read full candidate text
+- **WHEN** 鼠标进入候选行或键盘聚焦全文入口
+- **THEN** 显示完整内容浮层，离开并失焦后隐藏；确认窗口始终提供全文
+
+### Requirement: Actionable manual generation failures
+手工生成失败 SHALL 保留错误码并给出受控阶段原因，不得将无知识命中、知识外发拒绝和空模型输出混淆，也不得自动绕过知识守门或重试付费请求。
+#### Scenario: No matching knowledge
+- **WHEN** 问题在当前发布知识中无命中
+- **THEN** 说明未找到可用证据且未调用LLM，不产生候选
+#### Scenario: Local only knowledge
+- **WHEN** 命中知识不允许远端外发
+- **THEN** 明确外发授权拒绝，不调用Provider、不自动更改权限
+
+### Requirement: Assisted outline work preserves position without inventing playback completion
+桌面 SHALL 支持已发布单商品提纲的单轮人工辅助操作，最多16段；每段显式生成、审批、播放，MUST NOT 自动批准、自动重试或将设备提交当作硬件完成。前进 SHALL 要求匹配本段候选的本机提交观测及操作员确认听完。
+#### Scenario: Another candidate or a file preview finishes
+- **WHEN** 非本段候选完成提交或仅完成文件预览
+- **THEN** 本段不得允许确认前进
+#### Scenario: A segment is confirmed
+- **WHEN** 本段候选已提交本机且操作员确认听完
+- **THEN** 只前进一段，最后一段后结束，不自动请求下一段或写硬件ACK
+
+### Requirement: Assisted interjection return requires explicit revalidation
+插问 SHALL 先请求静音并保留段落位置，丢弃本段候选关联。恢复 SHALL 重读同一发布修订/快照及实时会话，要求操作员逐项核对商品、价格、活动、素材和授权；未知不得确认。断连或发布 SHALL 使本轮失效。恢复 MUST 重新生成，不复用未播文本。
+#### Scenario: Snapshot changes or a face is unknown
+- **WHEN** 快照或草稿修订改变，或任一核对未完成
+- **THEN** 拒绝恢复，无Provider请求
+#### Scenario: An old generation returns after interruption
+- **WHEN** 插问后旧生成请求才返回
+- **THEN** 不得把其候选关联到保留位置或允许前进

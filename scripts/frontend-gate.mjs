@@ -28,10 +28,10 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
  */
 const STEPS = [
   ['packages/contracts-ts', 'typecheck'],
-  ['apps/desktop', 'typecheck'],
+  ['apps/workbench-desktop', 'typecheck'],
   ['packages/contracts-ts', 'build'],
-  ['apps/desktop', 'build'],
-  ['apps/desktop', 'test'],
+  ['apps/workbench-desktop', 'build'],
+  ['apps/workbench-desktop', 'test'],
   ['.', 'test:ui'],
 ];
 
@@ -210,3 +210,4 @@ function main() {
 }
 
 main();
+

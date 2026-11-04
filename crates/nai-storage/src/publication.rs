@@ -293,6 +293,61 @@ impl Store {
         Ok(result)
     }
 
+    /// A trusted stopped-host switch, after checkpoint_revocation has advanced epoch.
+    /// The ordinary bind remains immutable. A stale caller cannot switch a running epoch.
+    pub fn rebind_revoked_session_knowledge(
+        &mut self,
+        op: &Operation,
+        workspace: &str,
+        actor: &str,
+        session: &str,
+        revoked_epoch: u64,
+        binding: (&str, &str),
+    ) -> Result<()> {
+        let (kb, snapshot) = binding;
+        self.start(op)?;
+        let tx = self
+            .conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        access(&tx, workspace, actor, "session.manage", "*")?;
+        access(&tx, workspace, actor, "knowledge.read", kb)?;
+        let revoked_epoch = i64::try_from(revoked_epoch)
+            .map_err(|_| error(ErrorCode::InvalidArgument, "epoch out of range"))?;
+        let epoch: i64 = tx.query_row(
+            "SELECT generation_epoch FROM sessions WHERE workspace_id=?1 AND session_id=?2",
+            params![workspace, session],
+            |r| r.get(0),
+        )?;
+        let pending: i64 = tx.query_row("SELECT COUNT(*) FROM approvals WHERE workspace_id=?1 AND session_id=?2 AND generation_epoch<?3 AND revoked_at_ms IS NULL",params![workspace,session,revoked_epoch],|r|r.get(0))?;
+        if revoked_epoch < 1 || epoch != revoked_epoch || pending != 0 {
+            return Err(error(
+                ErrorCode::Conflict,
+                "knowledge switch requires persisted revocation",
+            ));
+        }
+        let active: i64 = tx.query_row("SELECT COUNT(*) FROM knowledge_active_snapshots WHERE workspace_id=?1 AND kb_scope=?2 AND snapshot_id=?3",params![workspace,kb,snapshot],|r|r.get(0))?;
+        if active != 1 {
+            return Err(error(
+                ErrorCode::Conflict,
+                "knowledge switch requires active snapshot",
+            ));
+        }
+        let changed = tx.execute("UPDATE session_knowledge_bindings SET kb_scope=?3,snapshot_id=?4 WHERE workspace_id=?1 AND session_id=?2",params![workspace,session,kb,snapshot])?;
+        if changed != 1 {
+            return Err(error(ErrorCode::Conflict, "knowledge binding missing"));
+        }
+        audit(
+            &tx,
+            workspace,
+            actor,
+            "knowledge.session_rebound",
+            session,
+            &serde_json::json!({"snapshot":snapshot,"epoch":revoked_epoch}),
+        )?;
+        op.check()?;
+        tx.commit()?;
+        Ok(())
+    }
     pub fn bind_session_knowledge(
         &mut self,
         op: &Operation,

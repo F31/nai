@@ -45,6 +45,63 @@
   ],
   "capabilities": [
     {
+      "id": "native-setup-file-dialog",
+      "label": "设置页原生 JSON 文件选择",
+      "basis": "source",
+      "bound_to": "windows",
+      "source_files": ["apps/desktop/src-tauri/Cargo.toml", "apps/desktop/src-tauri/src/main.rs"],
+      "note": "Windows宿主窄命令只选择场景/运行配置JSON路径；不读取内容、不自动保存或连接。其他平台显式Unavailable，Windows编译不替代原生对话框人工交互。",
+      "states": {
+        "windows": {"state": "supported"},
+        "linux": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "macos": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "ios": {"state": "out-of-scope"},
+        "android": {"state": "out-of-scope"}
+      }
+    },
+    {
+      "id": "approved-local-playback",
+      "label": "已批准候选的本机音画提交",
+      "basis": "source",
+      "bound_to": "windows",
+      "source_files": [
+        "apps/output-keeper/src/lib.rs",
+        "apps/output-keeper/src/local_wasapi.rs",
+        "apps/output-keeper/tests/device_clock.rs",
+        "apps/output-keeper/src/local_playback.rs",
+        "apps/output-keeper/tests/local_playback.rs",
+        "apps/engine/src/local_playback.rs",
+        "apps/engine/tests/operator_flow/mod.rs"
+      ],
+      "note": "显式本机人工辅助播放，私有继承授权与原始媒体分离；supported表示实现，设备提交不等于硬件完成、直播平台送达或发布认证。非Windows在TTS前拒绝。",
+      "states": {
+        "windows": {"state": "supported"},
+        "linux": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "macos": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "ios": {"state": "out-of-scope"},
+        "android": {"state": "out-of-scope"}
+      }
+    },
+    {
+      "id": "native-device-smoke",
+      "label": "显式 Windows 音频与窗口演练（非生产输出）",
+      "basis": "source",
+      "bound_to": "windows",
+      "source_files": [
+        "apps/output-keeper/src/device_smoke.rs",
+        "apps/output-keeper/tests/native_device.rs",
+        "apps/output-keeper/Cargo.toml"
+      ],
+      "note": "Windows-only CPAL/WASAPI 和 minifb，显式测试音与窗口；设备缺失仍失败。supported 仅指演练后端已实现，不表示生产候选接线、PlaybackAck 或硬件认证通过。",
+      "states": {
+        "windows": {"state": "supported"},
+        "linux": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "macos": {"state": "explicit-unavailable", "reason": "not_ported_to_target_os"},
+        "ios": {"state": "out-of-scope"},
+        "android": {"state": "out-of-scope"}
+      }
+    },
+    {
       "id": "shared-frame-slots",
       "label": "进程间共享内存帧槽",
       "basis": "source",
@@ -79,7 +136,8 @@
       "bound_to": "windows",
       "source_files": [
         "crates/nai-security/src/lib.rs",
-        "crates/nai-security/Cargo.toml"
+        "crates/nai-security/Cargo.toml",
+        "apps/desktop/src-tauri/src/provider_db.rs"
       ],
       "note": "NativeVault 经 keyring 走系统密钥保护，且该依赖只在 Windows 目标下引入。非 Windows 的 store/load/delete 一律**显式**返回 CapabilityNotReady——是失败关闭，不是静默降级。§11.5：密钥由系统密钥保护机制封装。",
       "states": {
@@ -94,8 +152,13 @@
       "id": "data-root",
       "label": "数据根解析与访问控制",
       "basis": "source",
-      "source_files": ["crates/nai-storage/src/paths.rs", "crates/nai-storage/src/tests.rs"],
-      "note": "§900：数据根由壳或操作系统路径 API 解析，安装目录只读。unix 家族（含 macOS）设 0700 与目录权限；Windows 额外拒绝 UNC 与重解析点。三个平台均有实现落点，加固方式按平台不同。",
+      "source_files": [
+        "crates/nai-storage/src/paths.rs",
+        "crates/nai-storage/src/tests.rs",
+        "apps/desktop/src-tauri/src/setup.rs",
+        "apps/desktop/src-tauri/src/provider_setup.rs"
+      ],
+      "note": "§900：数据根由壳或操作系统路径 API 解析，安装目录只读。unix 家族（含 macOS）设 0700 与目录权限；Windows 额外拒绝 UNC 与重解析点。三个平台均有实现落点，加固方式按平台不同。原生壳的非机密 host.json 也走同一原则：Unix 0600/父目录 0700，Windows 用替换式 rename；该文件不含密钥。",
       "states": {
         "windows": {"state": "supported"},
         "linux": {"state": "supported"},
@@ -122,8 +185,13 @@
       "id": "process-supervision",
       "label": "子进程监督与退出状态",
       "basis": "source",
-      "source_files": ["crates/nai-runtime/src/supervisor.rs"],
-      "note": "监督子进程并解释退出状态。unix 家族（含 macOS）读取信号退出，Windows 读取退出码——同一入口、两套平台分支。",
+      "source_files": [
+        "crates/nai-runtime/src/supervisor.rs",
+        "apps/desktop/src-tauri/src/lib.rs",
+        "apps/desktop/src-tauri/src/main.rs",
+        "apps/desktop/src-tauri/src/background.rs"
+      ],
+      "note": "监督子进程并解释退出状态。unix 家族（含 macOS）读取信号退出，Windows 读取退出码——同一入口、两套平台分支。原生壳也在此登记：它按目标三元组解析侧车/引擎路径并拥有 engine 子进程（启动与有界停止）；Linux 上已实测，Windows/macOS 构建未认证。",
       "states": {
         "windows": {"state": "supported"},
         "linux": {"state": "supported"},

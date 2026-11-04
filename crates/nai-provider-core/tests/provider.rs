@@ -326,7 +326,7 @@ async fn tts_binary_stream_chunks_and_usage_stays_estimate() {
             ..Default::default()
         }),
         format: Some(AudioFormat {
-            sample_rate: 24_000,
+            sample_rate: 8_000,
             channels: 1,
             sample_format: "s16".into(),
             codec: "pcm".into(),
@@ -341,6 +341,11 @@ async fn tts_binary_stream_chunks_and_usage_stays_estimate() {
         .await
         .unwrap();
     assert_eq!(total, 10_000);
+    assert!(
+        chunks
+            .iter()
+            .all(|chunk| chunk.format.as_ref().unwrap().sample_rate == 24_000)
+    );
     assert!(chunks.len() >= 3);
     assert_eq!(chunks.last().unwrap().end, 2);
     let state = gateway.book().get("test-provider", "req-tts").unwrap();
@@ -349,6 +354,13 @@ async fn tts_binary_stream_chunks_and_usage_stays_estimate() {
         nai_contracts::v1::BillingState::NeedsReconciliation as i32
     );
     assert!(state.actual.is_none());
+    let (pcm, actual) = adapter
+        .tts_pcm(&op, &req, &mut gateway, entry("req-tts-pcm"))
+        .await
+        .unwrap();
+    assert_eq!(pcm.len(), 10_000);
+    assert_eq!(actual.sample_rate, 24_000);
+    assert_eq!(actual.channels, 1);
 }
 
 #[tokio::test]
