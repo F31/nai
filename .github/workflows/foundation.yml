@@ -64,6 +64,24 @@ jobs:
       - name: PROBE 5/8 six package tests
         if: always() && runner.os == 'Windows'
         run: cargo test -p nai-foundation-sqlite -p nai-runtime-core -p nai-workbench-engine -p nai-audition-worker -p nai-public-output-keeper -p nai-llm-openai --locked
+      - name: PROBE 5a sqlite serial
+        if: always() && runner.os == 'Windows'
+        run: cargo test -p nai-foundation-sqlite --locked -- --test-threads=1
+      - name: PROBE 5b runtime serial
+        if: always() && runner.os == 'Windows'
+        run: cargo test -p nai-runtime-core --locked -- --test-threads=1
+      - name: PROBE 5c engine serial
+        if: always() && runner.os == 'Windows'
+        run: cargo test -p nai-workbench-engine --locked -- --test-threads=1
+      - name: PROBE 5d audition serial
+        if: always() && runner.os == 'Windows'
+        run: cargo test -p nai-audition-worker --locked -- --test-threads=1
+      - name: PROBE 5e keeper serial
+        if: always() && runner.os == 'Windows'
+        run: cargo test -p nai-public-output-keeper --locked -- --test-threads=1
+      - name: PROBE 5f llm serial
+        if: always() && runner.os == 'Windows'
+        run: cargo test -p nai-llm-openai --locked -- --test-threads=1
       - name: PROBE 6/8 deps tests
         if: always() && runner.os == 'Windows'
         run: cargo test -p nai-xtask --lib deps::tests --locked
