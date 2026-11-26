@@ -37,6 +37,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libprotobuf-dev
       - name: Check generated contracts
         run: cargo xtask schema --check
+      # schema --check verifies generated sources without writing them; the UI
+      # tests import the compiled TypeScript output, which is not tracked.
+      - name: Build TypeScript contracts
+        run: pnpm --filter @nai/contracts build
       - name: Workbench engineering scope
         shell: bash
         run: |
