@@ -1,7 +1,7 @@
 {
   "registry.yaml": {
     "source": "tests/registry.yaml",
-    "sha256": "0fed664ac8f4983b7c2b078e389bb54d98468e846b63ec8265c9c66e2896daca"
+    "sha256": "65f90c56e085f3fadc950669f4558f8c710fe51a9bec4db1dc0bc911349c943d"
   },
   "registry.schema.json": {
     "source": "schemas/tests/registry.schema.json",
@@ -25,10 +25,10 @@
   },
   "contract-orchestrator.rs.txt": {
     "source": "xtask/src/schema.rs::contracts",
-    "sha256": "bb48c22678cd9c10539f6657e435439427b506300ac00c7c9ed4821eb8f4b3ba"
+    "sha256": "72d1cb8f126e410b8ce0224f7f0222411ea845db39205538dcab60eca6e9b087"
   },
   "engineering-profile.rs.txt": {
     "source": "xtask/src/lib.rs::engineering_checks+legacy_profile_dispatch",
-    "sha256": "2f9a8496274de0944f28487a106dd22b82dbde3599104949308ba4760f9a1d22"
+    "sha256": "17f72394e9b186b36f1f751469452515b4bd01721df8401ea6238524b575a0ec"
   }
 }
