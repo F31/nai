@@ -56,9 +56,9 @@ jobs:
         run: |
           cargo build -p nai-workbench-engine -p nai-public-output-keeper --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $env:NAI_WORKBENCH_ENGINE = Join-Path $pwd 'target/debug/nai-workbench-engine.exe'
-          $env:NAI_FOUNDATION_ENGINE = Join-Path $pwd 'target/debug/nai-foundation-engine.exe'
-          $env:NAI_PUBLIC_OUTPUT_KEEPER = Join-Path $pwd 'target/debug/nai-public-output-keeper.exe'
+          $env:NAI_WORKBENCH_ENGINE = Join-Path $pwd 'target-windows/build/debug/nai-workbench-engine.exe'
+          $env:NAI_FOUNDATION_ENGINE = Join-Path $pwd 'target-windows/build/debug/nai-foundation-engine.exe'
+          $env:NAI_PUBLIC_OUTPUT_KEEPER = Join-Path $pwd 'target-windows/build/debug/nai-public-output-keeper.exe'
           cargo test -p nai-workbench-host --locked --tests -- --test-threads=1
       - name: Windows independent desktop build and smoke
         if: runner.os == 'Windows'
@@ -66,7 +66,7 @@ jobs:
         run: |
           cargo build --manifest-path apps/workbench-desktop/Cargo.toml --locked
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ./scripts/test-workbench-desktop.ps1 -Desktop (Join-Path $pwd 'apps/workbench-desktop/target/debug/nai-workbench-desktop.exe') -Engine (Join-Path $pwd 'target/debug/nai-workbench-engine.exe') -Foundation (Join-Path $pwd 'target/debug/nai-foundation-engine.exe')
+          ./scripts/test-workbench-desktop.ps1 -Desktop (Join-Path $pwd 'target-windows/build/debug/nai-workbench-desktop.exe') -Engine (Join-Path $pwd 'target-windows/build/debug/nai-workbench-engine.exe') -Foundation (Join-Path $pwd 'target-windows/build/debug/nai-foundation-engine.exe')
       - name: OpenSpec validation
         run: pnpm spec:validate
       - name: Scan repository and diagnostics
