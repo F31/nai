@@ -61,7 +61,7 @@ fn unlimited_is_durable_but_still_checks_call_cap() {
 }
 #[test]
 fn old_zero_is_disabled_and_budget_edit_is_admin_cas() {
-    let (_, mut s, _) = setup();
+    let (_root, mut s, _) = setup();
     exec(
         &mut s,
         1,

@@ -85,7 +85,7 @@ fn empty_delete_keeps_audit_and_forbids_id_reuse() {
 }
 #[test]
 fn inspect_then_new_content_or_budget_blocks_permanent_delete() {
-    let (_, mut s, _) = setup();
+    let (_root, mut s, _) = setup();
     empty(&mut s);
     exec(&mut s, 1, lifecycle(WorkspaceAction::Inspect, 0)).unwrap();
     exec(
@@ -116,7 +116,7 @@ fn inspect_then_new_content_or_budget_blocks_permanent_delete() {
 }
 #[test]
 fn removal_requires_admin_current_revision_and_valid_action() {
-    let (_, mut s, _) = setup();
+    let (_root, mut s, _) = setup();
     empty(&mut s);
     exec(
         &mut s,
@@ -238,7 +238,7 @@ fn recycle_restart_restore_preserves_content_and_revokes_old_sessions() {
 }
 #[test]
 fn recycle_preserves_unknown_charge_and_is_scoped() {
-    let (_, mut s, _) = setup();
+    let (_root, mut s, _) = setup();
     empty(&mut s);
     s.conn
         .execute(

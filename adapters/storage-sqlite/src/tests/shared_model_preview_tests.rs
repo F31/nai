@@ -98,7 +98,7 @@ fn preview_includes_recycled_sources_and_flags_collisions_without_secrets_or_wri
 }
 #[test]
 fn preview_is_root_admin_only_and_ignores_page_workspace_scope() {
-    let (_, mut s, _) = setup();
+    let (_root, mut s, _) = setup();
     assert_eq!(
         exec(&mut s, 2, preview()).unwrap_err(),
         Error::PermissionDenied
