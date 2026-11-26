@@ -1,7 +1,7 @@
 # model-test-direct Specification
 
 ## Purpose
-TBD - created by archiving change v48-05-one-click-model-tests. Update Purpose after archive.
+提供不依赖金额上限、费用勾选或预算预留的一键模型测试，以有界固定请求验证模型可用性，并给出不泄密的失败原因。
 
 ## Requirements
 

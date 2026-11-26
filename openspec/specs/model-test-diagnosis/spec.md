@@ -1,7 +1,7 @@
 # model-test-diagnosis Specification
 
 ## Purpose
-TBD - created by archiving change v48-05-model-response-and-tts-route-diagnosis. Update Purpose after archive.
+在模型与 TTS 测试中呈现经过校验的响应和受控的请求标识，并提供不重发、不污染正常配置的受限诊断路线，使失败可定位且不泄露凭据。
 
 ## Requirements
 

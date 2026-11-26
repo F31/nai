@@ -1,7 +1,7 @@
 # live-readiness Specification
 
 ## Purpose
-TBD - created by archiving change v48-live-readiness. Update Purpose after archive.
+将已发布内容、模型凭据、内置形象与公共输出状态聚合为首页准备清单，帮助判断直播就绪程度；清单仅用于导航说明，不替代人工在 OBS 与直播平台完成开播确认。
 
 ## Requirements
 

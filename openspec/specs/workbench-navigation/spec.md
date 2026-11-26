@@ -1,7 +1,7 @@
 # workbench-navigation Specification
 
 ## Purpose
-TBD - created by archiving change v48-workbench-navigation. Update Purpose after archive.
+按准备、直播、复盘组织工作页面导航，如实呈现形象与输出路线能力，引导用户进入已有的公共输出入口而不虚构平台直连。
 
 ## Requirements
 

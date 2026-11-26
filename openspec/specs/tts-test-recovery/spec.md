@@ -1,7 +1,7 @@
 # tts-test-recovery Specification
 
 ## Purpose
-TBD - created by archiving change v48-05-tts-test-recovery. Update Purpose after archive.
+为 TTS 测试的等待、停止与迟到回执定义有界恢复规则，保持原任务身份、禁止自动重发付费请求，并在离开页面后终止前置等待。
 
 ## Requirements
 

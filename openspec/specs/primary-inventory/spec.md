@@ -1,7 +1,7 @@
 # primary-inventory Specification
 
 ## Purpose
-TBD - created by archiving change v52-primary-inventory. Update Purpose after archive.
+记录当前选定的硬件、前端、模型路线与运行边界，明确区分已核实事实、未核实状态与后续目标，防止历史证据被当作当前基线。
 
 ## Requirements
 

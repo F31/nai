@@ -1,7 +1,7 @@
 # tts-timeout-stages Specification
 
 ## Purpose
-TBD - created by archiving change v48-05-tts-timeout-stages. Update Purpose after archive.
+为 TTS 测试设定 45 秒有界等待，区分连接、响应与音频下载阶段的超时，保持业务预演期限不被放宽且可能计费状态不被抹去。
 
 ## Requirements
 

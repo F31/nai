@@ -1,7 +1,7 @@
 # software-feature-speech Specification
 
 ## Purpose
-TBD - created by archiving change v48-09-software-feature-speech. Update Purpose after archive.
+约束本机软件功能声明的公共准备与播出流程，只允许经精确核对的白名单事实，并统一页面与 root 的政策身份和完整音频容纳检查。
 
 ## Requirements
 
