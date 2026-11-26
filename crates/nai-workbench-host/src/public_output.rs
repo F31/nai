@@ -491,7 +491,6 @@ mod device_clock_boundary_tests {
                 width: 512,
                 height: 288,
                 fps: 30,
-                ..Default::default()
             }),
             visual_name: "内置简洁2D形象".into(),
             visual_license: "MIT".into(),
@@ -530,7 +529,6 @@ mod device_clock_boundary_tests {
                 width: 512,
                 height: 288,
                 fps: 30,
-                ..Default::default()
             }),
             visual_name: "内置简洁2D形象".into(),
             visual_license: "MIT".into(),

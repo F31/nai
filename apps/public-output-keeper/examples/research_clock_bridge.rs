@@ -106,7 +106,6 @@ fn fixture(samples: u64) -> Result<(PublicExecutionGate, PublicMediaBundle, Stri
             pixels_sha256: "f".repeat(64),
             openness_q16: 1,
         }),
-        ..Default::default()
     };
     let preparation = id(60);
     let gate = PublicExecutionGate::new(

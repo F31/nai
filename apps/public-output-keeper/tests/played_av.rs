@@ -50,7 +50,6 @@ fn silent_device_selects_frames_from_played_samples() {
         width: 512,
         height: 288,
         fps: 30,
-        ..Default::default()
     };
     let mut bundle = PublicMediaBundle {
         protocol_major: 1,
@@ -105,7 +104,6 @@ fn silent_device_selects_frames_from_played_samples() {
             pixels_sha256: "f".repeat(64),
             openness_q16: 1,
         }),
-        ..Default::default()
     };
     let prep = id(60);
     let mut gate = PublicExecutionGate::new(

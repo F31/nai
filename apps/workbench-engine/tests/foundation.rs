@@ -157,7 +157,7 @@ fn real_ipc_avatar_backup_survives_engine_restart_and_migration() {
             .shared_catalog_enabled
     );
     assert_eq!(std::fs::read(dir.join("asset-1.rgba")).unwrap(), b"closed");
-    assert_eq!(
+    assert!(
         c.send(C::ReadObject(FoundationReadObject {
             workspace_id: id(10),
             object_id: id(70),
@@ -165,8 +165,7 @@ fn real_ipc_avatar_backup_survives_engine_restart_and_migration() {
         }))
         .unwrap()
         .body
-        .contains(&package),
-        true
+        .contains(&package)
     );
 }
 #[test]

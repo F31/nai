@@ -470,15 +470,16 @@ fn main() -> R<()> {
         let v = s.presentation.as_ref();
         caption_seen |= v.is_some_and(|v| v.caption_visible);
         let frame_start = p.frame.as_ref().map(|f| f.sample_start);
-        if let Some(c) = p.device_clock.as_ref() {
-            if c.stream_generation >= 1 && c.device_frequency > 0 {
-                clock_seen = true;
-                max_played_samples = max_played_samples.max(c.played_samples);
-                if let Some(sample) = frame_start {
-                    max_frame_sample_start = max_frame_sample_start.max(sample);
-                    if sample > c.played_samples {
-                        source_sample_within_played = false;
-                    }
+        if let Some(c) = p.device_clock.as_ref()
+            && c.stream_generation >= 1
+            && c.device_frequency > 0
+        {
+            clock_seen = true;
+            max_played_samples = max_played_samples.max(c.played_samples);
+            if let Some(sample) = frame_start {
+                max_frame_sample_start = max_frame_sample_start.max(sample);
+                if sample > c.played_samples {
+                    source_sample_within_played = false;
                 }
             }
         }
