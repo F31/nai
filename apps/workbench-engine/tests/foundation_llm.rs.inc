@@ -1038,6 +1038,7 @@ fn real_native_tts_cancel_discards_late_audio_and_keeps_unknown_after_restart() 
 }
 
 #[test]
+#[ignore = "requires real Windows default audio device; CI runners have no device"]
 fn real_native_published_speech_http_and_revocation() {
     published_speech_case(false, false, true, false, false, 0);
 }
@@ -1053,6 +1054,7 @@ fn real_native_published_speech_device_stop_and_revocation() {
     }
 }
 #[test]
+#[ignore = "requires real Windows default audio device; CI runners have no device"]
 fn real_native_public_guard_blocks_rewrite() {
     published_speech_case(false, false, true, true, false, 0);
 }

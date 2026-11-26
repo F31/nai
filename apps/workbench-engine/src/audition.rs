@@ -96,6 +96,12 @@ impl Player {
         expected: &str,
     ) -> Result<(), Error> {
         self.stop("REPLACED");
+        // A stale stop fence must be rejected before probing any device capability;
+        // otherwise an unavailable worker masks the expected Cancelled outcome.
+        let stop_nonce = nonce(&self.stop_file)?;
+        if stop_nonce != expected {
+            return Err(Error::Cancelled);
+        }
         let worker = std::env::current_exe()
             .map_err(|_| Error::IoFailed)?
             .with_file_name(if cfg!(windows) {
@@ -113,10 +119,6 @@ impl Player {
             if meta.file_attributes() & 0x400 != 0 {
                 return Err(Error::CapabilityUnavailable);
             }
-        }
-        let stop_nonce = nonce(&self.stop_file)?;
-        if stop_nonce != expected {
-            return Err(Error::Cancelled);
         }
         let mut media = tempfile::NamedTempFile::new().map_err(|_| Error::IoFailed)?;
         {

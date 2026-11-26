@@ -46,10 +46,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p .nai-diagnostics
-          if ! cargo xtask check --profile workbench 2>&1 | tee ".nai-diagnostics/nai-gate.log"; then
-            grep -E 'FAILED|panicked at|test result: FAILED|CapabilityUnavailable|error: test failed|xtask: cargo' ".nai-diagnostics/nai-gate.log" | tail -40 | while IFS= read -r line; do echo "::error::${line:0:400}"; done
-            exit 1
-          fi
+          cargo xtask check --profile workbench 2>&1 | tee ".nai-diagnostics/nai-gate.log"
       - name: Three-language contract interoperability
         if: runner.os == 'Linux'
         run: cargo xtask test --suite contracts
