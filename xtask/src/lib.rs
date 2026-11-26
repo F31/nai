@@ -63,25 +63,30 @@ fn workbench_checks(root: &Path) -> Result<(), String> {
             "tests/ui/v43-llm.test.mjs",
         ],
     )?;
-    run(
-        root,
-        &[
-            "test",
-            "-p",
-            "nai-foundation-sqlite",
-            "-p",
-            "nai-runtime-core",
-            "-p",
-            "nai-workbench-engine",
-            "-p",
-            "nai-audition-worker",
-            "-p",
-            "nai-public-output-keeper",
-            "-p",
-            "nai-llm-openai",
-            "--locked",
-        ],
-    )?;
+    // Real Windows credential-store and audio-device tests cannot share one
+    // test-binary batch: concurrent batches make different tests fail with
+    // CapabilityUnavailable. Run each package in its own batch, one test thread.
+    for package in [
+        "nai-foundation-sqlite",
+        "nai-runtime-core",
+        "nai-workbench-engine",
+        "nai-audition-worker",
+        "nai-public-output-keeper",
+        "nai-llm-openai",
+    ] {
+        run(
+            root,
+            &[
+                "test",
+                "-p",
+                package,
+                "--locked",
+                "--",
+                "--test-threads",
+                "1",
+            ],
+        )?;
+    }
     run(
         root,
         &["test", "-p", HARNESS, "--lib", "deps::tests", "--locked"],

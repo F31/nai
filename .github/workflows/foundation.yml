@@ -47,50 +47,6 @@ jobs:
           set -o pipefail
           mkdir -p .nai-diagnostics
           cargo xtask check --profile workbench 2>&1 | tee ".nai-diagnostics/nai-gate.log"
-      # TEMPORARY DIAGNOSTICS: remove once the Windows-only gate failure is identified.
-      - name: PROBE 1/8 deps
-        if: always() && runner.os == 'Windows'
-        run: cargo xtask check-deps
-      - name: PROBE 2/8 registry
-        if: always() && runner.os == 'Windows'
-        run: cargo xtask check --registry
-      - name: PROBE 3/8 xtask workbench tests
-        if: always() && runner.os == 'Windows'
-        run: cargo test -p nai-xtask --lib workbench_tests --locked
-      - name: PROBE 4/8 contract and ui node tests
-        if: always() && runner.os == 'Windows'
-        shell: bash
-        run: node --test tests/contracts/workbench-source.test.mjs tests/contracts/foundation.test.mjs tests/contracts/preparation.test.mjs tests/contracts/publication.test.mjs tests/contracts/workbench-ci.test.mjs tests/ui/v43-bootstrap.test.mjs tests/ui/v43-preparation.test.mjs tests/ui/v43-faq.test.mjs tests/ui/v43-llm.test.mjs
-      - name: PROBE 5/8 six package tests
-        if: always() && runner.os == 'Windows'
-        run: cargo test -p nai-foundation-sqlite -p nai-runtime-core -p nai-workbench-engine -p nai-audition-worker -p nai-public-output-keeper -p nai-llm-openai --locked
-      - name: PROBE 5a sqlite serial
-        if: always() && runner.os == 'Windows'
-        run: cargo test -p nai-foundation-sqlite --locked -- --test-threads=1
-      - name: PROBE 5b runtime serial
-        if: always() && runner.os == 'Windows'
-        run: cargo test -p nai-runtime-core --locked -- --test-threads=1
-      - name: PROBE 5c engine serial
-        if: always() && runner.os == 'Windows'
-        run: cargo test -p nai-workbench-engine --locked -- --test-threads=1
-      - name: PROBE 5d audition serial
-        if: always() && runner.os == 'Windows'
-        run: cargo test -p nai-audition-worker --locked -- --test-threads=1
-      - name: PROBE 5e keeper serial
-        if: always() && runner.os == 'Windows'
-        run: cargo test -p nai-public-output-keeper --locked -- --test-threads=1
-      - name: PROBE 5f llm serial
-        if: always() && runner.os == 'Windows'
-        run: cargo test -p nai-llm-openai --locked -- --test-threads=1
-      - name: PROBE 6/8 deps tests
-        if: always() && runner.os == 'Windows'
-        run: cargo test -p nai-xtask --lib deps::tests --locked
-      - name: PROBE 7/8 clippy
-        if: always() && runner.os == 'Windows'
-        run: cargo clippy -p nai-foundation-sqlite -p nai-runtime-core -p nai-workbench-engine -p nai-workbench-host -p nai-public-output-keeper -p nai-llm-openai --all-targets --locked -- -D warnings
-      - name: PROBE 8/8 frontend
-        if: always() && runner.os == 'Windows'
-        run: node scripts/workbench-frontend.mjs
       - name: Three-language contract interoperability
         if: runner.os == 'Linux'
         run: cargo xtask test --suite contracts
