@@ -2170,6 +2170,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nai-kernel"
+version = "0.1.0"
+dependencies = [
+ "nai-contracts",
+ "prost",
+ "serde_json",
+]
+
+[[package]]
 name = "nai-media-core"
 version = "0.1.0"
 dependencies = [
@@ -2199,6 +2208,7 @@ dependencies = [
  "nai-avatar-2d",
  "nai-avatar-files",
  "nai-contracts",
+ "nai-kernel",
  "nai-media-core",
  "nai-plugin-sdk",
  "nai-workbench-host",
