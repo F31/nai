@@ -11,7 +11,9 @@ jobs:
       matrix:
         os: [ubuntu-24.04, windows-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    # Windows 门控逐包串行实测 17-22 分钟，加原生 3 分钟与桌面构建冒烟约 6 分钟，
+    # 30 分钟上限会在收尾步骤切断 job（结论记 cancelled 而非 failure）。45 分钟仍能捕获真挂死。
+    timeout-minutes: 45
     env:
       OPENSPEC_TELEMETRY: '0'
       CARGO_BUILD_JOBS: '2'
