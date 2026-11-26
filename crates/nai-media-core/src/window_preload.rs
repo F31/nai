@@ -60,7 +60,7 @@ pub fn load(
     }
     crate::public_pipe::read_pcm(
         &mut f,
-        x.descriptor.as_ref().ok_or(Error::IntegrityFailed)?,
+        x.prepared_descriptor.as_ref().ok_or(Error::IntegrityFailed)?,
         id,
         check,
     )
@@ -80,7 +80,7 @@ mod tests {
             .unwrap();
         file.write_all(&b).unwrap();
         let x = PublicWindowPreparation {
-            descriptor: Some(d),
+            prepared_descriptor: Some(d),
             data_path: file.path().to_str().unwrap().into(),
             output_id: "00000000-0000-4000-8000-000000000003".into(),
             bundle_sha256: "a".repeat(64),
@@ -96,7 +96,7 @@ mod tests {
                 0 => bad.output_id = "other".into(),
                 1 => bad.data_path = t.path().join("../escape.pcm").to_str().unwrap().into(),
                 2 => {
-                    bad.descriptor
+                    bad.prepared_descriptor
                         .as_mut()
                         .unwrap()
                         .audio
@@ -123,7 +123,7 @@ mod tests {
         let p = t.path().join("public-preload-link.pcm");
         symlink(t.path().join("source"), &p).unwrap();
         let x = PublicWindowPreparation {
-            descriptor: Some(d),
+            prepared_descriptor: Some(d),
             data_path: p.to_str().unwrap().into(),
             output_id: "00000000-0000-4000-8000-000000000003".into(),
             bundle_sha256: "a".repeat(64),

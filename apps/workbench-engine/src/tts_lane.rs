@@ -527,7 +527,7 @@ impl Lane {
                 preparation_id: preparation_id.clone(),
                 execution_key: key.to_string(),
                 caption_text: approved.view.text.clone(),
-                descriptor: Some(descriptor),
+                prepared_descriptor: Some(descriptor),
                 data_path: file.path().to_str().ok_or(Error::DataRootRejected)?.into(),
                 output_id: binding.status().output_id.clone(),
                 bundle_sha256: x.bundle_sha256.clone(),

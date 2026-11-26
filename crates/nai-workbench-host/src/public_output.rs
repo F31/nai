@@ -137,7 +137,10 @@ impl OutputOwner {
             return Err("WB_PROTOCOL_ERROR".into());
         }
         let preparation_id = x.preparation_id.clone();
-        let descriptor = x.descriptor.as_ref().ok_or("WB_PROTOCOL_ERROR")?;
+        let descriptor = x
+            .prepared_descriptor
+            .as_ref()
+            .ok_or("WB_PROTOCOL_ERROR")?;
         let hash = nai_contracts::prepared_media_hash(descriptor);
         let audio = descriptor.audio.clone().ok_or("WB_PROTOCOL_ERROR")?;
         self.poll_command(Some(Box::new(x)), false, None, false)?;

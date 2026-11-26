@@ -224,7 +224,7 @@ message PublicApprovalRevoke { string workspace_id=1; string approval_id=2; }
 message PublicApprovalView { PublicMediaBundle bundle=1; bool approved=2; bool revoked=3; uint64 expires_at_ms=4; bool playback_available=5; }
 
 message FoundationPublicWindowPrepare { FoundationPublicCandidate candidate=1; string bundle_sha256=2; }
-message PublicWindowPreparation { PreparedMediaDescriptor descriptor=1; string data_path=2; string output_id=3; string bundle_sha256=4; PublicMediaBundle bundle=5; string preparation_id=6; string execution_key=7; string caption_text=8; }
+message PublicWindowPreparation { PreparedMediaDescriptor prepared_descriptor=1; string data_path=2; string output_id=3; string bundle_sha256=4; PublicMediaBundle bundle=5; string preparation_id=6; string execution_key=7; string caption_text=8; }
 // Device-observed stream position; absence means unavailable, never inferred from submission.
 // Observation is not a playback completion acknowledgement or output authorization.
 message PublicDeviceClockObservation {

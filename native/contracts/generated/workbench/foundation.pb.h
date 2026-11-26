@@ -34857,7 +34857,7 @@ class PublicWindowPreparation final :
     kPreparationIdFieldNumber = 6,
     kExecutionKeyFieldNumber = 7,
     kCaptionTextFieldNumber = 8,
-    kDescriptorFieldNumber = 1,
+    kPreparedDescriptorFieldNumber = 1,
     kBundleFieldNumber = 5,
   };
   // string data_path = 2;
@@ -34944,23 +34944,23 @@ class PublicWindowPreparation final :
   std::string* _internal_mutable_caption_text();
   public:
 
-  // .nai.workbench.v1.PreparedMediaDescriptor descriptor = 1;
-  bool has_descriptor() const;
+  // .nai.workbench.v1.PreparedMediaDescriptor prepared_descriptor = 1;
+  bool has_prepared_descriptor() const;
   private:
-  bool _internal_has_descriptor() const;
+  bool _internal_has_prepared_descriptor() const;
   public:
-  void clear_descriptor();
-  const ::nai::workbench::v1::PreparedMediaDescriptor& descriptor() const;
-  PROTOBUF_NODISCARD ::nai::workbench::v1::PreparedMediaDescriptor* release_descriptor();
-  ::nai::workbench::v1::PreparedMediaDescriptor* mutable_descriptor();
-  void set_allocated_descriptor(::nai::workbench::v1::PreparedMediaDescriptor* descriptor);
+  void clear_prepared_descriptor();
+  const ::nai::workbench::v1::PreparedMediaDescriptor& prepared_descriptor() const;
+  PROTOBUF_NODISCARD ::nai::workbench::v1::PreparedMediaDescriptor* release_prepared_descriptor();
+  ::nai::workbench::v1::PreparedMediaDescriptor* mutable_prepared_descriptor();
+  void set_allocated_prepared_descriptor(::nai::workbench::v1::PreparedMediaDescriptor* prepared_descriptor);
   private:
-  const ::nai::workbench::v1::PreparedMediaDescriptor& _internal_descriptor() const;
-  ::nai::workbench::v1::PreparedMediaDescriptor* _internal_mutable_descriptor();
+  const ::nai::workbench::v1::PreparedMediaDescriptor& _internal_prepared_descriptor() const;
+  ::nai::workbench::v1::PreparedMediaDescriptor* _internal_mutable_prepared_descriptor();
   public:
-  void unsafe_arena_set_allocated_descriptor(
-      ::nai::workbench::v1::PreparedMediaDescriptor* descriptor);
-  ::nai::workbench::v1::PreparedMediaDescriptor* unsafe_arena_release_descriptor();
+  void unsafe_arena_set_allocated_prepared_descriptor(
+      ::nai::workbench::v1::PreparedMediaDescriptor* prepared_descriptor);
+  ::nai::workbench::v1::PreparedMediaDescriptor* unsafe_arena_release_prepared_descriptor();
 
   // .nai.workbench.v1.PublicMediaBundle bundle = 5;
   bool has_bundle() const;
@@ -34994,7 +34994,7 @@ class PublicWindowPreparation final :
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr preparation_id_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr execution_key_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr caption_text_;
-    ::nai::workbench::v1::PreparedMediaDescriptor* descriptor_;
+    ::nai::workbench::v1::PreparedMediaDescriptor* prepared_descriptor_;
     ::nai::workbench::v1::PublicMediaBundle* bundle_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
@@ -80153,45 +80153,45 @@ inline void FoundationPublicWindowPrepare::set_allocated_bundle_sha256(std::stri
 
 // PublicWindowPreparation
 
-// .nai.workbench.v1.PreparedMediaDescriptor descriptor = 1;
-inline bool PublicWindowPreparation::_internal_has_descriptor() const {
-  return this != internal_default_instance() && _impl_.descriptor_ != nullptr;
+// .nai.workbench.v1.PreparedMediaDescriptor prepared_descriptor = 1;
+inline bool PublicWindowPreparation::_internal_has_prepared_descriptor() const {
+  return this != internal_default_instance() && _impl_.prepared_descriptor_ != nullptr;
 }
-inline bool PublicWindowPreparation::has_descriptor() const {
-  return _internal_has_descriptor();
+inline bool PublicWindowPreparation::has_prepared_descriptor() const {
+  return _internal_has_prepared_descriptor();
 }
-inline void PublicWindowPreparation::clear_descriptor() {
-  if (GetArenaForAllocation() == nullptr && _impl_.descriptor_ != nullptr) {
-    delete _impl_.descriptor_;
+inline void PublicWindowPreparation::clear_prepared_descriptor() {
+  if (GetArenaForAllocation() == nullptr && _impl_.prepared_descriptor_ != nullptr) {
+    delete _impl_.prepared_descriptor_;
   }
-  _impl_.descriptor_ = nullptr;
+  _impl_.prepared_descriptor_ = nullptr;
 }
-inline const ::nai::workbench::v1::PreparedMediaDescriptor& PublicWindowPreparation::_internal_descriptor() const {
-  const ::nai::workbench::v1::PreparedMediaDescriptor* p = _impl_.descriptor_;
+inline const ::nai::workbench::v1::PreparedMediaDescriptor& PublicWindowPreparation::_internal_prepared_descriptor() const {
+  const ::nai::workbench::v1::PreparedMediaDescriptor* p = _impl_.prepared_descriptor_;
   return p != nullptr ? *p : reinterpret_cast<const ::nai::workbench::v1::PreparedMediaDescriptor&>(
       ::nai::workbench::v1::_PreparedMediaDescriptor_default_instance_);
 }
-inline const ::nai::workbench::v1::PreparedMediaDescriptor& PublicWindowPreparation::descriptor() const {
-  // @@protoc_insertion_point(field_get:nai.workbench.v1.PublicWindowPreparation.descriptor)
-  return _internal_descriptor();
+inline const ::nai::workbench::v1::PreparedMediaDescriptor& PublicWindowPreparation::prepared_descriptor() const {
+  // @@protoc_insertion_point(field_get:nai.workbench.v1.PublicWindowPreparation.prepared_descriptor)
+  return _internal_prepared_descriptor();
 }
-inline void PublicWindowPreparation::unsafe_arena_set_allocated_descriptor(
-    ::nai::workbench::v1::PreparedMediaDescriptor* descriptor) {
+inline void PublicWindowPreparation::unsafe_arena_set_allocated_prepared_descriptor(
+    ::nai::workbench::v1::PreparedMediaDescriptor* prepared_descriptor) {
   if (GetArenaForAllocation() == nullptr) {
-    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.descriptor_);
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.prepared_descriptor_);
   }
-  _impl_.descriptor_ = descriptor;
-  if (descriptor) {
+  _impl_.prepared_descriptor_ = prepared_descriptor;
+  if (prepared_descriptor) {
     
   } else {
     
   }
-  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.workbench.v1.PublicWindowPreparation.descriptor)
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:nai.workbench.v1.PublicWindowPreparation.prepared_descriptor)
 }
-inline ::nai::workbench::v1::PreparedMediaDescriptor* PublicWindowPreparation::release_descriptor() {
+inline ::nai::workbench::v1::PreparedMediaDescriptor* PublicWindowPreparation::release_prepared_descriptor() {
   
-  ::nai::workbench::v1::PreparedMediaDescriptor* temp = _impl_.descriptor_;
-  _impl_.descriptor_ = nullptr;
+  ::nai::workbench::v1::PreparedMediaDescriptor* temp = _impl_.prepared_descriptor_;
+  _impl_.prepared_descriptor_ = nullptr;
 #ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
   auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
   temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
@@ -80203,44 +80203,44 @@ inline ::nai::workbench::v1::PreparedMediaDescriptor* PublicWindowPreparation::r
 #endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
   return temp;
 }
-inline ::nai::workbench::v1::PreparedMediaDescriptor* PublicWindowPreparation::unsafe_arena_release_descriptor() {
-  // @@protoc_insertion_point(field_release:nai.workbench.v1.PublicWindowPreparation.descriptor)
+inline ::nai::workbench::v1::PreparedMediaDescriptor* PublicWindowPreparation::unsafe_arena_release_prepared_descriptor() {
+  // @@protoc_insertion_point(field_release:nai.workbench.v1.PublicWindowPreparation.prepared_descriptor)
   
-  ::nai::workbench::v1::PreparedMediaDescriptor* temp = _impl_.descriptor_;
-  _impl_.descriptor_ = nullptr;
+  ::nai::workbench::v1::PreparedMediaDescriptor* temp = _impl_.prepared_descriptor_;
+  _impl_.prepared_descriptor_ = nullptr;
   return temp;
 }
-inline ::nai::workbench::v1::PreparedMediaDescriptor* PublicWindowPreparation::_internal_mutable_descriptor() {
+inline ::nai::workbench::v1::PreparedMediaDescriptor* PublicWindowPreparation::_internal_mutable_prepared_descriptor() {
   
-  if (_impl_.descriptor_ == nullptr) {
+  if (_impl_.prepared_descriptor_ == nullptr) {
     auto* p = CreateMaybeMessage<::nai::workbench::v1::PreparedMediaDescriptor>(GetArenaForAllocation());
-    _impl_.descriptor_ = p;
+    _impl_.prepared_descriptor_ = p;
   }
-  return _impl_.descriptor_;
+  return _impl_.prepared_descriptor_;
 }
-inline ::nai::workbench::v1::PreparedMediaDescriptor* PublicWindowPreparation::mutable_descriptor() {
-  ::nai::workbench::v1::PreparedMediaDescriptor* _msg = _internal_mutable_descriptor();
-  // @@protoc_insertion_point(field_mutable:nai.workbench.v1.PublicWindowPreparation.descriptor)
+inline ::nai::workbench::v1::PreparedMediaDescriptor* PublicWindowPreparation::mutable_prepared_descriptor() {
+  ::nai::workbench::v1::PreparedMediaDescriptor* _msg = _internal_mutable_prepared_descriptor();
+  // @@protoc_insertion_point(field_mutable:nai.workbench.v1.PublicWindowPreparation.prepared_descriptor)
   return _msg;
 }
-inline void PublicWindowPreparation::set_allocated_descriptor(::nai::workbench::v1::PreparedMediaDescriptor* descriptor) {
+inline void PublicWindowPreparation::set_allocated_prepared_descriptor(::nai::workbench::v1::PreparedMediaDescriptor* prepared_descriptor) {
   ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
   if (message_arena == nullptr) {
-    delete _impl_.descriptor_;
+    delete _impl_.prepared_descriptor_;
   }
-  if (descriptor) {
+  if (prepared_descriptor) {
     ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
-        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(descriptor);
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(prepared_descriptor);
     if (message_arena != submessage_arena) {
-      descriptor = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
-          message_arena, descriptor, submessage_arena);
+      prepared_descriptor = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, prepared_descriptor, submessage_arena);
     }
     
   } else {
     
   }
-  _impl_.descriptor_ = descriptor;
-  // @@protoc_insertion_point(field_set_allocated:nai.workbench.v1.PublicWindowPreparation.descriptor)
+  _impl_.prepared_descriptor_ = prepared_descriptor;
+  // @@protoc_insertion_point(field_set_allocated:nai.workbench.v1.PublicWindowPreparation.prepared_descriptor)
 }
 
 // string data_path = 2;

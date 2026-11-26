@@ -2963,7 +2963,7 @@ pub struct FoundationPublicWindowPrepare {
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct PublicWindowPreparation {
     #[prost(message, optional, tag = "1")]
-    pub descriptor: ::core::option::Option<PreparedMediaDescriptor>,
+    pub prepared_descriptor: ::core::option::Option<PreparedMediaDescriptor>,
     #[prost(string, tag = "2")]
     pub data_path: ::prost::alloc::string::String,
     #[prost(string, tag = "3")]

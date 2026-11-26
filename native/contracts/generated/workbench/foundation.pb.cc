@@ -2536,7 +2536,7 @@ PROTOBUF_CONSTEXPR PublicWindowPreparation::PublicWindowPreparation(
   , /*decltype(_impl_.preparation_id_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.execution_key_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.caption_text_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.descriptor_)*/nullptr
+  , /*decltype(_impl_.prepared_descriptor_)*/nullptr
   , /*decltype(_impl_.bundle_)*/nullptr
   , /*decltype(_impl_._cached_size_)*/{}} {}
 struct PublicWindowPreparationDefaultTypeInternal {
@@ -4422,7 +4422,7 @@ const uint32_t TableStruct_workbench_2ffoundation_2eproto::offsets[] PROTOBUF_SE
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   ~0u,  // no _inlined_string_donated_
-  PROTOBUF_FIELD_OFFSET(::nai::workbench::v1::PublicWindowPreparation, _impl_.descriptor_),
+  PROTOBUF_FIELD_OFFSET(::nai::workbench::v1::PublicWindowPreparation, _impl_.prepared_descriptor_),
   PROTOBUF_FIELD_OFFSET(::nai::workbench::v1::PublicWindowPreparation, _impl_.data_path_),
   PROTOBUF_FIELD_OFFSET(::nai::workbench::v1::PublicWindowPreparation, _impl_.output_id_),
   PROTOBUF_FIELD_OFFSET(::nai::workbench::v1::PublicWindowPreparation, _impl_.bundle_sha256_),
@@ -5592,164 +5592,164 @@ const char descriptor_table_protodef_workbench_2ffoundation_2eproto[] PROTOBUF_S
   "\004 \001(\004\022\032\n\022playback_available\030\005 \001(\010\"v\n\035Fou"
   "ndationPublicWindowPrepare\022>\n\tcandidate\030"
   "\001 \001(\0132+.nai.workbench.v1.FoundationPubli"
-  "cCandidate\022\025\n\rbundle_sha256\030\002 \001(\t\"\217\002\n\027Pu"
-  "blicWindowPreparation\022=\n\ndescriptor\030\001 \001("
-  "\0132).nai.workbench.v1.PreparedMediaDescri"
-  "ptor\022\021\n\tdata_path\030\002 \001(\t\022\021\n\toutput_id\030\003 \001"
-  "(\t\022\025\n\rbundle_sha256\030\004 \001(\t\0223\n\006bundle\030\005 \001("
-  "\0132#.nai.workbench.v1.PublicMediaBundle\022\026"
-  "\n\016preparation_id\030\006 \001(\t\022\025\n\rexecution_key\030"
-  "\007 \001(\t\022\024\n\014caption_text\030\010 \001(\t\"\347\001\n\034PublicDe"
-  "viceClockObservation\022\021\n\toutput_id\030\001 \001(\t\022"
-  "\026\n\016preparation_id\030\002 \001(\t\022\022\n\nsession_id\030\003 "
-  "\001(\t\022\r\n\005epoch\030\004 \001(\004\022\031\n\021stream_generation\030"
-  "\005 \001(\004\022\030\n\020device_frequency\030\006 \001(\004\022\027\n\017devic"
-  "e_position\030\007 \001(\004\022\023\n\013sample_rate\030\010 \001(\r\022\026\n"
-  "\016played_samples\030\t \001(\004\"\326\004\n\024PublicWindowPr"
-  "epared\0227\n\007receipt\030\001 \001(\0132&.nai.workbench."
-  "v1.PreparedMediaReceipt\022\024\n\014device_ready\030"
-  "\002 \001(\010\022\023\n\013device_name\030\003 \001(\t\022\016\n\006reason\030\004 \001"
-  "(\t\022\031\n\021submitted_samples\030\005 \001(\004\022\026\n\016prepara"
-  "tion_id\030\006 \001(\t\022\033\n\023execution_challenge\030\007 \001"
-  "(\004\022\025\n\rexecution_seq\030\010 \001(\004\022\031\n\021execution_s"
-  "topped\030\t \001(\010\022\017\n\007playing\030\n \001(\010\022\033\n\023submiss"
-  "ion_complete\030\013 \001(\010\0225\n\005frame\030\014 \001(\0132&.nai."
-  "workbench.v1.PublicMediaFrameInfo\022\025\n\rcap"
-  "tion_ready\030\r \001(\010\022\026\n\016caption_sha256\030\016 \001(\t"
-  "\022\024\n\014caption_font\030\017 \001(\t\022\033\n\023caption_font_s"
-  "ha256\030\020 \001(\t\022;\n\rcaption_state\030\021 \001(\0162$.nai"
-  ".workbench.v1.PublicCaptionState\022D\n\014devi"
-  "ce_clock\030\022 \001(\0132..nai.workbench.v1.Public"
-  "DeviceClockObservation\"\364\001\n\024PublicExecuti"
-  "onLease\022\025\n\rauthorization\030\001 \001(\t\022\021\n\toutput"
-  "_id\030\002 \001(\t\022\025\n\rbundle_sha256\030\003 \001(\t\022\035\n\025prep"
-  "ared_media_sha256\030\004 \001(\t\022\022\n\nsession_id\030\005 "
-  "\001(\t\022\r\n\005epoch\030\006 \001(\004\022\021\n\tchallenge\030\007 \001(\004\022\013\n"
-  "\003seq\030\010 \001(\004\022\020\n\010lease_ms\030\t \001(\r\022\017\n\007purpose\030"
-  "\n \001(\t\022\026\n\016preparation_id\030\013 \001(\t\"\337\001\n\030Public"
-  "PresentationStatus\022\026\n\016preparation_id\030\001 \001"
-  "(\t\022\023\n\013frame_index\030\002 \001(\004\022\024\n\014sample_start\030"
-  "\003 \001(\004\022\027\n\017caption_visible\030\004 \001(\010\022\026\n\016captio"
-  "n_sha256\030\005 \001(\t\022\031\n\021composited_sha256\030\006 \001("
-  "\t\022\032\n\022presentation_count\030\007 \001(\004\022\030\n\020submiss"
-  "ion_clock\030\010 \001(\010*\177\n\016FoundationRole\022\030\n\024FOU"
-  "NDATION_ROLE_NONE\020\000\022\031\n\025FOUNDATION_ROLE_A"
-  "DMIN\020\001\022\034\n\030FOUNDATION_ROLE_OPERATOR\020\002\022\032\n\026"
-  "FOUNDATION_ROLE_VIEWER\020\003*Y\n\020FoundationTa"
-  "rget\022!\n\035FOUNDATION_TARGET_UNSPECIFIED\020\000\022"
-  "\"\n\036FOUNDATION_TARGET_PRIVATE_CARD\020\001*\250\001\n\023"
-  "WorkspaceBudgetMode\022%\n!WORKSPACE_BUDGET_"
-  "MODE_UNSPECIFIED\020\000\022\"\n\036WORKSPACE_BUDGET_M"
-  "ODE_DISABLED\020\001\022!\n\035WORKSPACE_BUDGET_MODE_"
-  "LIMITED\020\002\022#\n\037WORKSPACE_BUDGET_MODE_UNLIM"
-  "ITED\020\003*\216\001\n\017WorkspaceAction\022\034\n\030WORKSPACE_"
-  "ACTION_INSPECT\020\000\022!\n\035WORKSPACE_ACTION_DEL"
-  "ETE_EMPTY\020\001\022\034\n\030WORKSPACE_ACTION_RECYCLE\020"
-  "\002\022\034\n\030WORKSPACE_ACTION_RESTORE\020\003*y\n\021Avata"
-  "rRightsState\022#\n\037AVATAR_RIGHTS_STATE_UNSP"
-  "ECIFIED\020\000\022\036\n\032AVATAR_RIGHTS_STATE_ACTIVE\020"
-  "\001\022\037\n\033AVATAR_RIGHTS_STATE_REVOKED\020\002*\177\n\021Pu"
-  "blicationStatus\022\"\n\036PUBLICATION_STATUS_UN"
-  "SPECIFIED\020\000\022&\n\"PUBLICATION_STATUS_PRIVAT"
-  "E_CONTENT\020\001\022\036\n\032PUBLICATION_STATUS_BLOCKE"
-  "D\020\002*\252\002\n\016AgentTaskState\022 \n\034AGENT_TASK_STA"
-  "TE_UNSPECIFIED\020\000\022\034\n\030AGENT_TASK_STATE_CRE"
-  "ATED\020\001\022\033\n\027AGENT_TASK_STATE_QUEUED\020\002\022\034\n\030A"
-  "GENT_TASK_STATE_RUNNING\020\003\022\"\n\036AGENT_TASK_"
-  "STATE_WAITING_HUMAN\020\004\022\036\n\032AGENT_TASK_STAT"
-  "E_COMPLETED\020\005\022\036\n\032AGENT_TASK_STATE_CANCEL"
-  "LED\020\006\022\034\n\030AGENT_TASK_STATE_EXPIRED\020\007\022\033\n\027A"
-  "GENT_TASK_STATE_FAILED\020\010*\313\001\n\017SuggestionS"
-  "tate\022 \n\034SUGGESTION_STATE_UNSPECIFIED\020\000\022\035"
-  "\n\031SUGGESTION_STATE_PROPOSED\020\001\022\035\n\031SUGGEST"
-  "ION_STATE_ACCEPTED\020\002\022\033\n\027SUGGESTION_STATE"
-  "_EDITED\020\003\022\035\n\031SUGGESTION_STATE_REJECTED\020\004"
-  "\022\034\n\030SUGGESTION_STATE_EXPIRED\020\005*\213\002\n\tFaqRe"
-  "ason\022\032\n\026FAQ_REASON_UNSPECIFIED\020\000\022\024\n\020FAQ_"
-  "REASON_EXACT\020\001\022\027\n\023FAQ_REASON_NO_MATCH\020\002\022"
-  "\030\n\024FAQ_REASON_AMBIGUOUS\020\003\022\034\n\030FAQ_REASON_"
-  "STALE_CONTEXT\020\004\022\026\n\022FAQ_REASON_EXPIRED\020\005\022"
-  "\026\n\022FAQ_REASON_REVOKED\020\006\022\030\n\024FAQ_REASON_CA"
-  "NCELLED\020\007\022\027\n\023FAQ_REASON_RESOLVED\020\010\022\030\n\024FA"
-  "Q_REASON_RETRIEVED\020\t*\237\002\n\014LiveRunState\022\036\n"
-  "\032LIVE_RUN_STATE_UNSPECIFIED\020\000\022\030\n\024LIVE_RU"
-  "N_STATE_READY\020\001\022\036\n\032LIVE_RUN_STATE_DISPAT"
-  "CHING\020\002\022\"\n\036LIVE_RUN_STATE_PAUSE_REQUESTE"
-  "D\020\003\022\031\n\025LIVE_RUN_STATE_PAUSED\020\004\022\034\n\030LIVE_R"
-  "UN_STATE_COMPLETED\020\005\022\036\n\032LIVE_RUN_STATE_I"
-  "NTERRUPTED\020\006\022\030\n\024LIVE_RUN_STATE_ENDED\020\007\022\036"
-  "\n\032LIVE_RUN_STATE_UNAVAILABLE\020\010*\303\001\n\rLiveR"
-  "unAction\022\037\n\033LIVE_RUN_ACTION_UNSPECIFIED\020"
-  "\000\022\031\n\025LIVE_RUN_ACTION_PAUSE\020\001\022\032\n\026LIVE_RUN"
-  "_ACTION_RESUME\020\002\022\027\n\023LIVE_RUN_ACTION_END\020"
-  "\003\022\033\n\027LIVE_RUN_ACTION_RECOVER\020\004\022$\n LIVE_R"
-  "UN_ACTION_SKIP_INTERRUPTED\020\005*f\n\rReviewRu"
-  "nKind\022\037\n\033REVIEW_RUN_KIND_UNSPECIFIED\020\000\022\032"
-  "\n\026REVIEW_RUN_KIND_MANUAL\020\001\022\030\n\024REVIEW_RUN"
-  "_KIND_LIVE\020\002*\215\001\n\013FaqDecision\022\034\n\030FAQ_DECI"
-  "SION_UNSPECIFIED\020\000\022\027\n\023FAQ_DECISION_ACCEP"
-  "T\020\001\022\025\n\021FAQ_DECISION_EDIT\020\002\022\027\n\023FAQ_DECISI"
-  "ON_IGNORE\020\003\022\027\n\023FAQ_DECISION_CANCEL\020\004*\371\001\n"
-  "\rAuditionState\022\036\n\032AUDITION_STATE_UNSPECI"
-  "FIED\020\000\022\033\n\027AUDITION_STATE_STARTING\020\001\022\030\n\024A"
-  "UDITION_STATE_READY\020\002\022\032\n\026AUDITION_STATE_"
-  "PLAYING\020\003\022\034\n\030AUDITION_STATE_SUBMITTED\020\004\022"
-  "\032\n\026AUDITION_STATE_STOPPED\020\005\022\036\n\032AUDITION_"
-  "STATE_UNAVAILABLE\020\006\022\033\n\027AUDITION_STATE_CH"
-  "OOSING\020\007*\351\003\n\016LlmLocalReason\022 \n\034LLM_LOCAL"
-  "_REASON_UNSPECIFIED\020\000\022 \n\034LLM_LOCAL_REASO"
-  "N_READY_LOCAL\020\001\022$\n LLM_LOCAL_REASON_BUDG"
-  "ET_DISABLED\020\002\022\037\n\033LLM_LOCAL_REASON_CALL_L"
-  "IMIT\020\003\022$\n LLM_LOCAL_REASON_WORKSPACE_LIM"
-  "IT\020\004\022\'\n#LLM_LOCAL_REASON_CREDENTIAL_MISS"
-  "ING\020\005\022+\n\'LLM_LOCAL_REASON_CREDENTIAL_UNA"
-  "VAILABLE\020\006\022#\n\037LLM_LOCAL_REASON_MODEL_DIS"
-  "ABLED\020\007\022(\n$LLM_LOCAL_REASON_CONTEXT_UNAV"
-  "AILABLE\020\010\022\"\n\036LLM_LOCAL_REASON_STALE_CONT"
-  "EXT\020\t\022$\n LLM_LOCAL_REASON_INPUT_TOO_LARG"
-  "E\020\n\022\031\n\025LLM_LOCAL_REASON_BUSY\020\013\022\034\n\030LLM_LO"
-  "CAL_REASON_STOPPED\020\014*\303\001\n\030PublicCandidate"
-  "AxisState\022+\n\'PUBLIC_CANDIDATE_AXIS_STATE"
-  "_UNSPECIFIED\020\000\022&\n\"PUBLIC_CANDIDATE_AXIS_"
-  "STATE_PASSED\020\001\022)\n%PUBLIC_CANDIDATE_AXIS_"
-  "STATE_NOT_READY\020\002\022\'\n#PUBLIC_CANDIDATE_AX"
-  "IS_STATE_BLOCKED\020\003*m\n\021PublicGuardPolicy\022"
-  "#\n\037PUBLIC_GUARD_POLICY_UNSPECIFIED\020\000\0223\n/"
-  "PUBLIC_GUARD_POLICY_EXACT_SPECS_AND_SOFT"
-  "WARE_V5\020\005*\277\003\n\021PublicGuardReason\022#\n\037PUBLI"
-  "C_GUARD_REASON_UNSPECIFIED\020\000\022)\n%PUBLIC_G"
-  "UARD_REASON_EXACT_SPEC_PASSED\020\001\022*\n&PUBLI"
-  "C_GUARD_REASON_UNSUPPORTED_SPEECH\020\002\022%\n!P"
-  "UBLIC_GUARD_REASON_RISKY_CONTENT\020\003\022(\n$PU"
-  "BLIC_GUARD_REASON_UNSUPPORTED_RULE\020\004\022)\n%"
-  "PUBLIC_GUARD_REASON_PROHIBITED_PHRASE\020\005\022"
-  "\'\n#PUBLIC_GUARD_REASON_MEDIA_NOT_READY\020\006"
-  "\022(\n$PUBLIC_GUARD_REASON_OUTPUT_NOT_BOUND"
-  "\020\007\022,\n(PUBLIC_GUARD_REASON_EXACT_FEATURE_"
-  "PASSED\020\010\0221\n-PUBLIC_GUARD_REASON_PLAYBACK"
-  "_WINDOW_TOO_SHORT\020\t*\245\002\n\022PublicOutputReas"
-  "on\022$\n PUBLIC_OUTPUT_REASON_UNSPECIFIED\020\000"
-  "\022%\n!PUBLIC_OUTPUT_REASON_STANDBY_ONLY\020\001\022"
-  "&\n\"PUBLIC_OUTPUT_REASON_LEASE_EXPIRED\020\002\022"
-  " \n\034PUBLIC_OUTPUT_REASON_STOPPED\020\003\022%\n!PUB"
-  "LIC_OUTPUT_REASON_INPUT_CLOSED\020\004\022*\n&PUBL"
-  "IC_OUTPUT_REASON_PROTOCOL_REJECTED\020\005\022%\n!"
-  "PUBLIC_OUTPUT_REASON_MEDIA_ACTIVE\020\006*\254\002\n\022"
-  "PublicCaptionState\022$\n PUBLIC_CAPTION_STA"
-  "TE_UNSPECIFIED\020\000\022\036\n\032PUBLIC_CAPTION_STATE"
-  "_READY\020\001\022)\n%PUBLIC_CAPTION_STATE_FONT_UN"
-  "AVAILABLE\020\002\022&\n\"PUBLIC_CAPTION_STATE_MISS"
-  "ING_GLYPH\020\003\022(\n$PUBLIC_CAPTION_STATE_LAYO"
-  "UT_OVERFLOW\020\004\022&\n\"PUBLIC_CAPTION_STATE_TE"
-  "XT_REJECTED\020\005\022+\n\'PUBLIC_CAPTION_STATE_IN"
-  "TEGRITY_REJECTED\020\006b\006proto3"
+  "cCandidate\022\025\n\rbundle_sha256\030\002 \001(\t\"\230\002\n\027Pu"
+  "blicWindowPreparation\022F\n\023prepared_descri"
+  "ptor\030\001 \001(\0132).nai.workbench.v1.PreparedMe"
+  "diaDescriptor\022\021\n\tdata_path\030\002 \001(\t\022\021\n\toutp"
+  "ut_id\030\003 \001(\t\022\025\n\rbundle_sha256\030\004 \001(\t\0223\n\006bu"
+  "ndle\030\005 \001(\0132#.nai.workbench.v1.PublicMedi"
+  "aBundle\022\026\n\016preparation_id\030\006 \001(\t\022\025\n\rexecu"
+  "tion_key\030\007 \001(\t\022\024\n\014caption_text\030\010 \001(\t\"\347\001\n"
+  "\034PublicDeviceClockObservation\022\021\n\toutput_"
+  "id\030\001 \001(\t\022\026\n\016preparation_id\030\002 \001(\t\022\022\n\nsess"
+  "ion_id\030\003 \001(\t\022\r\n\005epoch\030\004 \001(\004\022\031\n\021stream_ge"
+  "neration\030\005 \001(\004\022\030\n\020device_frequency\030\006 \001(\004"
+  "\022\027\n\017device_position\030\007 \001(\004\022\023\n\013sample_rate"
+  "\030\010 \001(\r\022\026\n\016played_samples\030\t \001(\004\"\326\004\n\024Publi"
+  "cWindowPrepared\0227\n\007receipt\030\001 \001(\0132&.nai.w"
+  "orkbench.v1.PreparedMediaReceipt\022\024\n\014devi"
+  "ce_ready\030\002 \001(\010\022\023\n\013device_name\030\003 \001(\t\022\016\n\006r"
+  "eason\030\004 \001(\t\022\031\n\021submitted_samples\030\005 \001(\004\022\026"
+  "\n\016preparation_id\030\006 \001(\t\022\033\n\023execution_chal"
+  "lenge\030\007 \001(\004\022\025\n\rexecution_seq\030\010 \001(\004\022\031\n\021ex"
+  "ecution_stopped\030\t \001(\010\022\017\n\007playing\030\n \001(\010\022\033"
+  "\n\023submission_complete\030\013 \001(\010\0225\n\005frame\030\014 \001"
+  "(\0132&.nai.workbench.v1.PublicMediaFrameIn"
+  "fo\022\025\n\rcaption_ready\030\r \001(\010\022\026\n\016caption_sha"
+  "256\030\016 \001(\t\022\024\n\014caption_font\030\017 \001(\t\022\033\n\023capti"
+  "on_font_sha256\030\020 \001(\t\022;\n\rcaption_state\030\021 "
+  "\001(\0162$.nai.workbench.v1.PublicCaptionStat"
+  "e\022D\n\014device_clock\030\022 \001(\0132..nai.workbench."
+  "v1.PublicDeviceClockObservation\"\364\001\n\024Publ"
+  "icExecutionLease\022\025\n\rauthorization\030\001 \001(\t\022"
+  "\021\n\toutput_id\030\002 \001(\t\022\025\n\rbundle_sha256\030\003 \001("
+  "\t\022\035\n\025prepared_media_sha256\030\004 \001(\t\022\022\n\nsess"
+  "ion_id\030\005 \001(\t\022\r\n\005epoch\030\006 \001(\004\022\021\n\tchallenge"
+  "\030\007 \001(\004\022\013\n\003seq\030\010 \001(\004\022\020\n\010lease_ms\030\t \001(\r\022\017\n"
+  "\007purpose\030\n \001(\t\022\026\n\016preparation_id\030\013 \001(\t\"\337"
+  "\001\n\030PublicPresentationStatus\022\026\n\016preparati"
+  "on_id\030\001 \001(\t\022\023\n\013frame_index\030\002 \001(\004\022\024\n\014samp"
+  "le_start\030\003 \001(\004\022\027\n\017caption_visible\030\004 \001(\010\022"
+  "\026\n\016caption_sha256\030\005 \001(\t\022\031\n\021composited_sh"
+  "a256\030\006 \001(\t\022\032\n\022presentation_count\030\007 \001(\004\022\030"
+  "\n\020submission_clock\030\010 \001(\010*\177\n\016FoundationRo"
+  "le\022\030\n\024FOUNDATION_ROLE_NONE\020\000\022\031\n\025FOUNDATI"
+  "ON_ROLE_ADMIN\020\001\022\034\n\030FOUNDATION_ROLE_OPERA"
+  "TOR\020\002\022\032\n\026FOUNDATION_ROLE_VIEWER\020\003*Y\n\020Fou"
+  "ndationTarget\022!\n\035FOUNDATION_TARGET_UNSPE"
+  "CIFIED\020\000\022\"\n\036FOUNDATION_TARGET_PRIVATE_CA"
+  "RD\020\001*\250\001\n\023WorkspaceBudgetMode\022%\n!WORKSPAC"
+  "E_BUDGET_MODE_UNSPECIFIED\020\000\022\"\n\036WORKSPACE"
+  "_BUDGET_MODE_DISABLED\020\001\022!\n\035WORKSPACE_BUD"
+  "GET_MODE_LIMITED\020\002\022#\n\037WORKSPACE_BUDGET_M"
+  "ODE_UNLIMITED\020\003*\216\001\n\017WorkspaceAction\022\034\n\030W"
+  "ORKSPACE_ACTION_INSPECT\020\000\022!\n\035WORKSPACE_A"
+  "CTION_DELETE_EMPTY\020\001\022\034\n\030WORKSPACE_ACTION"
+  "_RECYCLE\020\002\022\034\n\030WORKSPACE_ACTION_RESTORE\020\003"
+  "*y\n\021AvatarRightsState\022#\n\037AVATAR_RIGHTS_S"
+  "TATE_UNSPECIFIED\020\000\022\036\n\032AVATAR_RIGHTS_STAT"
+  "E_ACTIVE\020\001\022\037\n\033AVATAR_RIGHTS_STATE_REVOKE"
+  "D\020\002*\177\n\021PublicationStatus\022\"\n\036PUBLICATION_"
+  "STATUS_UNSPECIFIED\020\000\022&\n\"PUBLICATION_STAT"
+  "US_PRIVATE_CONTENT\020\001\022\036\n\032PUBLICATION_STAT"
+  "US_BLOCKED\020\002*\252\002\n\016AgentTaskState\022 \n\034AGENT"
+  "_TASK_STATE_UNSPECIFIED\020\000\022\034\n\030AGENT_TASK_"
+  "STATE_CREATED\020\001\022\033\n\027AGENT_TASK_STATE_QUEU"
+  "ED\020\002\022\034\n\030AGENT_TASK_STATE_RUNNING\020\003\022\"\n\036AG"
+  "ENT_TASK_STATE_WAITING_HUMAN\020\004\022\036\n\032AGENT_"
+  "TASK_STATE_COMPLETED\020\005\022\036\n\032AGENT_TASK_STA"
+  "TE_CANCELLED\020\006\022\034\n\030AGENT_TASK_STATE_EXPIR"
+  "ED\020\007\022\033\n\027AGENT_TASK_STATE_FAILED\020\010*\313\001\n\017Su"
+  "ggestionState\022 \n\034SUGGESTION_STATE_UNSPEC"
+  "IFIED\020\000\022\035\n\031SUGGESTION_STATE_PROPOSED\020\001\022\035"
+  "\n\031SUGGESTION_STATE_ACCEPTED\020\002\022\033\n\027SUGGEST"
+  "ION_STATE_EDITED\020\003\022\035\n\031SUGGESTION_STATE_R"
+  "EJECTED\020\004\022\034\n\030SUGGESTION_STATE_EXPIRED\020\005*"
+  "\213\002\n\tFaqReason\022\032\n\026FAQ_REASON_UNSPECIFIED\020"
+  "\000\022\024\n\020FAQ_REASON_EXACT\020\001\022\027\n\023FAQ_REASON_NO"
+  "_MATCH\020\002\022\030\n\024FAQ_REASON_AMBIGUOUS\020\003\022\034\n\030FA"
+  "Q_REASON_STALE_CONTEXT\020\004\022\026\n\022FAQ_REASON_E"
+  "XPIRED\020\005\022\026\n\022FAQ_REASON_REVOKED\020\006\022\030\n\024FAQ_"
+  "REASON_CANCELLED\020\007\022\027\n\023FAQ_REASON_RESOLVE"
+  "D\020\010\022\030\n\024FAQ_REASON_RETRIEVED\020\t*\237\002\n\014LiveRu"
+  "nState\022\036\n\032LIVE_RUN_STATE_UNSPECIFIED\020\000\022\030"
+  "\n\024LIVE_RUN_STATE_READY\020\001\022\036\n\032LIVE_RUN_STA"
+  "TE_DISPATCHING\020\002\022\"\n\036LIVE_RUN_STATE_PAUSE"
+  "_REQUESTED\020\003\022\031\n\025LIVE_RUN_STATE_PAUSED\020\004\022"
+  "\034\n\030LIVE_RUN_STATE_COMPLETED\020\005\022\036\n\032LIVE_RU"
+  "N_STATE_INTERRUPTED\020\006\022\030\n\024LIVE_RUN_STATE_"
+  "ENDED\020\007\022\036\n\032LIVE_RUN_STATE_UNAVAILABLE\020\010*"
+  "\303\001\n\rLiveRunAction\022\037\n\033LIVE_RUN_ACTION_UNS"
+  "PECIFIED\020\000\022\031\n\025LIVE_RUN_ACTION_PAUSE\020\001\022\032\n"
+  "\026LIVE_RUN_ACTION_RESUME\020\002\022\027\n\023LIVE_RUN_AC"
+  "TION_END\020\003\022\033\n\027LIVE_RUN_ACTION_RECOVER\020\004\022"
+  "$\n LIVE_RUN_ACTION_SKIP_INTERRUPTED\020\005*f\n"
+  "\rReviewRunKind\022\037\n\033REVIEW_RUN_KIND_UNSPEC"
+  "IFIED\020\000\022\032\n\026REVIEW_RUN_KIND_MANUAL\020\001\022\030\n\024R"
+  "EVIEW_RUN_KIND_LIVE\020\002*\215\001\n\013FaqDecision\022\034\n"
+  "\030FAQ_DECISION_UNSPECIFIED\020\000\022\027\n\023FAQ_DECIS"
+  "ION_ACCEPT\020\001\022\025\n\021FAQ_DECISION_EDIT\020\002\022\027\n\023F"
+  "AQ_DECISION_IGNORE\020\003\022\027\n\023FAQ_DECISION_CAN"
+  "CEL\020\004*\371\001\n\rAuditionState\022\036\n\032AUDITION_STAT"
+  "E_UNSPECIFIED\020\000\022\033\n\027AUDITION_STATE_STARTI"
+  "NG\020\001\022\030\n\024AUDITION_STATE_READY\020\002\022\032\n\026AUDITI"
+  "ON_STATE_PLAYING\020\003\022\034\n\030AUDITION_STATE_SUB"
+  "MITTED\020\004\022\032\n\026AUDITION_STATE_STOPPED\020\005\022\036\n\032"
+  "AUDITION_STATE_UNAVAILABLE\020\006\022\033\n\027AUDITION"
+  "_STATE_CHOOSING\020\007*\351\003\n\016LlmLocalReason\022 \n\034"
+  "LLM_LOCAL_REASON_UNSPECIFIED\020\000\022 \n\034LLM_LO"
+  "CAL_REASON_READY_LOCAL\020\001\022$\n LLM_LOCAL_RE"
+  "ASON_BUDGET_DISABLED\020\002\022\037\n\033LLM_LOCAL_REAS"
+  "ON_CALL_LIMIT\020\003\022$\n LLM_LOCAL_REASON_WORK"
+  "SPACE_LIMIT\020\004\022\'\n#LLM_LOCAL_REASON_CREDEN"
+  "TIAL_MISSING\020\005\022+\n\'LLM_LOCAL_REASON_CREDE"
+  "NTIAL_UNAVAILABLE\020\006\022#\n\037LLM_LOCAL_REASON_"
+  "MODEL_DISABLED\020\007\022(\n$LLM_LOCAL_REASON_CON"
+  "TEXT_UNAVAILABLE\020\010\022\"\n\036LLM_LOCAL_REASON_S"
+  "TALE_CONTEXT\020\t\022$\n LLM_LOCAL_REASON_INPUT"
+  "_TOO_LARGE\020\n\022\031\n\025LLM_LOCAL_REASON_BUSY\020\013\022"
+  "\034\n\030LLM_LOCAL_REASON_STOPPED\020\014*\303\001\n\030Public"
+  "CandidateAxisState\022+\n\'PUBLIC_CANDIDATE_A"
+  "XIS_STATE_UNSPECIFIED\020\000\022&\n\"PUBLIC_CANDID"
+  "ATE_AXIS_STATE_PASSED\020\001\022)\n%PUBLIC_CANDID"
+  "ATE_AXIS_STATE_NOT_READY\020\002\022\'\n#PUBLIC_CAN"
+  "DIDATE_AXIS_STATE_BLOCKED\020\003*m\n\021PublicGua"
+  "rdPolicy\022#\n\037PUBLIC_GUARD_POLICY_UNSPECIF"
+  "IED\020\000\0223\n/PUBLIC_GUARD_POLICY_EXACT_SPECS"
+  "_AND_SOFTWARE_V5\020\005*\277\003\n\021PublicGuardReason"
+  "\022#\n\037PUBLIC_GUARD_REASON_UNSPECIFIED\020\000\022)\n"
+  "%PUBLIC_GUARD_REASON_EXACT_SPEC_PASSED\020\001"
+  "\022*\n&PUBLIC_GUARD_REASON_UNSUPPORTED_SPEE"
+  "CH\020\002\022%\n!PUBLIC_GUARD_REASON_RISKY_CONTEN"
+  "T\020\003\022(\n$PUBLIC_GUARD_REASON_UNSUPPORTED_R"
+  "ULE\020\004\022)\n%PUBLIC_GUARD_REASON_PROHIBITED_"
+  "PHRASE\020\005\022\'\n#PUBLIC_GUARD_REASON_MEDIA_NO"
+  "T_READY\020\006\022(\n$PUBLIC_GUARD_REASON_OUTPUT_"
+  "NOT_BOUND\020\007\022,\n(PUBLIC_GUARD_REASON_EXACT"
+  "_FEATURE_PASSED\020\010\0221\n-PUBLIC_GUARD_REASON"
+  "_PLAYBACK_WINDOW_TOO_SHORT\020\t*\245\002\n\022PublicO"
+  "utputReason\022$\n PUBLIC_OUTPUT_REASON_UNSP"
+  "ECIFIED\020\000\022%\n!PUBLIC_OUTPUT_REASON_STANDB"
+  "Y_ONLY\020\001\022&\n\"PUBLIC_OUTPUT_REASON_LEASE_E"
+  "XPIRED\020\002\022 \n\034PUBLIC_OUTPUT_REASON_STOPPED"
+  "\020\003\022%\n!PUBLIC_OUTPUT_REASON_INPUT_CLOSED\020"
+  "\004\022*\n&PUBLIC_OUTPUT_REASON_PROTOCOL_REJEC"
+  "TED\020\005\022%\n!PUBLIC_OUTPUT_REASON_MEDIA_ACTI"
+  "VE\020\006*\254\002\n\022PublicCaptionState\022$\n PUBLIC_CA"
+  "PTION_STATE_UNSPECIFIED\020\000\022\036\n\032PUBLIC_CAPT"
+  "ION_STATE_READY\020\001\022)\n%PUBLIC_CAPTION_STAT"
+  "E_FONT_UNAVAILABLE\020\002\022&\n\"PUBLIC_CAPTION_S"
+  "TATE_MISSING_GLYPH\020\003\022(\n$PUBLIC_CAPTION_S"
+  "TATE_LAYOUT_OVERFLOW\020\004\022&\n\"PUBLIC_CAPTION"
+  "_STATE_TEXT_REJECTED\020\005\022+\n\'PUBLIC_CAPTION"
+  "_STATE_INTEGRITY_REJECTED\020\006b\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_workbench_2ffoundation_2eproto_deps[1] = {
   &::descriptor_table_workbench_2fbootstrap_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_workbench_2ffoundation_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_workbench_2ffoundation_2eproto = {
-    false, false, 37866, descriptor_table_protodef_workbench_2ffoundation_2eproto,
+    false, false, 37875, descriptor_table_protodef_workbench_2ffoundation_2eproto,
     "workbench/foundation.proto",
     &descriptor_table_workbench_2ffoundation_2eproto_once, descriptor_table_workbench_2ffoundation_2eproto_deps, 1, 144,
     schemas, file_default_instances, TableStruct_workbench_2ffoundation_2eproto::offsets,
@@ -66637,13 +66637,13 @@ void FoundationPublicWindowPrepare::InternalSwap(FoundationPublicWindowPrepare* 
 
 class PublicWindowPreparation::_Internal {
  public:
-  static const ::nai::workbench::v1::PreparedMediaDescriptor& descriptor(const PublicWindowPreparation* msg);
+  static const ::nai::workbench::v1::PreparedMediaDescriptor& prepared_descriptor(const PublicWindowPreparation* msg);
   static const ::nai::workbench::v1::PublicMediaBundle& bundle(const PublicWindowPreparation* msg);
 };
 
 const ::nai::workbench::v1::PreparedMediaDescriptor&
-PublicWindowPreparation::_Internal::descriptor(const PublicWindowPreparation* msg) {
-  return *msg->_impl_.descriptor_;
+PublicWindowPreparation::_Internal::prepared_descriptor(const PublicWindowPreparation* msg) {
+  return *msg->_impl_.prepared_descriptor_;
 }
 const ::nai::workbench::v1::PublicMediaBundle&
 PublicWindowPreparation::_Internal::bundle(const PublicWindowPreparation* msg) {
@@ -66665,7 +66665,7 @@ PublicWindowPreparation::PublicWindowPreparation(const PublicWindowPreparation& 
     , decltype(_impl_.preparation_id_){}
     , decltype(_impl_.execution_key_){}
     , decltype(_impl_.caption_text_){}
-    , decltype(_impl_.descriptor_){nullptr}
+    , decltype(_impl_.prepared_descriptor_){nullptr}
     , decltype(_impl_.bundle_){nullptr}
     , /*decltype(_impl_._cached_size_)*/{}};
 
@@ -66718,8 +66718,8 @@ PublicWindowPreparation::PublicWindowPreparation(const PublicWindowPreparation& 
     _this->_impl_.caption_text_.Set(from._internal_caption_text(), 
       _this->GetArenaForAllocation());
   }
-  if (from._internal_has_descriptor()) {
-    _this->_impl_.descriptor_ = new ::nai::workbench::v1::PreparedMediaDescriptor(*from._impl_.descriptor_);
+  if (from._internal_has_prepared_descriptor()) {
+    _this->_impl_.prepared_descriptor_ = new ::nai::workbench::v1::PreparedMediaDescriptor(*from._impl_.prepared_descriptor_);
   }
   if (from._internal_has_bundle()) {
     _this->_impl_.bundle_ = new ::nai::workbench::v1::PublicMediaBundle(*from._impl_.bundle_);
@@ -66738,7 +66738,7 @@ inline void PublicWindowPreparation::SharedCtor(
     , decltype(_impl_.preparation_id_){}
     , decltype(_impl_.execution_key_){}
     , decltype(_impl_.caption_text_){}
-    , decltype(_impl_.descriptor_){nullptr}
+    , decltype(_impl_.prepared_descriptor_){nullptr}
     , decltype(_impl_.bundle_){nullptr}
     , /*decltype(_impl_._cached_size_)*/{}
   };
@@ -66785,7 +66785,7 @@ inline void PublicWindowPreparation::SharedDtor() {
   _impl_.preparation_id_.Destroy();
   _impl_.execution_key_.Destroy();
   _impl_.caption_text_.Destroy();
-  if (this != internal_default_instance()) delete _impl_.descriptor_;
+  if (this != internal_default_instance()) delete _impl_.prepared_descriptor_;
   if (this != internal_default_instance()) delete _impl_.bundle_;
 }
 
@@ -66805,10 +66805,10 @@ void PublicWindowPreparation::Clear() {
   _impl_.preparation_id_.ClearToEmpty();
   _impl_.execution_key_.ClearToEmpty();
   _impl_.caption_text_.ClearToEmpty();
-  if (GetArenaForAllocation() == nullptr && _impl_.descriptor_ != nullptr) {
-    delete _impl_.descriptor_;
+  if (GetArenaForAllocation() == nullptr && _impl_.prepared_descriptor_ != nullptr) {
+    delete _impl_.prepared_descriptor_;
   }
-  _impl_.descriptor_ = nullptr;
+  _impl_.prepared_descriptor_ = nullptr;
   if (GetArenaForAllocation() == nullptr && _impl_.bundle_ != nullptr) {
     delete _impl_.bundle_;
   }
@@ -66822,10 +66822,10 @@ const char* PublicWindowPreparation::_InternalParse(const char* ptr, ::_pbi::Par
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
     switch (tag >> 3) {
-      // .nai.workbench.v1.PreparedMediaDescriptor descriptor = 1;
+      // .nai.workbench.v1.PreparedMediaDescriptor prepared_descriptor = 1;
       case 1:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
-          ptr = ctx->ParseMessage(_internal_mutable_descriptor(), ptr);
+          ptr = ctx->ParseMessage(_internal_mutable_prepared_descriptor(), ptr);
           CHK_(ptr);
         } else
           goto handle_unusual;
@@ -66927,11 +66927,11 @@ uint8_t* PublicWindowPreparation::_InternalSerialize(
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // .nai.workbench.v1.PreparedMediaDescriptor descriptor = 1;
-  if (this->_internal_has_descriptor()) {
+  // .nai.workbench.v1.PreparedMediaDescriptor prepared_descriptor = 1;
+  if (this->_internal_has_prepared_descriptor()) {
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
-      InternalWriteMessage(1, _Internal::descriptor(this),
-        _Internal::descriptor(this).GetCachedSize(), target, stream);
+      InternalWriteMessage(1, _Internal::prepared_descriptor(this),
+        _Internal::prepared_descriptor(this).GetCachedSize(), target, stream);
   }
 
   // string data_path = 2;
@@ -67059,11 +67059,11 @@ size_t PublicWindowPreparation::ByteSizeLong() const {
         this->_internal_caption_text());
   }
 
-  // .nai.workbench.v1.PreparedMediaDescriptor descriptor = 1;
-  if (this->_internal_has_descriptor()) {
+  // .nai.workbench.v1.PreparedMediaDescriptor prepared_descriptor = 1;
+  if (this->_internal_has_prepared_descriptor()) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
-        *_impl_.descriptor_);
+        *_impl_.prepared_descriptor_);
   }
 
   // .nai.workbench.v1.PublicMediaBundle bundle = 5;
@@ -67109,9 +67109,9 @@ void PublicWindowPreparation::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg
   if (!from._internal_caption_text().empty()) {
     _this->_internal_set_caption_text(from._internal_caption_text());
   }
-  if (from._internal_has_descriptor()) {
-    _this->_internal_mutable_descriptor()->::nai::workbench::v1::PreparedMediaDescriptor::MergeFrom(
-        from._internal_descriptor());
+  if (from._internal_has_prepared_descriptor()) {
+    _this->_internal_mutable_prepared_descriptor()->::nai::workbench::v1::PreparedMediaDescriptor::MergeFrom(
+        from._internal_prepared_descriptor());
   }
   if (from._internal_has_bundle()) {
     _this->_internal_mutable_bundle()->::nai::workbench::v1::PublicMediaBundle::MergeFrom(
@@ -67163,9 +67163,9 @@ void PublicWindowPreparation::InternalSwap(PublicWindowPreparation* other) {
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(PublicWindowPreparation, _impl_.bundle_)
       + sizeof(PublicWindowPreparation::_impl_.bundle_)
-      - PROTOBUF_FIELD_OFFSET(PublicWindowPreparation, _impl_.descriptor_)>(
-          reinterpret_cast<char*>(&_impl_.descriptor_),
-          reinterpret_cast<char*>(&other->_impl_.descriptor_));
+      - PROTOBUF_FIELD_OFFSET(PublicWindowPreparation, _impl_.prepared_descriptor_)>(
+          reinterpret_cast<char*>(&_impl_.prepared_descriptor_),
+          reinterpret_cast<char*>(&other->_impl_.prepared_descriptor_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata PublicWindowPreparation::GetMetadata() const {

@@ -1583,7 +1583,7 @@ export interface FoundationPublicWindowPrepare {
 }
 
 export interface PublicWindowPreparation {
-  descriptor: PreparedMediaDescriptor | undefined;
+  preparedDescriptor: PreparedMediaDescriptor | undefined;
   dataPath: string;
   outputId: string;
   bundleSha256: string;
@@ -20501,7 +20501,7 @@ export const FoundationPublicWindowPrepare: MessageFns<FoundationPublicWindowPre
 
 function createBasePublicWindowPreparation(): PublicWindowPreparation {
   return {
-    descriptor: undefined,
+    preparedDescriptor: undefined,
     dataPath: "",
     outputId: "",
     bundleSha256: "",
@@ -20514,8 +20514,8 @@ function createBasePublicWindowPreparation(): PublicWindowPreparation {
 
 export const PublicWindowPreparation: MessageFns<PublicWindowPreparation> = {
   encode(message: PublicWindowPreparation, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
-    if (message.descriptor !== undefined) {
-      PreparedMediaDescriptor.encode(message.descriptor, writer.uint32(10).fork()).join();
+    if (message.preparedDescriptor !== undefined) {
+      PreparedMediaDescriptor.encode(message.preparedDescriptor, writer.uint32(10).fork()).join();
     }
     if (message.dataPath !== "") {
       writer.uint32(18).string(message.dataPath);
@@ -20559,7 +20559,7 @@ export const PublicWindowPreparation: MessageFns<PublicWindowPreparation> = {
               break;
             }
 
-            message.descriptor = PreparedMediaDescriptor.decode(reader, reader.uint32());
+            message.preparedDescriptor = PreparedMediaDescriptor.decode(reader, reader.uint32());
             continue;
           }
           case 2: {
@@ -20635,8 +20635,8 @@ export const PublicWindowPreparation: MessageFns<PublicWindowPreparation> = {
   },
   fromPartial(object: DeepPartial<PublicWindowPreparation>): PublicWindowPreparation {
     const message = createBasePublicWindowPreparation();
-    message.descriptor = (object.descriptor !== undefined && object.descriptor !== null)
-      ? PreparedMediaDescriptor.fromPartial(object.descriptor)
+    message.preparedDescriptor = (object.preparedDescriptor !== undefined && object.preparedDescriptor !== null)
+      ? PreparedMediaDescriptor.fromPartial(object.preparedDescriptor)
       : undefined;
     message.dataPath = object.dataPath ?? "";
     message.outputId = object.outputId ?? "";

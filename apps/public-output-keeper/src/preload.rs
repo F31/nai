@@ -89,7 +89,7 @@ fn clip(
     }
     let caption = crate::caption::Caption::new(&x.caption_text, &bundle.caption_sha256, &check)?;
     let descriptor = x
-        .descriptor
+        .prepared_descriptor
         .as_ref()
         .ok_or(WorkbenchError::IntegrityFailed)?;
     let mut gate = PublicExecutionGate::new(
