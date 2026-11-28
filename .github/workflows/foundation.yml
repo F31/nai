@@ -43,6 +43,20 @@ jobs:
       # tests import the compiled TypeScript output, which is not tracked.
       - name: Build TypeScript contracts
         run: pnpm --filter @nai/contracts build
+      # v561 原生传输用例通过 NAI_V561_PYTHON 拉起 tests/v561/avatar_stream_pipe_child.py，
+      # 该脚本只依赖 protobuf/numpy/soxr。变量缺席时用例直接 panic（不是跳过），
+      # 所以门控之前必须准备好解释器；两个平台用同一段脚本，避免只在一边成立。
+      - name: Prepare V5.6.1 avatar transport interpreter
+        shell: bash
+        run: |
+          python -m venv .nai-v561-python 2>/dev/null || python3 -m venv .nai-v561-python
+          if [ -x .nai-v561-python/Scripts/python.exe ]; then
+            interpreter="$(pwd)/.nai-v561-python/Scripts/python.exe"
+          else
+            interpreter="$(pwd)/.nai-v561-python/bin/python"
+          fi
+          "$interpreter" -m pip install --quiet --disable-pip-version-check protobuf numpy soxr
+          echo "NAI_V561_PYTHON=$interpreter" >> "$GITHUB_ENV"
       - name: Workbench engineering scope
         shell: bash
         run: |
