@@ -76,6 +76,14 @@ jobs:
           $env:NAI_FOUNDATION_ENGINE = Join-Path $pwd 'target-windows/build/debug/nai-foundation-engine.exe'
           $env:NAI_PUBLIC_OUTPUT_KEEPER = Join-Path $pwd 'target-windows/build/debug/nai-public-output-keeper.exe'
           cargo test -p nai-workbench-host --locked --tests -- --test-threads=1
+      # The v561 voice binary embeds v561-voice/tauri.conf.json, whose frontendDist
+      # points at target-windows/v561-voice-ui. That output is gitignored and is not
+      # produced by pnpm --recursive build, so the desktop crate cannot compile until
+      # this step generates it from the tracked sources.
+      - name: Build V5.6.1 voice desktop frontend
+        if: runner.os == 'Windows'
+        shell: bash
+        run: node scripts/build-v561-voice.mjs
       - name: Windows independent desktop build and smoke
         if: runner.os == 'Windows'
         shell: pwsh
