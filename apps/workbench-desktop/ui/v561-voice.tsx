@@ -15,6 +15,7 @@ const errors: Record<string, string> = { LLM_ANSWER_TRUNCATED: '文本模型响�
 errors.OBS_NOT_CONFIGURED = '请先选择包含独立 OBS 的本机音画配置。';
 errors.DEFAULT_ASSETS_MISSING = '默认配置所需模型或素材缺失，请检查本机装配目录。';
 errors.PYTHON_MISSING = '未找到本机 Python 解释器，无法启动形象 worker。';
+errors.PYTHON_DEPS_MISSING = '本机 Python 缺少形象 worker 依赖（protobuf/numpy/soxr），无法生成默认配置；请安装后重试或选择已有配置。';
 errors.MODEL_MISSING = '默认 FlashHead 模型缺失，未生成配置。';
 errors.WAV2VEC_MISSING = '默认 wav2vec 模型缺失，未生成配置。';
 errors.PORTRAIT_MISSING = '默认授权肖像缺失，未生成配置。';

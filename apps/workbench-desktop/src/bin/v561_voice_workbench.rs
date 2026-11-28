@@ -98,7 +98,7 @@ fn load(live: &Live, profile: PathBuf) -> Result<(), String> {
 fn find_root(start: &Path) -> Option<PathBuf> {
     let mut dir = start.to_path_buf();
     for _ in 0..8 {
-        if dir.join("scripts/flashhead_resident_worker.py").is_file()
+        if dir.join("scripts/flashhead_stream_worker.py").is_file()
             && dir.join("docs/jjf.jpg").is_file()
         {
             return Some(dir);
@@ -109,11 +109,50 @@ fn find_root(start: &Path) -> Option<PathBuf> {
     }
     None
 }
-fn python_executable() -> Option<PathBuf> {
-    let paths = std::env::var_os("PATH")?;
-    std::env::split_paths(&paths)
-        .map(|dir| dir.join("python.exe"))
-        .find(|candidate| candidate.is_file())
+/// Pick the first Python that can import the worker's base dependencies:
+/// `google.protobuf` (wire), `numpy` and `soxr`. Missing any one makes the
+/// worker die before it can write a startup-failure record, so Prepare stalls
+/// for the whole maintenance window with no usable error. Heavier model
+/// dependencies (CUDA torch / flash_head) are a separate readiness check and
+/// are reported by the engine as MODEL_PREPARATION_FAILED. Candidates: explicit
+/// env override, repo-local venv, then PATH.
+fn python_executable(root: &Path) -> Result<PathBuf, String> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Some(value) = std::env::var_os("NAI_V561_PYTHON") {
+        candidates.push(PathBuf::from(value));
+    }
+    candidates.push(root.join("target-windows/v561-worker-python/Scripts/python.exe"));
+    if let Some(paths) = std::env::var_os("PATH") {
+        for dir in std::env::split_paths(&paths) {
+            let candidate = dir.join("python.exe");
+            if !candidates.contains(&candidate) {
+                candidates.push(candidate);
+            }
+        }
+    }
+    let mut found_any = false;
+    for candidate in candidates {
+        if !candidate.is_file() {
+            continue;
+        }
+        found_any = true;
+        let usable = std::process::Command::new(&candidate)
+            .arg("-c")
+            .arg("import google.protobuf.internal.builder, numpy, soxr")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success());
+        if usable {
+            return Ok(candidate);
+        }
+    }
+    let code = if found_any {
+        "PYTHON_DEPS_MISSING"
+    } else {
+        "PYTHON_MISSING"
+    };
+    Err(code.into())
 }
 fn write_json(path: &Path, value: &serde_json::Value) -> Result<(), String> {
     let bytes = serde_json::to_vec_pretty(value).map_err(|_| "DEFAULT_SERIALIZE_FAILED")?;
@@ -146,14 +185,15 @@ fn reference_wav(path: &Path, source: &Path) -> Result<(), String> {
 fn default_config(live: &Live) -> Result<PathBuf, String> {
     use sha2::{Digest, Sha256};
     let root = find_root(&live.runtime).ok_or("DEFAULT_ASSETS_MISSING")?;
-    let python = python_executable().ok_or("PYTHON_MISSING")?;
+    let python = python_executable(&root)?;
     let runtime = &live.runtime;
     fs::create_dir_all(runtime).map_err(|_| "DEFAULT_WRITE_FAILED")?;
 
     let model_dir = root.join("target-windows/models/SoulX-FlashHead-1_3B/Model_Lite");
     let wav2vec_dir = root.join("target-windows/models/wav2vec2-base-960h");
     let portrait = root.join("docs/jjf.jpg");
-    let worker = root.join("scripts/flashhead_resident_worker.py");
+    // Resident::start requires this exact file name (avatar_stream wire protocol).
+    let worker = root.join("scripts/flashhead_stream_worker.py");
     let scripts = root.join("scripts");
     let contracts = root.join("packages/contracts-python/src/generated");
     let source_wav = root.join("target-windows/v561-qwen-restart-check.wav");
