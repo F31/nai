@@ -668,12 +668,7 @@ fn video_draft_requires_matching_file_and_backup_preserves_it() {
             .is_err()
     );
     assert!(nai_avatar_files::video::read_stored_video(t.path(), &digest).is_ok());
-    std::fs::remove_file(
-        t.path()
-            .join("avatar-videos")
-            .join(format!("{digest}.mp4")),
-    )
-    .unwrap();
+    std::fs::remove_file(t.path().join("avatar-videos").join(format!("{digest}.mp4"))).unwrap();
     exec(&mut s, 1, put(1, doc(&digest, 5000, true))).unwrap();
     assert_eq!(
         exec(&mut s, 1, put(2, doc(&digest, 5000, false))),

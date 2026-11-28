@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-v561-voice-interject"
+description = "Enables the v561_voice_interject command without any pre-configured scope."
+commands.allow = ["v561_voice_interject"]
+
+[[permission]]
+identifier = "deny-v561-voice-interject"
+description = "Denies the v561_voice_interject command without any pre-configured scope."
+commands.deny = ["v561_voice_interject"]

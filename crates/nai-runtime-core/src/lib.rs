@@ -6,6 +6,8 @@ pub mod public_guard;
 pub mod public_media;
 pub mod public_output_binding;
 pub mod public_standby;
+pub mod v561_narration;
+pub mod v561_probe;
 pub mod workspace_budget;
 use nai_contracts::workbench::*;
 use nai_contracts::workbench_wire::{FRAME_LIMIT, TTL_MS, VERSION};
@@ -53,8 +55,9 @@ pub fn validate_config(c: &WorkbenchConfig) -> Result<(), WorkbenchError> {
     }
     Ok(())
 }
-/// Inspect only names/metadata. Never open or create a legacy database or credentials.
-pub fn validate_data_root(root: &Path) -> Result<(), WorkbenchError> {
+/// Validate a data-root path: absolute, no parent traversal, no symlink/reparse
+/// component. Unlike `validate_data_root`, an existing non-empty root is allowed.
+pub fn validate_data_root_path(root: &Path) -> Result<(), WorkbenchError> {
     if !root.is_absolute() || root.components().any(|c| matches!(c, Component::ParentDir)) {
         return Err(WorkbenchError::DataRootRejected);
     }
@@ -78,6 +81,12 @@ pub fn validate_data_root(root: &Path) -> Result<(), WorkbenchError> {
             Err(_) => return Err(WorkbenchError::DataRootRejected),
         }
     }
+    Ok(())
+}
+
+/// Inspect only names/metadata. Never open or create a legacy database or credentials.
+pub fn validate_data_root(root: &Path) -> Result<(), WorkbenchError> {
+    validate_data_root_path(root)?;
     if root.exists() {
         let mut entries = fs::read_dir(root).map_err(|_| WorkbenchError::DataRootRejected)?;
         if entries.next().is_some() {

@@ -1,5 +1,8 @@
 //! Trusted static HTTPS adapter. No DB, legacy ABI or automatic retry/failover.
+pub mod cosyvoice;
+pub mod credential;
 mod failure;
+pub mod qwen;
 pub mod vault;
 use futures_util::StreamExt;
 use nai_contracts::workbench::{LlmWorkerRequest, LlmWorkerResult, WorkbenchError as Error};
@@ -23,10 +26,49 @@ pub fn endpoint(value: &str, allow_loopback: bool) -> Result<reqwest::Url> {
     }
     Ok(url)
 }
-pub fn run(
+pub fn run(request: LlmWorkerRequest, cancel: Operation, allow_loopback: bool) -> LlmWorkerResult {
+    execute(
+        request,
+        cancel,
+        allow_loopback,
+        3000,
+        OutputLimit::Fixed(256),
+    )
+}
+/// Connection establishment shares the caller's finite network deadline.
+/// Existing callers retain their three-second connection budget through `run`.
+pub fn run_with_connect_budget(
+    request: LlmWorkerRequest,
+    cancel: Operation,
+    allow_loopback: bool,
+    connect_ms: u32,
+) -> LlmWorkerResult {
+    execute(
+        request,
+        cancel,
+        allow_loopback,
+        connect_ms,
+        OutputLimit::AtMost(1024),
+    )
+}
+enum OutputLimit {
+    Fixed(u32),
+    AtMost(u32),
+}
+impl OutputLimit {
+    fn accepts(&self, value: u32) -> bool {
+        match *self {
+            Self::Fixed(n) => value == n,
+            Self::AtMost(n) => value > 0 && value <= n,
+        }
+    }
+}
+fn execute(
     mut request: LlmWorkerRequest,
     cancel: Operation,
     allow_loopback: bool,
+    connect_ms: u32,
+    output: OutputLimit,
 ) -> LlmWorkerResult {
     let id = request.task_id.clone();
     let key = zeroize::Zeroizing::new(std::mem::take(&mut request.api_key));
@@ -42,10 +84,12 @@ pub fn run(
         ));
         if request.deadline_ms == 0
             || request.deadline_ms > 15000
-            || request.max_output_tokens != 256
+            || !output.accepts(request.max_output_tokens)
             || request.input.len() > 4096
             || key.is_empty()
             || key.len() > 4096
+            || connect_ms == 0
+            || connect_ms > 15000
         {
             return Err(Error::InvalidArgument);
         }
@@ -56,7 +100,7 @@ pub fn run(
             .map_err(|_| Error::CapabilityUnavailable)?;
         runtime.block_on(async{
    let network_ms=cancel.remaining_ms()?.min(request.deadline_ms);
-   let builder=reqwest::Client::builder().redirect(reqwest::redirect::Policy::none()).retry(reqwest::retry::never()).connect_timeout(Duration::from_secs(3)).timeout(Duration::from_millis(network_ms.into()));
+   let builder=reqwest::Client::builder().redirect(reqwest::redirect::Policy::none()).retry(reqwest::retry::never()).connect_timeout(Duration::from_millis(connect_ms.min(network_ms).into())).timeout(Duration::from_millis(network_ms.into()));
    let builder=if allow_loopback&&url.scheme()=="http"{builder.no_proxy()}else{builder};
    let client=builder.build().map_err(|_|Error::CapabilityUnavailable)?;
    cancel.check()?;
@@ -89,6 +133,67 @@ pub fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn live_generation_budget_is_bounded_and_legacy_budget_remains_fixed() {
+        for tokens in [0, 1025] {
+            let mut r = request("https://example.invalid/v1".into());
+            r.max_output_tokens = tokens;
+            let result =
+                run_with_connect_budget(r, Operation::model_task(15000).unwrap(), false, 15000);
+            assert!(!result.request_started);
+        }
+        let mut r = request("https://example.invalid/v1".into());
+        r.max_output_tokens = 512;
+        assert!(!run(r, Operation::model_task(15000).unwrap(), false).request_started);
+    }
+    #[test]
+    fn live_generation_sends_configured_budget_and_rejects_partial_response() {
+        for truncated in [false, true] {
+            let server = tiny_http::Server::http("127.0.0.1:0").unwrap();
+            let url = format!("http://{}/v1", server.server_addr());
+            let worker = std::thread::spawn(move || {
+                let mut r = server
+                    .recv_timeout(Duration::from_secs(4))
+                    .unwrap()
+                    .unwrap();
+                let mut body = String::new();
+                r.as_reader().read_to_string(&mut body).unwrap();
+                let v: serde_json::Value = serde_json::from_str(&body).unwrap();
+                assert_eq!(v["max_tokens"], 512);
+                r.respond(tiny_http::Response::from_string(serde_json::json!({"choices":[{"finish_reason":if truncated{"length"}else{"stop"},"message":{"content":"{\"text\":\"支持插问。\"}"}}],"usage":{"prompt_tokens":10,"completion_tokens":300}}).to_string())).unwrap();
+                assert!(
+                    server
+                        .recv_timeout(Duration::from_millis(100))
+                        .unwrap()
+                        .is_none()
+                );
+            });
+            let mut r = request(url);
+            r.max_output_tokens = 512;
+            let result =
+                run_with_connect_budget(r, Operation::model_task(15000).unwrap(), true, 15000);
+            worker.join().unwrap();
+            assert_eq!(
+                result.error,
+                if truncated { "RESPONSE_TRUNCATED" } else { "" }
+            );
+            assert_eq!(result.text.is_empty(), truncated);
+            assert_eq!(result.output_tokens, 300);
+        }
+    }
+    #[test]
+    fn invalid_connection_budget_never_dispatches_a_request() {
+        for connect_ms in [0, 15001] {
+            let result = run_with_connect_budget(
+                request("https://example.invalid/v1".into()),
+                Operation::model_task(15000).unwrap(),
+                false,
+                connect_ms,
+            );
+            assert!(!result.request_started);
+            assert!(result.text.is_empty());
+        }
+    }
     fn request(url: String) -> LlmWorkerRequest {
         LlmWorkerRequest {
             task_id: "test-task".into(),

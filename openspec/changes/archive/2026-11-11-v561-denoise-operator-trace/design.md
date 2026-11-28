@@ -1,0 +1,2 @@
+# Design
+复用profile_avatar_gpu编译装配与生命周期；维护后按热基线→采样→回归执行。输入限定恰好一个实际视频块的PCM，轨迹路径必须在报告目录且拒绝覆盖。record_shapes/profile_memory/with_stack关闭，不采输入内容。阶段范围作用域恢复原方法，采样结果与墙钟基准明确分离，key_averages的self_device_time与阶段inclusive时间不相加。最终输出所有帧hash等价结论，轨迹不授实时/听感通过。

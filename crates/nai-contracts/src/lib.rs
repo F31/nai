@@ -7,6 +7,68 @@ pub mod v1 {
     include!("generated/nai.v1.rs");
 }
 
+/// Mirrors V5.6.1 protobuf packages so generated cross-package imports resolve.
+pub mod v561 {
+    pub mod continuousaudio {
+        pub mod v1 {
+            include!("generated/nai.v561.continuousaudio.v1.rs");
+        }
+    }
+    pub mod live {
+        pub mod v1 {
+            include!("generated/nai.v561.live.v1.rs");
+        }
+    }
+    pub mod avatarstream {
+        pub mod v1 {
+            include!("generated/nai.v561.avatarstream.v1.rs");
+        }
+    }
+    pub mod media {
+        pub mod v1 {
+            include!("generated/nai.v561.media.v1.rs");
+        }
+    }
+    pub mod task {
+        pub mod v1 {
+            include!("generated/nai.v561.task.v1.rs");
+        }
+    }
+    pub mod audio {
+        pub mod v1 {
+            include!("generated/nai.v561.audio.v1.rs");
+        }
+    }
+    pub mod streamaudio {
+        pub mod v1 {
+            include!("generated/nai.v561.streamaudio.v1.rs");
+        }
+    }
+    pub mod audition {
+        pub mod v1 {
+            include!("generated/nai.v561.audition.v1.rs");
+        }
+    }
+    pub mod avatar {
+        pub mod v1 {
+            include!("generated/nai.v561.avatar.v1.rs");
+        }
+    }
+}
+pub use v561::audition::v1 as v561_audition;
+pub use v561::avatar::v1 as v561_avatar;
+pub use v561::avatarstream::v1 as v561_avatar_stream;
+pub use v561::continuousaudio::v1 as v561_continuous_audio;
+pub use v561::live::v1 as v561_live;
+pub mod v561_live_validation;
+pub use v561::streamaudio::v1 as v561_stream_audio;
+pub use v561::{audio::v1 as v561_audio, media::v1 as v561_media, task::v1 as v561_task};
+
+pub mod v561_media_validation;
+pub mod cosyvoice_http {
+    include!("generated/cosyvoice_http.rs");
+}
+
 pub mod remote_knowledge {
     //! Generated adapter DTOs and endpoint constants (remote-knowledge.yaml).
     include!("generated/remote_knowledge.rs");

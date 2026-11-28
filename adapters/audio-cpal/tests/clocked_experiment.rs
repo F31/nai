@@ -47,6 +47,31 @@ fn invalid_pcm_is_rejected_before_opening_a_device() {
 }
 
 #[test]
+fn long_diagnostic_rejects_unbounded_or_oversized_input_before_device_open() {
+    use nai_audio_cpal::clocked_experiment::open_pcm_diagnostic;
+    let gate = Arc::new(ExperimentalFence::default());
+    let permitted = Arc::new(|| true);
+    assert!(
+        open_pcm_diagnostic(
+            gate.clone(),
+            zeroize::Zeroizing::new(vec![0; 2]),
+            permitted.clone(),
+            1
+        )
+        .is_err()
+    );
+    assert!(
+        open_pcm_diagnostic(
+            gate,
+            zeroize::Zeroizing::new(vec![0; 2]),
+            permitted,
+            24_000 * 600 + 1
+        )
+        .is_err()
+    );
+}
+
+#[test]
 #[ignore = "explicit Windows silent device experiment"]
 fn silent_stream_expires_without_control_renewal() {
     let gate = Arc::new(ExperimentalFence::default());

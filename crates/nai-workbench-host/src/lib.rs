@@ -1,6 +1,8 @@
 //! RF01 narrow host: fixed child, ephemeral inherited credential, no legacy state/DB.
 pub mod foundation;
 pub mod public_output;
+pub mod v561_audition;
+pub mod v561_live;
 use nai_contracts::{workbench::*, workbench_wire as wire};
 use prost::Message;
 use std::{

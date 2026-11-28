@@ -1,0 +1,6 @@
+# Design
+作用域保存已有已编译块，提取_orig_mod后以dynamic=False及max_autotune_gemm=True、max_autotune_gemm_backends=TRITON,ATEN重新编译，异常或退出恢复原块。候选保持跨预热/热测相同wrapper；回归前恢复原编译块，不重编译VAE或改变cuDNN SDPA。
+
+扩展现有profile_avatar_gpu入口；基线维护→热基线→候选维护→候选热测→基线回归。两个维护各有独立拒绝覆盖状态文件、原240秒硬退出；业务仍45秒。采样不启用profiler，输入/全局及私有随机源相同。记录Dynamo新图和新内核计数，选项请求不等于实际选择Triton，不以静默ATEN选择授加速。结果不等价或无净收益不改生产默认。
+
+首轮暴露独立Triton环境找不到C编译器。显式诊断现在在加载模型前通过vswhere与Windows SDK注册表发现已安装MSVC/SDK，只配置本进程CC/PATH/INCLUDE/LIB及VC/SDK身份变量，不写系统环境或安装包。最小C扩展真实编译加载作为环境验证证据。候选禁用本地autotune结果缓存，避免复用首轮无效选择；原始失败文件不删除、不覆盖。第二轮实际Triton参与，部分超共享内存方案被拒绝属于选择证据，不将全部请求称为成功。

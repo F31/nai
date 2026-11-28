@@ -1,0 +1,77 @@
+baseline: V5.6.1
+updated: 2026-11-04
+release_gate: blocked_until_all_required_verified
+items:
+  - id: flashhead
+    kind: model
+    code_license: Apache-2.0
+    weights_license: other
+    extra: "VAE_LTX is OpenRAIL-M; cannot be relicensed as Apache-2.0"
+    status: needs-review
+    required: true
+    action: "确认权重/VAE 的再分发与商用条件；保留 LICENSE/NOTICE；UI 显示限制"
+  - id: liveact
+    kind: model
+    code_license: missing
+    weights_license: needs-review
+    extra: "GitHub 仓库无 LICENSE；模型卡不能替代书面确认"
+    status: blocked
+    required: false
+    action: "不打包、不分发、不进主线；仅隔离研究"
+  - id: qwen3-tts
+    kind: model
+    code_license: Apache-2.0
+    weights_license: Apache-2.0
+    extra: "仅针对官方 Qwen3-TTS-12Hz-0.6B-CustomVoice；参考音频/声线克隆另需说话人授权，依赖和再分发清单仍需核查"
+    status: needs-review
+    required: true
+    action: "固定模型版本并验证权重；核对依赖、NOTICE 与实际分发边界"
+    evidence: "https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice ; https://github.com/QwenLM/Qwen3-TTS"
+  - id: echomimic-v3
+    kind: tool
+    code_license: Apache-2.0
+    weights_license: needs-review
+    extra: "仅离线片段制作；生成素材/肖像权利另算"
+    status: needs-review
+    required: false
+    action: "作为离线工具；不阻塞主线"
+  - id: obs-studio
+    kind: external
+    code_license: GPL-2.0
+    weights_license: not-applicable
+    extra: "外部软件，不打包"
+    status: needs-review
+    required: false
+    action: "记录版本与分发边界；不并入 nai"
+  - id: ffmpeg
+    kind: external
+    code_license: LGPL-or-GPL
+    weights_license: not-applicable
+    extra: "取决于构建选项"
+    status: needs-review
+    required: true
+    action: "记录构建选项与许可；避免未确认静态链接"
+  - id: user-portrait
+    kind: asset
+    code_license: not-applicable
+    weights_license: not-applicable
+    extra: "用户提供；需授权范围/期限"
+    status: unconfirmed
+    required: true
+    action: "导入时勾选并记录；未确认拒绝开始直播"
+  - id: user-voice
+    kind: asset
+    code_license: not-applicable
+    weights_license: not-applicable
+    extra: "说话人同意/克隆授权"
+    status: unconfirmed
+    required: true
+    action: "未确认不使用克隆；记录来源"
+  - id: music
+    kind: asset
+    code_license: not-applicable
+    weights_license: not-applicable
+    extra: "直播/录制/分发权"
+    status: unconfirmed
+    required: true
+    action: "未确认不播放/不录制"

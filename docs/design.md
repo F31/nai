@@ -1,8 +1,16 @@
 # nai 设计入口
 
-## 新版规划目标（2026-10-23）
+## 当前目标（V5.6.1，2026-11-08）
 
-已审视[V4.8完整方案](digital-host-agent-design-V4.8.md)，后续任务见[V4.8开发计划](v48-development-plan.md)及[ADR0151采纳提案](adr/0151-v48-adoption-plan.md)。V48-01已完成实际基线切换：当前执行V4.8注册表164ACC/62INV，全部pending；旧通过状态不自动沿用。默认边界见[架构裁决](architecture/v48-boundaries-and-command-inventory.md)。
+后续执行以 **V5.6.1 单引擎基线** 为准：[基线索引](v561-baseline.md)、[ADR 0193](adr/0193-v561-single-engine-baseline.md)、[OpenSpec 执行契约](../openspec/changes/v561-flashhead-single-engine/)。视觉为 FlashHead Lite 单引擎；当前语音部署按[ADR0195](adr/0195-cosyvoice3-current-tts-deployment.md)改为Fun-CosyVoice3-0.5B，Qwen已由用户移除；动作为预录片段，输出为本机窗口/OBS。不向前兼容 V4.8/V5.2/V5.5/V5.6 的 ACC/INV/数据库/配置。
+
+当前验收唯一来源为 [tests/v561/registry.yaml](../tests/v561/registry.yaml)，共 34 项仍为pending；旧 [tests/registry.yaml](../tests/registry.yaml) 为 V4.8 只读归档，不再授予本基线通过。目标机M0尚未通过；早期Qwen组合见[历史基线状态](reports/2026-11-04-v561-baseline-status.md)，当前CosyVoice与FlashHead/OBS联合验收尚未完成。
+
+V4.8/V5.2/V5.4/V5.5/V5.6 设计与旧 OpenSpec 变更保持历史参考，不拼接覆盖 V5.6.1。
+
+2026-11-07性能整改：[文本/语音/视频流式与缓存整体方案](v561-streaming-cache-optimization-plan.md)、[CosyVoice当前任务](../openspec/changes/v561-cosyvoice-streaming/tasks.md)。Qwen对照不再执行；CosyVoice服务流式与每请求状态/单飞见[请求隔离报告](reports/2026-11-07-cosyvoice3-request-isolation.md)，最新Rust进展见下。方案/格式校验不代表功能或M0已通过。当前短片及M0失败尝试的边界见[真实音画报告](reports/2026-11-07-v561-real-window-independent-audio.md)。
+
+最新Rust语音进展：C04独立设备边收边播、C05语音控制/统一取消及HTTP应用EOS已接通。单TTS短语义句/一句预取与插播归位见[报告](reports/2026-11-08-v561-one-ahead-narration.md)；新分句链路的认证设备时钟与帧调度出口见[时钟报告](reports/2026-11-08-v561-stream-device-clock.md)，独立协议2组合已实测，未拆开更新旧运行组合。当前仍为有限语音验证入口；完整直播桌面、公屏LLM问答、缓存身份、FlashHead真实帧/公共窗口联合输出与OBS未完成，不升级M0或34ACC。
 
 ## V4.3历史重构目标
 

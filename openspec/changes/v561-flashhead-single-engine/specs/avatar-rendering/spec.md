@@ -2,6 +2,18 @@
 
 ## ADDED Requirements
 
+### Requirement: 可验证的人脸构图预处理
+
+形象预处理 SHALL 允许显式启用人脸居中构图并配置留白比例；SHALL 保留原始素材，拒绝无人脸、多张合格人脸或无效裁剪区域，不得静默退回原图。诊断结果 SHALL 标识构图参数，不得将离线质量样片视为实时性能或生产许可证明。
+
+#### Scenario: 合法单人素材
+- **WHEN** 用户启用人脸构图且素材中恰有一张满足阈值的人脸
+- **THEN** 生成独立构图用于模型输入，保留原图并记录参数
+
+#### Scenario: 无法确定单一人脸
+- **WHEN** 没有检测到或检测到多张满足阈值的人脸
+- **THEN** 明确失败，不生成误导性的回退画面
+
 ### Requirement: 单引擎 FlashHead
 
 系统 SHALL 只加载一个视觉引擎，默认 FlashHead Lite；SHALL NOT 在同一会话加载 LiveAct、MuseTalk、LivePortrait 或第二个视觉引擎。

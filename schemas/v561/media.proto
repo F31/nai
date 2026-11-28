@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+// V5.6.1 media-control metadata. Pixel and PCM bytes belong in the media plane.
+// These messages do not authorize mapping access or playback.
+package nai.v561.media.v1;
+
+enum PixelFormat {
+  PIXEL_FORMAT_UNSPECIFIED = 0;
+  PIXEL_FORMAT_BGRA8 = 1;
+}
+
+// A single committed frame in an independently authorized shared pool.
+message FrameRef {
+  string pool_id = 1; // Opaque pool identity, not a filesystem path or authority.
+  uint64 epoch = 2;
+  optional uint64 sequence = 3; // Zero is a valid first frame.
+  optional uint64 source_sample = 4; // Position on the session's audio timeline.
+  uint32 source_sample_rate = 5;
+  optional uint64 pts_ns = 6; // Relative presentation timestamp; zero is valid.
+  uint32 width = 7;
+  uint32 height = 8;
+  uint32 stride_bytes = 9;
+  PixelFormat pixel_format = 10;
+  optional uint32 slot_index = 11; // Zero is a valid first slot.
+  uint64 slot_generation = 12;
+  uint64 payload_bytes = 13;
+  bytes content_sha256 = 14; // Optional 32-byte digest; not authentication.
+}
+
+// Acknowledges a particular frame and slot generation; not playback evidence.
+message FrameRelease {
+  string pool_id = 1;
+  uint64 epoch = 2;
+  optional uint64 sequence = 3;
+  optional uint32 slot_index = 4;
+  uint64 slot_generation = 5;
+}
+
+enum ClockState {
+  CLOCK_STATE_UNSPECIFIED = 0;
+  CLOCK_STATE_UNAVAILABLE = 1;
+  CLOCK_STATE_RUNNING = 2;
+  CLOCK_STATE_PAUSED = 3;
+  CLOCK_STATE_STOPPED = 4;
+}
+
+// Observation from the trusted audio backend. Planned/submitted samples are not
+// evidence of playback. Receivers must verify source and epoch independently.
+message PlaybackClockObservation {
+  uint64 epoch = 1;
+  uint64 device_generation = 2;
+  optional uint64 observation_sequence = 3;
+  ClockState state = 4;
+  optional uint64 played_sample = 5;
+  uint32 sample_rate = 6;
+}

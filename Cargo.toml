@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
-exclude = ["apps/workbench-desktop", "apps/engine"]
-members = ["crates/nai-avatar-files", "crates/nai-live", "apps/human-mic-worker", "adapters/audio-cpal", "apps/public-output-keeper", "apps/audition-worker", "adapters/llm-openai", "adapters/storage-sqlite", "crates/nai-workbench-host", "apps/workbench-engine", "crates/nai-runtime-core", "plugins/avatar-2d", "apps/output-keeper", "crates/nai-control-ipc", "crates/nai-control-api", "crates/nai-knowledge-core", "crates/nai-contracts", "crates/nai-kernel", "crates/nai-plugin-sdk", "crates/nai-storage", "crates/nai-security", "crates/nai-upgrade-core", "crates/nai-media-core", "crates/nai-budget-core", "crates/nai-provider-core", "xtask"]
+exclude = ["apps/workbench-desktop"]
+members = ["crates/nai-avatar-files", "crates/nai-live", "apps/human-mic-worker", "adapters/audio-cpal", "apps/public-output-keeper", "apps/audition-worker", "adapters/llm-openai", "adapters/storage-sqlite", "crates/nai-workbench-host", "apps/workbench-engine", "crates/nai-runtime-core", "plugins/avatar-2d", "apps/output-keeper", "crates/nai-contracts", "crates/nai-kernel", "crates/nai-plugin-sdk", "crates/nai-media-core", "xtask"]
 default-members = ["plugins/avatar-2d", "apps/workbench-engine", "apps/public-output-keeper", "apps/output-keeper", "apps/audition-worker", "apps/human-mic-worker", "adapters/storage-sqlite", "adapters/llm-openai", "adapters/audio-cpal", "crates/nai-contracts", "crates/nai-runtime-core", "crates/nai-media-core", "crates/nai-avatar-files", "crates/nai-workbench-host", "crates/nai-live", "crates/nai-kernel", "crates/nai-plugin-sdk", "xtask"]
 
 [workspace.package]
@@ -20,22 +20,13 @@ serde_json = "=1.0.151"
 serde = { version = "=1.0.229", features = ["derive"] }
 rusqlite = { version = "=0.40.2", default-features = false, features = ["bundled", "backup", "hooks"] }
 sha2 = "=0.11.0"
-directories = "=6.0.0"
 jsonschema = { version = "=0.58.6", default-features = false }
 zeroize = "=1.9.1"
 tempfile = "=3.27.0"
 keyring = { version = "=3.6.3", default-features = false, features = ["windows-native"] }
 semver = "=1.0.28"
 nai-contracts = { path = "crates/nai-contracts" }
-nai-security = { path = "crates/nai-security" }
-nai-upgrade-core = { path = "crates/nai-upgrade-core" }
 nai-plugin-sdk = { path = "crates/nai-plugin-sdk" }
-nai-budget-core = { path = "crates/nai-budget-core" }
-nai-provider-core = { path = "crates/nai-provider-core" }
-nai-knowledge-core = { path = "crates/nai-knowledge-core" }
-nai-control-api = { path = "crates/nai-control-api" }
-nai-control-ipc = { path = "crates/nai-control-ipc" }
-nai-storage = { path = "crates/nai-storage" }
 nai-media-core = { path = "crates/nai-media-core" }
 nai-kernel = { path = "crates/nai-kernel" }
 
@@ -70,4 +61,9 @@ opt-level = 2
 opt-level = 2
 
 [profile.dev.package.serde_json]
+opt-level = 2
+
+# The application converts full-size playback pixels on the UI thread.
+# Keep development assertions/overflow checks; optimize the measured CPU path.
+[profile.dev.package.nai-workbench-engine]
 opt-level = 2

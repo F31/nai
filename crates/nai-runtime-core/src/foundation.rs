@@ -13,6 +13,7 @@ pub struct Operation {
     deadline: Instant,
     cancelled: Arc<AtomicBool>,
     ancestors: Vec<Arc<AtomicBool>>,
+    permitted: Option<Arc<dyn Fn() -> bool + Send + Sync>>,
 }
 impl Operation {
     pub fn new(ttl_ms: u32) -> Result<Self> {
@@ -22,6 +23,14 @@ impl Operation {
     pub fn model_task(ttl_ms: u32) -> Result<Self> {
         Self::bounded(ttl_ms, 45000)
     }
+    /// Bounded cached media playback only. Model and control budgets remain separate.
+    pub fn prepared_playback(ttl_ms: u32) -> Result<Self> {
+        Self::bounded(ttl_ms, 120000)
+    }
+    /// Explicit isolated process maintenance only; never store/control/model I/O.
+    pub fn maintenance(ttl_ms: u32) -> Result<Self> {
+        Self::bounded(ttl_ms, 240000)
+    }
     fn bounded(ttl_ms: u32, maximum: u32) -> Result<Self> {
         if !(1..=maximum).contains(&ttl_ms) {
             return Err(Error::InvalidArgument);
@@ -30,10 +39,24 @@ impl Operation {
             deadline: Instant::now() + Duration::from_millis(ttl_ms.into()),
             cancelled: Arc::new(AtomicBool::new(false)),
             ancestors: Vec::new(),
+            permitted: None,
         })
     }
     pub fn cancel(&self) {
         self.cancelled.store(true, Ordering::Release);
+    }
+    /// Bind once at trusted task creation. The predicate must be nonblocking.
+    /// Children inherit it; it cannot grant more time or replace an existing binding.
+    pub fn bind_permission(
+        mut self,
+        permitted: Arc<dyn Fn() -> bool + Send + Sync>,
+    ) -> Result<Self> {
+        if self.permitted.is_some() {
+            return Err(Error::InvalidArgument);
+        }
+        self.permitted = Some(permitted);
+        self.check()?;
+        Ok(self)
     }
     /// Child cancellation is local; ancestor cancellation and deadlines cannot be reset.
     pub fn child(&self, ttl_ms: u32) -> Result<Self> {
@@ -41,6 +64,10 @@ impl Operation {
     }
     pub fn model_child(&self, ttl_ms: u32) -> Result<Self> {
         self.child_bounded(ttl_ms, 45000)
+    }
+    /// Isolated worker startup only; inherits ancestor cancellation/deadline.
+    pub fn maintenance_child(&self, ttl_ms: u32) -> Result<Self> {
+        self.child_bounded(ttl_ms, 240000)
     }
     fn child_bounded(&self, ttl_ms: u32, maximum: u32) -> Result<Self> {
         self.check()?;
@@ -51,6 +78,7 @@ impl Operation {
         child.deadline = child.deadline.min(self.deadline);
         child.ancestors = self.ancestors.clone();
         child.ancestors.push(self.cancelled.clone());
+        child.permitted = self.permitted.clone();
         Ok(child)
     }
     /// Remaining monotonic budget, rounded down so a child cannot gain time.
@@ -68,6 +96,10 @@ impl Operation {
     pub fn check(&self) -> Result<()> {
         if self.cancelled.load(Ordering::Acquire)
             || self.ancestors.iter().any(|v| v.load(Ordering::Acquire))
+            || self
+                .permitted
+                .as_ref()
+                .is_some_and(|permitted| !permitted())
         {
             Err(Error::Cancelled)
         } else if Instant::now() >= self.deadline {
@@ -353,5 +385,23 @@ mod model_operation_tests {
         parent.cancel();
         assert_eq!(sibling.check(), Err(Error::Cancelled));
         assert!(parent.model_child(15000).is_err());
+    }
+    #[test]
+    fn maintenance_does_not_raise_business_or_child_budgets() {
+        assert!(Operation::maintenance(240001).is_err());
+        assert!(Operation::maintenance(0).is_err());
+        assert!(Operation::model_task(45001).is_err());
+        assert!(Operation::new(4001).is_err());
+        let root = Operation::maintenance(240000).unwrap();
+        let short = Operation::maintenance(1000).unwrap();
+        let inherited = short.maintenance_child(240000).unwrap();
+        assert_eq!(inherited.deadline, short.deadline);
+        short.cancel();
+        assert_eq!(inherited.check(), Err(Error::Cancelled));
+        assert!(root.model_child(45001).is_err());
+        let child = root.model_child(45000).unwrap();
+        assert!(child.remaining_ms().unwrap() <= 45000);
+        root.cancel();
+        assert_eq!(child.check(), Err(Error::Cancelled));
     }
 }

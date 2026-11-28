@@ -1,22 +1,19 @@
 schema: spec-driven
 context: |
   项目名称 nai，仓库 https://github.com/F31/nai。
-  后续重构唯一目标 docs/digital-host-agent-design-V4.8.md（ADR 0151）；旧V3.11等为当前实现历史，不拼接覆盖新目标。重构不保留旧ABI/协议/表单兼容，旧数据/Key/许可不得删除；遵守AGENTS.md。
-  实际验收唯一来源tests/registry.yaml，V48-01已切换V4.8 ACC注册表/Schema/检查器，旧语料归档tests/legacy/v311；164项pending，RF01/RF02及RF03草稿/发布基础不等于业务验收。V4.8 ACC执行清单与INV-01–62映射见docs/v48-development-plan.md；旧状态不授予新目标通过。
-  Rust 统一内核，Tauri 2 + React/TypeScript 桌面；Windows 正式运行，portable 逻辑在 Linux 可测。
-  Lite/Standard/Pro 是能力预设；Local/Hybrid/Distributed 是部署配置。
-  LLM/TTS 使用 API；写实 Rust + ONNX，Python 仅离线导出。
-  跨语言消息 Protobuf，配置/清单 JSON Schema，HTTP OpenAPI；先改源并生成，再改消费者。
-  kernel 不依赖插件/Tauri/平台 SDK，插件实现不得直接依赖另一插件。
-  有界队列、deadline/cancellation、epoch、审批哈希、事实版本与媒体租约是输出不变量。
-  未实现保持未开始；缺真实环境的认证记 Blocked，演练不能代替真实接入。
+  当前唯一执行基线 V5.6.1：SoulX-FlashHead Lite 单引擎 + Fun-CosyVoice3-0.5B + 预录动作片段 + 本机窗口/OBS；ADR 0193、0195，ADR0194为历史。执行契约 openspec/changes/v561-flashhead-single-engine/。单TTS常驻服务，短语义句及一句有界预取，插问优先；不部署vLLM并发主线。
+  实际验收唯一来源 tests/v561/registry.yaml（34 项，初始 pending），Schema schemas/tests/v561-registry.schema.json，检查器 scripts/check-v561-registry.mjs。旧 tests/registry.yaml 是 V4.8 只读归档，不再授予本基线通过；旧 V4.8/V5.2/V5.5/V5.6 的 ACC/INV/任务编号不继承。
+  Rust engine + Tauri 2 + React/TypeScript 桌面；视觉效果使用独立 Python/PyTorch avatar worker（FlashHead），后续再评估 ONNX/TensorRT。语音为本地CosyVoice独立服务；动作为授权预录片段；LLM 使用 API。
+  不向前兼容旧数据库/配置/协议/ABI/形象包/动作包；旧数据不自动迁移，用户资产只通过手动导入。单数据根、单操作员、单直播间、单当前形象。
+  不做多工作区、多用户、角色、审批、预算账本、outbox、审计哈希链；LiveAct 18B、双引擎切换、热备、平台官方 connector、RTMP/虚拟摄像头主线、3D/全身不在主线。
+  有界队列、停止/静音/接管、epoch、安全帧、音频主时钟是输出约束。未实现保持未开始；缺目标机/真实许可/真实服务记 Blocked，模拟不能替代真实认证。
   规范与设计说明使用中文；OpenSpec 的 Requirement/Scenario/WHEN/THEN 标记保持标准格式。
 rules:
   proposal:
-    - 标明V48任务、V4.8章节与ACC/INV、影响范围和新增依赖成本。
+    - 标明 V5.6.1 spec/ACC 影响、范围与新增依赖；或明确声明不继承旧 ACC/INV/任务编号。
   specs:
     - 使用 SHALL 或 MUST 编写可验证需求，每条需求包含具体 WHEN/THEN 场景。
-    - 区分实现检查与 Windows/SDK/GPU/真实 API 认证。
+    - 区分实现检查与 Windows/GPU/CosyVoice/OBS/真实许可认证。
   design:
     - 记录技术选择、依赖方向、验证命令和环境边界；规范偏离须新增 ADR。
   tasks:

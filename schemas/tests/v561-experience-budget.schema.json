@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://nai.local/schemas/tests/v561-experience-budget.schema.json",
+  "title": "V561ExperienceBudget",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "ready_first_voice_ms", "sentence_gap_ms", "tts_first_pcm_goal_ms", "sample_rate"],
+  "properties": {
+    "$schema": {"const": "../../schemas/tests/v561-experience-budget.schema.json"},
+    "version": {"const": 1},
+    "ready_first_voice_ms": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "sentence_gap_ms": {"type": "integer", "minimum": 0, "maximum": 1000},
+    "tts_first_pcm_goal_ms": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "sample_rate": {"const": 24000}
+  }
+}

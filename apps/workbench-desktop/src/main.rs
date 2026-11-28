@@ -117,13 +117,27 @@ fn workbench_stop_audition(app: tauri::AppHandle) -> Result<(), String> {
 fn workbench_audition_nonce(app: tauri::AppHandle) -> Result<Vec<u8>, String> {
     nai_workbench_host::foundation::audition_nonce(&audition_root(&app)?)
 }
-fn avatar_read_command(state: &BusinessOwner, operation: nai_contracts::workbench::foundation_command::Operation) -> Result<nai_contracts::workbench::FoundationResult, String> {
-    use nai_contracts::workbench::{FoundationCommand, FoundationResponse, foundation_response::Outcome};
+fn avatar_read_command(
+    state: &BusinessOwner,
+    operation: nai_contracts::workbench::foundation_command::Operation,
+) -> Result<nai_contracts::workbench::FoundationResult, String> {
+    use nai_contracts::workbench::{
+        FoundationCommand, FoundationResponse, foundation_response::Outcome,
+    };
     use prost::Message;
-    let command = FoundationCommand { idempotency_key: nai_workbench_host::foundation::random_id()?, operation: Some(operation) };
+    let command = FoundationCommand {
+        idempotency_key: nai_workbench_host::foundation::random_id()?,
+        operation: Some(operation),
+    };
     let mut owner = state.0.try_lock().map_err(|_| "WB_BUSY")?;
-    let response = owner.as_mut().ok_or("WB_NOT_CONNECTED")?.call(&command.encode_to_vec())?;
-    match FoundationResponse::decode(response.as_slice()).map_err(|_| "WB_PROTOCOL_ERROR")?.outcome {
+    let response = owner
+        .as_mut()
+        .ok_or("WB_NOT_CONNECTED")?
+        .call(&command.encode_to_vec())?;
+    match FoundationResponse::decode(response.as_slice())
+        .map_err(|_| "WB_PROTOCOL_ERROR")?
+        .outcome
+    {
         Some(Outcome::Result(result)) => Ok(result),
         Some(Outcome::Problem(_)) => Err("AVATAR_WORKSPACE_DENIED".into()),
         _ => Err("WB_PROTOCOL_ERROR".into()),
@@ -132,7 +146,14 @@ fn avatar_read_command(state: &BusinessOwner, operation: nai_contracts::workbenc
 
 fn avatar_check_workspace(state: &BusinessOwner, workspace_id: &str) -> Result<(), String> {
     use nai_contracts::workbench::{FoundationBrowse, foundation_command::Operation};
-    avatar_read_command(state, Operation::ListPreparation(FoundationBrowse { workspace_id: workspace_id.into(), limit: 1, ..Default::default() }))?;
+    avatar_read_command(
+        state,
+        Operation::ListPreparation(FoundationBrowse {
+            workspace_id: workspace_id.into(),
+            limit: 1,
+            ..Default::default()
+        }),
+    )?;
     Ok(())
 }
 
@@ -144,7 +165,9 @@ async fn workbench_avatar_choose_and_admit(
     previews: tauri::State<'_, Arc<avatar_preview::PreviewSlot>>,
     owner: tauri::State<'_, BusinessOwner>,
 ) -> Result<Option<avatar::AdmissionMetadata>, String> {
-    if !acknowledge_rights { return Err("AVATAR_RIGHTS_CONFIRMATION_REQUIRED".into()); }
+    if !acknowledge_rights {
+        return Err("AVATAR_RIGHTS_CONFIRMATION_REQUIRED".into());
+    }
     let root = audition_root(&app)?;
     let previews = previews.inner().clone();
     let owner = owner.inner().clone();
@@ -152,8 +175,12 @@ async fn workbench_avatar_choose_and_admit(
         #[cfg(windows)]
         {
             avatar_check_workspace(&owner, &workspace_id)?;
-            let selected = rfd::FileDialog::new().set_title("选择数字人形象包文件夹").pick_folder();
-            if selected.is_some() { avatar_check_workspace(&owner, &workspace_id)?; }
+            let selected = rfd::FileDialog::new()
+                .set_title("选择数字人形象包文件夹")
+                .pick_folder();
+            if selected.is_some() {
+                avatar_check_workspace(&owner, &workspace_id)?;
+            }
             avatar::admit_native_choice(root, selected, &workspace_id, &previews)
         }
         #[cfg(not(windows))]
@@ -161,117 +188,290 @@ async fn workbench_avatar_choose_and_admit(
             let _ = (root, workspace_id, previews, owner);
             Err("AVATAR_NATIVE_IMPORT_UNAVAILABLE".into())
         }
-    }).await.map_err(|_| "WB_WORKER_LOST".to_string())?
+    })
+    .await
+    .map_err(|_| "WB_WORKER_LOST".to_string())?
 }
 #[derive(serde::Serialize)]
-#[serde(rename_all="camelCase")]
-struct PhotoAdmission { sha256:String, width:u32, height:u32 }
+#[serde(rename_all = "camelCase")]
+struct PhotoAdmission {
+    sha256: String,
+    width: u32,
+    height: u32,
+}
 
 #[tauri::command]
-async fn workbench_avatar_choose_photo(app:tauri::AppHandle,workspace_id:String,acknowledge_rights:bool,previews:tauri::State<'_,Arc<avatar_preview::PreviewSlot>>,owner:tauri::State<'_,BusinessOwner>)->Result<Option<PhotoAdmission>,String> {
-    if !acknowledge_rights {return Err("AVATAR_RIGHTS_CONFIRMATION_REQUIRED".into());}
-    let root=audition_root(&app)?;let previews=previews.inner().clone();let owner=owner.inner().clone();
-    tauri::async_runtime::spawn_blocking(move|| {
-        #[cfg(windows)] {
-            avatar_check_workspace(&owner,&workspace_id)?;
-            let selected=rfd::FileDialog::new().set_title("选择形象照片").add_filter("JPEG 照片", &["jpg","jpeg"]).pick_file();
-            let Some(path)=selected else {return Ok(None);};
-            avatar_check_workspace(&owner,&workspace_id)?;
-            let parent=path.parent().ok_or("PHOTO_PATH_REJECTED")?;
-            let name=path.file_name().and_then(|x|x.to_str()).ok_or("PHOTO_PATH_REJECTED")?;
-            let bytes=nai_avatar_files::SelectedDirectory::open(parent)?.read(name,nai_avatar_files::photo::MAX_PHOTO_BYTES)?;
-            let meta=nai_avatar_files::photo::store_photo(&root,&bytes)?;
-            previews.install_photo(&workspace_id,&meta.sha256,bytes).map_err(str::to_owned)?;
-            Ok(Some(PhotoAdmission{sha256:meta.sha256,width:meta.width,height:meta.height}))
+async fn workbench_avatar_choose_photo(
+    app: tauri::AppHandle,
+    workspace_id: String,
+    acknowledge_rights: bool,
+    previews: tauri::State<'_, Arc<avatar_preview::PreviewSlot>>,
+    owner: tauri::State<'_, BusinessOwner>,
+) -> Result<Option<PhotoAdmission>, String> {
+    if !acknowledge_rights {
+        return Err("AVATAR_RIGHTS_CONFIRMATION_REQUIRED".into());
+    }
+    let root = audition_root(&app)?;
+    let previews = previews.inner().clone();
+    let owner = owner.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        #[cfg(windows)]
+        {
+            avatar_check_workspace(&owner, &workspace_id)?;
+            let selected = rfd::FileDialog::new()
+                .set_title("选择形象照片")
+                .add_filter("JPEG 照片", &["jpg", "jpeg"])
+                .pick_file();
+            let Some(path) = selected else {
+                return Ok(None);
+            };
+            avatar_check_workspace(&owner, &workspace_id)?;
+            let parent = path.parent().ok_or("PHOTO_PATH_REJECTED")?;
+            let name = path
+                .file_name()
+                .and_then(|x| x.to_str())
+                .ok_or("PHOTO_PATH_REJECTED")?;
+            let bytes = nai_avatar_files::SelectedDirectory::open(parent)?
+                .read(name, nai_avatar_files::photo::MAX_PHOTO_BYTES)?;
+            let meta = nai_avatar_files::photo::store_photo(&root, &bytes)?;
+            previews
+                .install_photo(&workspace_id, &meta.sha256, bytes)
+                .map_err(str::to_owned)?;
+            Ok(Some(PhotoAdmission {
+                sha256: meta.sha256,
+                width: meta.width,
+                height: meta.height,
+            }))
         }
-        #[cfg(not(windows))] {let _=(root,previews,owner,workspace_id);Err("AVATAR_NATIVE_IMPORT_UNAVAILABLE".into())}
-    }).await.map_err(|_|"WB_WORKER_LOST".to_string())?
-}
-
-#[tauri::command]
-async fn workbench_avatar_photo_preview(app:tauri::AppHandle,workspace_id:String,object_id:String,previews:tauri::State<'_,Arc<avatar_preview::PreviewSlot>>,owner:tauri::State<'_,BusinessOwner>)->Result<PhotoAdmission,String> {
-    let root=audition_root(&app)?;let previews=previews.inner().clone();let owner=owner.inner().clone();
-    tauri::async_runtime::spawn_blocking(move||{
-        use nai_contracts::workbench::{FoundationReadObject,foundation_command::Operation};
-        owner.1.compare_exchange(false,true,Ordering::AcqRel,Ordering::Acquire).map_err(|_|"WB_BUSY")?;let _reservation=UserCommand(owner.1.clone());
-        previews.clear().map_err(str::to_owned)?;
-        let result=avatar_read_command(&owner,Operation::ReadObject(FoundationReadObject{workspace_id:workspace_id.clone(),object_id,revision:0}))?;
-        let doc:serde_json::Value=serde_json::from_str(&result.body).map_err(|_|"PHOTO_PROFILE_REJECTED")?;
-        if doc["kind"]!="avatar_photo_draft" || doc["revoked"]!=false {return Err("PHOTO_PROFILE_REJECTED".into());}
-        let digest=doc["photo_sha256"].as_str().ok_or("PHOTO_PROFILE_REJECTED")?;
-        let (bytes,meta)=nai_avatar_files::photo::read_stored_photo(&root,digest)?;
-        if doc["width"].as_u64()!=Some(u64::from(meta.width)) || doc["height"].as_u64()!=Some(u64::from(meta.height)) {return Err("PHOTO_PROFILE_REJECTED".into());}
-        previews.install_photo(&workspace_id,digest,bytes).map_err(str::to_owned)?;
-        Ok(PhotoAdmission{sha256:meta.sha256,width:meta.width,height:meta.height})
-    }).await.map_err(|_|"WB_WORKER_LOST".to_string())?
-}
-
-#[derive(serde::Serialize)]
-#[serde(rename_all="camelCase")]
-struct VideoAdmission { sha256:String, duration_ms:u64, inspect_version:String, realistic_drive:String }
-
-#[tauri::command]
-async fn workbench_avatar_choose_video(app:tauri::AppHandle,workspace_id:String,acknowledge_rights:bool,previews:tauri::State<'_,Arc<avatar_preview::PreviewSlot>>,owner:tauri::State<'_,BusinessOwner>)->Result<Option<VideoAdmission>,String> {
-    if !acknowledge_rights {return Err("AVATAR_RIGHTS_CONFIRMATION_REQUIRED".into());}
-    let root=audition_root(&app)?;let previews=previews.inner().clone();let owner=owner.inner().clone();
-    tauri::async_runtime::spawn_blocking(move|| {
-        #[cfg(windows)] {
-            avatar_check_workspace(&owner,&workspace_id)?;
-            let selected=rfd::FileDialog::new().set_title("选择形象视频").add_filter("MP4 视频", &["mp4"]).pick_file();
-            let Some(path)=selected else {return Ok(None);};
-            avatar_check_workspace(&owner,&workspace_id)?;
-            let parent=path.parent().ok_or("VIDEO_PATH_REJECTED")?;
-            let name=path.file_name().and_then(|x|x.to_str()).ok_or("VIDEO_PATH_REJECTED")?;
-            let bytes=nai_avatar_files::SelectedDirectory::open(parent)?.read(name,nai_avatar_files::video::MAX_VIDEO_BYTES)?;
-            let meta=nai_avatar_files::video::store_video(&root,&bytes)?;
-            previews.install_video(&workspace_id,&meta.sha256,bytes).map_err(str::to_owned)?;
-            Ok(Some(VideoAdmission{sha256:meta.sha256,duration_ms:meta.duration_ms,inspect_version:meta.inspect_version.to_owned(),realistic_drive:"model_missing".into()}))
+        #[cfg(not(windows))]
+        {
+            let _ = (root, previews, owner, workspace_id);
+            Err("AVATAR_NATIVE_IMPORT_UNAVAILABLE".into())
         }
-        #[cfg(not(windows))] {let _=(root,previews,owner,workspace_id);Err("AVATAR_NATIVE_IMPORT_UNAVAILABLE".into())}
-    }).await.map_err(|_|"WB_WORKER_LOST".to_string())?
+    })
+    .await
+    .map_err(|_| "WB_WORKER_LOST".to_string())?
 }
 
 #[tauri::command]
-async fn workbench_avatar_video_preview(app:tauri::AppHandle,workspace_id:String,object_id:String,previews:tauri::State<'_,Arc<avatar_preview::PreviewSlot>>,owner:tauri::State<'_,BusinessOwner>)->Result<VideoAdmission,String> {
-    let root=audition_root(&app)?;let previews=previews.inner().clone();let owner=owner.inner().clone();
-    tauri::async_runtime::spawn_blocking(move||{
-        use nai_contracts::workbench::{FoundationReadObject,foundation_command::Operation};
-        owner.1.compare_exchange(false,true,Ordering::AcqRel,Ordering::Acquire).map_err(|_|"WB_BUSY")?;let _reservation=UserCommand(owner.1.clone());
-        previews.clear().map_err(str::to_owned)?;
-        let result=avatar_read_command(&owner,Operation::ReadObject(FoundationReadObject{workspace_id:workspace_id.clone(),object_id,revision:0}))?;
-        let doc:serde_json::Value=serde_json::from_str(&result.body).map_err(|_|"VIDEO_PROFILE_REJECTED")?;
-        if doc["kind"]!="avatar_video_draft" || doc["revoked"]!=false {return Err("VIDEO_PROFILE_REJECTED".into());}
-        let digest=doc["video_sha256"].as_str().ok_or("VIDEO_PROFILE_REJECTED")?;
-        let (bytes,meta)=nai_avatar_files::video::read_stored_video(&root,digest)?;
-        if doc["duration_ms"].as_u64()!=Some(meta.duration_ms)
-            || doc["inspect_version"].as_str()!=Some(nai_avatar_files::video::INSPECT_VERSION)
-            || doc["realistic_drive"].as_str()!=Some("model_missing") {return Err("VIDEO_PROFILE_REJECTED".into());}
-        previews.install_video(&workspace_id,digest,bytes).map_err(str::to_owned)?;
-        Ok(VideoAdmission{sha256:meta.sha256,duration_ms:meta.duration_ms,inspect_version:meta.inspect_version.to_owned(),realistic_drive:"model_missing".into()})
-    }).await.map_err(|_|"WB_WORKER_LOST".to_string())?
-}
-
-#[tauri::command]
-async fn workbench_avatar_stage_preview(app: tauri::AppHandle, workspace_id: String, object_id: String, previews: tauri::State<'_, Arc<avatar_preview::PreviewSlot>>, owner: tauri::State<'_, BusinessOwner>) -> Result<avatar::AdmissionMetadata, String> {
+async fn workbench_avatar_photo_preview(
+    app: tauri::AppHandle,
+    workspace_id: String,
+    object_id: String,
+    previews: tauri::State<'_, Arc<avatar_preview::PreviewSlot>>,
+    owner: tauri::State<'_, BusinessOwner>,
+) -> Result<PhotoAdmission, String> {
     let root = audition_root(&app)?;
     let previews = previews.inner().clone();
     let owner = owner.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
         use nai_contracts::workbench::{FoundationReadObject, foundation_command::Operation};
-        owner.1.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire).map_err(|_| "WB_BUSY")?;
+        owner
+            .1
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| "WB_BUSY")?;
         let _reservation = UserCommand(owner.1.clone());
         previews.clear().map_err(str::to_owned)?;
-        let result = avatar_read_command(&owner, Operation::ReadObject(FoundationReadObject { workspace_id: workspace_id.clone(), object_id, revision: 0 }))?;
-        let doc: serde_json::Value = serde_json::from_str(&result.body).map_err(|_| "AVATAR_PROFILE_REJECTED")?;
-        if doc["kind"] != "avatar_profile_draft" || doc["revoked"] != false { return Err("AVATAR_PROFILE_REJECTED".into()); }
-        let package = doc["package_sha256"].as_str().ok_or("AVATAR_PROFILE_REJECTED")?;
-        let rights = doc["license_sha256"].as_str().ok_or("AVATAR_PROFILE_REJECTED")?;
-        avatar::stage_existing_preview(&root, &workspace_id, package, rights, &previews)
-    }).await.map_err(|_| "WB_WORKER_LOST".to_string())?
+        let result = avatar_read_command(
+            &owner,
+            Operation::ReadObject(FoundationReadObject {
+                workspace_id: workspace_id.clone(),
+                object_id,
+                revision: 0,
+            }),
+        )?;
+        let doc: serde_json::Value =
+            serde_json::from_str(&result.body).map_err(|_| "PHOTO_PROFILE_REJECTED")?;
+        if doc["kind"] != "avatar_photo_draft" || doc["revoked"] != false {
+            return Err("PHOTO_PROFILE_REJECTED".into());
+        }
+        let digest = doc["photo_sha256"]
+            .as_str()
+            .ok_or("PHOTO_PROFILE_REJECTED")?;
+        let (bytes, meta) = nai_avatar_files::photo::read_stored_photo(&root, digest)?;
+        if doc["width"].as_u64() != Some(u64::from(meta.width))
+            || doc["height"].as_u64() != Some(u64::from(meta.height))
+        {
+            return Err("PHOTO_PROFILE_REJECTED".into());
+        }
+        previews
+            .install_photo(&workspace_id, digest, bytes)
+            .map_err(str::to_owned)?;
+        Ok(PhotoAdmission {
+            sha256: meta.sha256,
+            width: meta.width,
+            height: meta.height,
+        })
+    })
+    .await
+    .map_err(|_| "WB_WORKER_LOST".to_string())?
 }
 
 #[derive(serde::Serialize)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
+struct VideoAdmission {
+    sha256: String,
+    duration_ms: u64,
+    inspect_version: String,
+    realistic_drive: String,
+}
+
+#[tauri::command]
+async fn workbench_avatar_choose_video(
+    app: tauri::AppHandle,
+    workspace_id: String,
+    acknowledge_rights: bool,
+    previews: tauri::State<'_, Arc<avatar_preview::PreviewSlot>>,
+    owner: tauri::State<'_, BusinessOwner>,
+) -> Result<Option<VideoAdmission>, String> {
+    if !acknowledge_rights {
+        return Err("AVATAR_RIGHTS_CONFIRMATION_REQUIRED".into());
+    }
+    let root = audition_root(&app)?;
+    let previews = previews.inner().clone();
+    let owner = owner.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        #[cfg(windows)]
+        {
+            avatar_check_workspace(&owner, &workspace_id)?;
+            let selected = rfd::FileDialog::new()
+                .set_title("选择形象视频")
+                .add_filter("MP4 视频", &["mp4"])
+                .pick_file();
+            let Some(path) = selected else {
+                return Ok(None);
+            };
+            avatar_check_workspace(&owner, &workspace_id)?;
+            let parent = path.parent().ok_or("VIDEO_PATH_REJECTED")?;
+            let name = path
+                .file_name()
+                .and_then(|x| x.to_str())
+                .ok_or("VIDEO_PATH_REJECTED")?;
+            let bytes = nai_avatar_files::SelectedDirectory::open(parent)?
+                .read(name, nai_avatar_files::video::MAX_VIDEO_BYTES)?;
+            let meta = nai_avatar_files::video::store_video(&root, &bytes)?;
+            previews
+                .install_video(&workspace_id, &meta.sha256, bytes)
+                .map_err(str::to_owned)?;
+            Ok(Some(VideoAdmission {
+                sha256: meta.sha256,
+                duration_ms: meta.duration_ms,
+                inspect_version: meta.inspect_version.to_owned(),
+                realistic_drive: "model_missing".into(),
+            }))
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = (root, previews, owner, workspace_id);
+            Err("AVATAR_NATIVE_IMPORT_UNAVAILABLE".into())
+        }
+    })
+    .await
+    .map_err(|_| "WB_WORKER_LOST".to_string())?
+}
+
+#[tauri::command]
+async fn workbench_avatar_video_preview(
+    app: tauri::AppHandle,
+    workspace_id: String,
+    object_id: String,
+    previews: tauri::State<'_, Arc<avatar_preview::PreviewSlot>>,
+    owner: tauri::State<'_, BusinessOwner>,
+) -> Result<VideoAdmission, String> {
+    let root = audition_root(&app)?;
+    let previews = previews.inner().clone();
+    let owner = owner.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        use nai_contracts::workbench::{FoundationReadObject, foundation_command::Operation};
+        owner
+            .1
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| "WB_BUSY")?;
+        let _reservation = UserCommand(owner.1.clone());
+        previews.clear().map_err(str::to_owned)?;
+        let result = avatar_read_command(
+            &owner,
+            Operation::ReadObject(FoundationReadObject {
+                workspace_id: workspace_id.clone(),
+                object_id,
+                revision: 0,
+            }),
+        )?;
+        let doc: serde_json::Value =
+            serde_json::from_str(&result.body).map_err(|_| "VIDEO_PROFILE_REJECTED")?;
+        if doc["kind"] != "avatar_video_draft" || doc["revoked"] != false {
+            return Err("VIDEO_PROFILE_REJECTED".into());
+        }
+        let digest = doc["video_sha256"]
+            .as_str()
+            .ok_or("VIDEO_PROFILE_REJECTED")?;
+        let (bytes, meta) = nai_avatar_files::video::read_stored_video(&root, digest)?;
+        if doc["duration_ms"].as_u64() != Some(meta.duration_ms)
+            || doc["inspect_version"].as_str() != Some(nai_avatar_files::video::INSPECT_VERSION)
+            || doc["realistic_drive"].as_str() != Some("model_missing")
+        {
+            return Err("VIDEO_PROFILE_REJECTED".into());
+        }
+        previews
+            .install_video(&workspace_id, digest, bytes)
+            .map_err(str::to_owned)?;
+        Ok(VideoAdmission {
+            sha256: meta.sha256,
+            duration_ms: meta.duration_ms,
+            inspect_version: meta.inspect_version.to_owned(),
+            realistic_drive: "model_missing".into(),
+        })
+    })
+    .await
+    .map_err(|_| "WB_WORKER_LOST".to_string())?
+}
+
+#[tauri::command]
+async fn workbench_avatar_stage_preview(
+    app: tauri::AppHandle,
+    workspace_id: String,
+    object_id: String,
+    previews: tauri::State<'_, Arc<avatar_preview::PreviewSlot>>,
+    owner: tauri::State<'_, BusinessOwner>,
+) -> Result<avatar::AdmissionMetadata, String> {
+    let root = audition_root(&app)?;
+    let previews = previews.inner().clone();
+    let owner = owner.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        use nai_contracts::workbench::{FoundationReadObject, foundation_command::Operation};
+        owner
+            .1
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| "WB_BUSY")?;
+        let _reservation = UserCommand(owner.1.clone());
+        previews.clear().map_err(str::to_owned)?;
+        let result = avatar_read_command(
+            &owner,
+            Operation::ReadObject(FoundationReadObject {
+                workspace_id: workspace_id.clone(),
+                object_id,
+                revision: 0,
+            }),
+        )?;
+        let doc: serde_json::Value =
+            serde_json::from_str(&result.body).map_err(|_| "AVATAR_PROFILE_REJECTED")?;
+        if doc["kind"] != "avatar_profile_draft" || doc["revoked"] != false {
+            return Err("AVATAR_PROFILE_REJECTED".into());
+        }
+        let package = doc["package_sha256"]
+            .as_str()
+            .ok_or("AVATAR_PROFILE_REJECTED")?;
+        let rights = doc["license_sha256"]
+            .as_str()
+            .ok_or("AVATAR_PROFILE_REJECTED")?;
+        avatar::stage_existing_preview(&root, &workspace_id, package, rights, &previews)
+    })
+    .await
+    .map_err(|_| "WB_WORKER_LOST".to_string())?
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 struct CharacterWorkbenchView {
     state: i32,
     action_id: String,
@@ -298,7 +498,16 @@ fn character_err(err: nai_media_core::character_workbench::CharacterWorkbenchErr
     }
 }
 
-fn character_pair(workspace_id: &str, avatar_id: &str, version: &str, package: &str, rights: &str) -> (nai_media_core::character_license::CharacterLicenseRecord, nai_contracts::v1::CharacterIdentity) {
+fn character_pair(
+    workspace_id: &str,
+    avatar_id: &str,
+    version: &str,
+    package: &str,
+    rights: &str,
+) -> (
+    nai_media_core::character_license::CharacterLicenseRecord,
+    nai_contracts::v1::CharacterIdentity,
+) {
     (
         nai_media_core::character_license::CharacterLicenseRecord {
             workspace_id: workspace_id.into(),
@@ -315,7 +524,10 @@ fn character_pair(workspace_id: &str, avatar_id: &str, version: &str, package: &
     )
 }
 
-fn encode_character_view(workbench: &nai_media_core::character_workbench::CharacterWorkbench, view: &nai_contracts::v1::CharacterRuntimeView) -> CharacterWorkbenchView {
+fn encode_character_view(
+    workbench: &nai_media_core::character_workbench::CharacterWorkbench,
+    view: &nai_contracts::v1::CharacterRuntimeView,
+) -> CharacterWorkbenchView {
     let output = workbench.public_output();
     CharacterWorkbenchView {
         state: view.state,
@@ -324,20 +536,48 @@ fn encode_character_view(workbench: &nai_media_core::character_workbench::Charac
         public_backend: output.backend.into(),
         public_destination: output.destination.into(),
         playback_permit: output.playback_permit(),
-        selected: workbench.selected().is_some_and(|selected| view.identity.as_ref() == Some(selected)),
+        selected: workbench
+            .selected()
+            .is_some_and(|selected| view.identity.as_ref() == Some(selected)),
     }
 }
 
-fn read_avatar_character_doc(owner: &BusinessOwner, workspace_id: String, object_id: String) -> Result<(String, String, String, String), String> {
+fn read_avatar_character_doc(
+    owner: &BusinessOwner,
+    workspace_id: String,
+    object_id: String,
+) -> Result<(String, String, String, String), String> {
     use nai_contracts::workbench::{FoundationReadObject, foundation_command::Operation};
-    let result = avatar_read_command(owner, Operation::ReadObject(FoundationReadObject { workspace_id, object_id, revision: 0 }))?;
-    let doc: serde_json::Value = serde_json::from_str(&result.body).map_err(|_| "AVATAR_PROFILE_REJECTED")?;
-    if doc["kind"] != "avatar_profile_draft" || doc["revoked"] != false { return Err("AVATAR_PROFILE_REJECTED".into()); }
+    let result = avatar_read_command(
+        owner,
+        Operation::ReadObject(FoundationReadObject {
+            workspace_id,
+            object_id,
+            revision: 0,
+        }),
+    )?;
+    let doc: serde_json::Value =
+        serde_json::from_str(&result.body).map_err(|_| "AVATAR_PROFILE_REJECTED")?;
+    if doc["kind"] != "avatar_profile_draft" || doc["revoked"] != false {
+        return Err("AVATAR_PROFILE_REJECTED".into());
+    }
     Ok((
-        doc["avatar_id"].as_str().ok_or("AVATAR_PROFILE_REJECTED")?.to_owned(),
-        doc["package_version"].as_str().ok_or("AVATAR_PROFILE_REJECTED")?.to_owned(),
-        doc["package_sha256"].as_str().ok_or("AVATAR_PROFILE_REJECTED")?.to_owned(),
-        doc["license_sha256"].as_str().ok_or("AVATAR_PROFILE_REJECTED")?.to_owned(),
+        doc["avatar_id"]
+            .as_str()
+            .ok_or("AVATAR_PROFILE_REJECTED")?
+            .to_owned(),
+        doc["package_version"]
+            .as_str()
+            .ok_or("AVATAR_PROFILE_REJECTED")?
+            .to_owned(),
+        doc["package_sha256"]
+            .as_str()
+            .ok_or("AVATAR_PROFILE_REJECTED")?
+            .to_owned(),
+        doc["license_sha256"]
+            .as_str()
+            .ok_or("AVATAR_PROFILE_REJECTED")?
+            .to_owned(),
     ))
 }
 
@@ -351,14 +591,23 @@ async fn workbench_character_generate(
     let characters = characters.inner().clone();
     let owner = owner.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        owner.1.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire).map_err(|_| "WB_BUSY")?;
+        owner
+            .1
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| "WB_BUSY")?;
         let _reservation = UserCommand(owner.1.clone());
-        let (avatar_id, version, package, rights) = read_avatar_character_doc(&owner, workspace_id.clone(), object_id)?;
-        let (license, identity) = character_pair(&workspace_id, &avatar_id, &version, &package, &rights);
+        let (avatar_id, version, package, rights) =
+            read_avatar_character_doc(&owner, workspace_id.clone(), object_id)?;
+        let (license, identity) =
+            character_pair(&workspace_id, &avatar_id, &version, &package, &rights);
         let mut workbench = characters.0.try_lock().map_err(|_| "WB_BUSY")?;
-        let view = workbench.generate(license, identity, workspace_id).map_err(character_err)?;
+        let view = workbench
+            .generate(license, identity, workspace_id)
+            .map_err(character_err)?;
         Ok(encode_character_view(&workbench, &view))
-    }).await.map_err(|_| "WB_WORKER_LOST".to_string())?
+    })
+    .await
+    .map_err(|_| "WB_WORKER_LOST".to_string())?
 }
 
 #[tauri::command]
@@ -371,14 +620,23 @@ async fn workbench_character_select(
     let characters = characters.inner().clone();
     let owner = owner.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        owner.1.compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire).map_err(|_| "WB_BUSY")?;
+        owner
+            .1
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| "WB_BUSY")?;
         let _reservation = UserCommand(owner.1.clone());
-        let (avatar_id, version, package, rights) = read_avatar_character_doc(&owner, workspace_id.clone(), object_id)?;
-        let (license, identity) = character_pair(&workspace_id, &avatar_id, &version, &package, &rights);
+        let (avatar_id, version, package, rights) =
+            read_avatar_character_doc(&owner, workspace_id.clone(), object_id)?;
+        let (license, identity) =
+            character_pair(&workspace_id, &avatar_id, &version, &package, &rights);
         let mut workbench = characters.0.try_lock().map_err(|_| "WB_BUSY")?;
-        let view = workbench.select(license, identity, workspace_id).map_err(character_err)?;
+        let view = workbench
+            .select(license, identity, workspace_id)
+            .map_err(character_err)?;
         Ok(encode_character_view(&workbench, &view))
-    }).await.map_err(|_| "WB_WORKER_LOST".to_string())?
+    })
+    .await
+    .map_err(|_| "WB_WORKER_LOST".to_string())?
 }
 
 #[tauri::command]
@@ -391,7 +649,9 @@ async fn workbench_character_action(
         let mut workbench = characters.0.try_lock().map_err(|_| "WB_BUSY")?;
         let view = workbench.preview(&action_id, 800).map_err(character_err)?;
         Ok(encode_character_view(&workbench, &view))
-    }).await.map_err(|_| "WB_WORKER_LOST".to_string())?
+    })
+    .await
+    .map_err(|_| "WB_WORKER_LOST".to_string())?
 }
 
 #[tauri::command]
@@ -403,7 +663,9 @@ async fn workbench_character_revoke(
         let mut workbench = characters.0.try_lock().map_err(|_| "WB_BUSY")?;
         let view = workbench.revoke().map_err(character_err)?;
         Ok(encode_character_view(&workbench, &view))
-    }).await.map_err(|_| "WB_WORKER_LOST".to_string())?
+    })
+    .await
+    .map_err(|_| "WB_WORKER_LOST".to_string())?
 }
 
 #[tauri::command]
@@ -458,7 +720,16 @@ async fn foundation_command(
     use prost::Message;
     if let Ok(c) = nai_contracts::workbench::FoundationCommand::decode(command.as_slice()) {
         use nai_contracts::workbench::foundation_command::Operation as C;
-        if matches!(c.operation, Some(C::WorkspaceContext(_) | C::WorkspaceLifecycle(_) | C::PurgeWorkspace(_) | C::PutPreparation(_) | C::DeleteObject(_))) {
+        if matches!(
+            c.operation,
+            Some(
+                C::WorkspaceContext(_)
+                    | C::WorkspaceLifecycle(_)
+                    | C::PurgeWorkspace(_)
+                    | C::PutPreparation(_)
+                    | C::DeleteObject(_)
+            )
+        ) {
             previews.clear().map_err(str::to_owned)?;
         }
         if matches!(c.operation,Some(C::ControlLiveRun(ref x)) if x.action==nai_contracts::workbench::LiveRunAction::End as i32)

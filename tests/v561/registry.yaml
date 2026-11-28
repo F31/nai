@@ -1,0 +1,331 @@
+baseline: V5.6.1
+updated: 2026-11-04
+policy:
+  statuses:
+    - pending
+    - blocked
+    - passed
+    - failed
+  environments:
+    - implementation
+    - simulated
+    - windows-target
+    - real-qwen
+    - real-obs
+    - real-user
+  evidence_kinds:
+    - metrics
+    - recording
+    - screenshot
+    - log
+    - report
+    - review
+acceptance:
+  - id: ACC-V561-SETUP-01
+    group: SETUP
+    stage: M0
+    title: 全新安装并进入待机
+    status: pending
+    environment: windows-target
+    command: 双击安装包并按首次使用引导启动
+    expected: 5 分钟内完成依赖检查并进入待机，不要求选择工作区或预算
+    evidence: [screenshot, log, report]
+  - id: ACC-V561-SETUP-02
+    group: SETUP
+    stage: M0
+    title: 依赖缺失可执行修复
+    status: pending
+    environment: windows-target
+    command: 分别停止 Qwen、移走 FlashHead 权重、关闭 OBS 后启动
+    expected: 各自显示具体缺项与修复入口，不以单一技术错误码代替
+    evidence: [screenshot, log]
+  - id: ACC-V561-SETUP-03
+    group: SETUP
+    stage: M0
+    title: 单数据根与路径逃逸拒绝
+    status: pending
+    environment: windows-target
+    command: 使用默认数据根启动；再构造含 .. 的导入路径
+    expected: 默认创建 config/nai.db/assets/logs/recordings；逃逸路径被拒绝并记录
+    evidence: [log, report]
+  - id: ACC-V561-SETUP-04
+    group: SETUP
+    stage: M3
+    title: 卸载与重装
+    status: pending
+    environment: windows-target
+    command: 卸载程序并选择保留数据根；重新安装后启动
+    expected: 程序可卸载；保留的数据根可再次使用；不导入旧数据库
+    evidence: [screenshot, log]
+  - id: ACC-V561-TTS-01
+    group: TTS
+    stage: M0
+    title: Qwen3-TTS 短句合成
+    status: pending
+    environment: real-qwen
+    command: 使用已部署的 Qwen3-TTS 1.7B CustomVoice 合成中文短句并试听
+    expected: 可播放；采样率/声道/模型版本被记录；不伪造音频
+    evidence: [metrics, recording, log]
+  - id: ACC-V561-TTS-02
+    group: TTS
+    stage: M1
+    title: 长句、数字与型号
+    status: pending
+    environment: real-qwen
+    command: 合成含长句、数字、型号和英文缩写的文本
+    expected: 不吞字、不明显错读；实际文本/音频/耗时被记录
+    evidence: [recording, metrics, report]
+  - id: ACC-V561-TTS-03
+    group: TTS
+    stage: M1
+    title: 取消、超时与旧音频阻断
+    status: pending
+    environment: real-qwen
+    command: 播放中点击停止/静音，并让一次请求超时
+    expected: 旧音频不续播；超时明确报告；服务端不可取消时记录为客户端丢弃
+    evidence: [metrics, log, recording]
+  - id: ACC-V561-TTS-04
+    group: TTS
+    stage: M1
+    title: 缓存与预取
+    status: pending
+    environment: real-qwen
+    command: 重复同一句并连续播放多句
+    expected: 同键命中缓存；不同参数不复用；预取不串句、队列有界
+    evidence: [metrics, log]
+    notes: ADR0204个人体验首声3秒，机器预算见tests/v561/experience-budget.json；条件缓存与整句缓存分开取证，首PCM800ms仅优化目标，状态不因预算调整升级。
+  - id: ACC-V561-HEAD-01
+    group: HEAD
+    stage: M0
+    title: FlashHead Lite 10 分钟基线
+    status: pending
+    environment: windows-target
+    command: 使用合法肖像与 Qwen 音频运行 FlashHead Lite 10 分钟
+    expected: 无 OOM；记录 VRAM/RAM/温度/功耗/FPS/首帧/首音
+    evidence: [metrics, recording, report]
+  - id: ACC-V561-HEAD-02
+    group: HEAD
+    stage: M1
+    title: 口型与身份保持
+    status: pending
+    environment: windows-target
+    command: 连续说 30 分钟中文，覆盖数字、型号、停顿
+    expected: 无明显双嘴/身份漂移；口型可辨；人工盲评记录
+    evidence: [recording, review, report]
+  - id: ACC-V561-HEAD-03
+    group: HEAD
+    stage: M1
+    title: 长句、停顿与待机
+    status: pending
+    environment: windows-target
+    command: 交替播放长句、静音和待机
+    expected: 停顿不张嘴；待机稳定；停止后不显示旧嘴型
+    evidence: [recording, log]
+  - id: ACC-V561-HEAD-04
+    group: HEAD
+    stage: M1
+    title: 侧脸、遮挡与超范围输入
+    status: pending
+    environment: windows-target
+    command: 使用侧脸、手遮嘴、超出认证角度的素材
+    expected: 拒绝口型或切静默展示，并记录原因；不贴错 ROI
+    evidence: [recording, log, report]
+  - id: ACC-V561-HEAD-05
+    group: HEAD
+    stage: M1
+    title: Pro 档可选验证
+    status: pending
+    environment: windows-target
+    command: 在目标机运行 FlashHead Pro 10 分钟
+    expected: 仅当 >=15–20 FPS 且温度可控时开放；否则标为不可用/实验
+    evidence: [metrics, recording, report]
+  - id: ACC-V561-PIPE-01
+    group: PIPE
+    stage: M1
+    title: 音频主时钟与音画同步
+    status: pending
+    environment: windows-target
+    command: 播放 30 分钟含停顿和长句的语音
+    expected: 按已播放样本选帧；AV 偏差 <=120ms；记录偏差样本
+    evidence: [metrics, recording]
+  - id: ACC-V561-PIPE-02
+    group: PIPE
+    stage: M1
+    title: 帧率与掉帧
+    status: pending
+    environment: windows-target
+    command: 1280×720@25fps 连续输出 30 分钟
+    expected: 实际 FPS >=20；掉帧 <5%；记录迟到/丢弃原因
+    evidence: [metrics, log]
+  - id: ACC-V561-PIPE-03
+    group: PIPE
+    stage: M1
+    title: 迟到帧与安全帧
+    status: pending
+    environment: simulated
+    command: 注入 >200ms 帧延迟、worker 停顿和停止
+    expected: 丢弃旧帧并显示安全帧；停止后旧帧不续播
+    evidence: [log, screenshot, report]
+  - id: ACC-V561-PIPE-04
+    group: PIPE
+    stage: M1
+    title: 旧 epoch 拒绝
+    status: pending
+    environment: simulated
+    command: 在停止/切段/接管后投递旧 epoch 帧与音频
+    expected: 旧结果被拒绝；不显示、不播放、不计数为完成
+    evidence: [log, report]
+  - id: ACC-V561-LIVE-01
+    group: LIVE
+    stage: M1
+    title: 30 分钟连续讲解
+    status: pending
+    environment: real-qwen
+    command: 输入主题/资料并开始连续讲解 30 分钟
+    expected: 段落衔接、暂停/继续/跳过、停止均可用；资料不足明确说明
+    evidence: [recording, log, report]
+    notes: ADR0204要求就绪后首声<=3000ms、实际句间gap目标<=300ms；四句有限验证不替代30分钟，已备文本不授LLM响应通过。
+  - id: ACC-V561-LIVE-02
+    group: LIVE
+    stage: M1
+    title: 问答与句边界归位
+    status: pending
+    environment: real-qwen
+    command: 讲解中提出 5 个问题
+    expected: 回答后回到讲解检查点；不重复已播段落；停止/接管可取消
+    evidence: [recording, log]
+  - id: ACC-V561-LIVE-03
+    group: LIVE
+    stage: M2
+    title: 通用事件入口与过滤
+    status: pending
+    environment: simulated
+    command: 向 /api/events 发送合法/红线/超量弹幕
+    expected: 合法入队；红线丢弃；超量合并/限流并计数；停止不被阻塞
+    evidence: [log, report]
+  - id: ACC-V561-LIVE-04
+    group: LIVE
+    stage: M2
+    title: 预录动作片段
+    status: pending
+    environment: windows-target
+    command: 触发挥手、点头、微笑等已授权片段
+    expected: <=300ms 插播；播完回实时流；未知动作拒绝
+    evidence: [recording, metrics, log]
+  - id: ACC-V561-LIVE-05
+    group: LIVE
+    stage: M2
+    title: 停止、静音与真人接管
+    status: pending
+    environment: windows-target
+    command: 直播中分别执行停止、静音、接管和恢复
+    expected: 停止 <=200ms；静音只停数字人；接管切真人麦克风；恢复需显式操作
+    evidence: [recording, metrics, log]
+  - id: ACC-V561-OUT-01
+    group: OUT
+    stage: M1
+    title: 本机预览窗口
+    status: pending
+    environment: windows-target
+    command: 打开/隐藏本机预览
+    expected: 1280×720@25fps；隐藏预览不影响 OBS/停止
+    evidence: [screenshot, metrics]
+  - id: ACC-V561-OUT-02
+    group: OUT
+    stage: M3
+    title: OBS 窗口捕获与音频
+    status: pending
+    environment: real-obs
+    command: 用 OBS 捕获预览窗口与音频，录制 30 分钟
+    expected: 录像含画面与音频；音频路由/信号状态真实；不把进程存在当已捕获
+    evidence: [recording, screenshot, report]
+  - id: ACC-V561-OUT-03
+    group: OUT
+    stage: M3
+    title: 录制回放与本场报告
+    status: pending
+    environment: real-obs
+    command: 结束本场并回放录像、打开报告
+    expected: 时长/大小可校验；报告含首音/首帧/FPS/掉帧/AV/温度/错误
+    evidence: [recording, report, log]
+  - id: ACC-V561-REL-01
+    group: REL
+    stage: M1
+    title: Qwen 失联与超时
+    status: pending
+    environment: simulated
+    command: 直播中停止 Qwen 或注入超时
+    expected: 当前句失败并提示；可进入文字模式；不播放替代音频
+    evidence: [log, screenshot, report]
+  - id: ACC-V561-REL-02
+    group: REL
+    stage: M1
+    title: Worker 崩溃与卡死
+    status: pending
+    environment: simulated
+    command: 杀死/挂起 avatar worker
+    expected: 切安全帧；最多重启 2 次/场；失败则降级/停止；不无限等待
+    evidence: [log, recording, report]
+  - id: ACC-V561-REL-03
+    group: REL
+    stage: M1
+    title: 音频设备丢失
+    status: pending
+    environment: windows-target
+    command: 直播中断开输出设备
+    expected: 立即静音并提示；不自动切到默认设备；不伪造成功
+    evidence: [log, screenshot, report]
+  - id: ACC-V561-RES-01
+    group: RES
+    stage: M1
+    title: 30 分钟资源与散热
+    status: pending
+    environment: windows-target
+    command: FlashHead Lite + Qwen + OBS 运行 30 分钟
+    expected: 无 OOM；温度 <87°C；VRAM/RAM/功耗/FPS 曲线被记录
+    evidence: [metrics, report]
+  - id: ACC-V561-RES-02
+    group: RES
+    stage: M2
+    title: 2 小时长稳
+    status: pending
+    environment: windows-target
+    command: 连续运行 2 小时
+    expected: 无持续掉帧/泄漏/降频；温度曲线可接受；失败有记录
+    evidence: [metrics, recording, report]
+  - id: ACC-V561-RES-03
+    group: RES
+    stage: M3
+    title: 4–8 小时发布候选
+    status: pending
+    environment: windows-target
+    command: 连续运行 4–8 小时（允许合理静默）
+    expected: 记录失败/降级/温度；不承诺 24h；未通过不发布
+    evidence: [metrics, report, review]
+  - id: ACC-V561-UX-01
+    group: UX
+    stage: M1
+    title: 首次使用三步
+    status: pending
+    environment: real-user
+    command: 新用户完成选形象、试听、预览
+    expected: 3 步内完成；记录步骤/耗时/错误/求助
+    evidence: [screenshot, report, review]
+  - id: ACC-V561-UX-02
+    group: UX
+    stage: M1
+    title: 状态与降级可理解
+    status: pending
+    environment: windows-target
+    command: 制造依赖缺失、降级和未知状态
+    expected: 显示准备中/待机/直播中/降级/已停止；不用绿色“已连接”覆盖未知
+    evidence: [screenshot, log]
+  - id: ACC-V561-UX-03
+    group: UX
+    stage: M1
+    title: 热键、许可与停止可达
+    status: pending
+    environment: windows-target
+    command: 未确认形象/声音许可时开始；UI 卡顿时按停止热键
+    expected: 未确认许可拒绝开始；全局停止可用；关键操作可键盘完成
+    evidence: [screenshot, log, review]

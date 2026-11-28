@@ -6,10 +6,11 @@ use std::{
     process::Command,
 };
 
-const OUTPUTS: [(&str, &str); 3] = [
+const OUTPUTS: [(&str, &str); 4] = [
     ("rust", "crates/nai-contracts/src/generated"),
     ("ts", "packages/contracts-ts/src/generated"),
     ("cpp", "native/contracts/generated"),
+    ("python", "packages/contracts-python/src/generated"),
 ];
 
 fn files(root: &Path) -> Result<BTreeMap<PathBuf, Vec<u8>>, String> {
@@ -209,7 +210,17 @@ pub fn generate(root: &Path, check: bool) -> Result<(), String> {
     {
         return Err("generation requires exactly protoc 3.21.12".into());
     }
-    let stage = root.join(format!("target/schema-stage-{}", std::process::id()));
+    let target = std::env::var_os("CARGO_TARGET_DIR")
+        .map(PathBuf::from)
+        .map(|path| {
+            if path.is_absolute() {
+                path
+            } else {
+                root.join(path)
+            }
+        })
+        .unwrap_or_else(|| root.join("target-windows/schema"));
+    let stage = target.join(format!("schema-stage-{}", std::process::id()));
     if stage.exists() {
         fs::remove_dir_all(&stage).map_err(|e| e.to_string())?;
     }
@@ -308,6 +319,24 @@ pub fn generate(root: &Path, check: bool) -> Result<(), String> {
     if !status.success() {
         return Err("C++ generation failed".into());
     }
+    // Only the V5.6.1 worker protocol is generated for Python; historical
+    // contracts are not imported into the new worker runtime.
+    let v561 = root.join("schemas/v561");
+    let python_protos: Vec<_> = protos
+        .iter()
+        .filter(|path| path.starts_with(&v561))
+        .collect();
+    if !python_protos.is_empty() {
+        let status = Command::new(&protoc)
+            .arg(format!("-I{}", root.join("schemas").display()))
+            .arg(format!("--python_out={}", stage.join("python").display()))
+            .args(&python_protos)
+            .status()
+            .map_err(|e| format!("Python protobuf generation failed: {e}"))?;
+        if !status.success() {
+            return Err("Python protobuf generation failed".into());
+        }
+    }
     // Preserve proto2 optional field presence, notably oneof_index = Some(0).
     // Re-encoding a descriptor with JS codecs that use scalar defaults would
     // silently erase the first oneof and change the generated TS contract.
@@ -338,9 +367,8 @@ pub fn generate(root: &Path, check: bool) -> Result<(), String> {
                 .map(|error| format!("{}: {error}", destination.display())),
         );
     }
-    fs::create_dir_all(root.join("target/contracts")).map_err(|e| e.to_string())?;
-    fs::copy(&descriptor, root.join("target/contracts/descriptor.bin"))
-        .map_err(|e| e.to_string())?;
+    fs::create_dir_all(target.join("contracts")).map_err(|e| e.to_string())?;
+    fs::copy(&descriptor, target.join("contracts/descriptor.bin")).map_err(|e| e.to_string())?;
     fs::remove_dir_all(stage).map_err(|e| e.to_string())?;
     if !drift.is_empty() {
         return Err(drift.join("\n"));
@@ -403,11 +431,7 @@ pub fn contracts(root: &Path) -> Result<(), String> {
     )?;
     node(
         root,
-        &[
-            "--test",
-            "tests/contracts/workbench-source.test.mjs",
-            "tests/registry.test.mjs",
-        ],
+        &["--test", "tests/contracts/workbench-source.test.mjs"],
     )?;
     program(
         root,

@@ -1,0 +1,27 @@
+syntax = "proto3";
+package nai.v561.audition.v1;
+// Private inherited stdio. No PCM, credentials, paths or browser-supplied permits.
+enum Command { COMMAND_UNSPECIFIED = 0; COMMAND_START = 1; COMMAND_STOP = 2; COMMAND_INTERJECT = 3; }
+message Request { uint32 version = 1; uint64 sequence = 2; Command command = 3; string text = 4; }
+enum Kind {
+  KIND_UNSPECIFIED = 0;
+  KIND_IDLE = 1;
+  KIND_STARTING = 2;
+  KIND_RUNNING = 3;
+  KIND_COMPLETED = 4;
+  KIND_CANCEL_REQUESTED = 5;
+  KIND_CANCELLED = 6;
+  KIND_FAILED = 7;
+}
+message Event {
+  uint32 version = 1;
+  uint64 request_sequence = 2;
+  uint64 task_id = 3;
+  Kind kind = 4;
+  string code = 5; // safe fixed code, never provider body or user text
+  bool busy = 6;
+  optional uint64 samples = 7;
+  optional uint64 played_samples = 8; // not a physical mute ACK
+  bool config_selected = 9;
+  string config_label = 10; // basename only, never credentials or full path
+}

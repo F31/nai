@@ -204,6 +204,17 @@ impl Probe {
     pub fn confirmed_at_zero(&self) -> bool {
         self.zero_confirmed.load(Ordering::Acquire)
     }
+    /// This observation is only valid while the sentence stream is running.
+    pub fn sentence_clock_running(&self) -> bool {
+        self.confirmed_at_zero()
+            && !self.failed.load(Ordering::Acquire)
+            && !self.is_finished()
+            && !self.hold.load(Ordering::Acquire)
+            && !self.holding.load(Ordering::Acquire)
+            && !self.gap.load(Ordering::Acquire)
+            && !self.gapping.load(Ordering::Acquire)
+            && self.gate.allowed()
+    }
     /// Position observed on this client before Start. A confirmed stream returns zero.
     pub fn position_before_start(&self) -> u64 {
         self.position_before_start.load(Ordering::Acquire)
@@ -316,7 +327,31 @@ pub fn open_pcm_controlled_generation(
     permitted: Arc<dyn Fn() -> bool + Send + Sync>,
     previous_generation: u64,
 ) -> Result<Probe, &'static str> {
-    if pcm.is_empty() || pcm.len() > 480000 {
+    open_pcm_with_bound(gate, pcm, permitted, previous_generation, 480000)
+}
+
+/// Bounded long-form PCM for an explicitly selected local diagnostic.
+/// This does not authorize output or replace streaming TTS.
+pub fn open_pcm_diagnostic(
+    gate: Arc<ExperimentalFence>,
+    pcm: Zeroizing<Vec<i16>>,
+    permitted: Arc<dyn Fn() -> bool + Send + Sync>,
+    max_samples: usize,
+) -> Result<Probe, &'static str> {
+    if max_samples == 0 || max_samples > 24_000 * 600 {
+        return Err("CLOCK_PROBE_INVALID_BOUND");
+    }
+    open_pcm_with_bound(gate, pcm, permitted, 0, max_samples)
+}
+
+fn open_pcm_with_bound(
+    gate: Arc<ExperimentalFence>,
+    pcm: Zeroizing<Vec<i16>>,
+    permitted: Arc<dyn Fn() -> bool + Send + Sync>,
+    previous_generation: u64,
+    max_samples: usize,
+) -> Result<Probe, &'static str> {
+    if pcm.is_empty() || pcm.len() > max_samples {
         return Err("CLOCK_PROBE_INVALID_PCM");
     }
     let stop = Arc::new(AtomicBool::new(false));

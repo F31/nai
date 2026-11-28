@@ -16,7 +16,7 @@ test('active V4.3 CI triggers both platforms and propagates engineering failures
 });
 test('profile executes source tests, real new engine and dependency checks',()=>{
  const source=fs.readFileSync('xtask/src/lib.rs','utf8');const body=source.split('fn workbench_checks(')[1].split('/// 两种工程 profile')[0];
- for(const target of ['deps::check(root)?','registry::check(root)?','tests/contracts/workbench-source.test.mjs','tests/contracts/workbench-ci.test.mjs','tests/ui/v43-bootstrap.test.mjs','nai-foundation-sqlite','tests/contracts/foundation.test.mjs','nai-runtime-core','nai-workbench-engine','nai-workbench-host','scripts/workbench-frontend.mjs'])assert.ok(body.includes(target),target);
+ for(const target of ['deps::check(root)?','scripts/check-v561-registry.mjs','tests/contracts/workbench-source.test.mjs','tests/contracts/workbench-ci.test.mjs','tests/ui/v43-bootstrap.test.mjs','nai-foundation-sqlite','tests/contracts/foundation.test.mjs','nai-runtime-core','nai-workbench-engine','nai-workbench-host','scripts/workbench-frontend.mjs'])assert.ok(body.includes(target),target);
  assert.match(source,/\["check", "--profile", "workbench"\] => workbench_checks\(root\)/);
  assert.doesNotMatch(body,/--workspace|continue-on-error/);
 });

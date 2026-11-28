@@ -14,7 +14,8 @@
     "test:ui": "node --experimental-strip-types --test tests/ui/*.test.mjs",
     "check:frontend": "node scripts/frontend-gate.mjs",
     "spec:validate": "openspec validate --all --strict --no-interactive",
-    "check:workbench-frontend": "node scripts/workbench-frontend.mjs"
+    "check:workbench-frontend": "node scripts/workbench-frontend.mjs",
+    "check:v561-registry": "node scripts/check-v561-registry.mjs"
   },
   "devDependencies": {
     "@fission-ai/openspec": "1.14.1",

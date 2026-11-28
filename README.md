@@ -1,14 +1,17 @@
 # nai
 
-当前按V4.8推进。唯一在用桌面UI为apps/workbench-desktop（ui/、index.html）；旧apps/desktop及旧桌面壳源码已退役，未卸载已安装的旧Engineering程序。共享模型和工作区永久清理已交付，164项ACC仍pending。见[开发计划](docs/development-plan.md)与[旧UI退役报告](docs/reports/2026-10-24-retire-legacy-ui.md)。
+当前按 **V5.6.1 单引擎基线** 推进：FlashHead Lite + Qwen3-TTS 1.7B CustomVoice + 预录动作片段 + 本机窗口/OBS。唯一在用桌面 UI 为 apps/workbench-desktop。V4.8/V5.2/V5.4/V5.5/V5.6 设计与 164 项 ACC 归档为历史，不再作为当前验收来源。见 [V5.6.1 基线索引](docs/v561-baseline.md)、[ADR 0193](docs/adr/0193-v561-single-engine-baseline.md) 与 [OpenSpec 变更](openspec/changes/v561-flashhead-single-engine/)。
 
-智能体结合的直播数字人系统。首发面向 Windows 桌面与抖音，采用统一 Rust 内核、版本化能力契约与按需插件。
+智能体结合的直播数字人系统。首发面向 Windows 桌面与抖音，采用统一 Rust 内核、版本化能力契约与可替换适配器。
 
 项目仓库：https://github.com/F31/nai
 
 ## 设计基线
 
-- [V4.8 完整设计（当前目标）](docs/digital-host-agent-design-V4.8.md)
+- [V5.6.1 单引擎基线索引（当前目标）](docs/v561-baseline.md)
+- [V5.6.1 OpenSpec 执行契约](openspec/changes/v561-flashhead-single-engine/)
+- [V5.6 设计方案（历史输入）](docs/数字人直播工作台-V5.6设计方案.md)
+- [V4.8 完整设计（历史归档）](docs/digital-host-agent-design-V4.8.md)
 - [V4.3 完整设计（历史重构起点）](docs/digital-host-agent-design-V4.3.md)
 - [V4.3 仓库重构设计](docs/architecture/v43-product-reconstruction.md)与[实施任务](docs/v43-reconstruction-plan.md)（ADR0147；RF01最小装配已实现，业务领域由RF02继续）
 - [设计入口](docs/design.md)
@@ -21,12 +24,15 @@
 
 - Lite / Standard / Pro 是同一产品的能力预设；Local / Hybrid / Distributed 是独立部署维度。
 - LLM / TTS 使用 API；知识与 RAG 本地优先，并支持第三方知识 API。
-- 写实运行端使用 Rust + ONNX Runtime；Python 仅用于明确的离线模型制作与导出。
+- 视觉运行端为 FlashHead 单引擎；Rust engine + 独立 Python/PyTorch avatar worker，后续再评估 ONNX/TensorRT。
 - 桌面控制台采用 Tauri 2 + React + TypeScript；媒体输出独立于 UI 生命周期。
-- 以会话、epoch、事实版本、审批和播放租约控制输出；所有队列有界。
+- 以会话、epoch、停止/静音/接管和安全帧控制输出；所有队列有界。
+- 单数据根、单操作员、单直播间；不做多工作区、审批、预算账本与审计哈希链。
 - Local 不要求自建云主机；未启用的能力不启动或占用对应资源。
 
-## 当前状态
+## 历史状态（V3.11/D14，已归档）
+
+> 以下为历史快照，不代表 V5.6.1 当前状态；V5.6.1 见 [基线索引](docs/v561-baseline.md)。
 
 2026-10-22：后续重构按V4.3备播—协作—复盘—下场复用实施，不保留旧代码/ABI兼容，保护现有用户资产。已安装Engineering版保留，旧验收不自动转为新ACC通过；详见[设计入口](docs/design.md)。下列D阶段文字仅为早期历史摘要。
 
@@ -43,17 +49,18 @@ Windows 凭据/Named Pipe/沙箱/窗口音轨未实测。
 真实 Provider 冒烟验证传输/鉴权/错误映射；账户无余额，付费生成 Blocked。
 真实音轨/媒体进程静音、实际业务插件及 Tauri 原生宿主仍待后续任务。
 
-> 状态快照提示：以上「当前状态」为早期（D14 轮）摘要，已明显滞后；最新进度与数字以
-> [开发任务与验收跟踪](docs/development-plan.md) 与 `tests/registry.yaml` 为准。
+> 状态快照提示：以上为早期（D14 轮）摘要，已归档；V5.6.1 当前进度与验收以
+> [V5.6.1 基线索引](docs/v561-baseline.md) 与 `tests/v561/registry.yaml` 为准。
 
 ```bash
 pnpm install --frozen-lockfile
-cargo xtask check --profile portable
+cargo check --locked
+cargo xtask check-deps
 pnpm typecheck
 pnpm build
 pnpm spec:validate
 pnpm check:frontend
-pnpm test:control-smoke
+node scripts/check-v561-registry.mjs
 ```
 
 契约检查（需安装匹配工具，详见 [契约指南](docs/contracts/README.md)）：

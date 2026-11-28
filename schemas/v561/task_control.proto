@@ -1,0 +1,47 @@
+syntax = "proto3";
+package nai.v561.task.v1;
+import "v561/media.proto";
+
+// Private inherited stdio only; not a public API or a media playback grant.
+enum Command {
+  COMMAND_UNSPECIFIED = 0;
+  COMMAND_NARRATE = 1;
+  COMMAND_ANSWER = 2;
+  COMMAND_TAKEOVER = 3;
+  COMMAND_FINISH = 4;
+  COMMAND_STOP = 5;
+  COMMAND_STATUS = 6;
+}
+
+message Request {
+  uint32 version = 1; // Exactly 1.
+  uint64 sequence = 2; // Positive, strictly increasing for this process.
+  Command command = 3;
+  string text = 4; // Only narration/answer; bounded by TTS policy.
+  uint64 task_id = 5; // Only finish; issued by this process.
+}
+
+enum EventKind {
+  EVENT_KIND_UNSPECIFIED = 0;
+  EVENT_KIND_ACCEPTED = 1;
+  EVENT_KIND_REJECTED = 2;
+  EVENT_KIND_COMPLETED = 3;
+  EVENT_KIND_CANCELLED = 4;
+  EVENT_KIND_FAILED = 5;
+  EVENT_KIND_STATUS = 6;
+  EVENT_KIND_STOPPED = 7;
+  EVENT_KIND_CLOCK = 8;
+}
+
+message Event {
+  uint32 version = 1;
+  uint64 request_sequence = 2;
+  uint64 task_id = 3;
+  EventKind kind = 4;
+  string code = 5; // Fixed safe code; never supplier body or user text.
+  uint64 samples = 6; // Synthesis only, NOT samples played or authorization.
+  uint32 sample_rate = 7;
+  bool worker_busy = 8;
+  uint64 played_samples = 9; // Only an explicitly enabled audio child can report it.
+  nai.v561.media.v1.PlaybackClockObservation clock = 10; // Opt-in; no PCM/frame payload.
+}

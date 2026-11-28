@@ -1,0 +1,78 @@
+openapi: 3.0.3
+info:
+  title: nai local CosyVoice streaming boundary
+  version: 1.1.0
+paths:
+  /health:
+    get:
+      operationId: observeCosyVoiceDrain
+      responses:
+        '200':
+          description: Read-only drain observation; does not cancel GPU work or grant admission
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, busy]
+                properties:
+                  status: {type: string, enum: [ok, blocked]}
+                  busy: {type: boolean}
+  /inference_zero_shot:
+    post:
+      operationId: streamCosyVoice
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [tts_text, prompt_text, prompt_wav, stream]
+              properties:
+                tts_text: { type: string, minLength: 1, maxLength: 1024 }
+                prompt_text: { type: string, minLength: 1, maxLength: 2048 }
+                prompt_wav: { type: string, format: binary }
+                stream: { type: boolean, enum: [true] }
+      responses:
+        '200':
+          description: Raw PCM16LE mono at 24000Hz; success additionally requires matching completed receipt. EOF alone is insufficient.
+          headers:
+            X-Sample-Rate: { schema: { type: string, enum: ['24000'] } }
+            X-Audio-Channels: { schema: { type: string, enum: ['1'] } }
+            X-Audio-Encoding: { schema: { type: string, enum: [pcm_s16le] } }
+            X-Model-Stream: { schema: { type: string, enum: ['true'] } }
+            X-Nai-Request: { schema: { type: string, pattern: '^[0-9a-f]{32}$' } }
+            X-Nai-Instance: { schema: { type: string, pattern: '^[0-9a-f]{32}$' } }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        '409': { description: 'Busy, no automatic retry' }
+        '422': { description: Invalid form }
+        '500': { description: Generation failed; failures after headers can also abort the byte stream }
+  /nai/tts/status/{request_id}:
+    get:
+      operationId: getCosyVoiceCompletion
+      parameters:
+        - name: request_id
+          in: path
+          required: true
+          schema: { type: string, pattern: '^[0-9a-f]{32}$' }
+      responses:
+        '200':
+          description: Ephemeral generation evidence; not playback permission, voice identity or cache authorization
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Completion' }
+        '404': { description: Unknown or expired request; fail closed without automatic synthesis retry }
+components:
+  schemas:
+    Completion:
+      type: object
+      additionalProperties: false
+      required: [protocol, request_id, instance_id, state, samples, sha256]
+      properties:
+        protocol: { type: string, enum: [nai.cosyvoice.completion.v1] }
+        request_id: { type: string, pattern: '^[0-9a-f]{32}$' }
+        instance_id: { type: string, pattern: '^[0-9a-f]{32}$' }
+        state: { type: string, enum: [running, completed, failed, cancelled, expired] }
+        samples: { type: integer, minimum: 0, maximum: 480000 }
+        sha256: { type: string, pattern: '^[0-9a-f]{64}$' }

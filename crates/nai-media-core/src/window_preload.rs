@@ -60,7 +60,9 @@ pub fn load(
     }
     crate::public_pipe::read_pcm(
         &mut f,
-        x.prepared_descriptor.as_ref().ok_or(Error::IntegrityFailed)?,
+        x.prepared_descriptor
+            .as_ref()
+            .ok_or(Error::IntegrityFailed)?,
         id,
         check,
     )

@@ -1,0 +1,41 @@
+syntax = "proto3";
+package nai.v561.audio.v1;
+import "v561/media.proto";
+
+// Private spawned child: PCM is on stdin, control on a local named pipe.
+// Token is a per-spawn capability, never a model/provider credential.
+message Prepare {
+  uint64 samples = 1; // mono PCM16 little endian, exactly 24000 Hz, <= 20 s
+  bytes sha256 = 2;
+}
+message Renew { uint32 ttl_ms = 1; } // 1..500; child monotonic expiry
+message Stop {}
+message Command {
+  uint32 version = 1;
+  bytes mac = 2; // HMAC-SHA256 over this message with mac cleared; per-spawn key
+  uint64 epoch = 3; // per-spawn nonzero identity
+  uint64 sequence = 4; // starts at 1, strictly increasing
+  oneof action {
+    Prepare prepare = 5;
+    Renew renew = 6;
+    Stop stop = 7;
+  }
+}
+enum State {
+  STATE_UNSPECIFIED = 0;
+  STATE_PREPARED = 1;
+  STATE_RUNNING = 2;
+  STATE_COMPLETED = 3;
+  STATE_STOPPED = 4;
+}
+message Receipt {
+  uint32 version = 1;
+  uint64 epoch = 2;
+  uint64 sequence = 3;
+  State state = 4;
+  uint64 samples = 5;
+  bytes sha256 = 6;
+  uint64 played_samples = 7; // observation, not hardware stop completion
+  bytes mac = 8; // HMAC-SHA256 over this receipt with mac cleared
+  nai.v561.media.v1.PlaybackClockObservation clock = 9;
+}

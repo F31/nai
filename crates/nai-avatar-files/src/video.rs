@@ -42,11 +42,17 @@ fn digest_name(digest: &str) -> Result<(), &'static str> {
 }
 
 fn u32_be(data: &[u8], at: usize) -> Option<u32> {
-    data.get(at..at + 4)?.try_into().ok().map(u32::from_be_bytes)
+    data.get(at..at + 4)?
+        .try_into()
+        .ok()
+        .map(u32::from_be_bytes)
 }
 
 fn u64_be(data: &[u8], at: usize) -> Option<u64> {
-    data.get(at..at + 8)?.try_into().ok().map(u64::from_be_bytes)
+    data.get(at..at + 8)?
+        .try_into()
+        .ok()
+        .map(u64::from_be_bytes)
 }
 
 fn fourcc(data: &[u8], at: usize) -> Option<[u8; 4]> {
@@ -73,7 +79,13 @@ struct Scan {
     duration_ms: Option<u64>,
 }
 
-fn walk(data: &[u8], start: usize, end: usize, depth: u32, scan: &mut Scan) -> Result<(), &'static str> {
+fn walk(
+    data: &[u8],
+    start: usize,
+    end: usize,
+    depth: u32,
+    scan: &mut Scan,
+) -> Result<(), &'static str> {
     if depth > MAX_DEPTH {
         return Err("VIDEO_FORMAT_UNSUPPORTED");
     }
@@ -114,10 +126,12 @@ fn walk(data: &[u8], start: usize, end: usize, depth: u32, scan: &mut Scan) -> R
             if payload + 8 > stop {
                 return Err("VIDEO_FORMAT_UNSUPPORTED");
             }
-            let mut brand_ok = ALLOWED_BRANDS.contains(&fourcc(data, payload).ok_or("VIDEO_FORMAT_UNSUPPORTED")?);
+            let mut brand_ok =
+                ALLOWED_BRANDS.contains(&fourcc(data, payload).ok_or("VIDEO_FORMAT_UNSUPPORTED")?);
             let mut brand = payload + 8;
             while brand + 4 <= stop {
-                brand_ok |= ALLOWED_BRANDS.contains(&fourcc(data, brand).ok_or("VIDEO_FORMAT_UNSUPPORTED")?);
+                brand_ok |= ALLOWED_BRANDS
+                    .contains(&fourcc(data, brand).ok_or("VIDEO_FORMAT_UNSUPPORTED")?);
                 brand += 4;
             }
             if !(stop - payload - 8).is_multiple_of(4) {
@@ -239,7 +253,8 @@ pub fn cached_metadata(root: &std::path::Path, bytes: &[u8]) -> Option<VideoMeta
 /// Content-addressed source bytes are left in place.
 pub fn revoke_inspect_cache(root: &std::path::Path, digest: &str) -> Result<(), String> {
     digest_name(digest).map_err(str::to_owned)?;
-    let Ok(cache) = crate::SelectedDirectory::open(root).and_then(|d| d.child("avatar-video-cache"))
+    let Ok(cache) =
+        crate::SelectedDirectory::open(root).and_then(|d| d.child("avatar-video-cache"))
     else {
         return Ok(());
     };
@@ -370,7 +385,10 @@ mod tests {
         assert_eq!(meta.duration_ms, 5000);
         assert_eq!(meta.inspect_version, INSPECT_VERSION);
         assert_eq!(meta.sha256.len(), 64);
-        assert_eq!(inspect_mp4(b"not mp4").unwrap_err(), "VIDEO_FORMAT_UNSUPPORTED");
+        assert_eq!(
+            inspect_mp4(b"not mp4").unwrap_err(),
+            "VIDEO_FORMAT_UNSUPPORTED"
+        );
         assert_eq!(inspect_mp4(&[]).unwrap_err(), "VIDEO_SIZE_REJECTED");
         assert_eq!(
             inspect_mp4(&vec![0; MAX_VIDEO_BYTES + 1]).unwrap_err(),
@@ -412,7 +430,9 @@ mod tests {
             bytes
         );
         assert_eq!(
-            cached_metadata(isolated.path(), &bytes).unwrap().duration_ms,
+            cached_metadata(isolated.path(), &bytes)
+                .unwrap()
+                .duration_ms,
             4000
         );
         let cache = isolated

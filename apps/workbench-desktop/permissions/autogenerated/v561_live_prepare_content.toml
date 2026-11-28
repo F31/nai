@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-v561-live-prepare-content"
+description = "Enables the v561_live_prepare_content command without any pre-configured scope."
+commands.allow = ["v561_live_prepare_content"]
+
+[[permission]]
+identifier = "deny-v561-live-prepare-content"
+description = "Denies the v561_live_prepare_content command without any pre-configured scope."
+commands.deny = ["v561_live_prepare_content"]

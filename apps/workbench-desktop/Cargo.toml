@@ -5,6 +5,9 @@ edition="2024"
 rust-version="1.96"
 license="MIT"
 [workspace]
+[[bin]]
+name="nai-v561-voice-workbench"
+path="src/bin/v561_voice_workbench.rs"
 [dependencies]
 nai-contracts={path="../../crates/nai-contracts"}
 prost="=0.14.4"

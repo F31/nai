@@ -29,6 +29,9 @@ dist/
 /.archify/
 /codegraph.json
 /scripts/__pycache__/
+# 任何目录下的 Python 字节码都是本机运行时产物，不随源码入库（含 packages/ 与 tests/）。
+__pycache__/
+*.pyc
 
 # V4.3 independent native bootstrap generated resources
 /apps/workbench-desktop/target/

@@ -2,7 +2,9 @@
 
 ## 决策摘要
 
-V5.6.1 采用**单视觉引擎**：FlashHead Lite 默认，FlashHead Pro 仅在目标机实测通过后开放。删除 LiveAct 主线、双引擎冷切换、热备、过渡画面、切换回滚。TTS 使用 Qwen3-TTS 0.6B；动作使用预录片段库；输出使用本机窗口 + OBS。数据为单数据根、单配置、单 SQLite。
+后续同基线性能整改细化为[流式与缓存增量提案](../v561-streaming-cache-pipeline/proposal.md)，总体方案见[设计文档](../../../docs/v561-streaming-cache-optimization-plan.md)。该提案不授予本变更M0、生产帧/输出门或任何ACC通过，不自动更改模型默认和既有配置。
+
+V5.6.1 采用**单视觉引擎**：FlashHead Lite 默认，FlashHead Pro 仅在目标机实测通过后开放。删除 LiveAct 主线、双引擎冷切换、热备、过渡画面、切换回滚。TTS 当前采用已部署的 Qwen3-TTS 1.7B CustomVoice（联合资源与性能待实测），0.6B 为可配置的后续优化选项；动作使用预录片段库；输出使用本机窗口 + OBS。数据为单数据根、单配置、单 SQLite。
 
 本变更**不向前兼容** V4.8/V5.2/V5.5/V5.6 的 ACC/INV/任务/数据库/配置/协议。旧 `tests/registry.yaml` 归档只读，本变更建立自己的验收清单。
 
@@ -11,7 +13,7 @@ V5.6.1 采用**单视觉引擎**：FlashHead Lite 默认，FlashHead Pro 仅在�
 - FlashHead 是单模型端到端流式头肩生成，直接消除 MuseTalk+LivePortrait 的双嘴、接缝、ROI 对齐和嘴部 owner 仲裁。
 - 官方 README：Lite 在单 RTX 4090 上 96 FPS，或 3 路 25+ FPS；Pro 在单 4090 上 10.8 FPS，双 5090 才 25+ FPS。
 - 目标机是 5090 Laptop 24GB、TGP 95–175W，不能按桌面 5090 或双卡结果外推。Lite 是唯一适合作为 8 小时主力的档位；Pro 只能实测后开放。
-- 24GB VRAM 预算：Qwen3-TTS 0.6B ~4GB + FlashHead Lite ~6.4–8GB + 输出/系统 ~3GB ≈ 13–15GB，留有安全余量。
+- 24GB VRAM 预算：先前实测的 Qwen3-TTS 1.7B ~3.9GB（0.6B 待实测） + FlashHead Lite ~6.4–8GB + 输出/系统 ~3GB ≈ 13–15GB，留有安全余量。
 - 不做第二视觉引擎：LiveAct 18B 需要 12–16GB VRAM + 可能的 ~30GB 系统内存 + 6 FPS + 插帧，且仓库无 LICENSE；它不属于“先跑通”的主线。
 
 ## 为什么不保留双引擎切换
@@ -28,7 +30,7 @@ nai-desktop（Tauri 2 + React）
         │ 本地 HTTP
 nai-engine（Rust：会话/LLM/互动/动作/输出门/日志/资源监控）
         │
-        ├── qwen3-tts（外部本地服务，0.6B，流式优先）
+        ├── qwen3-tts（外部本地服务，当前 1.7B 实测 24k WAV、非流式；0.6B 按需配置）
         ├── nai-avatar-worker（Python/PyTorch，FlashHead Lite）
         ├── assets/clips（预录动作片段）
         └── OBS（外部窗口捕获）
@@ -42,7 +44,7 @@ nai-engine（Rust：会话/LLM/互动/动作/输出门/日志/资源监控）
 ## 媒体管线
 
 ```text
-文本 → 分句 → Qwen3-TTS PCM（流式优先，否则句级预取）
+文本 → 分句 → Qwen3-TTS WAV（非流式）→ 句级预取/缓存 → PCM
  → 48k 播放队列 → WASAPI（音频主时钟）
  → 16k 特征 → FlashHead worker → BGRA 帧 → 共享内存 → 输出门 → 预览/OBS
 ```
@@ -115,6 +117,7 @@ nai-engine（Rust：会话/LLM/互动/动作/输出门/日志/资源监控）
 
 ## 验证与环境边界
 
+- 当前实施优先补齐 Windows 原生 FlashHead worker，复用已安装的 Windows CUDA/PyTorch；Qwen 保持现有 WSL 部署，通过配置的本地 API 接入。构建、下载及编译缓存放在项目 E 盘 target-windows；试验依赖隔离，不覆盖现有模型或 Qwen 环境。
 - 实现检查：单元/契约/状态机/IPC/共享内存/取消/旧 epoch/故障注入。
 - 真实认证：Windows 11 + 5090 Laptop + 24GB + 32GB；真实 Qwen3-TTS；真实 FlashHead 权重；真实 OBS 录像。
 - 未在目标机验证的项记 `pending`/`blocked`，不标 `passed`。
@@ -122,6 +125,10 @@ nai-engine（Rust：会话/LLM/互动/动作/输出门/日志/资源监控）
 - 本变更不运行 LiveAct；LiveAct 任何结果不进入本变更验收。
 
 ## 偏离与 ADR
+
+隔离AV汇合入口 `nai-v561-av-clock-bridge` 放在app装配层，只用于验证共享槽/帧调度与独立音频签名时钟的同任务接线；诊断窗口与该装配控制同进程，不替代正式控制/媒体故障隔离。它显式沿用未认证的诊断帧来源，必须保持非生产标识；后续须完成生产者/素材身份和独立常驻窗口执行门，再接桌面。Rust媒体核心仍不依赖minifb/Tauri/具体模型，音频独立进程及Python模型边界不变。
+
+单房间任务首切片放在 app 层 `nai-workbench-engine::v561_tasks`，装配 kernel OutputOwner 与 runtime Operation，不把 kernel 依赖 Adapter。只保存一个活动句级任务；网络调用在槽外运行，通过任务 Operation 取消。完成只收回任务槽，不能代表音画播完。停止句柄仅持有弱引用，原子关门不依赖任务槽锁；不接回历史 foundation engine/工作区链。桌面命令、媒体租约和跨进程执行独立接线。
 
 - 本变更取代 V5.6 的双引擎主线；需要一份 ADR 记录「V5.6.1 单引擎基线、LiveAct 移出主线、无向前兼容」。
 - 如果后续要恢复 LiveAct/双引擎/Pro 默认/RTMP/平台 connector，必须新增 ADR 与本变更规格修改，不能在实现中静默加入。

@@ -81,3 +81,7 @@ cargo xtask test --suite contracts
 先建立 OpenSpec 变更和场景，再改源、生成、运行 suite、更新消费者。
 字段编号不复用，删除字段须 reserved；不兼容语义升主版本并记录 ADR。
 最后更新计划/报告并归档；真实认证环境另行记录。
+# V5.6.1 帧契约生成
+
+`schemas/v561/media.proto` 是独立的帧引用、释放和播放时钟消息源，Python 生成代码位于 `packages/contracts-python/src/generated`，与 Rust、TypeScript、C++ 产物一起通过 `cargo xtask schema` 生成。描述符及生成暂存遵循 `CARGO_TARGET_DIR`，未设置时使用 `target-windows/schema`。运行 Python 时使用 `-B`，避免在生成目录写入字节码导致生成一致性检查失败。消息本身不提供共享内存授权或设备播放证明。
+

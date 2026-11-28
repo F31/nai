@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-v561-live-ask"
+description = "Enables the v561_live_ask command without any pre-configured scope."
+commands.allow = ["v561_live_ask"]
+
+[[permission]]
+identifier = "deny-v561-live-ask"
+description = "Denies the v561_live_ask command without any pre-configured scope."
+commands.deny = ["v561_live_ask"]

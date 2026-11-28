@@ -8,7 +8,6 @@
 pub mod deps;
 pub mod frontend;
 pub mod golden;
-pub mod registry;
 pub mod sbom;
 pub mod schema;
 pub mod secrets;
@@ -36,7 +35,7 @@ fn run(root: &Path, args: &[&str]) -> Result<(), String> {
 /// V4.8 RF01–04 engineering scope; does not grant any complete ACC acceptance.
 fn workbench_checks(root: &Path) -> Result<(), String> {
     deps::check(root)?;
-    registry::check(root)?;
+    schema::node(root, &["scripts/check-v561-registry.mjs"])?;
     run(
         root,
         &[
@@ -63,11 +62,14 @@ fn workbench_checks(root: &Path) -> Result<(), String> {
             "tests/ui/v43-llm.test.mjs",
         ],
     )?;
+    run(
+        root,
+        &["test", "-p", "nai-foundation-sqlite", "v561", "--locked"],
+    )?;
     // Real Windows credential-store and audio-device tests cannot share one
     // test-binary batch: concurrent batches make different tests fail with
     // CapabilityUnavailable. Run each package in its own batch, one test thread.
     for package in [
-        "nai-foundation-sqlite",
         "nai-runtime-core",
         "nai-workbench-engine",
         "nai-audition-worker",
@@ -107,7 +109,8 @@ fn workbench_checks(root: &Path) -> Result<(), String> {
             "nai-public-output-keeper",
             "-p",
             "nai-llm-openai",
-            "--all-targets",
+            "--lib",
+            "--bins",
             "--locked",
             "--",
             "-D",
@@ -116,7 +119,7 @@ fn workbench_checks(root: &Path) -> Result<(), String> {
     )?;
     schema::node(root, &["scripts/workbench-frontend.mjs"])?;
     println!(
-        "RF01–04 engineering scope passed; all 164 ACC remain pending, no complete product certification"
+        "V5.6.1 engineering scope passed; acceptance remains tests/v561/registry.yaml (no complete product certification)"
     );
     Ok(())
 }
@@ -131,7 +134,6 @@ pub fn execute(args: &[String], root: &Path) -> Result<(), String> {
     {
         ["check", "--profile", "workbench"] => workbench_checks(root),
         ["check-deps"] => deps::check(root),
-        ["check", "--registry"] => registry::check(root),
         ["check", "--golden"] => golden::check(root, None),
         ["check", "--golden", "--dir", dir] => golden::check(root, Some(dir)),
         ["check", "--secrets"] => secrets::check(root),
@@ -140,34 +142,6 @@ pub fn execute(args: &[String], root: &Path) -> Result<(), String> {
         ["schema"] => schema::generate(root, false),
         ["schema", "--check"] => schema::generate(root, true),
         ["test", "--suite", "contracts"] => schema::contracts(root),
-        ["test", "--suite", "knowledge"] => run(
-            root,
-            &[
-                "test",
-                "--locked",
-                "--package",
-                "nai-knowledge-core",
-                "--package",
-                "nai-storage",
-            ],
-        ),
-        ["test", "--suite", "provider"] => run(
-            root,
-            &["test", "--locked", "--package", "nai-provider-core"],
-        ),
-        ["test", "--suite", "scheduler"] => run(
-            root,
-            &[
-                "test",
-                "--locked",
-                "--package",
-                "nai-kernel",
-                "--package",
-                "nai-budget-core",
-                "--package",
-                "nai-storage",
-            ],
-        ),
         ["test", "--suite", "session"] => run(
             root,
             &[
@@ -177,8 +151,6 @@ pub fn execute(args: &[String], root: &Path) -> Result<(), String> {
                 "nai-kernel",
                 "--package",
                 "nai-media-core",
-                "--package",
-                "nai-storage",
             ],
         ),
         ["test", "--suite", "kernel"] => run(
@@ -203,34 +175,12 @@ pub fn execute(args: &[String], root: &Path) -> Result<(), String> {
                 "nai-plugin-sdk",
             ],
         ),
-        ["test", "--suite", "storage"] => run(
-            root,
-            &[
-                "test",
-                "--locked",
-                "--package",
-                "nai-storage",
-                "--package",
-                "nai-security",
-            ],
-        ),
-        ["test", "--suite", "upgrade"] => run(
-            root,
-            &[
-                "test",
-                "--locked",
-                "--package",
-                "nai-upgrade-core",
-                "--package",
-                "nai-storage",
-            ],
-        ),
         ["check", "--profile", "portable" | "windows-local" | "full"] => Err(
             "LEGACY_PROFILE_RETIRED: use check --profile workbench; V4.8 release certification is not implemented".into()
         ),
         ["help"] | ["--help"] | [] => {
             println!(
-                "Usage: cargo xtask check-deps | check --registry | check --golden [--dir <path>] | check --secrets | check --profile workbench | sbom [--out <path>] | schema [--check] | test --suite contracts|storage|kernel|hosts|session|scheduler|provider|knowledge|upgrade\nOther suites, certify and package tasks are not available yet."
+                "Usage: cargo xtask check-deps | check --golden [--dir <path>] | check --secrets | check --profile workbench | sbom [--out <path>] | schema [--check] | test --suite contracts|kernel|hosts|session\nOther suites, certify and package tasks are not available yet."
             );
             Ok(())
         }

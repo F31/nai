@@ -1,0 +1,36 @@
+# tts-preparation-warmup Specification
+
+## Purpose
+TBD - created by archiving change v561-tts-preparation-warmup. Update Purpose after archive.
+
+## Requirements
+
+### Requirement: 有界静音语音预热
+准备 SHALL 使用配置短句对当前本地TTS执行至多一次预热，并在完整EOS与样本校验后丢弃PCM；等待空闲和合成 SHALL 继承准备取消及≤45秒模型子期限，SHALL NOT 自动重试或发声。
+#### Scenario: 首次准备
+- **WHEN** 操作者点击准备且本次语音尚未预热
+- **THEN** 先显示语音预热中，记录实际结果和调用，再准备画面；预热时间单独计入准备，不冒充首声加速。
+#### Scenario: 服务忙碌或停止
+- **WHEN** 服务持续busy或预热时操作被取消
+- **THEN** 在原期限内失败或停止，不自动重试合成，不允许旧结果把新状态改成已就绪。
+
+### Requirement: 准备双事实与安全准入
+控制事件 SHALL 分别传递tts_prepared与visual_prepared；Prepared/Start SHALL 要求二者均成立。语音预热事实 SHALL NOT 代表实际设备/OBS就绪或服务永不失效。
+#### Scenario: 只有视觉已加载
+- **WHEN** 语音预热失败但视觉资源仍可用
+- **THEN** 开始按钮保持不可用，允许再次显式准备，提示语音失败原因，不误报全部已准备。
+#### Scenario: 准备成功后服务退出
+- **WHEN** 预热曾成功但正式合成服务不可达
+- **THEN** 当前讲解失败并保留原因，不返回缓存假音频或自动恢复。
+
+### Requirement: 配置与证据真实
+预热文本 SHALL 来自经过Schema/运行时校验的配置；音频不得走JSON/控制总线。报告 SHALL 分开计入预热与正式调用，保留3秒首声、gap与人工长稳未通过状态。
+#### Scenario: 四句验收
+- **WHEN** 一次预热和四句正式讲解均执行
+- **THEN** 报告至少区分1次预热和4次正式模型调用，实际结果未达标时不授ACC通过。
+
+### Requirement: 动态画质不得让位于延迟指标
+当用户实际播放认为性能候选模糊时，该候选 SHALL 保持质量不通过，不得因静态抽帧或RTF较低升级默认。体验配置 SHALL 回到此前接受的质量档并保留真实性能限制。
+#### Scenario: 512三步动态效果被拒绝
+- **WHEN** 操作者反馈本次512/3说话视频太模糊
+- **THEN** 保留性能实验和失败证据，恢复768/4质量体验配置，记录新动态质量仍需确认，不称已达实时门。

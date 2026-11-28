@@ -14,7 +14,11 @@ pub mod public_avatar;
 pub mod public_clip;
 pub mod public_cue;
 pub mod public_device_loss;
+pub mod stream_clock;
+pub mod stream_pcm;
 pub mod timeline;
+pub mod v561_frame_scheduler;
+pub mod v561_shared_receiver;
 pub mod video_clock;
 pub use lineage::{
     FacetKind, LineageError, LineageId, LineageNode, LineageRef, LineageRegistry, LineageReport,
@@ -421,8 +425,13 @@ impl PlaybackProgress {
     }
 }
 
+pub mod continuous_audio;
 pub mod public_pipe;
 
 pub mod window_preload;
 
 pub mod public_caption;
+pub mod v561_audio_lease;
+pub mod v561_clock_bridge;
+pub mod v561_frame_lease;
+pub mod v561_leased_output;

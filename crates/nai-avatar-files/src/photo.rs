@@ -109,84 +109,6 @@ pub fn inspect_jpeg(data: &[u8]) -> Result<PhotoMetadata, &'static str> {
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    fn jpeg(width: u16, height: u16) -> Vec<u8> {
-        let mut v = vec![0xff, 0xd8, 0xff, 0xc0, 0, 11, 8];
-        v.extend(height.to_be_bytes());
-        v.extend(width.to_be_bytes());
-        v.extend([
-            1, 1, 0x11, 0, 0xff, 0xda, 0, 8, 1, 1, 0, 0, 63, 0, 0, 0xff, 0xd9,
-        ]);
-        v
-    }
-    #[test]
-    fn jpeg_header_limits_and_corruption_are_rejected() {
-        let good = jpeg(640, 480);
-        let p = inspect_jpeg(&good).unwrap();
-        assert_eq!((p.width, p.height), (640, 480));
-        assert_eq!(p.sha256.len(), 64);
-        assert!(inspect_jpeg(b"not jpeg").is_err());
-        assert!(inspect_jpeg(&jpeg(4097, 20)).is_err());
-        assert!(inspect_jpeg(&jpeg(0, 20)).is_err());
-        let mut bad = good.clone();
-        bad[5] = 255;
-        assert!(inspect_jpeg(&bad).is_err());
-        assert!(inspect_jpeg(&good[..good.len() - 2]).is_err());
-        assert!(inspect_jpeg(&vec![0; MAX_PHOTO_BYTES + 1]).is_err());
-        let mut trailing = good.clone();
-        trailing.extend([0u8; 24]);
-        assert!(inspect_jpeg(&trailing).is_ok());
-        trailing.extend(vec![0u8; 4097]);
-        assert!(inspect_jpeg(&trailing).is_err());
-        let mut scan = good.clone();
-        let at = scan.windows(2).position(|w| w == [0xff, 0xda]).unwrap();
-        scan[at + 2] = 255;
-        assert!(inspect_jpeg(&scan).is_err());
-    }
-    #[test]
-    #[ignore = "explicit local user-provided photo only; header probe is not a decoder"]
-    fn local_photo_header_probe() {
-        let path = std::path::PathBuf::from(
-            std::env::var_os("NAI_LOCAL_PHOTO_PROBE").expect("explicit path"),
-        );
-        let parent = path.parent().unwrap();
-        let name = path.file_name().unwrap().to_str().unwrap();
-        let bytes = crate::SelectedDirectory::open(parent)
-            .unwrap()
-            .read(name, MAX_PHOTO_BYTES)
-            .unwrap();
-        let meta = inspect_jpeg(&bytes).unwrap();
-        assert!(meta.width > 0 && meta.height > 0);
-        let isolated = tempfile::tempdir().unwrap();
-        let stored = store_photo(isolated.path(), &bytes).unwrap();
-        assert_eq!(stored, meta);
-        assert_eq!(store_photo(isolated.path(), &bytes).unwrap(), meta);
-        assert_eq!(
-            read_stored_photo(isolated.path(), &meta.sha256).unwrap().0,
-            bytes
-        );
-        let backup = tempfile::tempdir().unwrap();
-        copy_stored_photos(
-            isolated.path(),
-            backup.path(),
-            &[meta.sha256.clone()],
-            || Ok(()),
-        )
-        .unwrap();
-        assert_eq!(
-            read_stored_photo(backup.path(), &meta.sha256).unwrap().0,
-            bytes
-        );
-        eprintln!(
-            "local JPEG header and isolated storage/backup: {}x{}; {} bytes",
-            meta.width,
-            meta.height,
-            bytes.len()
-        );
-    }
-}
 /// Read a content-addressed stored photo under a held root handle.
 /// Header validation is not full image decoding or an authorization.
 pub fn read_stored_photo(
@@ -253,6 +175,7 @@ pub fn copy_stored_photos<F: Fn() -> Result<(), String>>(
     }
     check()
 }
+
 /// Install a private, content-addressed source photo. Existing bytes are never
 /// overwritten; a failed write can leave a rejected partial file for inspection.
 pub fn store_photo(root: &std::path::Path, bytes: &[u8]) -> Result<PhotoMetadata, String> {
@@ -274,4 +197,83 @@ pub fn store_photo(root: &std::path::Path, bytes: &[u8]) -> Result<PhotoMetadata
         return Err("PHOTO_INTEGRITY_FAILED".into());
     }
     Ok(meta)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn jpeg(width: u16, height: u16) -> Vec<u8> {
+        let mut v = vec![0xff, 0xd8, 0xff, 0xc0, 0, 11, 8];
+        v.extend(height.to_be_bytes());
+        v.extend(width.to_be_bytes());
+        v.extend([
+            1, 1, 0x11, 0, 0xff, 0xda, 0, 8, 1, 1, 0, 0, 63, 0, 0, 0xff, 0xd9,
+        ]);
+        v
+    }
+    #[test]
+    fn jpeg_header_limits_and_corruption_are_rejected() {
+        let good = jpeg(640, 480);
+        let p = inspect_jpeg(&good).unwrap();
+        assert_eq!((p.width, p.height), (640, 480));
+        assert_eq!(p.sha256.len(), 64);
+        assert!(inspect_jpeg(b"not jpeg").is_err());
+        assert!(inspect_jpeg(&jpeg(4097, 20)).is_err());
+        assert!(inspect_jpeg(&jpeg(0, 20)).is_err());
+        let mut bad = good.clone();
+        bad[5] = 255;
+        assert!(inspect_jpeg(&bad).is_err());
+        assert!(inspect_jpeg(&good[..good.len() - 2]).is_err());
+        assert!(inspect_jpeg(&vec![0; MAX_PHOTO_BYTES + 1]).is_err());
+        let mut trailing = good.clone();
+        trailing.extend([0u8; 24]);
+        assert!(inspect_jpeg(&trailing).is_ok());
+        trailing.extend(vec![0u8; 4097]);
+        assert!(inspect_jpeg(&trailing).is_err());
+        let mut scan = good.clone();
+        let at = scan.windows(2).position(|w| w == [0xff, 0xda]).unwrap();
+        scan[at + 2] = 255;
+        assert!(inspect_jpeg(&scan).is_err());
+    }
+    #[test]
+    #[ignore = "explicit local user-provided photo only; header probe is not a decoder"]
+    fn local_photo_header_probe() {
+        let path = std::path::PathBuf::from(
+            std::env::var_os("NAI_LOCAL_PHOTO_PROBE").expect("explicit path"),
+        );
+        let parent = path.parent().unwrap();
+        let name = path.file_name().unwrap().to_str().unwrap();
+        let bytes = crate::SelectedDirectory::open(parent)
+            .unwrap()
+            .read(name, MAX_PHOTO_BYTES)
+            .unwrap();
+        let meta = inspect_jpeg(&bytes).unwrap();
+        assert!(meta.width > 0 && meta.height > 0);
+        let isolated = tempfile::tempdir().unwrap();
+        let stored = store_photo(isolated.path(), &bytes).unwrap();
+        assert_eq!(stored, meta);
+        assert_eq!(store_photo(isolated.path(), &bytes).unwrap(), meta);
+        assert_eq!(
+            read_stored_photo(isolated.path(), &meta.sha256).unwrap().0,
+            bytes
+        );
+        let backup = tempfile::tempdir().unwrap();
+        copy_stored_photos(
+            isolated.path(),
+            backup.path(),
+            std::slice::from_ref(&meta.sha256),
+            || Ok(()),
+        )
+        .unwrap();
+        assert_eq!(
+            read_stored_photo(backup.path(), &meta.sha256).unwrap().0,
+            bytes
+        );
+        eprintln!(
+            "local JPEG header and isolated storage/backup: {}x{}; {} bytes",
+            meta.width,
+            meta.height,
+            bytes.len()
+        );
+    }
 }

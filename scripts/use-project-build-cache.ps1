@@ -5,12 +5,13 @@ if ($Target -notmatch '^[a-zA-Z0-9_-]+$') { throw 'Invalid project build target 
 $naiProjectRoot = Split-Path -Parent $PSScriptRoot
 $naiTargetRoot = Join-Path $naiProjectRoot 'target-windows'
 $naiToolCache = Join-Path $naiTargetRoot 'tool-cache'
-foreach ($folder in @('cargo','npm-cache','pnpm-store','pnpm-cache','pnpm-state','tmp')) {
+foreach ($folder in @('cargo','npm-cache','pnpm-store','pnpm-cache','pnpm-state','pip-cache','tmp')) {
     New-Item -ItemType Directory -Path (Join-Path $naiToolCache $folder) -Force | Out-Null
 }
 $env:CARGO_HOME = Join-Path $naiToolCache 'cargo'
 $env:CARGO_TARGET_DIR = Join-Path $naiTargetRoot $Target
 $env:NPM_CONFIG_CACHE = Join-Path $naiToolCache 'npm-cache'
+$env:PIP_CACHE_DIR = Join-Path $naiToolCache 'pip-cache'
 $env:npm_config_store_dir = Join-Path $naiToolCache 'pnpm-store'
 $env:npm_config_cache_dir = Join-Path $naiToolCache 'pnpm-cache'
 $env:npm_config_state_dir = Join-Path $naiToolCache 'pnpm-state'

@@ -1,0 +1,3 @@
+# Design
+
+RequestGate保持单飞。观察器只包装原factory/已有方法，原值原样yield，不强制CUDA同步、不更改随机/精度。每请求最多64个数字阶段、仅当前记录，完成或失败后输出一条结构化脱敏stderr摘要；装载阶段通过线程局部信息交接，不保留参数或异常正文。llm.inference生成器首token与flow/hift记录Python墙钟（非CUDA事件耗时），阶段可重叠，不相加冒充独占GPU时间。补丁AST匹配唯一AutoModel启动点，原源码hash一致后部署，原服务和Dockerfile备份可回退；Dockerfile持久复制观察器防重建漂移，已有挂载与音色不改。联合调用最多1次，不以反复对照凑性能通过。

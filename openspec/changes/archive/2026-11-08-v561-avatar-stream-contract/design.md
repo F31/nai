@@ -1,0 +1,3 @@
+# Design
+
+独立avatarstream.v1是未来连续执行入口的唯一契约，不把旧worker6误认为支持增量。Request带version1、单调全局sequence、task/epoch及HMAC-SHA256，mac覆盖去mac后的确定性protobuf。Begin绑定已验证portrait/hash、模型block_frames与源样本上限，格式固定24000/s16le/mono。Chunk携独立raw_payload_id、start_sample、samples、sha256，无PCM内嵌；消费端只接受一个未释放块，样本最多38400且累计不超过144000。消费成功后本地release才释放在途槽；取消无须等待release。EOS仅在无在途、总量与累计hash一致且provider_eos_verified时接受。EOS表示供应商输入成功，不表示GPU/播放完成。校验错误与父取消终结任务。此轮实际原始管道/OS身份/ACL和GPU装配未做，不能授真实IPC通过；生产默认仍不支持新入口。

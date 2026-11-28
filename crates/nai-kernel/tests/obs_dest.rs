@@ -2,8 +2,8 @@
 use nai_kernel::golden::Finding;
 use nai_kernel::obs::Layer;
 use nai_kernel::obs_dest::{
-    audit_dest, DestKind, DestReadiness, DestReport, DestSurface, AUDIO_TRACKS,
-    DEST_FINDING_TOKENS, DEST_LAYERS,
+    AUDIO_TRACKS, DEST_FINDING_TOKENS, DEST_LAYERS, DestKind, DestReadiness, DestReport,
+    DestSurface, audit_dest,
 };
 use std::collections::BTreeSet;
 
@@ -41,10 +41,12 @@ fn an_empty_surface_audits_empty_and_keeps_window_public() {
     assert_eq!(surface.public_via, DestKind::Window);
     assert!(!surface.window.observed());
     assert!(!surface.virtual_camera.observed());
-    assert!(surface
-        .audio_tracks
-        .iter()
-        .all(|track| !track.report.observed()));
+    assert!(
+        surface
+            .audio_tracks
+            .iter()
+            .all(|track| !track.report.observed())
+    );
     assert_eq!(
         surface
             .audio_tracks

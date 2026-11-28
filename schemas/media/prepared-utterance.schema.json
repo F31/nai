@@ -1,0 +1,14 @@
+{
+ "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"nai:prepared-utterance:v1","title":"PreparedUtterance",
+ "type":"object","additionalProperties":false,
+ "required":["version","scope","identity_sha256","pcm_sha256","frame_sha256","width","height","samples","frames","ttl_ms","model_api_calls"],
+ "properties":{
+  "version":{"const":1},"scope":{"const":"private_session_prepared_asset_not_current_model_cache"},
+  "identity_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+  "pcm_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+  "frame_sha256":{"type":"array","minItems":1,"maxItems":150,"items":{"type":"string","pattern":"^[a-f0-9]{64}$"}},
+  "width":{"type":"integer","minimum":256,"maximum":1024},"height":{"type":"integer","minimum":256,"maximum":1024},
+  "samples":{"type":"integer","minimum":1,"maximum":144000},"frames":{"type":"integer","minimum":1,"maximum":150},
+  "ttl_ms":{"type":"integer","minimum":1000,"maximum":3600000},"model_api_calls":{"const":1}
+ }
+}

@@ -1,0 +1,3 @@
+# Design
+
+使用本机已安装soxr 1.1.0 ResampleStream、float32和HQ（现有librosa默认soxr_hq）。输入必须24000Hz单声道s16le偶数字节，模型目标16000Hz，25fps，当前40帧计算块25600特征样本。resampler保留内部滤波状态，固定块使用单pending数组；消费者同步背压，不保存整句特征。接收源总量最多144000样本，EOS通过上游回执校验后flush，按librosa的ceil目标长度对最终一采样修正。失败终结对象，不复活或重试，最终不足计算块仅在EOS补零；补零不计源样本。组件不认证上游EOS，不授播放许可，调用方须在现有完成回执通过后调用finish。模型motion/history保留与Begin/PCM引用/EOS正式生成契约仍是下一接线任务。

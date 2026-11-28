@@ -53,9 +53,7 @@ fn collect_windows() -> ObservationInput {
         };
     };
     let obs = processes.iter().find(|proc| {
-        proc.pid != 0
-            && proc.name.eq_ignore_ascii_case(OBS_IMAGE)
-            && !proc.path.is_empty()
+        proc.pid != 0 && proc.name.eq_ignore_ascii_case(OBS_IMAGE) && !proc.path.is_empty()
     });
     let (config_observed, scene_json, scene_path, log_text, log_path) = match obs {
         Some(proc) => match portable_root(Path::new(&proc.path)) {
@@ -238,11 +236,7 @@ pub fn preferred_scene(config: &Path, public_title: &str) -> (String, String) {
             named.push((modified, path, text));
         }
     }
-    let chosen = if !named.is_empty() {
-        named
-    } else {
-        files
-    };
+    let chosen = if !named.is_empty() { named } else { files };
     chosen
         .into_iter()
         .max_by_key(|(modified, _, _)| *modified)
@@ -260,10 +254,7 @@ fn newest_file(dir: &Path, extension: &str) -> Option<PathBuf> {
         let Ok(modified) = entry.metadata().and_then(|meta| meta.modified()) else {
             continue;
         };
-        if newest
-            .as_ref()
-            .is_none_or(|(stamp, _)| modified > *stamp)
-        {
+        if newest.as_ref().is_none_or(|(stamp, _)| modified > *stamp) {
             newest = Some((modified, path));
         }
     }

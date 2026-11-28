@@ -30,13 +30,39 @@ if (generated.error || generated.status !== 0) throw new Error(`ts-proto failed:
 const response = descriptors.CodeGeneratorResponse.decode(generated.stdout);
 if (response.error) throw new Error(response.error);
 const exports = [];
+// 每个协议各自拥有 `Command`/`Event`/`Kind`/`Request` 这类同名消息，扁平重导出
+// 会在 `index.ts` 里撞名字（TS2300）。先数一遍每个名字被几个文件声明：只被一个文件
+// 声明的名字照旧扁平导出（既有消费者的 `import {X}` 不变），被多个文件声明的一律
+// 不扁平导出，改由**该文件的命名空间**提供——不选赢家、不丢名字、也不歧义。
+const protoFiles = [];
+const declaredBy = new Map();
 for (const file of response.file) {
   const output = path.join(ts, file.name);
   await mkdir(path.dirname(output), { recursive: true });
   await writeFile(output, file.content);
   const descriptor = set.file.find(source => source.name === file.name.replace(/\.ts$/, '.proto'));
   const names = [...descriptor.enumType, ...descriptor.messageType].map(type => type.name).sort();
-  exports.push(`export { ${names.join(', ')} } from './${file.name.replace(/\.ts$/, '.js')}';`);
+  for (const name of names) declaredBy.set(name, (declaredBy.get(name) ?? 0) + 1);
+  protoFiles.push({ file, names });
+}
+const namespaces = new Set();
+for (const { file, names } of protoFiles) {
+  const module = `./${file.name.replace(/\.ts$/, '.js')}`;
+  const unique = names.filter(name => declaredBy.get(name) === 1);
+  const shared = names.filter(name => declaredBy.get(name) > 1);
+  if (unique.length > 0) exports.push(`export { ${unique.join(', ')} } from '${module}';`);
+  if (shared.length > 0) {
+    const namespace = file.name
+      .replace(/\.ts$/, '')
+      .split('/')
+      .map((part, index) => index === 0
+        ? part.replace(/^[0-9]/, letter => `v${letter}`)
+        : part.replace(/(^|[_-])([a-z0-9])/g, (_, __, character) => character.toUpperCase()))
+      .join('');
+    if (namespaces.has(namespace)) throw new Error(`namespace collision: ${namespace}`);
+    namespaces.add(namespace);
+    exports.push(`export * as ${namespace} from '${module}';`);
+  }
 }
 // The list of schemas that get a TypeScript counterpart lives in
 // `validation.mjs`, next to the list of schemas that get validated. A second
@@ -53,6 +79,10 @@ for (const source of TS_GENERATED_SOURCES) {
   const namespace = path.basename(source).replace(/-([a-z0-9])/g, (_, letter) => letter.toUpperCase());
   exports.push(`export type * as ${namespace}Config from './${output.replace(/\.ts$/, '.js')}';`);
 }
+await SwaggerParser.validate('schemas/openapi/cosyvoice-stream.yaml');
+const cosyvoiceApi = await SwaggerParser.bundle('schemas/openapi/cosyvoice-stream.yaml');
+await writeFile(path.join(ts, 'cosyvoice-stream.ts'), astToString(await openapiTS(cosyvoiceApi)));
+exports.push("export type * as cosyvoiceStream from './cosyvoice-stream.js';");
 await SwaggerParser.validate('schemas/openapi/control.yaml');
 const api = await SwaggerParser.bundle('schemas/openapi/control.yaml');
 await writeFile(path.join(ts, 'http.ts'), astToString(await openapiTS(api)));
@@ -86,6 +116,20 @@ const rustType = schema => {
   throw new Error(`unsupported remote DTO schema: ${JSON.stringify(schema)}`);
 };
 const pascal = value => value.split('_').map(part => part[0].toUpperCase() + part.slice(1)).join('');
+const cosyRust = ['// Generated from schemas/openapi/cosyvoice-stream.yaml. Do not edit.'];
+for (const [name, schema] of Object.entries(cosyvoiceApi.components.schemas)) {
+  if (schema.type !== 'object' || schema.additionalProperties !== false) throw new Error('Unsupported CosyVoice DTO');
+  cosyRust.push('#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]', '#[serde(deny_unknown_fields)]', `pub struct ${name} {`);
+  for (const [field, property] of Object.entries(schema.properties)) {
+    if (!schema.required.includes(field)) throw new Error('Optional CosyVoice field requires explicit generator support');
+    cosyRust.push(`pub ${field}: ${rustType(property)},`);
+  }
+  cosyRust.push('}');
+}
+const cosyRustFile = path.join(stage, 'rust', 'cosyvoice_http.rs');
+await writeFile(cosyRustFile, cosyRust.join('\n') + '\n');
+const cosyFormatted = spawnSync('rustfmt', ['--edition', '2024', cosyRustFile]);
+if (cosyFormatted.error || cosyFormatted.status !== 0) throw new Error('CosyVoice DTO rustfmt failed');
 const rust = ['// Generated from schemas/openapi/remote-knowledge.yaml. Do not edit.'];
 for (const [name, schema] of Object.entries(schemas).sort()) {
   rust.push('#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]');

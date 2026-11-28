@@ -25,6 +25,18 @@ export const AJV_SOURCES = {personalPolicyMigrationJournal:'config/personal-poli
 /// the checked-in generated directory.
 export const TS_GENERATED_SOURCES = ['config/personal-policy-migration-journal','config/personal-live-policy','config/model-migration-backup','config/workbench-owner','content/publication','content/preparation','config/foundation-root','config/workbench','config/product-draft','catalog/catalog','config/runtime','config/provider','config/backup','config/binding-plan','config/avatar-2d','plugin/manifest','plugin/model','plugin/avatar','plugin/ui'];
 
+// Current local streaming boundary; historical workspace schemas remain history.
+AJV_SOURCES.cosyvoiceStream = 'config/cosyvoice-stream';
+TS_GENERATED_SOURCES.push('config/cosyvoice-stream');
+AJV_SOURCES.avatarWorker = 'config/avatar-worker';
+TS_GENERATED_SOURCES.push('config/avatar-worker');
+TS_GENERATED_SOURCES.push('config/live-session');
+AJV_SOURCES.liveSession='config/live-session';
+TS_GENERATED_SOURCES.push('media/prepared-utterance');
+AJV_SOURCES.preparedUtterance='media/prepared-utterance';
+TS_GENERATED_SOURCES.push('media/prepared-plan');
+AJV_SOURCES.preparedPlan='media/prepared-plan';
+
 export async function validators() {
   const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false });
   return Object.fromEntries(await Promise.all(Object.entries(AJV_SOURCES).map(async ([key, source]) => [key, ajv.compile(await readJson(`schemas/${source}.schema.json`))])));

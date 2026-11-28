@@ -26,9 +26,9 @@ use nai_contracts::v1::{ContractError, Envelope, ErrorCode, PlatformEvent};
 use std::collections::BTreeMap;
 
 /// §27.1: the specification's own term for "there is no official interface or
-/// SDK". Shared verbatim with
-/// `nai_kernel::bridge::SdkAvailability::UnverifiedExternalDependency`; the two
-/// must not drift into two names for one thing.
+/// SDK". The kernel-side twin (`nai_kernel::bridge::SdkAvailability`) was
+/// removed with the V4.8 evaluation plane in the V5.6.1 baseline, so this is now
+/// the only definition — do not reintroduce a second spelling of it.
 pub const UNVERIFIED_EXTERNAL_DEPENDENCY: &str = "UNVERIFIED_EXTERNAL_DEPENDENCY";
 
 /// A connector that reports itself available but does not implement a duty.

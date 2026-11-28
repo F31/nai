@@ -61,3 +61,11 @@
 #### Scenario: 设计变更
 - **WHEN** 范围/模型/默认值变化
 - **THEN** 更新本变更 specs/design/tasks，并记录 ADR/报告；不只在聊天/临时文档里改
+
+### Requirement: 验收模型与当前基线一致
+
+V5.6.1 的验收命令 SHALL 与现行 ADR 的首轮 Qwen 模型一致；更新模型描述 SHALL NOT 自动更改验收状态或视为测试通过。
+
+#### Scenario: 首轮采用已部署 1.7B
+- **WHEN** 检查 TTS 短句验收步骤
+- **THEN** 步骤指定当前 1.7B，并保持原有 pending 或实际证据状态

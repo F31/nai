@@ -1,0 +1,31 @@
+{
+ "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"nai:live-session-config:v1","title":"LiveSessionConfig",
+ "type":"object","additionalProperties":false,
+ "required":["avatar_config","tts_config","worker","prefill_samples","tts_warmup_text","prepared_cache"],
+ "properties":{
+  "avatar_config":{"type":"string","minLength":1,"maxLength":4096},
+  "tts_config":{"type":"string","minLength":1,"maxLength":4096},
+  "llm":{"type":"object","additionalProperties":false,"required":["base_url","model","api_key_ref","deadline_ms","max_answer_chars"],"properties":{"base_url":{"type":"string","pattern":"^https://","minLength":1,"maxLength":2048},"model":{"type":"string","minLength":1,"maxLength":128},"api_key_ref":{"type":"string","minLength":1,"maxLength":400,"pattern":"^keyring:[^/]+/[^/]+$"},"deadline_ms":{"type":"integer","minimum":100,"maximum":15000},"max_answer_chars":{"type":"integer","minimum":8,"maximum":128},"max_output_tokens":{"type":"integer","minimum":256,"maximum":1024,"default":512}}},
+  "worker":{"type":"string","minLength":1,"maxLength":4096},
+  "obs":{"type":"object","additionalProperties":false,"required":["ffmpeg","port","ready"],"properties":{
+   "ffmpeg":{"type":"string","minLength":1,"maxLength":4096},
+   "port":{"type":"integer","minimum":1024,"maximum":65535},
+   "ready":{"type":"string","minLength":1,"maxLength":4096},
+   "repetitions":{"type":"integer","minimum":1,"maximum":128,"default":1},
+   "extended_session":{"type":"boolean","default":false}
+  }},
+  "prefill_samples":{"type":"integer","minimum":1,"maximum":96000},
+  "tts_warmup_text":{"type":"string","minLength":1,"maxLength":64,"pattern":"\\S"},
+  "prepared_cache":{"type":"object","additionalProperties":false,"required":["max_bytes","ttl_ms","max_entries","max_total_bytes","prefetch_max_bytes"],"properties":{
+   "max_bytes":{"type":"integer","minimum":4194304,"maximum":536870912},
+   "ttl_ms":{"type":"integer","minimum":1000,"maximum":3600000},
+   "max_entries":{"type":"integer","minimum":1,"maximum":8},
+   "max_total_bytes":{"type":"integer","minimum":4194304,"maximum":2147483648},
+   "prefetch_max_bytes":{"type":"integer","minimum":4194304,"maximum":536870912}
+  }}
+ }
+}
+
+
+
+

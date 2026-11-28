@@ -1,0 +1,21 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+test('V561 AV window exposes eight narrow commands and project-local assets',()=>{
+ const directory=path.resolve('apps/workbench-desktop/v561-voice');
+ const config=JSON.parse(fs.readFileSync(path.join(directory,'tauri.conf.json'),'utf8'));
+ const legacy=JSON.parse(fs.readFileSync('apps/workbench-desktop/tauri.conf.json','utf8'));
+ const capability=JSON.parse(fs.readFileSync('apps/workbench-desktop/capabilities/v561-voice.json','utf8'));
+ assert.notEqual(config.identifier,legacy.identifier);
+ assert.deepEqual(config.app.security.capabilities,['v561-voice']);
+ assert.deepEqual(capability.windows,['v561-voice']);
+ assert.deepEqual(capability.permissions,['allow-v561-voice-control']);
+ assert.equal(config.app.windows[0].label,'v561-voice');
+ assert.equal(config.app.windows[0].url,'v561-voice.html');
+ assert.ok(path.resolve(directory,config.build.frontendDist).startsWith(path.resolve('target-windows')+path.sep));
+ const permission=fs.readFileSync('apps/workbench-desktop/permissions/v561-voice.toml','utf8');
+ const commands=JSON.parse(permission.match(/commands\.allow\s*=\s*(\[[^\]]+\])/)[1]);
+ assert.deepEqual(commands,['v561_live_status','v561_live_prepare','v561_live_start','v561_live_prepare_content','v561_live_play_prepared','v561_live_ask','v561_live_stop','v561_live_config']);
+ assert.equal(config.app.security.csp.includes("connect-src ipc: http://ipc.localhost"),true);
+});

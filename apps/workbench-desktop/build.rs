@@ -1,5 +1,7 @@
 use std::{env, fs, path::PathBuf};
 fn main() {
+    println!("cargo:rerun-if-changed=v561-voice/tauri.conf.json");
+    println!("cargo:rerun-if-changed=../../target-windows/v561-voice-ui");
     let root = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("manifest directory"));
     // Original source-generated icon, not a downloaded or unlicensed asset.
     let icons = root.join("icons");
@@ -39,6 +41,14 @@ fn main() {
         tauri_build::AppManifest::new().commands(&[
             "workbench_inspect",
             "frontend_ready",
+            "v561_live_status",
+            "v561_live_prepare",
+            "v561_live_start",
+            "v561_live_prepare_content",
+            "v561_live_play_prepared",
+            "v561_live_ask",
+            "v561_live_stop",
+            "v561_live_config",
             "workbench_all_mute",
             "workbench_mic_stop",
             "workbench_mic_devices",
@@ -64,3 +74,4 @@ fn main() {
     ))
     .expect("build bootstrap ACL and assets");
 }
+

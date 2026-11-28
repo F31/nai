@@ -1,0 +1,42 @@
+syntax = "proto3";
+package nai.v561.live.v1;
+// Private inherited stdio; no paths, PCM or credentials.
+enum Command { COMMAND_UNSPECIFIED=0; COMMAND_PREPARE=1; COMMAND_START=2; COMMAND_STOP=3; COMMAND_SHUTDOWN=4; COMMAND_PREPARE_CONTENT=5; COMMAND_PLAY_PREPARED=6; COMMAND_REPLY_TEXT=7; COMMAND_ASK=8; COMMAND_PLAY_PREPARED_OBS=9; }
+// Explicit supplied answer, not a generated LLM response or caller-owned cursor.
+message ReplyText { string question=1; string answer=2; }
+message Request { uint32 version=1; uint64 sequence=2; Command command=3; string text=4; ReplyText reply=5; }
+enum Kind { KIND_UNSPECIFIED=0; KIND_UNPREPARED=1; KIND_PREPARING=2; KIND_PREPARED=3; KIND_STARTING=4; KIND_STOPPING=5; KIND_STOPPED=6; KIND_COMPLETED=7; KIND_FAILED=8; KIND_CONTENT_PREPARING=9; KIND_CONTENT_PREPARED=10; }
+message Event {
+ uint32 version=1; uint64 sequence=2; uint64 request_sequence=3; Kind kind=4;
+ string code=5; bool busy=6; bool visual_prepared=7; uint64 worker_pid=8;
+ // Whole-script totals; per-sentence GPU admission remains bounded separately.
+ optional uint64 samples=9; optional uint64 played_samples=10; uint64 epoch=11;
+ // Completed silent TTS preparation in this session, not ongoing health/device readiness.
+ bool tts_prepared=12;
+ bool content_prepared=13;
+ // Configured local OBS port. Presence does not imply receiver readiness.
+ optional uint32 obs_port=14;
+}
+
+// Internal task data; these messages alone grant no playback or resume authority.
+// Cursor is zero-based and points to the interrupted whole semantic sentence.
+message ResumeIntent {
+ bytes plan_sha256=1;
+ uint64 content_generation=2;
+ uint32 sentence_index=3;
+ uint32 sentence_count=4;
+}
+message QuestionTask {
+ uint64 task_id=1;
+ uint64 generation=2;
+ string question=3;
+ ResumeIntent resume=4;
+ // Relative budget, started by the owning root when the task is admitted.
+ uint32 budget_ms=5;
+}
+message QuestionResult {
+ uint64 task_id=1;
+ uint64 generation=2;
+ string answer=3;
+}
+

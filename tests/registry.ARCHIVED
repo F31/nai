@@ -1,0 +1,5 @@
+tests/registry.yaml is the V4.8 acceptance registry. It is kept read-only for historical
+traceability and MUST NOT be used as the V5.6.1 acceptance source.
+
+V5.6.1 acceptance registry: tests/v561/registry.yaml
+V5.6.1 baseline ADR: docs/adr/0193-v561-single-engine-baseline.md

@@ -1,0 +1,74 @@
+syntax = "proto3";
+package nai.v561.avatarstream.v1;
+import "v561/media.proto";
+import "v561/avatar_worker.proto";
+enum WireVersion { WIRE_VERSION_UNSPECIFIED = 0; WIRE_VERSION_CURRENT = 2; }
+
+// Capability is NOT implied by the existing avatar worker protocol 6.
+// No raw PCM is carried by these control messages.
+message Begin {
+  bytes portrait_sha256 = 1;
+  uint32 block_frames = 2;
+  uint32 sample_rate = 3;
+  uint64 max_samples = 4;
+}
+message Chunk {
+  uint64 raw_payload_id = 1;
+  uint64 start_sample = 2;
+  uint32 samples = 3;
+  bytes sha256 = 4;
+}
+message Eos {
+  uint64 samples = 1;
+  bytes sha256 = 2;
+  bool provider_eos_verified = 3;
+}
+message Cancel {}
+message Request {
+  uint32 version = 1;
+  uint64 sequence = 2;
+  uint64 task_id = 3;
+  uint64 epoch = 4;
+  bytes mac = 5;
+  oneof action {
+    Begin begin = 6;
+    Chunk chunk = 7;
+    Eos eos = 8;
+    Cancel cancel = 9;
+    nai.v561.media.v1.FrameRelease release = 10;
+  }
+}
+enum Kind {
+  KIND_UNSPECIFIED = 0;
+  KIND_INPUT_ACCEPTED = 1;
+  KIND_CHUNK_CONSUMED = 2;
+  KIND_EOS_VERIFIED = 3;
+  KIND_CANCELLED = 4;
+  KIND_FAILED = 5;
+  KIND_READY = 6;
+  KIND_FRAME = 7;
+  KIND_RENDER_COMPLETE = 8;
+  KIND_RENDER_CANCELLED = 9;
+  KIND_STOPPED = 10;
+}
+message Event {
+  uint32 version = 1;
+  uint64 sequence = 2;
+  uint64 request_sequence = 3;
+  uint64 task_id = 4;
+  uint64 epoch = 5;
+  bytes mac = 6;
+  Kind kind = 7;
+  uint64 raw_payload_id = 8;
+  uint64 samples = 9;
+  bytes sha256 = 10;
+  nai.v561.media.v1.FrameRef frame = 11;
+  string mapping_name = 12;
+  nai.v561.avatar.v1.WarmupStats warmup = 13;
+  nai.v561.avatar.v1.RenderStats stats = 14;
+  bytes portrait_sha256 = 15;
+  uint32 model_loads = 16;
+  uint64 elapsed_ms = 17;
+  uint64 frames = 18;
+  string code = 19;
+}

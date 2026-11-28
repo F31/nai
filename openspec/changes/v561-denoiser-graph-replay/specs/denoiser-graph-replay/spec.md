@@ -1,0 +1,16 @@
+## ADDED Requirements
+### Requirement: 图重放显式有界隔离
+工具 SHALL 仅显式启用单采样步图重放，固定输入元数据/静态buffer预算并记录reserved增量，失败退出恢复原forward，不静默回退称通过。
+#### Scenario: 输入形状变化
+- **WHEN** 重放输入与捕获元数据不同
+- **THEN** 拒绝当前候选，不增加第二张图。
+### Requirement: 图重放保持取消与质量门
+候选 SHALL 在每次重放前后检查任务取消和deadline，保持原四步/模型算法；同PCM基线/恢复hash及性能实测前不激活正式配置。
+#### Scenario: 任务已取消
+- **WHEN** 即将重放时check失败
+- **THEN** 不提交该次重放，退出作用域释放图并恢复原方法。
+### Requirement: 组合候选逆序恢复
+组合FP8候选 SHALL 先预热FFN再捕获图，分别执行缓存预算；释放图后方可恢复FFN，组合帧与同实例FP8参考核对，最终BF16恢复与BF16参考核对。
+#### Scenario: 组合运行异常
+- **WHEN** 图捕获或重放发生异常
+- **THEN** 先同步释放图及静态buffer再恢复FFN参数和编译模块，不能保留悬空权重引用或静默启用默认。

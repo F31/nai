@@ -1,0 +1,5 @@
+[[permission]]
+identifier = "allow-v561-voice-control"
+description = "V561 private single-room AV preparation/start/stop and native config selection"
+commands.allow = ["v561_live_status", "v561_live_prepare", "v561_live_start", "v561_live_prepare_content", "v561_live_play_prepared", "v561_live_ask", "v561_live_stop", "v561_live_config"]
+

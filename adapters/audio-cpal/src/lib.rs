@@ -2,6 +2,10 @@
 #[cfg(feature = "clocked-experiment")]
 pub mod clocked_experiment;
 mod cursor;
+#[cfg(feature = "clocked-experiment")]
+pub mod stream_device;
+#[cfg(feature = "clocked-experiment")]
+pub mod v561_clock;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cursor::SubmissionCursor;
 use nai_contracts::workbench::OutputDeviceView;

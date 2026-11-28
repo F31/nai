@@ -1,0 +1,5 @@
+# Design
+
+实际跨进程诊断发现初始头像VAE posterior.sample使用全局随机源，任务级seed发生太晚。补充在头像get_base_data之前绑定配置seed，重建参考并复核两个独立进程逐帧一致；失败保留，人工画质仍单独待验。半包取消污染raw帧边界时终止worker，不静默继续新任务。
+
+协议2只接受当前版本签名，使用全进程序号和递增task/epoch。Ready含已完成编译/预热和portrait；Frame带共享槽引用，Release走签名控制。Input EOS、RenderComplete和设备播放是三个独立事件。控制线程推进签名状态，Chunk占单槽后只把元数据交主GPU线程；raw读取和GPU不持控制锁。取消仅设置job标记并应答，GPU主线程回收后发RenderCancelled。EOS后仍可取消。主线程完成后可接新Begin，重载历史不重载模型。Root读取Frame必须独立校验后release，本轮用显式原生诊断父进程核对共享像素，不宣称Rust设备窗口完成。错误及控制EOF取消在途，不创建无限队列或重试。

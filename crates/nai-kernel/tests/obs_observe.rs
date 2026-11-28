@@ -17,7 +17,8 @@ fn keeper(pid: u32) -> ObservedProcess {
     ObservedProcess {
         pid,
         name: KEEPER_IMAGE.into(),
-        path: r"E:\projects\nai\target-windows\live-auto-runtime\nai-public-output-keeper.exe".into(),
+        path: r"E:\projects\nai\target-windows\live-auto-runtime\nai-public-output-keeper.exe"
+            .into(),
     }
 }
 
@@ -90,11 +91,11 @@ fn enumerated_none_is_absent_not_unknown() {
         enumerated: true,
         ..ObservationInput::default()
     });
-    assert!(matches!(observation.obs.process, ProcessObservation::Absent));
-    assert_eq!(
-        observation.dest.window.connection.state,
-        LayerState::Absent
-    );
+    assert!(matches!(
+        observation.obs.process,
+        ProcessObservation::Absent
+    ));
+    assert_eq!(observation.dest.window.connection.state, LayerState::Absent);
     assert_eq!(
         observation.dest.virtual_camera.connection.state,
         LayerState::Absent
@@ -161,7 +162,10 @@ fn a_public_window_capture_in_the_scene_is_present() {
         observation.dest.virtual_camera.source.state,
         LayerState::Present
     );
-    assert_eq!(observation.dest.window.connection.state, LayerState::Present);
+    assert_eq!(
+        observation.dest.window.connection.state,
+        LayerState::Present
+    );
     assert_eq!(observation.obs.signal.state, LayerState::Unknown);
     assert_eq!(observation.dest.window.signal.state, LayerState::Unknown);
     assert_eq!(observation.dest.public_via, DestKind::Window);

@@ -1,0 +1,11 @@
+## ADDED Requirements
+### Requirement: 有界GPU阶段证据
+诊断 SHALL 报告CUDA事件阶段耗时、墙钟、计时范围与真实像素摘要，不授予播放许可或实时通过。
+#### Scenario: 异步GPU任务
+- **WHEN** 诊断GPU阶段耗时
+- **THEN** 使用完成的CUDA事件而非CPU提交时间，并标明同进程接收不等于真实输出链路。
+### Requirement: 同步候选保持计算内容
+诊断 SHALL 只在局部generate方法移除纯计时同步和打印，恢复原方法且不改第三方源；保留输入、权重、步数及计算顺序。
+#### Scenario: 算法或输出差异
+- **WHEN** 候选像素摘要不同或无法安全变换
+- **THEN** 不授予等价通过且不激活生产默认。

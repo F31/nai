@@ -2,18 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import descriptors from 'ts-proto-descriptors';
 import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { readJson, apiDocument } from '../../scripts/contracts/validation.mjs';
 
 // Checks that compare the contract sources against the **compiled descriptor**
 // live here rather than in `schema.test.mjs`. The descriptor is a generation
-// artifact (`target/contracts/descriptor.bin`, written by `cargo xtask schema`)
+// artifact (`<CARGO_TARGET_DIR>/contracts/descriptor.bin`, written by `cargo xtask schema`)
 // and needs protoc, so these belong to the contracts suite. The static JSON
 // Schema / OpenAPI validation stays in `schema.test.mjs`, which the engineering
 // gate runs on every `check --profile portable|full` — that is what keeps a
 // schema change and its sample from drifting apart unnoticed.
 const catalog = await readJson('schemas/catalog/capabilities.json');
 const descriptor = descriptors.FileDescriptorSet.decode(
-  await readFile('target/contracts/descriptor.bin'),
+  await readFile(path.join(process.env.CARGO_TARGET_DIR || 'target-windows/schema', 'contracts/descriptor.bin')),
 );
 const messages = new Set(
   descriptor.file.flatMap(file =>

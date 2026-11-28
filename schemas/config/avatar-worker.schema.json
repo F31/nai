@@ -1,0 +1,20 @@
+{
+ "$schema":"https://json-schema.org/draft/2020-12/schema","$id":"nai:avatar-worker:v1","title":"AvatarWorkerConfig",
+ "type":"object","additionalProperties":false,
+ "required":["python","upstream_dir","dependency_dirs","model_dir","wav2vec_dir","portrait","portrait_sha256","portrait_authorized","mapping_reader","temp_dir","width","height","frame_num","seed","face_ratio","timeout_ms","maintenance_timeout_ms","warmup_samples"],
+ "properties":{
+  "sample_steps":{"type":"integer","enum":[2,3,4]},
+  "safetensors_backend":{"type":"string","enum":["mmap","pread"],"default":"mmap"},
+  "python":{"type":"string","minLength":1,"maxLength":4096},"upstream_dir":{"type":"string","minLength":1,"maxLength":4096},
+  "dependency_dirs":{"type":"array","minItems":1,"maxItems":8,"items":{"type":"string","minLength":1,"maxLength":4096}},
+  "model_dir":{"type":"string","minLength":1,"maxLength":4096},"wav2vec_dir":{"type":"string","minLength":1,"maxLength":4096},
+  "portrait":{"type":"string","minLength":1,"maxLength":4096},"portrait_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},"portrait_authorized":{"const":true},
+  "mapping_reader":{"type":"string","minLength":1,"maxLength":4096},
+  "temp_dir":{"type":"string","minLength":1,"maxLength":4096},
+  "width":{"type":"integer","minimum":256,"maximum":1024,"multipleOf":32},"height":{"type":"integer","minimum":256,"maximum":1024,"multipleOf":32},
+  "frame_num":{"type":"integer","minimum":17,"maximum":97},"seed":{"type":"integer","minimum":0,"maximum":4294967295},"face_ratio":{"type":"number","minimum":1.5,"maximum":4},
+  "timeout_ms":{"type":"integer","minimum":1000,"maximum":45000},
+  "maintenance_timeout_ms":{"type":"integer","minimum":1000,"maximum":240000},
+  "warmup_samples":{"type":"integer","minimum":1,"maximum":144000}
+ }
+}

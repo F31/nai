@@ -1,0 +1,62 @@
+syntax = "proto3";
+package nai.v561.streamaudio.v1;
+import "v561/media.proto";
+import "v561/continuous_audio.proto";
+
+enum WireVersion { WIRE_VERSION_UNSPECIFIED = 0; WIRE_VERSION_CURRENT = 3; }
+
+// Spawn-private authenticated control only. PCM16LE travels separately on stdin,
+// as u32 byte length followed by raw bytes; never inside these messages.
+message Begin {
+  uint32 sample_rate = 1; // exactly 24000 for this executor
+  uint32 capacity_samples = 2; // <= 96000
+  uint64 max_samples = 3; // <= 480000, bounded utterance
+  uint32 prefill_samples = 4;
+}
+message Chunk {
+  uint64 chunk_sequence = 1; // starts at 1, contiguous
+  uint64 source_sample = 2; // exactly previous received endpoint
+  uint32 samples = 3; // 1..4800
+  bytes sha256 = 4;
+}
+message Seal { uint64 total_samples = 1; bytes sha256 = 2; }
+message Renew { uint32 ttl_ms = 1; uint64 play_until_sample = 2; }
+message Stop {}
+message Command {
+  uint32 version = 1; // WireVersion.CURRENT; previous wire versions rejected
+  uint64 epoch = 2;
+  uint64 sequence = 3; // starts at 1, contiguous
+  bytes mac = 4; // HMAC-SHA256 over message with mac cleared
+  oneof action {
+    Begin begin = 5;
+    Chunk chunk = 6;
+    Seal seal = 7;
+    Renew renew = 8;
+    Stop stop = 9;
+    nai.v561.continuousaudio.v1.OpenScript open_script = 10;
+    nai.v561.continuousaudio.v1.SegmentBegin segment_begin = 11;
+    nai.v561.continuousaudio.v1.SegmentSeal segment_seal = 12;
+  }
+}
+enum State {
+  STATE_UNSPECIFIED = 0;
+  STATE_PREPARED = 1;
+  STATE_RUNNING = 2;
+  STATE_COMPLETED = 3;
+  STATE_STOPPED = 4;
+}
+message Receipt {
+  uint32 version = 1;
+  uint64 epoch = 2;
+  uint64 sequence = 3;
+  State state = 4;
+  uint64 received_samples = 5;
+  uint64 submitted_samples = 6;
+  uint64 played_samples = 7; // actual device clock mapped to source, excludes gaps
+  uint32 free_samples = 8;
+  bool sealed = 9;
+  bytes mac = 10;
+  nai.v561.media.v1.PlaybackClockObservation clock = 11; // required; covered by MAC
+  uint32 clock_age_ms = 12; // ceil age since actual device poll, never since control receipt
+  repeated nai.v561.continuousaudio.v1.SegmentProgress segments = 13; // at most current + one future, MAC covered
+}

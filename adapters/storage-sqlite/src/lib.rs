@@ -1,7 +1,5 @@
 //! Isolated RF02 writer. No legacy storage, provider, media, Tauri or SDK dependency.
 mod assistance;
-#[allow(dead_code)] // Isolated authority prototype; not installed or exposed by Store.
-mod avatar_authority;
 #[allow(dead_code)] // Inventory prototype; no migration or IPC entry point yet.
 mod avatar_backup;
 mod avatar_draft;
@@ -15,12 +13,13 @@ mod migration_backup;
 mod model_catalog;
 mod model_context;
 mod photo_draft;
-mod video_draft;
 mod question_pool;
 mod review;
 mod review_questions;
 mod shared_catalog;
 mod shared_model_preview;
+pub mod v561;
+mod video_draft;
 pub use migration_backup::ModelMigrationBackup;
 mod tts_task;
 mod workspace_lifecycle;

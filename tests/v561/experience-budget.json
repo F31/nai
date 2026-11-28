@@ -1,0 +1,8 @@
+{
+  "$schema": "../../schemas/tests/v561-experience-budget.schema.json",
+  "version": 1,
+  "ready_first_voice_ms": 3000,
+  "sentence_gap_ms": 300,
+  "tts_first_pcm_goal_ms": 800,
+  "sample_rate": 24000
+}

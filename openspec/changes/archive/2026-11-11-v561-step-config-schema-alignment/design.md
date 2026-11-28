@@ -1,0 +1,2 @@
+# Design
+在正式Schema声明可选整数sample_steps枚举2/3/4，不增加default、不接受诊断override_timesteps或暂停的execution_candidate。先正式生成，再验证既有消费者。保留512/3候选、512/4退路；二步质量反馈不被覆盖。定向Schema测试核对缺省和枚举、非整数/未知实验字段拒绝，Rust既有序列化及Python时间表检查匹配。

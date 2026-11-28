@@ -1,0 +1,28 @@
+syntax = "proto3";
+package nai.v561.continuousaudio.v1;
+
+// Segment metadata only. PCM remains on the separate authenticated raw path.
+// These messages do not themselves authorize playback or create a device.
+message SegmentIdentity {
+ uint64 script_epoch = 1;
+ uint32 sentence_id = 2;
+ uint64 generation_epoch = 3;
+ uint64 source_start_sample = 4;
+}
+message SegmentBegin { SegmentIdentity identity = 1; uint64 max_samples = 2; }
+message OpenScript {
+ uint32 sample_rate = 1;
+ uint32 capacity_samples = 2;
+ uint64 max_samples = 3;
+ uint32 prefill_samples = 4;
+ uint32 max_sentences = 5;
+}
+message SegmentSeal { SegmentIdentity identity = 1; uint64 samples = 2; bytes sha256 = 3; }
+message SegmentProgress {
+ SegmentIdentity identity = 1;
+ uint64 received_samples = 2;
+ uint64 submitted_samples = 3;
+ uint64 played_samples = 4;
+ bool sealed = 5;
+ bool completed = 6; // verified seal AND actual device clock crossed the end
+}

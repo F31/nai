@@ -1,0 +1,11 @@
+## ADDED Requirements
+### Requirement: Flow参考对齐显式且隔离
+候选 SHALL 按模型hop及token-mel比例同步对齐Flow参考token/特征和长度，不修改完整LLM提示、声纹或原缓存，不写入假token；最小参考长度与未知结构必须校验。
+#### Scenario: 当前87个参考token
+- **WHEN** 显式开启且满足最小上下文时参考87、hop25、比例2
+- **THEN** Flow参考可取75个token/150个特征帧，LLM仍保留87个token；未经真实质量/性能验证不启用默认。
+### Requirement: 对齐收益须经过真实门
+候选 SHALL 留存首块实际计数、延迟、完成/取消及人工音质结果，不以少等13个token直接授800ms或连续直播通过。
+#### Scenario: 候选质量下降
+- **WHEN** 实际声音、发音或连续性不接受
+- **THEN** 恢复原条件和服务，保留失败证据，不自动激活或补假音频。

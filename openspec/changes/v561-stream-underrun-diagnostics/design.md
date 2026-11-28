@@ -1,0 +1,6 @@
+# Design
+对同一次设备拉取使用同一play_until快照；Buffer::take仍是唯一消费行为。失败日志只包含固定原因和数字计数，没有原始PCM、路径或文本。纯函数按拉取前source_start+requested、received与play_until区分供给和门控，两者不足不能归因单一环节。诊断不改错误决策或设备时轴，拒绝缓冲扩大/静音掩盖/期限放宽。
+
+生成端使用已有匿名缓存Observer固定大小快照，不保存逐块无界数组。PCM首/末观察时间以脚本origin计算，是Root消费供给的时间，不能标为供应商产生时间。已有RenderStats仅在RenderComplete后可读，compute包含音频特征/推理及同步墙钟而非纯CUDA kernel时间；transfer/delivery可能重叠，不相加虚构总耗时。失败保留部分进度，缺失统计为null，不用0冒充。
+
+U03b2以每块3个CUDA事件分开音频特征和视频生成，在已有块末同步后读数；不添加阶段间同步。主机调用计时与CUDA流经过时间分别命名，后者可能包含CPU提交空档和GPU调度/争用，不解释为纯kernel占用。每块一条私有固定字段日志，epoch=0明确为预热，业务统计不混入首次编译预热。

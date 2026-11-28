@@ -1,0 +1,71 @@
+syntax = "proto3";
+package nai.v561.avatar.v1;
+import "v561/media.proto";
+enum WireVersion { WIRE_VERSION_UNSPECIFIED = 0; WIRE_VERSION_CURRENT = 6; }
+message WarmupStats {
+  uint64 samples = 1;
+  uint64 frames_acked = 2;
+  uint32 blocks = 3;
+  uint32 unique_graphs = 4;
+  uint32 generated_kernels = 5;
+  uint64 elapsed_ms = 6;
+  uint32 block_frames = 7;
+  uint32 motion_frames = 8;
+}
+message RenderStats {
+  uint32 blocks = 1;
+  uint32 block_frames = 2;
+  uint32 motion_frames = 3;
+  uint64 generated_frames = 4;
+  uint64 retained_frames = 5;
+  uint64 transferred_frames = 6;
+  uint64 tail_frames = 7;
+  uint32 feature_sample_rate = 8;
+  uint64 feature_samples = 9;
+  uint64 padded_feature_samples = 10;
+  uint64 setup_ms = 11;
+  uint64 compute_ms = 12;
+  uint64 transfer_ms = 13;
+  uint64 delivery_ms = 14;
+  uint32 inference_steps = 15;
+  uint64 overlap_ms = 16; // compute/delivery monotonic interval intersection
+}
+message Render {
+  string pcm_path = 1;
+  bytes pcm_sha256 = 2;
+  uint64 samples = 3;
+  uint32 sample_rate = 4;
+}
+message Cancel {}
+message Shutdown {}
+message Request {
+  uint32 version = 1;
+  uint64 sequence = 2;
+  uint64 task_id = 3;
+  uint64 epoch = 4;
+  bytes mac = 5;
+  oneof action { Render render = 6; Cancel cancel = 7; Shutdown shutdown = 8; nai.v561.media.v1.FrameRelease release = 9; }
+}
+enum Kind { KIND_UNSPECIFIED = 0; KIND_READY = 1; KIND_ACCEPTED = 2; KIND_COMPLETE = 3; KIND_CANCEL_REQUESTED = 4; KIND_CANCELLED = 5; KIND_FAILED = 6; KIND_REJECTED = 7; KIND_STOPPED = 8; KIND_FRAME = 9; }
+message Event {
+  uint32 version = 1;
+  uint64 sequence = 2;
+  uint64 request_sequence = 3;
+  uint64 task_id = 4;
+  uint64 epoch = 5;
+  Kind kind = 6;
+  string code = 7;
+  bool busy = 8;
+  uint32 model_loads = 9;
+  uint64 samples = 10;
+  bytes pcm_sha256 = 11;
+  uint64 frames = 12;
+  uint64 frames_acked = 13;
+  bytes portrait_sha256 = 14;
+  uint64 elapsed_ms = 15;
+  bytes mac = 16;
+  nai.v561.media.v1.FrameRef frame = 17;
+  string mapping_name = 18;
+  RenderStats stats = 19; // required only for successful Complete; covered by MAC
+  WarmupStats warmup = 20; // Ready only; actual compile and internal silent warmup
+}

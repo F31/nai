@@ -48,6 +48,7 @@ pub fn validate_profile(kind: &str, url: &str, language: &str) -> Result<bool, E
 pub const MAX_CHARACTERS: usize = 256;
 pub const MAX_AUDIO_BYTES: usize = 1_048_576;
 pub const MAX_SAMPLES: usize = SAMPLE_RATE as usize * 20;
+pub const MAX_SAMPLES_ANY_RATE: usize = 96_000 * 20;
 pub fn characters(text: &str) -> Result<u64, Error> {
     let count = text.chars().count();
     if text.trim().is_empty()

@@ -6,11 +6,9 @@
 //! A command failure is [`enumerated`](ObservationInput::enumerated) = false:
 //! every layer stays unknown. A module file on disk is not a destination
 //! signal. Independent tracks stay unknown. Public picture stays the window.
-use super::obs::{
-    Layer, LayerState, ObsSurface, PUBLIC_WINDOW_TITLE, ProcessObservation,
-};
+use super::obs::{Layer, LayerState, ObsSurface, PUBLIC_WINDOW_TITLE, ProcessObservation};
 use super::obs_dest::{AUDIO_TRACKS, AudioTrackReport, DestKind, DestReport, DestSurface};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// OBS image this producer recognises.
 pub const OBS_IMAGE: &str = "obs64.exe";
@@ -176,20 +174,13 @@ fn dest_report_view(report: &DestReport) -> Value {
     })
 }
 
-fn find_image<'a>(
-    processes: &'a [ObservedProcess],
-    image: &str,
-) -> Option<&'a ObservedProcess> {
-    processes.iter().find(|proc| {
-        proc.pid != 0 && proc.name.eq_ignore_ascii_case(image)
-    })
+fn find_image<'a>(processes: &'a [ObservedProcess], image: &str) -> Option<&'a ObservedProcess> {
+    processes
+        .iter()
+        .find(|proc| proc.pid != 0 && proc.name.eq_ignore_ascii_case(image))
 }
 
-fn process_connection(
-    enumerated: bool,
-    proc: Option<&ObservedProcess>,
-    image: &str,
-) -> Layer {
+fn process_connection(enumerated: bool, proc: Option<&ObservedProcess>, image: &str) -> Layer {
     if !enumerated {
         return Layer::unknown();
     }
