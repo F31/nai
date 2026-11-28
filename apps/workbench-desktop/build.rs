@@ -49,6 +49,7 @@ fn main() {
             "v561_live_ask",
             "v561_live_stop",
             "v561_live_config",
+            "v561_live_default_config",
             "workbench_all_mute",
             "workbench_mic_stop",
             "workbench_mic_devices",
@@ -74,4 +75,3 @@ fn main() {
     ))
     .expect("build bootstrap ACL and assets");
 }
-

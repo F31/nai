@@ -4,7 +4,8 @@ use nai_contracts::v561_live::{Event, Kind};
 use nai_workbench_host::v561_live::Controller;
 use prost::Message;
 use std::{
-    path::PathBuf,
+    fs,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 struct Live {
@@ -94,6 +95,156 @@ fn load(live: &Live, profile: PathBuf) -> Result<(), String> {
     *live.error.lock().map_err(|_| "STATE_FAILED")? = String::new();
     Ok(())
 }
+fn find_root(start: &Path) -> Option<PathBuf> {
+    let mut dir = start.to_path_buf();
+    for _ in 0..8 {
+        if dir.join("scripts/flashhead_resident_worker.py").is_file()
+            && dir.join("docs/jjf.jpg").is_file()
+        {
+            return Some(dir);
+        }
+        if !dir.pop() {
+            break;
+        }
+    }
+    None
+}
+fn python_executable() -> Option<PathBuf> {
+    let paths = std::env::var_os("PATH")?;
+    std::env::split_paths(&paths)
+        .map(|dir| dir.join("python.exe"))
+        .find(|candidate| candidate.is_file())
+}
+fn write_json(path: &Path, value: &serde_json::Value) -> Result<(), String> {
+    let bytes = serde_json::to_vec_pretty(value).map_err(|_| "DEFAULT_SERIALIZE_FAILED")?;
+    fs::write(path, bytes).map_err(|_| "DEFAULT_WRITE_FAILED".into())
+}
+fn reference_wav(path: &Path, source: &Path) -> Result<(), String> {
+    if source.is_file() {
+        fs::copy(source, path).map_err(|_| "DEFAULT_WRITE_FAILED")?;
+        return Ok(());
+    }
+    // One second of 24 kHz mono silence; a technical reference, not a licensed voice.
+    let samples = 24_000u32;
+    let data_len = samples * 2;
+    let mut wav = Vec::with_capacity(44 + data_len as usize);
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&(36 + data_len).to_le_bytes());
+    wav.extend_from_slice(b"WAVEfmt ");
+    wav.extend_from_slice(&16u32.to_le_bytes());
+    wav.extend_from_slice(&1u16.to_le_bytes());
+    wav.extend_from_slice(&1u16.to_le_bytes());
+    wav.extend_from_slice(&samples.to_le_bytes());
+    wav.extend_from_slice(&(samples * 2).to_le_bytes());
+    wav.extend_from_slice(&2u16.to_le_bytes());
+    wav.extend_from_slice(&16u16.to_le_bytes());
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&data_len.to_le_bytes());
+    wav.extend(vec![0u8; data_len as usize]);
+    fs::write(path, wav).map_err(|_| "DEFAULT_WRITE_FAILED".into())
+}
+fn default_config(live: &Live) -> Result<PathBuf, String> {
+    use sha2::{Digest, Sha256};
+    let root = find_root(&live.runtime).ok_or("DEFAULT_ASSETS_MISSING")?;
+    let python = python_executable().ok_or("PYTHON_MISSING")?;
+    let runtime = &live.runtime;
+    fs::create_dir_all(runtime).map_err(|_| "DEFAULT_WRITE_FAILED")?;
+
+    let model_dir = root.join("target-windows/models/SoulX-FlashHead-1_3B/Model_Lite");
+    let wav2vec_dir = root.join("target-windows/models/wav2vec2-base-960h");
+    let portrait = root.join("docs/jjf.jpg");
+    let worker = root.join("scripts/flashhead_resident_worker.py");
+    let scripts = root.join("scripts");
+    let contracts = root.join("packages/contracts-python/src/generated");
+    let source_wav = root.join("target-windows/v561-qwen-restart-check.wav");
+    for (path, code) in [
+        (&model_dir, "MODEL_MISSING"),
+        (&wav2vec_dir, "WAV2VEC_MISSING"),
+        (&portrait, "PORTRAIT_MISSING"),
+        (&worker, "WORKER_MISSING"),
+        (&scripts, "WORKER_DEPS_MISSING"),
+        (&contracts, "CONTRACTS_MISSING"),
+    ] {
+        if !path.exists() {
+            return Err(code.into());
+        }
+    }
+    let digest = Sha256::digest(fs::read(&portrait).map_err(|_| "PORTRAIT_UNREADABLE")?);
+    let portrait_hash = digest
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+
+    let avatar_config = runtime.join("default-avatar.json");
+    let tts_config = runtime.join("default-tts.json");
+    let mapping_reader = runtime.join("default-mapping.json");
+    let temp_dir = runtime.join("avatar-temp");
+    let reference_file = runtime.join("default-reference.wav");
+    fs::create_dir_all(&temp_dir).map_err(|_| "DEFAULT_WRITE_FAILED")?;
+    fs::write(&mapping_reader, b"{}").map_err(|_| "DEFAULT_WRITE_FAILED")?;
+    reference_wav(&reference_file, &source_wav)?;
+
+    write_json(
+        &avatar_config,
+        &serde_json::json!({
+            "safetensors_backend": "mmap",
+            "python": python,
+            "upstream_dir": scripts,
+            "dependency_dirs": [scripts, contracts],
+            "model_dir": model_dir,
+            "wav2vec_dir": wav2vec_dir,
+            "portrait": portrait,
+            "portrait_sha256": portrait_hash,
+            "portrait_authorized": true,
+            "mapping_reader": mapping_reader,
+            "temp_dir": temp_dir,
+            "width": 768,
+            "height": 768,
+            "frame_num": 49,
+            "seed": 42,
+            "face_ratio": 2.0,
+            "timeout_ms": 45000,
+            "maintenance_timeout_ms": 240000,
+            "warmup_samples": 48000,
+            "sample_steps": 4
+        }),
+    )?;
+    write_json(
+        &tts_config,
+        &serde_json::json!({
+            "endpoint": "http://127.0.0.1:50000/inference_zero_shot",
+            "reference_file": reference_file,
+            "prompt_text": "你好，这是数字人直播。<|endofprompt|>",
+            "deadline_ms": 30000,
+            "max_samples": 144000
+        }),
+    )?;
+
+    let profile = runtime.join("live-session.json");
+    write_json(
+        &profile,
+        &serde_json::json!({
+            "avatar_config": avatar_config,
+            "tts_config": tts_config,
+            "worker": worker,
+            "prefill_samples": 2400,
+            "tts_warmup_text": "你好，这是数字人直播。",
+            "prepared_cache": {
+                "max_bytes": 67108864,
+                "ttl_ms": 600000,
+                "max_entries": 4,
+                "max_total_bytes": 268435456,
+                "prefetch_max_bytes": 33554432
+            }
+        }),
+    )?;
+    Ok(profile)
+}
+#[tauri::command]
+fn v561_live_default_config(live: tauri::State<'_, Live>) -> Result<(), String> {
+    let profile = default_config(&live)?;
+    load(&live, profile)
+}
 #[tauri::command]
 async fn v561_live_config(live: tauri::State<'_, Live>) -> Result<(), String> {
     if controller(&live).is_ok_and(|c| c.status().busy) {
@@ -136,6 +287,11 @@ fn setup() -> Live {
         let default = live.runtime.join("live-session.json");
         if default.is_file() {
             profile = Some(default);
+        } else {
+            match default_config(&live) {
+                Ok(path) => profile = Some(path),
+                Err(code) => *live.error.lock().unwrap() = code,
+            }
         }
     }
     if let Some(profile) = profile
@@ -167,7 +323,8 @@ fn main() {
             v561_live_play_prepared,
             v561_live_ask,
             v561_live_stop,
-            v561_live_config
+            v561_live_config,
+            v561_live_default_config
         ])
         .build(context)
         .expect("AV workbench initialization")
