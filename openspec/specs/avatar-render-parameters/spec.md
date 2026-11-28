@@ -1,7 +1,7 @@
 # avatar-render-parameters Specification
 
 ## Purpose
-TBD - created by archiving change v561-avatar-512-two-step. Update Purpose after archive.
+约束形象 worker 的渲染分辨率与采样步数配置（2/3/4，缺省 4），使各消费者一致校验且在直播路径切换分辨率时保留质量门证据，避免静默取近似值或把性能候选误升为默认。
 
 ## Requirements
 

@@ -1,7 +1,7 @@
 # resident-avatar-worker Specification
 
 ## Purpose
-TBD - created by archiving change v561-resident-avatar-worker. Update Purpose after archive.
+使形象 worker 作为独立常驻进程加载一次模型并复用，保持单活动渲染与有界队列；在 GPU 调用前核对同源 PCM 与形象身份，控制取消后撤销输出资格并丢弃迟到帧，不把控制回执当成 GPU 抢占完成。
 
 ## Requirements
 

@@ -1,7 +1,7 @@
 # avatar-step-config Specification
 
 ## Purpose
-TBD - created by archiving change v561-step-config-schema-alignment. Update Purpose after archive.
+使采样步数配置在 Schema、Rust 与 Python 消费者之间保持同一取值域（可选整数 2/3/4，缺省四步），正式生成类型不得遗漏该字段，也不得把实验时间表当作生产配置接受。
 
 ## Requirements
 

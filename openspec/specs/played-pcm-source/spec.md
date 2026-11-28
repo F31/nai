@@ -1,7 +1,7 @@
 # played-pcm-source Specification
 
 ## Purpose
-TBD - created by archiving change v561-played-pcm-source. Update Purpose after archive.
+约束设备同源 PCM 的封存：只复制实际提交设备播放的同一份样本与字节，在播放完成且摘要/样本数核对一致后才交付 worker，未完成或取消时不产出可渲染描述，也不把离线诊断夸大为同步播放验收。
 
 ## Requirements
 

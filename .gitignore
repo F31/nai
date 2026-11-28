@@ -19,6 +19,11 @@ dist/
 # 诊断产物（CI 门控日志等）。它们**刻意**住在仓库内，好让凭据扫描器有明确的扫描域
 # （见 xtask/src/secrets.rs 的 ARTIFACTS）；但它们不是要被发布的东西。
 /.nai-diagnostics/
+# CI 门控前本地安装的 Python 解释器（protobuf/numpy/soxr）。第三方 wheel 的
+# RECORD 哈希清单里 base64 串会命中 pk- 前缀规则（numpy 2.5.5 实测），这是
+# 可复现的确定性误报。解释器是本地环境产物、不是要发布的内容，交给
+# --exclude-standard 排除，不为第三方包名加扫描豁免。
+/.nai-v561-python/
 # Tauri 独立原生构建产物（ADR 0129）
 # Native Windows artifacts are separate from the Linux target cache.
 /target-windows/

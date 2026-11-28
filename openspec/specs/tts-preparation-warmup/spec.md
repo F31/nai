@@ -1,7 +1,7 @@
 # tts-preparation-warmup Specification
 
 ## Purpose
-TBD - created by archiving change v561-tts-preparation-warmup. Update Purpose after archive.
+约束准备阶段的有界静音 TTS 预热与双事实准入：预热至多一次、继承取消与期限、不自动重试或发声，开始播放须语音与视觉两事实同时成立；预热成功不代表设备就绪或实时体验达标。
 
 ## Requirements
 
